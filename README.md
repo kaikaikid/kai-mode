@@ -69,7 +69,7 @@ handoff 是一行 ≤500 B 的 JSON，只当“可验证指针”：
 
 ## 状态机与可靠性（V1.0）
 
-- **票状态机**：`playbooks/state-machine.md`。11 个状态、合法转移、写者与守卫；细状态住 `task-<票>.json`，GitHub 标签只是投影。
+- **票状态机**：`playbooks/state-machine.md`。11 个状态、合法转移、写者与守卫；细状态住 `task-state-<票>.json`，GitHub 标签只是投影。
 - **任务合同**：`playbooks/task-contract.md`。十字段、风险分级、DoR/DoD、合同哈希。
 - **执行三职**：`playbooks/execution-roles.md`。researcher／implementer／reviewer，写代码的人不能自判通过。
 - **可靠性**：`playbooks/reliability.md`。租约、重试上限、同错早停、去重、崩溃恢复、熔断、预算。

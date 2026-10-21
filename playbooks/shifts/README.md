@@ -22,9 +22,11 @@
 | `dispatch-queue-<group>.json` | Tower | `{schema,lane,tickets[],version,issued_at,issued_by}`；原子写 |
 | `lease-<票>.json` / `current-task-<票>.json` | Tower 建，Group 销 | 允许改的文件清单；没租约不飞 |
 | `status-<role>.json` | 该角色 | 四格：`result`／`tickets`／`commits`／`blocker`（必要时 `unverified`、`subagents`） |
-| `task-<票>.json` | Tower 建；Group/Ground 转移 | 11 状态、attempt、租约、合同哈希；见 `schemas/task.schema.json` |
+| `task-state-<票>.json` | Tower 建；Group/Ground 转移 | 11 状态、attempt、租约、合同哈希；见 `schemas/task.schema.json` |
 | `checkpoint-<票>-a<n>.json` | 执行体 | 进度快照，供接任者恢复；见 `schemas/checkpoint.schema.json` |
 | `events.jsonl` | 各角色追加 | 审计事件，只追加、不改历史；见 `schemas/event.schema.json` |
+
+> `current-task-<票>.json` 是 scope-check 的**租约槽位**；`task-state-<票>.json` 是状态机的**运行态**。两者同名不同物，别把运行态写成租约。
 | `handoff-<from>-<to>.json` | 发起角色 | 见 §四 |
 | `acceptance-<票>.json` | Group 的 reviewer | 见 `playbooks/acceptance.md` |
 | `ship-ledger.jsonl` | Ground | 每批一行：票号/commit/push/sha/门读数 |
@@ -43,9 +45,11 @@
 - `done` 只在 `unverified=[]` 且无待发时写；否则 `partial`。
 - 停机牌与闸门归 Coordinator；角色只写 `need-coordinator`/`blocked`，不自行清牌。
 
+**P2 前的码映射**：框架的 `need-schedule` ≙ live 的 `need-tower`；`need-ship` ≙ live 的 `need-outbound`。P2 前以 live 码为准，状态机看到两个码都认。
+
 ## 三续、票状态机与执行三职（V1.0）
 
-- **票状态 ≠ 角色结果码。** 状态住 `task-<票>.json`，合法转移与写者见 `playbooks/state-machine.md`：
+- **票状态 ≠ 角色结果码。** 状态住 `task-state-<票>.json`，合法转移与写者见 `playbooks/state-machine.md`：
   - Tower：`ready`／`claimed`／`blocked→ready`
   - Group：`running`／`validating`／`repairing`／`ship_ready`
   - Ground：`landed`／`closed`

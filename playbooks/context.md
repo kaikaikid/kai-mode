@@ -69,7 +69,7 @@
 
 | 文件 | 用途 | 长度 | 谁读 |
 |---|---|---|---|
-| `task-<票>.json` | 机器状态（状态/attempt/租约/合同哈希） | 小 | 脚本、Tower、Ground |
+| `task-state-<票>.json` | 机器状态（状态/attempt/租约/合同哈希） | 小 | 脚本、Tower、Ground |
 | `checkpoint-<票>-a<n>.json` | 进度快照，供接任者恢复 | 中 | 接任执行体 |
 | `handoff-*.json` | 交接指针，触发下一角色 | ≤500 B | 启动器、接收方 |
 | `acceptance-<票>.json` | 逐条 AC 证据 | 中 | reviewer 写，Ground 读摘要 |

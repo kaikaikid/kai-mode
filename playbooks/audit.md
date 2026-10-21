@@ -66,7 +66,7 @@
 
 ```text
 Issue（合同+AC）
-  → task-<票>.json（状态/attempt/租约/检查点）
+  → task-state-<票>.json（状态/attempt/租约/检查点）
   → events.jsonl（每次转移与证据）
   → branch + commits
   → acceptance-<票>.json（逐条 AC）

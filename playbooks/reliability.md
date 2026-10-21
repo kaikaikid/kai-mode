@@ -15,7 +15,8 @@
 | `task_timeout_min` | 60 | 单票墙钟上限 |
 | `attempt_timeout_min` | 30 | 单次尝试上限 |
 | `run_timeout_min` | 120 | 单班/单次运行上限 |
-| `lease_ttl_min` | 45 | 租约心跳过期阈值 |
+| `token_ttl_min` | 45 | 跑道牌/出货牌心跳过期阈值 |
+| `lease_ttl_min` | `null` | 文件域租约 TTL（未实现；先改 scope-check） |
 | `cooldown_min` | 15 | 同目标重复按铃冷却 |
 | `circuit_breaker_failures` | 3 | 连续启动失败/门红触发熔断 |
 | `daily_wallclock_min` | 480 | 每日总运行时墙钟 |
@@ -25,11 +26,11 @@
 
 ## 二、租约
 
-- **一票一租约**，逐枚文件/目录；租约里写 `ticket`、`owner`、`issued_at`、`expires_at`、`allowed`。
-- 持租约者必须按 `lease_ttl_min` 刷心跳；心跳过期前，别人**不得抢**（`--enforce` 退 1 即停）。
-- 过期后由 Tower 重新发租约；新 owner 接手时 **attempt+1**，并开新上下文，不复用旧会话。
-- 收工必须 `release`；没释放 = 下一班拿着上一班的职权硬干。租约不跨班留存。
-- 租约过期 ≠ 工作丢失：树、提交、检查点仍在；新 owner 先对账再决定继续或重做。
+- **一票一租约**，逐枚文件/目录；`current-task-<票>.json` / `lease-<票>.json` 当前是 **first-wins 快照**，字段是 `allowed`/`baseline`/`active`，**没有 `expires_at`、没有 TTL**；收工必须 `scope-check clear`，否则下一班拿着上一班的职权硬干。
+- **45 分钟 TTL 适用于跑道牌/出货牌**（`on-duty-*.json` 的 `heartbeat_at`），不是文件域租约；两者别混。
+- 文件域租约的失效靠 `scope-check` 的槽位/车道 stale 判据与人工 clear；要加 TTL 必须先改 `scope-check.py` 并留迁移票（当前未实现）。
+- 租约失效/释放 ≠ 工作丢失：树、提交、检查点仍在；新 owner 先对账再决定继续或重做。
+- 租约不跨班留存；收工不销＝下一班拿着上一班的职权硬干。
 
 ## 三、重试与同错早停
 
@@ -61,7 +62,7 @@
 进程被强杀、宿主重启、会话超时后，按固定顺序恢复：
 
 1. **读事件**：`events.jsonl` 最后一条该票事件；确认 `event_id` 链无断裂。
-2. **读状态**：`task-<票>.json`；若 `updated_at` 落后于事件，以事件为准并重写状态。
+2. **读状态**：`task-state-<票>.json`；若 `updated_at` 落后于事件，以事件为准并重写状态。
 3. **读 git**：分支、HEAD、commit、是否已并入 dev、工作树是否脏。
 4. **读 GitHub**：票 open/closed、PR 状态、审批评论。
 5. **判定**：

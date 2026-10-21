@@ -6,8 +6,9 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "schema", "ticket", "state", "contract_sha256", "attempt",
-    "max_attempts", "owner", "lease_id", "branch", "updated_at"
+    "schema", "ticket", "state", "contract_sha256", "risk",
+    "approval_required", "deadline", "attempt", "max_attempts",
+    "owner", "lease_id", "branch", "updated_at"
   ],
   "properties": {
     "schema": { "const": 1 },
@@ -18,8 +19,25 @@
         "repairing", "ship_ready", "blocked", "failed", "landed", "closed"
       ]
     },
-    "contract_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
-    "risk": { "enum": ["low", "medium", "high"] },
+    "contract_sha256": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      ]
+    },
+    "risk": {
+      "oneOf": [
+        { "type": "null" },
+        { "enum": ["low", "medium", "high"] }
+      ]
+    },
+    "approval_required": { "type": "boolean" },
+    "deadline": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "string", "format": "date-time" }
+      ]
+    },
     "ship_mode": { "enum": ["direct", "pr", "hybrid"] },
     "attempt": { "type": "integer", "minimum": 0 },
     "max_attempts": { "type": "integer", "minimum": 1 },

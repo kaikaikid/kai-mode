@@ -2,10 +2,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://kai-mode.local/schemas/acceptance.schema.json",
   "title": "Acceptance",
-  "description": "跃迁批次的 AI 验收证据。verdict=pass 要求 unverified=[]；不可执行项必须显式列出。",
+  "description": "跃迁批次的 AI 验收证据。verdict=pass 要求 unverified=[]；不可执行项必须显式列出。reviewer 与 implementer 必须不同；缺 implementer 视为无效。",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema", "ticket", "verdict", "checks", "unverified", "reviewer", "at"],
+  "required": ["schema", "ticket", "verdict", "checks", "unverified", "reviewer", "implementer", "at"],
   "properties": {
     "schema": { "const": 1 },
     "ticket": { "type": "integer", "minimum": 1 },

@@ -24,7 +24,7 @@
 
 ## 第 2 步：凑批与预检
 
-- 批次规则（项目配置优先；默认）：2–5 张或 15 分钟一发；单批 ≤5；单张 ≤30 分钟；P0 单发；班末有货就发。
+- 批次规则（项目配置优先；默认）：2–3 张或 15 分钟一发；单批 ≤3；单张 ≤30 分钟；P0/红门单发；班末有货就发。
 - 零副作用预检：`git fetch`、merge-tree 冲突预演、主树暂存区是否干净、每笔提交票号/租约、在制 marker。
 - **只跑一次真门**：pre-push 门自己跑 `push-preflight --apply`；不要在预检里手动跑第二遍。
 - 红批拆半：先发前半定位；被红的那张退回组并写 `need-tower`，别让一张坏票压住整批。
@@ -36,7 +36,7 @@
 - push 成败只认两路回读（`ls-remote`＋`gh api`），不看命令 exit code。
 - `close-gate --ticket <n> --submitted-commit <sha>` 通过后再关票；关票评论带验收文件、门读数、push sha。
 - 写 `ship-ledger.jsonl` 一行：批次/票号/commit/push sha/门读数/关票结果。
-- 状态转移：`ship_ready → landed`（push/PR 合并成功）→ `closed`（close-gate+票面留证）；每次落 `task-<票>.json` + `events.jsonl`。
+- 状态转移：`ship_ready → landed`（push/PR 合并成功）→ `closed`（close-gate+票面留证）；每次落 `task-state-<票>.json` + `events.jsonl`。
 - 幂等：push 前 `ls-remote`；开 PR 前查同 head 分支；关票前回读 state；已做过的不重复做。
 
 ## 第 4 步：清场

@@ -33,7 +33,7 @@
    - `group → ground`：票号/commit/branch/验收路径＋哈希；
    - `group → tower`：要下一张/补水位。
 7. 按完铃**继续下一张**，不等待并车；Ground 并车与组下一张可并行。
-8. 每次状态转移写 `task-<票>.json` 与 `events.jsonl`；提交/验收/阻塞都要有事件，没有事件 = 没发生。
+8. 每次状态转移写 `task-state-<票>.json` 与 `events.jsonl`；提交/验收/阻塞都要有事件，没有事件 = 没发生。
 
 ## 第 3 步：活队列（新任务可插入）
 

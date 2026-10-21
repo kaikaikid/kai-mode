@@ -65,7 +65,7 @@
 
 - 票面：GitHub Issue（内容与耐久状态）
 - 顺序：`plan.json`
-- 运行态：`task-<票>.json`（细状态、尝试、租约、检查点指针）
+- 运行态：`task-state-<票>.json`（细状态、尝试、租约、检查点指针）
 - 事件：`events.jsonl`（只追加，不去改历史）
 - 交接：`handoff-*.json`（≤500 B 指针）
 - 验收：`acceptance-<票>.json`（逐条 AC 证据）

@@ -64,7 +64,8 @@
     "task_timeout_min": 60,
     "attempt_timeout_min": 30,
     "run_timeout_min": 120,
-    "lease_ttl_min": 45,
+    "token_ttl_min": 45,
+    "lease_ttl_min": null,
     "cooldown_min": 15,
     "circuit_breaker_failures": 3,
     "daily_wallclock_min": 480,
@@ -83,7 +84,7 @@
   "batch": {
     "ship_trigger": 2,
     "ship_interval_min": 15,
-    "ship_max": 5
+    "ship_max": 3
   },
   "audit": {
     "events": ".git/kai-scope/events.jsonl",

@@ -35,7 +35,7 @@
 
 - 同一文件同一时刻只发一个组；新票插入不改正在飞的那张。
 - 队列写完 `cat` 回读；没发租约就丢 handoff ＝ 让组空跑。
-- 发租约同时把票状态写 `ready → claimed`，落 `task-<票>.json` 与 `events.jsonl`。
+- 发租约同时把票状态写 `ready → claimed`，落 `task-state-<票>.json` 与 `events.jsonl`。
 
 ## 第 4 步：叫组
 

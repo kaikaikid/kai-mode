@@ -18,7 +18,7 @@
 | 9 | 交付证据 | commit、测试输出、截图、验收文件路径 | “代码已提交” |
 | 10 | 超时与终止条件 | 单次/单票上限、最多尝试、什么情况停 | 不写 |
 
-**合同哈希：** 票进入 `claimed` 时，把 Issue 正文（规范化后）的 SHA-256 写进 `task-<票>.json` 的 `contract_sha256`。执行中票面被改 ⇒ 哈希不匹配 ⇒ Group 停手写 `blocked`，由 Tower 重新确认合同并决定是否重发租约。**不许边飞边改目标。**
+**合同哈希：** 票进入 `claimed` 时，把 Issue 正文（规范化后）的 SHA-256 写进 `task-state-<票>.json` 的 `contract_sha256`。执行中票面被改 ⇒ 哈希不匹配 ⇒ Group 停手写 `blocked`，由 Tower 重新确认合同并决定是否重发租约。**不许边飞边改目标。**
 
 ## 二、Definition of Ready（进 `ready` 前逐条过）
 
@@ -102,6 +102,9 @@ python -m pytest path/to/test.py -q   # 期望：N passed
   "ticket": 1854,
   "state": "claimed",
   "contract_sha256": "<issue body 规范化后的 sha256>",
+  "risk": "medium",
+  "approval_required": false,
+  "deadline": "2026-10-21T18:30:00+08:00",
   "attempt": 1,
   "max_attempts": 3,
   "owner": "group-a",
@@ -112,4 +115,4 @@ python -m pytest path/to/test.py -q   # 期望：N passed
 }
 ```
 
-字段细节见 `schemas/task.schema.json`。
+`backlog` 时 `contract_sha256`/`risk`/`lease_id`/`branch`/`deadline` 可为 `null`；进入 `claimed` 前必须落值（合同哈希、风险、租约、分支、截止时间）。字段细节见 `schemas/task.schema.json`。

@@ -25,12 +25,14 @@
   "checks": [{"ac": "...", "method": "test|run|browser|vlm|measure", "result": "pass|fail", "evidence": "路径/读数"}],
   "unverified": [],
   "reviewer": "reviewer-<id>",
+  "implementer": "implementer-<id>",
   "at": "2026-10-21T14:30:00+08:00",
   "notes": "只写必要信息，不写小作文"
 }
 ```
 
 - `verdict=pass` 要求 `unverified=[]` 且所有 AC 有证据。
+- `reviewer` 与 `implementer` 必须不同；缺 `implementer` 或相同 ⇒ 不接受。当前没有自动生成器；**零 acceptance 文件不得当 pass**（生成器与独立性门在阶段 2/3 实现，见 ADR-0136 落地前提）。
 - `verdict=partial`／`fail` 必须点名未过项与原因；Ground 不关票。
 - 证据路径要可复读（截图、日志、命令输出）；关票不删证据。
 
