@@ -96,6 +96,7 @@ templates/        kai-mode.project.json、项目剧本模板
 2. 项目 `.ai/scope/shifts/` 放项目专用剧本（可从 `playbooks/shifts/` 复制后改路径/命令）。
 3. `/set-kai-mode` 探测宿主能力：
    - Qoder：推荐“只按铃子会话”（`create_chat_session` → 子会话 `qoder_cron run`）。
+   - 组内三职：Qoder 用 `Explore`／`general-purpose`／fresh `general-purpose`；Codex 用 Magpie/`codex exec`；具体映射见 `adapters/<host>.md`，别把 Magpie 的 `worker`/`reviewer` 当成所有宿主的通用名。
    - 其他宿主：探测 run 口／会话创建口／shell 启动器，把 2–4 个互斥选项交给用户选。
 4. 建新班次并自证：发一次 handoff，目标 `on-duty-<lane>.json` holder 非空或 `runningAt` 非空；重复发只起一次。
 5. 确认新链路后，再停用旧班次；旧 job id 至少保留一个试点周期。

@@ -1,7 +1,8 @@
 # 组内执行三职：Researcher / Implementer / Reviewer
 
-> 编排角色（Tower/Ground/Coordinator/Group）不变；这三个是 Group 内部按需启动的**执行角色**。
+> 编排角色（Tower/Ground/Coordinator/Group）不变；这三个是 Group 内部的**执行角色**，不是编排角色。
 > 简单票可以只用一个 implementer + 一个 reviewer；复杂票才加 researcher。不要为每张票机械地凑三个角色。
+> **但 reviewer 不能省**：凡有代码/schema/高风险改动，必须有独立 reviewer；docs-only 且有机检的票可由组主上下文复核，并在状态卡写 `self-check`。reviewer 必须是另一次调用，id 不得与 implementer 相同。
 
 ## 一、职责与禁区
 
@@ -13,7 +14,7 @@
 
 ## 二、什么时候用谁
 
-- **简单票**（单文件、低风险）：1 个 implementer + 1 个 reviewer。
+- **简单票**（单文件、低风险）：1 个 implementer + 1 个 reviewer；只改文档且有机检时可 `self-check`，不硬派 reviewer。
 - **复杂票**（跨模块、方案不明）：researcher 先出调查，再 implementer + reviewer。
 - **高风险票**：上述三角色 + 用户审批；reviewer 可加安全/性能专项检查。
 - **纯调查票**：只 researcher，产出结论与后续票建议，不写代码。
@@ -53,3 +54,11 @@ reviewer 额外：不得读作者结论当证据；逐条 AC 跑命令；判不�
 - reviewer 判不过：写清未过项与原因；Group 决定 repair 或 blocked。
 - researcher 结论不足：明确写“缺什么证据”，不编来源。
 - 任何角色发现票面/租约冲突：停手写 `blocked`，不自行扩权。
+
+## 七、宿主落地与计量
+
+- **Qoder**：researcher=`Explore`（或多步 `general-purpose`）；implementer=`general-purpose`（有 `isolation=worktree` 时优先独立树）；reviewer=**新起** `general-purpose` 只读。`Plan` 不做验收，`Explore` 不做全文审查。
+- **Codex**：researcher/reviewer=`codex exec -s read-only`；implementer=`codex exec -s workspace-write`。
+- **其他宿主**：按 `adapters/<host>.md` 探测；没有 `Agent` 工具就开 fresh 子会话，不能拿组主上下文自判。
+- **状态卡记** `subagents: [{role,id,ticket}]`；有代码/schema 改动而 `subagents` 缺 reviewer，或 `reviewer == implementer` ⇒ 不算独立验收，Ground 不接 ship handoff。
+- **指标（每周看）**：reviewer 独立率（`reviewer != implementer` 的票 / 有代码改动的票）、每票子代理数、子代理回执超 25 行的比例。没有读数写 `unknown`，不猜。

@@ -27,6 +27,13 @@ codex exec -C <项目根> -s read-only --json -o <回执文件> \
   "按 <验收规则> 评审 <票号>；只输出 acceptance JSON 与证据路径。"
 ```
 
+## 组内执行三职
+
+- **Researcher**：`codex exec -s read-only`，产出 `research-<票>.md`；不写实现。
+- **Implementer**：`codex exec -s workspace-write`；必带租约/派工卡，不 push、不并车。
+- **Reviewer**：`codex exec -s read-only`，**另起一次调用**；只拿 AC/diff/证据，写 `acceptance-<票>.json`；不得复用 implementer 会话。
+- 状态卡记 `subagents: [{role,id,ticket}]`；代码/schema 票缺 reviewer 或 `reviewer==implementer` ⇒ 不算独立验收。
+
 ## 边界
 
 - 付费前先取得用户/项目授权；未授权 ⇒ 记 `paid-not-authorized`，不降级偷偷跑。

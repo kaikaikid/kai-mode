@@ -16,10 +16,28 @@
     "preferred": "qoder",
     "fallbacks": ["codex", "opencode"],
     "roles": {
-      "researcher": "fresh-context",
+      "researcher": "fresh-context-read-only",
       "implementer": "fresh-context",
       "reviewer": "fresh-context-independent"
-    }
+    },
+    "host_tools": {
+      "qoder": {
+        "researcher": "Explore",
+        "implementer": "general-purpose",
+        "reviewer": "general-purpose (new invocation, read-only)"
+      },
+      "codex": {
+        "researcher": "codex exec -s read-only",
+        "implementer": "codex exec -s workspace-write",
+        "reviewer": "codex exec -s read-only"
+      },
+      "opencode": {
+        "researcher": "opencode run (read-only prompt)",
+        "implementer": "opencode run",
+        "reviewer": "opencode run (read-only prompt)"
+      }
+    },
+    "reviewer_required_for": ["code", "schema", "high-risk"]
   },
   "runtime": {
     "plan": "python scripts/plan.py",

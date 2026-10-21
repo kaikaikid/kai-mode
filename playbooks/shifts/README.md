@@ -21,7 +21,7 @@
 |---|---|---|
 | `dispatch-queue-<group>.json` | Tower | `{schema,lane,tickets[],version,issued_at,issued_by}`；原子写 |
 | `lease-<票>.json` / `current-task-<票>.json` | Tower 建，Group 销 | 允许改的文件清单；没租约不飞 |
-| `status-<role>.json` | 该角色 | 四格：`result`／`tickets`／`commits`／`blocker`（必要时 `unverified`） |
+| `status-<role>.json` | 该角色 | 四格：`result`／`tickets`／`commits`／`blocker`（必要时 `unverified`、`subagents`） |
 | `task-<票>.json` | Tower 建；Group/Ground 转移 | 11 状态、attempt、租约、合同哈希；见 `schemas/task.schema.json` |
 | `checkpoint-<票>-a<n>.json` | 执行体 | 进度快照，供接任者恢复；见 `schemas/checkpoint.schema.json` |
 | `events.jsonl` | 各角色追加 | 审计事件，只追加、不改历史；见 `schemas/event.schema.json` |

@@ -18,6 +18,7 @@
 4. 票号／租约归属、在制 marker、文件域不重叠；
 5. handoff 的 `to=ground`，目标注册档有 ground。
 6. 风险/审批：`risk=high` 必须有有效审批（票号+范围+风险+有效期）；`ship_mode=pr` 走 PR，不直接 push dev；`direct` 只自动落 low/medium。
+7. reviewer 独立性：`acceptance.reviewer` 非空且与 `implementer` 不同；代码/schema 票的状态卡 `subagents` 里必须有 reviewer。不过 ⇒ 不接 ship handoff。
 
 任一不过 ⇒ 不并车；写 `partial`／`blocked`＋原因，给发起组回一个拒绝 handoff（或状态卡点名），不替作者补代码。
 

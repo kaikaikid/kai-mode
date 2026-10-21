@@ -58,3 +58,21 @@ mcp_get("mcp__builtin__create_chat_session")  # 预期可用
 - 每次按铃有子会话固定入场开销；**批量**（2–5 张一按）、目标在岗不按、≤3 次工具调用，是主要省法。
 - 子会话不读票面/验收全文；只看 handoff＋注册档＋令牌＋验收摘要。
 - 若按铃频率高到子会话开销不可接受，再评估常驻激活器（用户另拍）。
+
+## 组内执行三职（Qoder 原生子代理映射）
+
+> Qoder **不暴露** Magpie 的 `worker`/`reviewer` 名字；能直接用的是 Qoder 原生子代理。
+> 这张表是“派子代理”在 Qoder 上的落地口径，不是可选建议；`set-kai-mode` 的 Magpie 表管的是 Codex 腿。
+
+| 执行角色 | Qoder 工具 | 约束 |
+|---|---|---|
+| Researcher | `Explore`（快速定位）或 `general-purpose`（多步调研） | 只读；产出 `research-<票>.md`；不改代码 |
+| Implementer | `general-purpose` | 必带租约/派工卡；有 `isolation=worktree` 时优先用独立树；不 push、不并车 |
+| Reviewer | **新起**的 `general-purpose`（只读 prompt） | 必须是另一次调用；不得复用 implementer 的会话；只拿 AC/diff/证据；写 `acceptance-<票>.json` |
+
+- **不能用 `Plan` 当 reviewer**：它产出实施计划，不做验收。
+- **不能用 `Explore` 做代码审查/设计文档审计**：它只读摘录，会漏全文；这类用 `general-purpose`。
+- **定时执行会话没有 `Agent` 工具时**：用 `create_chat_session` 开一个 fresh 子会话，把 reviewer/implementer prompt 交给它；仍然要求“另一次上下文”，不许组主上下文自判。
+- **子代理不是越多越好**：implementer 只在文件域不重叠时并行；reviewer 每票一个；researcher 按需。
+- **账上记 `subagents: [{role,id,ticket}]`**：有代码/schema 改动而缺 reviewer，或 `reviewer == implementer` ⇒ 不算独立验收，Ground 不接 ship handoff。
+

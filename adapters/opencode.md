@@ -23,6 +23,13 @@ opencode run --model <free-model> \
 - 角色名与 jobId 从项目配置/注册档取，不写死。
 - 失败写 `launch-failed`；不重试到死，交 Coordinator 或用户。
 
+## 组内执行三职
+
+- **Researcher**：`opencode run` 只读 prompt，产出 `research-<票>.md`；不写实现。
+- **Implementer**：`opencode run`，必带租约/派工卡；不 push、不并车。
+- **Reviewer**：`opencode run` 另起一次只读 prompt；只拿 AC/diff/证据，写 `acceptance-<票>.json`；不得复用 implementer 会话。
+- 状态卡记 `subagents: [{role,id,ticket}]`；代码/schema 票缺 reviewer 或 `reviewer==implementer` ⇒ 不算独立验收。
+
 ## 边界
 
 - 免费档优先；不静默切付费档。

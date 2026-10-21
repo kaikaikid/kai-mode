@@ -17,7 +17,8 @@
 - 只有**租约文件域不重叠**的票可同飞；冲突 ⇒ 停手写 `need-tower`，不自行裁决。
 - 组的主上下文只做编排：读队列/租约/回执，不读票面正文、不读 diff；派工卡与回执走文件。
 - 派工卡必带：租约逐枚清单、禁改清单、止损三句（主体 60/30、差量 35/20、只读 15–20）、回执 ≤25 行、`scope-check check`＋`commit --only` 两格。
-- 组内按需启动三职：`researcher`（先查）／`implementer`（租约内实现）／`reviewer`（独立验收）；写代码的人不能给自己出 `pass`（`playbooks/execution-roles.md`）。
+- 组内三职：`researcher`（先查，只读）／`implementer`（租约内实现）／`reviewer`（独立验收）；**有代码/schema 改动的票必须有 reviewer 子代理**，docs-only 且有机检可在状态卡写 `self-check`；写代码的人不能给自己出 `pass`（`playbooks/execution-roles.md`）。
+- 状态卡 `subagents` 记下本票用到的 `{role,id,ticket}`；缺 reviewer 或 `reviewer == implementer` ⇒ 不发 ship handoff。
 - 上下文 >65% 写检查点，>80% 停手交新上下文；旧检查点只是线索（`playbooks/context.md`）。
 
 ## 第 2 步：每张票的闭环
