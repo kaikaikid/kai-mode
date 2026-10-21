@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kai-mode.local/schemas/handoff.schema.json",
+  "title": "Handoff",
+  "description": "≤500 B 的可验证指针；不写结论、不写正文。施工前的排班 handoff 允许 commits=[]、branch=''、acceptance=null。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "from", "to", "tickets", "commits", "branch", "acceptance", "at", "seq"],
+  "properties": {
+    "schema": { "const": 1 },
+    "from": { "type": "string", "minLength": 1 },
+    "to": { "type": "string", "minLength": 1 },
+    "tickets": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "integer", "minimum": 1 }
+    },
+    "commits": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" }
+    },
+    "branch": { "type": "string" },
+    "acceptance": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "sha256"],
+          "properties": {
+            "path": { "type": "string", "minLength": 1 },
+            "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          }
+        }
+      ]
+    },
+    "blocker": { "type": "string" },
+    "at": { "type": "string", "format": "date-time" },
+    "seq": { "type": "integer", "minimum": 0 }
+  }
+}

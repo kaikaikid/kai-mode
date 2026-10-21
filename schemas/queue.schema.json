@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kai-mode.local/schemas/queue.schema.json",
+  "title": "Dispatch queue",
+  "description": "Tower 单点写；原子写；组在每张票边界按 version/seq 重读。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "lane", "tickets", "version", "issued_at", "issued_by"],
+  "properties": {
+    "schema": { "const": 1 },
+    "lane": { "type": "string", "minLength": 1 },
+    "tickets": {
+      "type": "array",
+      "items": { "type": "integer", "minimum": 1 }
+    },
+    "version": { "type": "integer", "minimum": 1 },
+    "issued_at": { "type": "string", "format": "date-time" },
+    "issued_by": { "type": "string", "minLength": 1 },
+    "note": { "type": "string" }
+  }
+}

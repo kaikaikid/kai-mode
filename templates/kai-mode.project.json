@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "project": "<project-name>",
+  "repo_root": ".",
+  "paths": {
+    "plan": ".ai/scope/plan.json",
+    "state_dir": ".git/kai-scope",
+    "shifts": ".ai/scope/shifts",
+    "activation": ".ai/scope/activation",
+    "loop_protocol": "loops/loop-protocol.md"
+  },
+  "runtime": {
+    "plan": "python scripts/plan.py",
+    "lease": "python scripts/scope-check.py",
+    "token": "python scripts/on-duty-check.py",
+    "gate": "python scripts/framework-gate.py",
+    "close_gate": "python scripts/scope-check.py close-gate"
+  },
+  "activation": {
+    "adapter": "child-session",
+    "targets": ["tower", "ground", "group-a", "group-b"],
+    "job_ids_from": ".git/kai-scope/shift-runners.local.json",
+    "tested_at": null
+  },
+  "wip": {
+    "per_group": 2,
+    "global": 4
+  },
+  "acceptance": {
+    "mode": "ai-full",
+    "reviewer": "fresh-context"
+  },
+  "batch": {
+    "ship_trigger": 2,
+    "ship_interval_min": 15,
+    "ship_max": 5
+  }
+}
