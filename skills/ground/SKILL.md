@@ -22,7 +22,8 @@ version: 0.1.0
   2. 每个 commit 存在且在该分支可达；
   3. `acceptance.verdict=pass` 且 `unverified=[]`；
   4. 票号／租约归属、在制 marker 与文件域核对；
-  5. 出货牌（全局）在手。
+  5. 出货牌（全局）在手；
+  6. reviewer 独立性：`acceptance.reviewer` 非空且与 `implementer` 不同；代码/schema 票的 `status.subagents` 必须有 reviewer。缺 ⇒ 不接。
 - 按批次并车（项目配置的批次规则），只跑一次真门，push，`close-gate`，关票，写 ship ledger。
 - 成功 push 后回收已并、无脏件的工作树；脏树不碰，点名留给用户。
 - 给 Tower 发 handoff：库存下降、需要补排班或清账时。

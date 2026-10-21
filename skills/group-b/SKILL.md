@@ -19,6 +19,7 @@ version: 0.1.0
 
 - 读 Tower 的队列（带 `version`/`seq`；每张票边界重读）与逐票租约；**没租约不飞**。
 - 每张票一个新机长（子代理）；按 `wip.per_group` 并行，租约文件域不重叠才可同飞。
+- **有代码/schema 改动的票必须派独立 reviewer 子代理**（Qoder：新起 `general-purpose` 只读；Codex：`codex exec -s read-only`）；docs-only 且有机检可写 `self-check`。状态卡记 `subagents: [{role,id,ticket}]`；`reviewer == implementer` 不算独立验收。
 - 开树先打 marker；本地提交只 `--only`；每张票出 `acceptance` 证据。
 - 每张票完成：
   1. 给 Ground 发 ship handoff（票号/commit/branch/验收路径＋哈希）；
@@ -35,7 +36,7 @@ version: 0.1.0
 ## 交接
 
 - handoff 必带 `schema/from/to/tickets/commits/branch/acceptance(+sha256)/at/seq`；有阻塞加 `blocker`。
-- 状态卡只写 `result/tickets/commits/blocker/unverified`；长叙事进日报一次。
+- 状态卡只写 `result/tickets/commits/blocker/unverified`（代码/schema 票加 `subagents`）；长叙事进日报一次。
 - 没活写 `no-work`／`done`；卡死写 `stuck`／`need-user`；有待发写 `partial` 并给 Ground 发 handoff。
 
 ## 硬边界
