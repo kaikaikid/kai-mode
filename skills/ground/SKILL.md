@@ -13,6 +13,7 @@ version: 0.1.0
 1. 从 cwd 向上找项目配置 `.ai/kai-mode.project.json`；读 `paths`、`runtime`、`activation`。
 2. 读项目剧本 `<paths.shifts>/ground.md`；没有就读本仓库 `playbooks/shifts/ground.md`。
 3. 只读 ship handoff、验收摘要、提交与门的结果；不读票面正文、不读 diff 全文。
+4. 审批与审计：读 `playbooks/approval.md`、`state-machine.md`、`audit.md`、`reliability.md`。
 
 ## 只做
 

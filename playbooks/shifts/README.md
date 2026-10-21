@@ -22,6 +22,9 @@
 | `dispatch-queue-<group>.json` | Tower | `{schema,lane,tickets[],version,issued_at,issued_by}`；原子写 |
 | `lease-<票>.json` / `current-task-<票>.json` | Tower 建，Group 销 | 允许改的文件清单；没租约不飞 |
 | `status-<role>.json` | 该角色 | 四格：`result`／`tickets`／`commits`／`blocker`（必要时 `unverified`） |
+| `task-<票>.json` | Tower 建；Group/Ground 转移 | 11 状态、attempt、租约、合同哈希；见 `schemas/task.schema.json` |
+| `checkpoint-<票>-a<n>.json` | 执行体 | 进度快照，供接任者恢复；见 `schemas/checkpoint.schema.json` |
+| `events.jsonl` | 各角色追加 | 审计事件，只追加、不改历史；见 `schemas/event.schema.json` |
 | `handoff-<from>-<to>.json` | 发起角色 | 见 §四 |
 | `acceptance-<票>.json` | Group 的 reviewer | 见 `playbooks/acceptance.md` |
 | `ship-ledger.jsonl` | Ground | 每批一行：票号/commit/push/sha/门读数 |
@@ -39,6 +42,21 @@
 - `blocked` 必须带 `blocker` 原因与可验证指针（票号/路径/命令读数）。
 - `done` 只在 `unverified=[]` 且无待发时写；否则 `partial`。
 - 停机牌与闸门归 Coordinator；角色只写 `need-coordinator`/`blocked`，不自行清牌。
+
+## 三续、票状态机与执行三职（V1.0）
+
+- **票状态 ≠ 角色结果码。** 状态住 `task-<票>.json`，合法转移与写者见 `playbooks/state-machine.md`：
+  - Tower：`ready`／`claimed`／`blocked→ready`
+  - Group：`running`／`validating`／`repairing`／`ship_ready`
+  - Ground：`landed`／`closed`
+  - Coordinator：`blocked`（崩溃/超时）、`failed`（熔断）
+  - 用户：`failed→ready`、清停机牌
+- **任务合同**十字段与 DoR/DoD 见 `playbooks/task-contract.md`；合同哈希不匹配 ⇒ 停手 `blocked`，不许边飞边改目标。
+- **组内执行三职**见 `playbooks/execution-roles.md`；写代码的人不能自判通过，组主上下文也不能代替 reviewer。
+- **重试/去重/恢复/熔断**见 `playbooks/reliability.md`：默认 3 次上限，同一错误 2 次即停。
+- **审批矩阵**见 `playbooks/approval.md`：高风险必须人批；AI 不得改审批策略再自批。
+- **上下文阈值**见 `playbooks/context.md`：65% 准备交接、80% 停止堆积。
+- **审计与通知**见 `playbooks/audit.md`：每次状态转移落事件；只通知有决策价值的事件。
 
 ## 四、handoff（≤500 B，可验证指针）
 

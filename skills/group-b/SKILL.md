@@ -13,6 +13,7 @@ version: 0.1.0
 1. 从 cwd 向上找项目配置 `.ai/kai-mode.project.json`；读 `paths`、`runtime`、`activation`、`wip`。
 2. 读项目剧本 `<paths.shifts>/group.md` 与跃迁协议 `<paths.loop_protocol>`；没有就回落到本仓库 `playbooks/shifts/group.md`。
 3. 只读队列、租约、令牌与状态摘要；不把票面正文、diff、验收全文塞进主上下文。
+4. 组内执行与检查点：读 `playbooks/execution-roles.md`、`context.md`、`reliability.md`、`state-machine.md`。
 
 ## 只做
 

@@ -17,6 +17,8 @@
 - 只有**租约文件域不重叠**的票可同飞；冲突 ⇒ 停手写 `need-tower`，不自行裁决。
 - 组的主上下文只做编排：读队列/租约/回执，不读票面正文、不读 diff；派工卡与回执走文件。
 - 派工卡必带：租约逐枚清单、禁改清单、止损三句（主体 60/30、差量 35/20、只读 15–20）、回执 ≤25 行、`scope-check check`＋`commit --only` 两格。
+- 组内按需启动三职：`researcher`（先查）／`implementer`（租约内实现）／`reviewer`（独立验收）；写代码的人不能给自己出 `pass`（`playbooks/execution-roles.md`）。
+- 上下文 >65% 写检查点，>80% 停手交新上下文；旧检查点只是线索（`playbooks/context.md`）。
 
 ## 第 2 步：每张票的闭环
 
@@ -25,10 +27,12 @@
 3. 本地提交只 `git commit --only -F <文件> -- <路径>`；禁 `git add -A`。
 4. 交**新上下文 reviewer** 验收（不是写代码的那个）：机检＋逐条 AC＋截图/VLM；产出 `acceptance-<票>.json`。
 5. 验收 `verdict=pass` 且 `unverified=[]` 才可发 ship handoff；否则写 `partial`/`blocked`，不硬发。
+5续. 不过且 `attempt < max_attempts` ⇒ `validating → repairing`：新 attempt、新上下文、同合同；同一错误签名 2 次即停（`playbooks/reliability.md`）。
 6. 发两张 handoff：
    - `group → ground`：票号/commit/branch/验收路径＋哈希；
    - `group → tower`：要下一张/补水位。
 7. 按完铃**继续下一张**，不等待并车；Ground 并车与组下一张可并行。
+8. 每次状态转移写 `task-<票>.json` 与 `events.jsonl`；提交/验收/阻塞都要有事件，没有事件 = 没发生。
 
 ## 第 3 步：活队列（新任务可插入）
 

@@ -1,6 +1,6 @@
 # kai-mode —— 机场体系的技能与通用剧本仓库
 
-> **状态：0.1.0 staging（2026-10-21）。** 这是新家，不是直播面：项目仓现有的旧剧本、令牌与定时任务**未切换**；等 #1829 落地后按 ADR-0135 D8 迁移。
+> **状态：0.1.1 staging（2026-10-21）。** 已吸收《Autonomous Work Loop V1.0》的设计基线（对照表见 `docs/design-v1-absorption.md`）。这是新家，不是直播面：项目仓现有的旧剧本、令牌与定时任务**未切换**；等 #1829 落地后按 ADR-0135 D8 迁移。
 
 ## 这是什么
 
@@ -22,6 +22,7 @@ kai-mode 是“一句话需求 → 票 → 排班 → 施工 → 发货”的闭
 | 地面管制 Ground | `/ground` | 并车、收尾门、push、关票、清账、回收已并树 | 排班、发租约、写 `plan.json` |
 | 通报协调 Coordinator | `/coordinator` | 读状态算该叫谁；停机牌/闸门/冷却；异常才按铃 | 施工、排班、发货 |
 | Group-A / Group-B | `/group-a`、`/group-b` | 按队列连飞、租约内施工、子代理并行、本地提交、验收证据 | 并车、push、排班 |
+| 执行三职 | 组内 `researcher`／`implementer`／`reviewer` | 调查／实现／独立验收（按需启动，不新增编排角色） | 越租约、自判通过、并车 push |
 | 入口 | `/kai-mode` | 一句话需求 → 拷问 → 定稿 → 拍板 | 执行 |
 | 装配 | `/set-kai-mode` | 安装、探测、建任务、doctor、回写中央库 | 日常施工 |
 
@@ -47,6 +48,12 @@ Coordinator：低频看门狗
 只处理链断/启动失败/停机牌/闸门变化；正常链路不经过它
 ```
 
+三个循环（V1.0 吸收，详见 `playbooks/loops.md`）：
+
+- **Loop A 治理**：Tower 把票补成可独立执行的合同，管依赖、拆分、后续票；不为凑队列无限开票。
+- **Loop B 执行**：Tower 发租约 → Group 施工/验收 → Ground 出货 → 关票。
+- **Loop C 反馈**：失败/超时/崩溃 → 有限重试（≤3 轮，同错 2 次停）→ 修好或 `blocked`/`failed`。
+
 ## 交接契约（省叙述，不省证据）
 
 handoff 是一行 ≤500 B 的 JSON，只当“可验证指针”：
@@ -60,13 +67,25 @@ handoff 是一行 ≤500 B 的 JSON，只当“可验证指针”：
 - 接收方二次核验；Ground 不信 handoff 的结论，自己跑 close-gate／push-preflight。
 - 状态卡只写 `result/tickets/commits/blocker/unverified`；长叙事进日报一次。
 
+## 状态机与可靠性（V1.0）
+
+- **票状态机**：`playbooks/state-machine.md`。11 个状态、合法转移、写者与守卫；细状态住 `task-<票>.json`，GitHub 标签只是投影。
+- **任务合同**：`playbooks/task-contract.md`。十字段、风险分级、DoR/DoD、合同哈希。
+- **执行三职**：`playbooks/execution-roles.md`。researcher／implementer／reviewer，写代码的人不能自判通过。
+- **可靠性**：`playbooks/reliability.md`。租约、重试上限、同错早停、去重、崩溃恢复、熔断、预算。
+- **审批**：`playbooks/approval.md`。自动/人工边界、风险矩阵、不得自批。
+- **上下文**：`playbooks/context.md`。65% 准备交接、80% 停止堆积；检查点不是真相。
+- **审计**：`playbooks/audit.md`。事件日志、追溯链、只通知有决策价值的事件。
+
 ## 目录
 
 ```text
+docs/             设计基线吸收记录（V1.0 对照与偏离）
 skills/           五个角色技能＋入口/装配（后续迁入）
+playbooks/        loops / task-contract / state-machine / reliability / approval / audit / context / execution-roles
 playbooks/shifts/ 通用剧本：README、tower、ground、coordinator、group
 playbooks/acceptance.md
-schemas/          handoff / status / acceptance / queue
+schemas/          handoff / status / acceptance / queue / task / checkpoint / event
 adapters/         qoder（子会话按铃）、opencode、codex、探测与缺件
 templates/        kai-mode.project.json、项目剧本模板
 ```
@@ -89,6 +108,8 @@ templates/        kai-mode.project.json、项目剧本模板
 
 ## 判据正本
 
+- 设计基线 V1.0 的对照与偏离：`docs/design-v1-absorption.md`
 - 角色拆分与迁移：项目仓 `docs/artifacts/adrs/ADR-0135-role-split-tower-ground-coordinator-groups.md`
+- 设计吸收与裁决：项目仓 `docs/artifacts/adrs/ADR-0136-autonomous-work-loop-v1-absorption.md`
 - 按铃适配器与 token 预算：项目仓 `/set-kai-mode` 的「启动适配器」节
 - 跃迁协议：项目仓 `loops/loop-protocol.md`（本仓库的 group 剧本只指路，不复制判据）

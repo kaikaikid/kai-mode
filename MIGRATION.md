@@ -1,5 +1,24 @@
 # 迁移状态（2026-10-21）
 
+## 设计基线 V1.0（2026-10-21 吸收）
+
+- 对照与偏离：`docs/design-v1-absorption.md`
+- 新增剧目：`playbooks/loops.md`、`task-contract.md`、`state-machine.md`、`reliability.md`、`approval.md`、`audit.md`、`context.md`、`execution-roles.md`
+- 新增契约：`schemas/task.schema.json`、`checkpoint.schema.json`、`event.schema.json`
+- 新增配置：`ship_mode`、`execution`、`limits`、`approval`、`audit`（模板已更新）
+- 纪律：**本次只落契约，不改直播面**；状态机/检查点/恢复的运行时实现排在 P2 之后，先开票再动代码。
+
+## V1.0 六阶段状态
+
+| 阶段 | 交付 | 状态 |
+|---|---|---|
+| 1 任务治理 | Issue 模板、风险分级、DoR/DoD、PR 模板 | 本次落地 |
+| 2 单任务自动执行 | 状态机、执行器适配、隔离工作区、门禁、出货 | 已有大半，补状态机 |
+| 3 可靠性与恢复 | 检查点、租约过期、重试、去重、崩溃恢复 | 待实现 |
+| 4 反馈闭环 | CI/PR 意见处理、有限修复、阻塞通知 | 待实现 |
+| 5 任务链 | 依赖图、后续票生成、周期巡检、优先级 | 部分已有（`plan.json`） |
+| 6 受控自主 | 分级审批、受保护合并、预算、审计报告 | 待实现 |
+
 ## 已在本仓库
 
 - 五个角色技能：`skills/tower`、`ground`、`coordinator`、`group-a`、`group-b`

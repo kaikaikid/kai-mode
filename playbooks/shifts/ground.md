@@ -17,6 +17,7 @@
 3. `acceptance.verdict=pass` 且 `unverified=[]`；验收文件哈希与 handoff 一致；
 4. 票号／租约归属、在制 marker、文件域不重叠；
 5. handoff 的 `to=ground`，目标注册档有 ground。
+6. 风险/审批：`risk=high` 必须有有效审批（票号+范围+风险+有效期）；`ship_mode=pr` 走 PR，不直接 push dev；`direct` 只自动落 low/medium。
 
 任一不过 ⇒ 不并车；写 `partial`／`blocked`＋原因，给发起组回一个拒绝 handoff（或状态卡点名），不替作者补代码。
 
@@ -34,6 +35,8 @@
 - push 成败只认两路回读（`ls-remote`＋`gh api`），不看命令 exit code。
 - `close-gate --ticket <n> --submitted-commit <sha>` 通过后再关票；关票评论带验收文件、门读数、push sha。
 - 写 `ship-ledger.jsonl` 一行：批次/票号/commit/push sha/门读数/关票结果。
+- 状态转移：`ship_ready → landed`（push/PR 合并成功）→ `closed`（close-gate+票面留证）；每次落 `task-<票>.json` + `events.jsonl`。
+- 幂等：push 前 `ls-remote`；开 PR 前查同 head 分支；关票前回读 state；已做过的不重复做。
 
 ## 第 4 步：清场
 
@@ -46,3 +49,4 @@
 - 目标 Tower 在岗 ⇒ 只留 handoff，不重复按。
 - 写状态卡四格（`result/tickets/commits/blocker`）＋台账；释放出货牌。
 - 日报：发了几张、push sha、关了几张、卡在哪、要用户拍什么（仅四类）。
+- 通知只发决策价值事件（完成/待审批/连续失败/长期阻塞/预算/安全）；进度进日志（`playbooks/audit.md`）。

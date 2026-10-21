@@ -2,12 +2,24 @@
   "schema": 1,
   "project": "<project-name>",
   "repo_root": ".",
+  "ship_mode": "direct",
   "paths": {
     "plan": ".ai/scope/plan.json",
     "state_dir": ".git/kai-scope",
+    "task_state_dir": ".git/kai-scope/tasks",
+    "checkpoint_dir": ".git/kai-scope/checkpoints",
     "shifts": ".ai/scope/shifts",
     "activation": ".ai/scope/activation",
     "loop_protocol": "loops/loop-protocol.md"
+  },
+  "execution": {
+    "preferred": "qoder",
+    "fallbacks": ["codex", "opencode"],
+    "roles": {
+      "researcher": "fresh-context",
+      "implementer": "fresh-context",
+      "reviewer": "fresh-context-independent"
+    }
   },
   "runtime": {
     "plan": "python scripts/plan.py",
@@ -23,8 +35,28 @@
     "tested_at": null
   },
   "wip": {
+    "pilot_global": 1,
+    "pilot_hours": 24,
     "per_group": 2,
     "global": 4
+  },
+  "limits": {
+    "max_attempts": 3,
+    "same_error_stop": 2,
+    "task_timeout_min": 60,
+    "attempt_timeout_min": 30,
+    "run_timeout_min": 120,
+    "lease_ttl_min": 45,
+    "cooldown_min": 15,
+    "circuit_breaker_failures": 3,
+    "daily_wallclock_min": 480,
+    "daily_token_budget": null
+  },
+  "approval": {
+    "auto_ship_max_risk": "medium",
+    "human_required": ["high"],
+    "policy_changes_require_human": true,
+    "auto_close_low_risk_after_pilot": true
   },
   "acceptance": {
     "mode": "ai-full",
@@ -34,5 +66,17 @@
     "ship_trigger": 2,
     "ship_interval_min": 15,
     "ship_max": 5
+  },
+  "audit": {
+    "events": ".git/kai-scope/events.jsonl",
+    "retention_days": 30,
+    "notification": [
+      "task_complete",
+      "approval_required",
+      "repeated_failure",
+      "long_blocked",
+      "budget_threshold",
+      "security_block"
+    ]
   }
 }

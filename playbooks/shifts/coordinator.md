@@ -19,6 +19,9 @@
 3. 连续失败：同一目标连续 3 次启动失败 ⇒ 写 `hold-<target>`，停。
 4. 全仓无活：所有组 `done`/`no-work`，Tower 无队列可发 ⇒ 不叫，记 `idle`。
 5. 仅“有待发货/有待排班”但目标已由 Group 直接按铃 ⇒ 不重复叫，记 `already-dispatched`。
+6. 崩溃恢复：`running` 心跳超时 ⇒ 先对账 git/GitHub/events，再写 `blocked(stale-owner)`；不重复副作用（`playbooks/reliability.md` §五）。
+7. 熔断：连续启动失败/同因门红到阈值 ⇒ 写 `hold-<role>`；停机牌只有用户能清。
+8. 去重：按 `event_id` 与目标在岗判断，不重复按铃/开票/push。
 
 **正常 handoff 不经过 Coordinator**；它只补“发令失败/链断/停机”的口。
 
@@ -32,6 +35,7 @@
 ## 第 3 步：收工
 
 - 台账一行：叫了谁、为什么、结果（`dispatched`／`already-running`／`activation-failed`／`no-launcher`／`idle`）。
+- 通知只发决策价值事件（完成/待审批/连续失败/长期阻塞/预算/安全）；普通进度不推（`playbooks/audit.md`）。
 - 不写日报、不改 handoff、不写票面、不施工。
 - 缺启动口 ⇒ `no-launcher`，不假装已恢复；由用户/装配台补适配器。
 

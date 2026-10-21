@@ -13,6 +13,7 @@ version: 0.1.0
 1. 从 cwd 向上找项目配置 `.ai/kai-mode.project.json`；读 `paths`、`runtime`、`activation`、`wip`。
 2. 读项目剧本 `<paths.shifts>/tower.md`；没有就读本仓库 `playbooks/shifts/tower.md`。
 3. 只读顺序层、状态卡、队列、租约与令牌；不读票面正文、不读 diff。
+4. 任务治理与状态：读 `playbooks/loops.md`、`task-contract.md`、`state-machine.md`。
 
 ## 只做
 
