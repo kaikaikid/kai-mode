@@ -1,6 +1,6 @@
 # kai-mode —— 机场体系的技能与通用剧本仓库
 
-> **状态：0.1.0 staging（2026-10-21）。** 这是新家，不是直播面：项目仓现有的旧剧本、令牌与定时任务**未切换**；等 #1829 落地后按 ADR-0134 D8 迁移。
+> **状态：0.1.0 staging（2026-10-21）。** 这是新家，不是直播面：项目仓现有的旧剧本、令牌与定时任务**未切换**；等 #1829 落地后按 ADR-0135 D8 迁移。
 
 ## 这是什么
 
@@ -84,11 +84,11 @@ templates/        kai-mode.project.json、项目剧本模板
 ## 当前不做
 
 - 不改项目仓的 `.ai/scope/shifts/`、`on-duty-*`、`plan.json`、`dispatch-queue-*`。
-- 不建/删任何定时任务；切换阶段由 `/set-kai-mode` 按 ADR-0134 D8 执行。
+- 不建/删任何定时任务；切换阶段由 `/set-kai-mode` 按 ADR-0135 D8 执行。
 - 不把项目专用路径、票号、job id 写进技能正文——它们属于项目配置与项目剧本。
 
 ## 判据正本
 
-- 角色拆分与迁移：项目仓 `docs/artifacts/adrs/ADR-0134-role-split-tower-ground-coordinator-groups.md`
+- 角色拆分与迁移：项目仓 `docs/artifacts/adrs/ADR-0135-role-split-tower-ground-coordinator-groups.md`
 - 按铃适配器与 token 预算：项目仓 `/set-kai-mode` 的「启动适配器」节
 - 跃迁协议：项目仓 `loops/loop-protocol.md`（本仓库的 group 剧本只指路，不复制判据）
