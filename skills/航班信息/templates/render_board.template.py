@@ -1651,13 +1651,27 @@ JS = r"""
   });
   if(q) q.addEventListener('input',apply);
 
-  // 刷新：重读磁盘上的快照（生成器重写 flight-info.html / flight-info.json 后即时可见）。
+  // 刷新：装了 flight-info:// 协议 ⇒ 叫系统真去生成一次，等它写完再重载；
+  //       没装协议 ⇒ 退化成只重读磁盘上的旧文件（iframe 打不开自定义协议时是静默失败，不影响页面）。
   var btn=document.getElementById('refresh');
   if(btn) btn.addEventListener('click',function(){
     btn.disabled=true;btn.classList.add('spin');
-    var u=new URL(location.href);
-    u.searchParams.set('t',String(Date.now()));
-    location.replace(u.toString());
+    var proto=btn.getAttribute('data-proto');
+    var waited=0;
+    if(proto){
+      try{
+        var f=document.createElement('iframe');
+        f.style.display='none';f.src=proto;
+        document.body.appendChild(f);
+        waited=4000;
+      }catch(e){waited=0;}
+    }
+    var go=function(){
+      var u=new URL(location.href);
+      u.searchParams.set('t',String(Date.now()));
+      location.replace(u.toString());
+    };
+    if(waited){setTimeout(go,waited);}else{go();}
   });
   // 快照年龄：静态渲染时写死，JS 只负责把它读成「几分钟前」。
   var gen=document.getElementById('generated');
@@ -2161,7 +2175,7 @@ def _status_html(src: dict, name: str, gen_human: str) -> str:
             '<span class="shell-status__src" title="数据源状态">数据源</span>'
             '<span class="shell-status__lamps">%s</span>'
             '<span class="shell-status__right">'
-            '<span class="shell-status__hint">生成 %s · 本页「刷新」只重读磁盘快照</span>'
+            '<span class="shell-status__hint">生成 %s · 刷新＝重跑生成器（装协议后点按钮也行）</span>'
             '</span></footer>'
             % ("".join(lamps), esc(gen_human)))
 
@@ -2217,7 +2231,8 @@ def render_html(payload: dict) -> str:
 
   <div class="shell-toolbar">
     <span class="shell-toolbar__crumb">%s</span>
-    <button class="refresh" id="refresh" title="重新读取磁盘上的快照">
+    <button class="refresh" id="refresh" data-proto="flight-info://refresh/%s"
+            title="重新生成这块板：装了刷新协议才会真去跑一次，没装就只是重读旧文件">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"
            stroke-linecap="round"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9"/>
         <path d="M13.6 1.8v3.4h-3.4"/></svg>刷新
@@ -2255,6 +2270,7 @@ def render_html(payload: dict) -> str:
         CSS,
         sidebar,
         esc(subtitle or title),
+        esc(name),
         esc(title),
         kpi["open"], kpi["in_flight"], kpi["to_ship"], gen_ts, esc(gen_human),
         esc(payload["direction"]),

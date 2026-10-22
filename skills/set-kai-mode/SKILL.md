@@ -81,6 +81,9 @@ python $S apply           # 正本 → 库 → 各家链接
   没有 registry.json 的老根目录回落内置清单）：
   `kai-mode`、`set-kai-mode`、`set-航班信息`、`loop`、`地勤`、`塔台`、`机长`、`副机长`、`航班信息`。
 - **本技能装的是整套框架；给单个仓装一块航班信息板走 `set-航班信息`。**
+- **两套定时器各管各的，别混**：本技能装的是**塔台定时器**（走宿主定时口、每轮拉起 AI 会话，要 token，
+  归塔台排班发货）；航班信息板的定时刷新**不归它**，走板工坊自己的
+  `skills/航班信息/scripts/install_refresh_timer.py`（操作系统闹钟，零 token、跨 agent）。
 - 加技能＝三步：① 放目录 `skills/<名>/`（`SKILL.md` ＋ 可选 `scripts/`、`templates/`）
   ② 仓根 `registry.json` 加一行（`install:auto` 才进中央库与宿主；`manual`／`none` 不装）
   ③ `python 框架仓门禁` 过（注册表与盘面必须对上）。
