@@ -48,7 +48,7 @@ updated: 2026-10-22
 
 | 面 | 文件 | 读者 | 契约 |
 |---|---|---|---|
-| 人读面 | `<板名>/index.html` | 人 | 自包含（内联 CSS/JS，无 CDN、无运行时请求）；页面「刷新」只重读磁盘快照；版面＝**板头 + 段导航 + 逐段可折叠** |
+| 人读面 | `<板名>/index.html` | 人 | 自包含（内联 CSS/JS，无 CDN、无运行时请求、**无外链字体**）；页面「刷新」只重读磁盘快照；版面＝**左侧栏（段导航 ＋ 板身份）＋ 主列（工具条 / 页头 / 方向条 / KPI / 逐段可折叠）＋ 状态条** |
 | 机读面 | `<板名>/board.json` | AI / 脚本 | AI 侧**唯一**数据面；`schema` = `flight-info/1`；**必须 ≤ 25 KB** |
 
 ## 激活方式
@@ -114,8 +114,9 @@ python "<板库根>/<板名>/render_<板名>.py" --repo-root <项目仓根> [--q
 `index.html`（人读面）＋ `board.json`（摘要层）＋ `full.json`（全量层）＋ `history.jsonl` 追加一行。
 `history.jsonl` 每行含：生成时刻、`sources` 映射、`kpi`、三件产物的 sha256。
 
-人读面的版面：**板头（眉标 / 标题 / 刷新按钮 / 方向条 / KPI）＋ 段导航 ＋ 逐段可折叠**（原生 `details/summary`，默认全展开；打印时强制展开）。
-段顺序与导航条目顺序都由 `view.sections[]` 决定 —— 排班表要置顶，就把它排在该数组的第一位。
+人读面的版面：**画布优先壳** —— 左侧栏（① 板身份 ② 段导航 ③ 元信息区）＋ 主列（顶部工具条 → 页面级标题 → 方向条 → KPI → 逐段可折叠的内容段），主列底缘一条状态条（数据源灯簇 ＋ 生成时刻 ＋ 刷新说明）。
+段顺序与侧栏条目顺序都由 `view.sections[]` 决定 —— 排班表要置顶，就把它排在该数组的第一位。
+壳几何与令牌取自中央库 `soft-design-system`（§06 口径正本 ＋ `tokens/tokens.css` 当前版）；板是自包含单文件，取值抄进板的 `:root`。**字体未内嵌，用系统字体栈。**
 
 ### 4. 索引页
 
@@ -161,16 +162,21 @@ python skills/航班信息/scripts/build_index.py --repo-root <项目仓根> [--
 | `direction` | object | 是 | — | `{template, variants[], min_rows, target_rows, max_ship_list}`，见下 |
 | `summary` | object | 否 | `{}` | 摘要层形状：`max_flights` / `max_bytes` / `flight_stages[]` / `flight_fields[]` / `schedule_fields[]` / `max_schedule_rows` |
 | `view` | object | 否 | `{}` | 视图：`sections[]`（每条 `{key,title,hint}`）/ `filters[]` / `kpis[]` / `search_placeholder` |
-| `view.nav` | boolean | 否 | `true` | 板头之下、第一个内容段之上是否渲染**段导航**（条目＝各内容段，顺序＝`view.sections` 顺序，标题取该段 `title`） |
+| `view.sidebar` | boolean | 否 | `true` | 是否渲染**左侧垂直栏**（壳层左栏：身份区 ＋ 段导航 ＋ 元信息区） |
+| `view.sidebar_identity` | boolean | 否 | `true` | 侧栏身份区（板名 slug ＋ 生成时刻；「我在哪、什么时候生成的」） |
+| `view.sidebar_meta` | boolean | 否 | `true` | 侧栏底部元信息区（生成器 / 摘要 / 全量 / 刷新入口等**产物路径**，mono） |
+| `view.nav` | boolean | 否 | `true` | **段导航**是否渲染（住侧栏里；旧键沿用，显式 false ⇒ 侧栏只剩身份区与元信息区） |
 | `view.collapsible` | boolean | 否 | `true` | 内容段是否**逐段可折叠**（`true`＝原生 `details/summary`；`false`＝退回普通 `h2` 段落，锚点不变） |
 | `view.collapsible_default` | string | 否 | `open` | 折叠段的默认状态：`open`＝默认全展开（一眼看全），`closed`＝默认折起 |
 
-**段顺序 / 段导航 / 折叠**
+**版面（壳层）**
 
-- `view.sections[]` 的顺序**同时**决定页面里的段顺序与导航条目顺序；两处永远一致。
-- 板头（眉标 / 标题 / 刷新按钮 / 方向条 / KPI）不动，**导航条插在板头之后、第一个内容段之前**。
+- 人读面＝**画布优先壳**：左侧栏（段导航 ＋ 板身份）＋ 主列（顶部工具条 → 页面级标题 → 方向条 → KPI → 逐段可折叠的内容段），主列底缘贴一条**状态条**（数据源灯簇 ＋ 生成时刻 ＋ 刷新说明）。
+- 段顺序与侧栏条目顺序都由 `view.sections[]` 决定；排班表要置顶，就把它排在该数组的第一位。
 - 段锚点 id ＝ `sec-<段 key>`，挂在该段的 `<summary>` 上；`summary` 永远可见，所以段折着也定位得到。
 - 折叠纯前端表现：`board.json` / `full.json` / `sources` / `kpi` / `history.jsonl` 的形状与语义**一律不变**。
+- **壳几何与令牌**：几何实值与令牌取自中央库 `soft-design-system`（`references/shell/` 的 §06 口径正本 与 `tokens/tokens.css` 当前版）；板是自包含单文件、不能引 CSS，故取值抄进板的 `:root`，档名与中央库同名。**字体未内嵌**（用系统字体栈，不引外链字体）。
+- 窄屏：≤768px 侧栏收成**顶部一行**（段导航横排、容器内横滚），≤640px 再收一档；整页不出横向滚动条。
 
 **source type 与参数**
 

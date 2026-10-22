@@ -147,6 +147,9 @@
       { "cls": "hold", "key": "hold", "label": "挡住" },
       { "cls": "done", "key": "closed_today", "label": "今日已收尾" }
     ],
+    "sidebar": true,
+    "sidebar_identity": true,
+    "sidebar_meta": true,
     "nav": true,
     "collapsible": true,
     "collapsible_default": "open",

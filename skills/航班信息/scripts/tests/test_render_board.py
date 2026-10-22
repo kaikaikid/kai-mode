@@ -10,8 +10,8 @@
 - 自包含：HTML 内联 CSS/JS，无 CDN、无运行时 fetch；
 - 摘要层：只收配置指定的阶段与字段，且不超过 summary.max_bytes；
 - `--no-network`：一次 gh 都不发，评论源记 skipped；
-- 版面：排班表排第一、段导航逐条对得上锚点、每段都包在 details/summary 里、默认展开；
-- 旧配置（没有 nav / collapsible / collapsible_default）照常出板。
+- 版面：排班表排第一、段导航在左侧栏且逐条对得上锚点、每段都包在 details/summary 里、默认展开；
+- 旧配置（没有 sidebar / nav / collapsible… 等新键）照常出板。
 """
 import importlib.util
 import json
@@ -192,11 +192,11 @@ def test_render_html_is_self_contained():
     assert html.count("<script>") == 1
 
 
-# ───────────────────────── 段导航 / 逐段可折叠 ─────────────────────────
+# ───────────────────────── 左侧栏 / 逐段可折叠 ─────────────────────────
 
 def _nav_targets(html: str) -> list[str]:
-    """导航条里每个条目指向的锚点。"""
-    return re.findall(r'<a class="nav-i[^"]*" href="#([^"]+)"', html)
+    """侧栏里每个段条目指向的锚点。"""
+    return re.findall(r'<a class="shell-nav[^"]*" href="#([^"]+)"', html)
 
 
 def _section_ids(html: str) -> list[str]:
@@ -204,30 +204,39 @@ def _section_ids(html: str) -> list[str]:
     return re.findall(r'<summary class="sect-hd" id="([^"]+)"', html)
 
 
-def test_board_has_a_section_nav():
+def test_board_has_a_left_sidebar():
     mod = _load()
     html = mod.render_html(_payload(mod))
-    assert '<nav class="board-nav" id="board-nav"' in html
+    assert '<aside class="shell-side" id="shell-side"' in html
+    assert 'aria-label="侧栏"' in html
+    # 侧栏在主列之前。
+    assert html.index('class="shell-side"') < html.index('class="shell-main"')
+    # 段导航住侧栏里（不再是顶部横条）。
+    assert '<nav class="shell-side__nav" id="shell-side-nav"' in html
     assert 'aria-label="段导航"' in html
-    # 导航在板头之后、第一个内容段之前。
-    assert html.index('<nav class="board-nav"') < html.index('<details class="sect"')
-    # 导航在 KPI 条之后（板头不动，导航插在它下面）。
-    assert html.index('<div class="kpis">') < html.index('<nav class="board-nav"')
 
 
-def test_every_nav_item_pairs_with_a_section_anchor():
+def test_no_top_horizontal_nav_left():
+    """顶部横导航容器不再出现（段导航改到左侧垂直栏）。"""
+    mod = _load()
+    html = mod.render_html(_payload(mod))
+    assert "board-nav" not in html
+    assert 'class="board-nav"' not in html
+
+
+def test_every_sidebar_item_pairs_with_a_section_anchor():
     mod = _load()
     html = mod.render_html(_payload(mod))
     targets = _nav_targets(html)
     ids = _section_ids(html)
     assert len(targets) == 5
     assert len(ids) == 5
-    # 逐个配对：导航里每个 href 都要在 HTML 里找到一个同名的段锚点 id。
+    # 逐个配对：侧栏里每个 href 都要在 HTML 里找到一个同名的段锚点 id。
     for target in targets:
-        assert ('id="%s"' % target) in html, "导航指向的锚点不存在：%s" % target
-    # 反过来也一样：每个段都要被导航指到，不能有孤儿段。
+        assert ('id="%s"' % target) in html, "侧栏指向的锚点不存在：%s" % target
+    # 反过来也一样：每个段都要被侧栏指到，不能有孤儿段。
     for sid in ids:
-        assert sid in targets, "段没有对应导航条目：%s" % sid
+        assert sid in targets, "段没有对应侧栏条目：%s" % sid
 
 
 def test_every_section_is_a_details_with_a_summary():
@@ -251,7 +260,7 @@ def test_schedules_is_the_first_content_section():
     at_milestones = html.index('id="sec-milestones"')
     at_flights = html.index('id="sec-flights"')
     assert at_schedules < at_milestones < at_flights
-    # 导航条目顺序＝页面里的段顺序。
+    # 侧栏条目顺序＝页面里的段顺序。
     assert _nav_targets(html) == ["sec-schedules", "sec-milestones", "sec-flights",
                                    "sec-ysk", "sec-handoffs"]
     assert _section_ids(html) == ["sec-schedules", "sec-milestones", "sec-flights",
@@ -265,38 +274,66 @@ def test_sections_are_open_by_default():
     assert '<details class="sect">' not in html
 
 
+def test_narrow_breakpoint_collapses_sidebar():
+    """窄屏收窄档：侧栏收成顶部一行，段导航改横排（容器内横滚，不撑破整页）。"""
+    mod = _load()
+    html = mod.render_html(_payload(mod))
+    css = re.sub(r"\s+", "", html)
+    assert "@media(max-width:768px)" in css
+    block = css.split("@media(max-width:768px)")[1].split("@media")[0]
+    assert ".shell{grid-template-columns:minmax(0,1fr)" in block
+    assert ".shell-side__nav{flex-direction:row" in block
+    assert "overflow-x:auto" in block
+    # 更窄一档也有规则。
+    assert "@media(max-width:640px)" in css
+
+
 def test_legacy_config_without_new_view_keys_still_renders():
-    """旧配置（没有 nav / collapsible / collapsible_default）照常出板。"""
+    """旧配置（没有 sidebar / nav / collapsible… 等新键）照常出板。"""
     mod = _load()
     cfg = json.loads(json.dumps(mod.CONFIG))
     view = cfg["view"]
-    for key in ("nav", "collapsible", "collapsible_default"):
+    for key in ("sidebar", "sidebar_identity", "sidebar_meta", "nav",
+                "collapsible", "collapsible_default"):
         view.pop(key, None)
     mod.apply_config(cfg)
     html = mod.render_html(_payload(mod))
-    assert 'id="board-nav"' in html
+    assert '<aside class="shell-side" id="shell-side"' in html
     assert html.count('<details class="sect" open>') == 5
     assert len(_nav_targets(html)) == 5
     for target in _nav_targets(html):
         assert ('id="%s"' % target) in html
 
 
-def test_nav_and_collapsible_switches_work():
+def test_sidebar_and_collapsible_switches_work():
     mod = _load()
-    cfg = json.loads(json.dumps(mod.CONFIG))
-    cfg["view"]["nav"] = False
-    cfg["view"]["collapsible"] = False
-    mod.apply_config(cfg)
-    html = mod.render_html(_payload(mod))
-    assert 'id="board-nav"' not in html
+    base = json.loads(json.dumps(mod.CONFIG))
+
+    def render(**over):
+        cfg = json.loads(json.dumps(base))
+        cfg["view"].update(over)
+        mod.apply_config(cfg)
+        return mod.render_html(_payload(mod))
+
+    # 关掉侧栏 ⇒ 不出侧栏，段导航也没了（不另造顶部横条）。
+    html = render(sidebar=False)
+    assert 'id="shell-side"' not in html
+    assert 'id="shell-side-nav"' not in html
+    # 关掉段导航 ⇒ 侧栏还在，只是没有段列表。
+    html = render(nav=False)
+    assert 'id="shell-side"' in html
+    assert 'id="shell-side-nav"' not in html
+    # 身份区 / 元信息区各自可关（只看标记，不看 CSS）。
+    html = render(nav=False, sidebar_identity=False, sidebar_meta=False)
+    assert 'id="shell-side"' in html
+    assert '<div class="shell-side__id">' not in html
+    assert '<div class="shell-side__foot">' not in html
+    # 不可折叠时退回 h2，锚点照旧在。
+    html = render(collapsible=False)
     assert "<details class=\"sect\"" not in html
-    # 不可折叠时退回 h2，锚点照旧在（导航关掉了，但 id 还得有）。
     assert '<h2 id="sec-schedules">' in html
     # 默认展开可配。
-    cfg["view"]["collapsible"] = True
-    cfg["view"]["collapsible_default"] = "closed"
-    mod.apply_config(cfg)
-    html = mod.render_html(_payload(mod))
+    html = render(collapsible=True, collapsible_default="closed")
     assert html.count('<details class="sect">') == 5
     assert '<details class="sect" open>' not in html
 
