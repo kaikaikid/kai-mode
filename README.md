@@ -9,7 +9,7 @@
 
 kai-mode 是「一句话需求 → 票 → 排班 → 施工 → 审查 → 发货 → 关票」的闭环框架。这个仓库只放**跨项目通用**的部分：
 
-- 技能（正本）：`kai-mode`（入口）、`set-kai-mode`（安装）、`loop`（单票闭环导航）、`地勤` / `塔台` / `机长` / `副机长`（四角色）
+- 技能（正本）：`kai-mode`（入口）、`set-kai-mode`（安装）、`loop`（单票闭环导航）、`地勤` / `塔台` / `机长` / `副机长`（四角色）、`航班信息`（板工坊：可配信息源 → 每板一份自包含脚本 → 归档到项目仓板库）
 - 协议正本：`loops/loop-protocol.md`（v5）
 - 通用剧本：任务合同、执行三职、可靠性、审批、审计、上下文、验收
 - 可执行契约：`task` / `acceptance` / `event` schema
@@ -69,7 +69,8 @@ kai-mode 是「一句话需求 → 票 → 排班 → 施工 → 审查 → 发�
 ## 目录
 
 ```text
-skills/           七个技能（入口/安装/loop/四角色）＋ set-kai-mode/scripts/magpie-sync.py
+skills/           八个技能（入口/安装/loop/四角色/航班信息）＋ set-kai-mode/scripts/magpie-sync.py
+skills/航班信息/   板工坊：SKILL.md ＋ templates/（生成器模板＋板配置样例）＋ scripts/（脚手架/索引页/刷新）
 loops/            loop-protocol.md（v5 单票闭环正本）
 playbooks/        task-contract / execution-roles / reliability / approval / audit / context / acceptance
 schemas/          task / acceptance / event

@@ -12,8 +12,9 @@
 
 ## 本仓库已同步（2026-10-22）
 
-- 七个技能正本（ADR-0137 版）：`skills/{kai-mode,set-kai-mode,loop,地勤,塔台,机长,副机长}/SKILL.md`
-  ＋ `skills/set-kai-mode/scripts/magpie-sync.py`（与项目仓正本逐字节同哈希）。
+- 八个技能正本：`skills/{kai-mode,set-kai-mode,loop,地勤,塔台,机长,副机长}/SKILL.md`（ADR-0137 版）
+  ＋ `skills/航班信息/SKILL.md`（2026-10-22 新增：航班信息板生成器，单文件只用标准库）；2026-10-22 升级为板工坊（板配置＋脚手架＋模板；板库落在各项目仓 `.design/航班信息/HTML/`）
+  ＋ `skills/set-kai-mode/scripts/magpie-sync.py`（2026-10-22 本仓副本加布局档；与项目仓正本待重新对齐同哈希）。
 - 单票闭环协议 v5：`loops/loop-protocol.md`。
 - `adapters/` 三份按现役模型改写（塔台 30 分钟定时＋按铃子会话；opencode/codex 备胎与执行三职）。
 - `templates/kai-mode.project.json` schema 2（日表/轮巡/名额 2×2/限额/审批/审计；去掉 shifts/activation/lease/token）。
@@ -29,10 +30,11 @@
 ## 切换顺序（余下步骤）
 
 1. 项目仓用一张真票验证本仓技能与项目仓正本无行为差（逐文件 SHA-256 对账）。
-2. 把 `magpie-sync.py` 的 root 指到本仓。**缺口（2026-10-22 实测）**：脚本把项目仓布局写死
-   （`MAGPIE_SKILLS` 七条全是 `.ai/skills/...` 相对路径，正本根按脚本位置上溯找 `.ai/skills` 锚），
-   在本仓跑 `--selftest` 会报「正本根读不出」。切换时需给脚本加布局档（本仓 `skills/<名>`）
-   或参数化 root，改完两仓脚本逐字节同哈希后再切。
+2. 把 `magpie-sync.py` 的 root 指到本仓。**已做（2026-10-22）**：magpie-sync 加布局档，
+   框架仓自身可作正本根；航班信息 技能登记进 FAMILIES，待切换时装机。
+   原缺口（2026-10-22 实测）：脚本把项目仓布局写死（`MAGPIE_SKILLS` 七条全是 `.ai/skills/...` 相对路径，
+   正本根按脚本位置上溯找 `.ai/skills` 锚），在本仓跑 `--selftest` 会报「正本根读不出」；现两种布局都认。
+   余下：项目仓那份 `magpie-sync.py` 同步成本版（两仓逐字节同哈希）后再切 root。
 3. 项目 `.ai/kai-mode.project.json` 按 `templates/` schema 2 落地；项目剧本按本仓参考剧本改写（保留项目命令与路径）。
 4. 试点一个轮巡周期后，项目仓 `.ai/skills/` 降级为镜像或移除；旧正本至少保留一个试点周期。
 

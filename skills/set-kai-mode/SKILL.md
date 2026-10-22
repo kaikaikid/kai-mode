@@ -42,7 +42,7 @@ updated: 2026-10-21
 
 | # | 装什么 | 验收 |
 |---|---|---|
-| 1 | 注入方法论与技能（仓库内正本） | 七个技能文件在位，入口/角色/协议互指一致 |
+| 1 | 注入方法论与技能（仓库内正本） | 八个技能文件在位，入口/角色/协议互指一致 |
 | 2 | 装技能到宿主（四角色 ＋ 入口/安装/协议技能） | 宿主技能列表里能看见，内容与正本同哈希 |
 | 3 | 装 30 分钟塔台定时器 | `list` 回读 `enabled=true`、周期 30 分钟 |
 | 4 | worktree 环境自检（三项） | 解释器 / node / 依赖三项都有明确读数 |
@@ -56,8 +56,11 @@ updated: 2026-10-21
   - 安装：`skills/set-kai-mode/SKILL.md`（本文）
   - 四角色：`skills/{地勤,塔台,机长,副机长}/SKILL.md`
   - 单票闭环：`skills/loop/SKILL.md` ＋ `loops/loop-protocol.md`
+  - 航班信息：`skills/航班信息/SKILL.md`（板工坊：板配置＋模板＋脚手架；板库在各项目仓 `.design/航班信息/HTML/`，不入技能目录 ⇒ 不进中央库）
 - 项目仓把它们落在 `.ai/skills/{project-skills/,loop}/`；剧本登记面＝项目仓 `.ai/router.md`；
   新增剧本在那里加一行，**不在本文件或入口里复制判据**。
+- 两种布局都认：项目仓 `.ai/skills/project-skills/<名>`（`loop` 在 `.ai/skills/loop`）与本仓 `skills/<名>`；
+  `magpie-sync.py` 按这两种布局反查正本根。
 
 ### 2. 装技能到宿主
 
@@ -73,7 +76,8 @@ python $S apply --dry-run # 看将写哪些字节
 python $S apply           # 正本 → 库 → 各家链接
 ```
 
-- 要装/更新的技能：`kai-mode`、`set-kai-mode`、`loop`、`地勤`、`塔台`、`机长`、`副机长`。
+- 要装/更新的技能（装机清单＝`scripts/magpie-sync.py` 里的 `FAMILIES` 注册表）：
+  `kai-mode`、`set-kai-mode`、`loop`、`地勤`、`塔台`、`机长`、`副机长`、`航班信息`。
 - 库位**不写死机器路径**：沿既有链接反查；读不出用环境变量 `KAI_MAGPIE_LIBRARY` 指到 `<...>/library/skills`，
   仍读不出就 rc=2 如实报，不猜一个路径写下去。
 - 三条硬规矩：① 写库前**整包备份 ＋ SHA-256 基线**；② 脚本**只新增、只覆盖同路径，绝不删**库里多出来的东西；
