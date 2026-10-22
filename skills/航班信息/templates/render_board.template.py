@@ -318,7 +318,15 @@ CONFIG = json.loads(r"""
         "label": "今日已收尾"
       }
     ],
+    "nav": true,
+    "collapsible": true,
+    "collapsible_default": "open",
     "sections": [
+      {
+        "key": "schedules",
+        "title": "塔台排班",
+        "hint": "{schedules_date} · 任务表只由塔台写"
+      },
       {
         "key": "milestones",
         "title": "里程碑进度",
@@ -328,11 +336,6 @@ CONFIG = json.loads(r"""
         "key": "flights",
         "title": "航班信息表",
         "hint": "阶段链：{stage_chain}"
-      },
-      {
-        "key": "schedules",
-        "title": "塔台排班",
-        "hint": "{schedules_date} · 任务表只由塔台写"
       },
       {
         "key": "ysk",
@@ -1180,10 +1183,43 @@ h1{font-size:27px;line-height:1.15;margin:2px 0 0;letter-spacing:.01em;font-weig
 .kpi.ship .n{color:var(--ship)} .kpi.fly .n{color:var(--fly)}
 .kpi.hold .n{color:var(--hold)} .kpi.done .n{color:var(--done)}
 
+/* 段导航：板头之后、内容段之前；条目＝各内容段（顺序＝view.sections） */
+.board-nav{display:flex;gap:6px;align-items:center;overflow-x:auto;overflow-y:hidden;
+  margin:0 0 18px;padding:0 0 3px;border-bottom:1px solid var(--line);
+  scrollbar-width:thin;-webkit-overflow-scrolling:touch}
+.board-nav::-webkit-scrollbar{height:6px}
+.board-nav::-webkit-scrollbar-thumb{background:var(--line-strong);border-radius:99px}
+.board-nav::-webkit-scrollbar-track{background:transparent}
+.nav-i{flex:0 0 auto;display:inline-flex;align-items:center;white-space:nowrap;
+  padding:6px 12px;border:1px solid transparent;border-radius:10px;
+  color:var(--muted);font-size:12.5px;line-height:1.7;text-decoration:none;
+  transition:color .15s,background .15s,border-color .15s}
+.nav-i:hover{color:var(--ink);background:var(--card);border-color:var(--line)}
+.nav-i.on{color:var(--ink);font-weight:600;background:var(--accent-soft);border-color:var(--line-strong)}
+.nav-i:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
 /* 区块标题 */
 h2{display:flex;align-items:baseline;gap:12px;font-size:15px;margin:30px 0 12px;font-weight:700}
 h2 .hint{font-size:11.5px;color:var(--faint);font-weight:400;letter-spacing:.02em}
 h2::before{content:"";width:18px;height:1px;background:var(--accent);align-self:center}
+
+/* 内容段：原生 details/summary（可折叠、零 JS、可访问、打印友好） */
+.sect{margin:0}
+.sect + .sect{margin-top:22px}
+.sect-hd{display:flex;align-items:baseline;gap:12px;cursor:pointer;list-style:none;
+  padding:6px 0 10px;font-size:15px;font-weight:700;scroll-margin-top:14px}
+.sect-hd::-webkit-details-marker{display:none}
+.sect-hd::marker{content:""}
+.sect-hd::before{content:"";width:18px;height:1px;background:var(--accent);
+  align-self:center;flex:0 0 auto}
+.sect-t{flex:0 0 auto}
+.sect-hd .hint{flex:1 1 auto;min-width:0;font-size:11.5px;color:var(--faint);font-weight:400;
+  letter-spacing:.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sect-arrow{flex:0 0 auto;align-self:center;width:7px;height:7px;
+  border-right:1.5px solid var(--muted);border-bottom:1.5px solid var(--muted);
+  transform:rotate(-45deg);transition:transform .18s ease}
+.sect[open] > .sect-hd .sect-arrow{transform:rotate(45deg)}
+.sect-body{padding:0 0 4px}
 
 /* 里程碑总览 */
 .miles{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:12px}
@@ -1336,6 +1372,20 @@ footer .bad{color:var(--accent)}
   .chain{min-width:0}
 }
 
+/* 折叠段在打印时强制展开：否则打印丢内容 */
+@media print{
+  .board-nav,.refresh,.toast{display:none !important}
+  .sect::details-content{content-visibility:visible !important;display:block !important}
+  .sect > *:not(summary){display:block !important}
+  .sect-hd{break-after:avoid}
+  .sect + .sect{margin-top:12px}
+}
+
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto}
+  .sect-arrow,.nav-i{transition:none}
+}
+
 """
 
 JS = r"""
@@ -1405,6 +1455,80 @@ JS = r"""
     if(t){t.textContent='已重新读取磁盘上的航班信息板快照';t.classList.add('on');
       setTimeout(function(){t.classList.remove('on');},2400);}
   }
+})();
+
+// 段导航：跳到那一段 + 标出当前段。
+(function(){
+  var nav=document.getElementById('board-nav');
+  if(!nav) return;
+  var links=[].slice.call(nav.querySelectorAll('a[href^="#"]'));
+  if(!links.length) return;
+
+  // 锚点落在 summary 上（summary 永远可见 ⇒ 段折着也定位得到）。
+  var items=links.map(function(a){
+    var el=document.getElementById(a.getAttribute('href').slice(1));
+    return el?{a:a,el:el}:null;
+  }).filter(Boolean);
+  if(!items.length) return;
+
+  var current=null;
+  var setCurrent=function(it){
+    if(!it||it===current) return;
+    if(current){current.a.classList.remove('on');current.a.removeAttribute('aria-current');}
+    current=it;
+    current.a.classList.add('on');
+    current.a.setAttribute('aria-current','location');
+  };
+
+  // 点导航：先把折着的那段展开，再把高亮按到它身上。
+  // 锁到这次滚动结束（scrollend），免得平滑滚动途中高亮乱跳。
+  var lock=false,lockTimer=0;
+  items.forEach(function(it){
+    it.a.addEventListener('click',function(){
+      var box=it.el.closest?it.el.closest('details'):null;
+      if(box) box.open=true;
+      setCurrent(it);
+      lock=true;
+      if(lockTimer) clearTimeout(lockTimer);
+      lockTimer=setTimeout(function(){lock=false;},2000);
+      var t0=Date.now();
+      window.addEventListener('scrollend',function(){
+        if(Date.now()-t0<120) return;   // 可能是上一次滚动的收尾，不算数
+        lock=false;
+      },{once:true});
+    });
+  });
+
+  // 当前段＝阅读线（视口 35% 高处）落在的那一段；没落在里面就取最近的一段。
+  var mark=function(){
+    if(lock) return;
+    var line=Math.max(72,Math.round(window.innerHeight*0.35));
+    var best=null,bestDist=Infinity;
+    items.forEach(function(it){
+      var box=it.el.closest?it.el.closest('details'):null;
+      var top=it.el.getBoundingClientRect().top;
+      var bottom=box?box.getBoundingClientRect().bottom:top;
+      var dist=line<top?top-line:(line>bottom?line-bottom:0);
+      if(dist<=bestDist){bestDist=dist;best=it;}
+    });
+    // 滚到底了就以最后一段为准（否则末段太短，高亮会停在倒数第二段）。
+    var scrollable=document.documentElement.scrollHeight>window.innerHeight+2;
+    if(scrollable&&window.scrollY>2
+       &&(window.innerHeight+window.scrollY)>=document.documentElement.scrollHeight-2){
+      best=items[items.length-1];
+    }
+    if(best) setCurrent(best);
+  };
+
+  var pending=false;
+  var onScroll=function(){
+    if(pending) return;
+    pending=true;
+    requestAnimationFrame(function(){pending=false;mark();});
+  };
+  window.addEventListener('scroll',onScroll,{passive:true});
+  window.addEventListener('resize',onScroll);
+  mark();
 })();
 
 """
@@ -1631,8 +1755,8 @@ REPO_PLACEHOLDER = "local/repo"
 
 def section_milestones(payload: dict) -> str:
     miles = payload["milestones"]
-    return ('<h2>里程碑进度 <span class="hint">%s</span></h2>\n<div class="miles">%s</div>'
-            % (esc(_section_hint("milestones")), "".join(mile_html(m) for m in miles)
+    return ('<div class="miles">%s</div>'
+            % ("".join(mile_html(m) for m in miles)
                or '<div class="empty">没有开放的里程碑。</div>'))
 
 
@@ -1652,7 +1776,6 @@ def section_flights(payload: dict) -> str:
     placeholder = esc(str(CONFIG.get("view", {}).get("search_placeholder")
                           or "搜票号 / 标题 / 掌机 / 备注"))
     return (
-        '<h2>%s <span class="hint">%s</span></h2>\n'
         '<div class="tools">%s\n'
         '<input class="search" id="q" type="search" placeholder="%s">\n'
         '</div>\n'
@@ -1661,29 +1784,23 @@ def section_flights(payload: dict) -> str:
         '<th style="width:86px">掌机</th><th style="width:150px">下一步</th><th style="width:82px">更新</th></tr></thead>\n'
         '<tbody>%s</tbody>\n</table>\n'
         '<div class="empty hidden" id="empty">没有符合筛选的航班。</div>\n</div>'
-        % (esc(_section_title("flights")), esc(_section_hint("flights")), "".join(chips),
-           placeholder, board_table_html(flights, miles))
+        % ("".join(chips), placeholder, board_table_html(flights, miles))
     )
 
 
 def section_schedules(payload: dict) -> str:
     schedules = payload["schedules"]
-    return ('<h2>%s <span class="hint">%s</span></h2>\n<div class="shifts">%s%s</div>'
-            % (esc(_section_title("schedules")), esc(_section_hint("schedules")),
-               shift_html(schedules.get("main"), schedules.get("fallback", False)),
+    return ('<div class="shifts">%s%s</div>'
+            % (shift_html(schedules.get("main"), schedules.get("fallback", False)),
                shift_html(schedules.get("deputy"), schedules.get("fallback", False))))
 
 
 def section_ysk(payload: dict) -> str:
-    return ('<h2>%s <span class="hint">%s</span></h2>\n<div class="hooks">%s</div>'
-            % (esc(_section_title("ysk")), esc(_section_hint("ysk")),
-               ysk_html(payload["ysk"])))
+    return ('<div class="hooks">%s</div>' % ysk_html(payload["ysk"]))
 
 
 def section_handoffs(payload: dict) -> str:
-    return ('<h2>%s <span class="hint">%s</span></h2>\n<div class="handoffs">%s</div>'
-            % (esc(_section_title("handoffs")), esc(_section_hint("handoffs")),
-               handoff_html(payload["handoffs"])))
+    return ('<div class="handoffs">%s</div>' % handoff_html(payload["handoffs"]))
 
 
 SECTION_RENDERERS = {
@@ -1724,6 +1841,60 @@ def _section_hint(key: str) -> str:
     })
 
 
+def _view_flag(name: str, default: bool) -> bool:
+    """view 里的开关；键缺省 ⇒ 用缺省值（旧配置照常出板）。"""
+    value = (CONFIG.get("view") or {}).get(name, None)
+    if value is None:
+        return default
+    return bool(value)
+
+
+def _section_id(key: str) -> str:
+    return "sec-%s" % key
+
+
+def _sections_open_default() -> bool:
+    """默认展开（保持一眼看全的观感）；collapsible_default="closed" 才默认折起。"""
+    raw = str((CONFIG.get("view") or {}).get("collapsible_default") or "open").strip().lower()
+    return raw != "closed"
+
+
+def _section_details(key: str, body: str) -> str:
+    """一段内容。
+
+    可折叠时用原生 details/summary（零 JS、可访问、打印时强制展开）；
+    锚点挂在 summary 上 —— summary 永远可见，所以段折着也定位得到。
+    """
+    sid = esc(_section_id(key))
+    title = esc(_section_title(key))
+    hint = esc(_section_hint(key))
+    if not _view_flag("collapsible", True):
+        return ('<h2 id="%s">%s <span class="hint">%s</span></h2>\n%s'
+                % (sid, title, hint, body))
+    open_attr = " open" if _sections_open_default() else ""
+    return (
+        '<details class="sect"%s>\n'
+        '<summary class="sect-hd" id="%s"><span class="sect-t">%s</span>'
+        '<span class="hint">%s</span>'
+        '<span class="sect-arrow" aria-hidden="true"></span></summary>\n'
+        '<div class="sect-body">%s</div>\n'
+        '</details>'
+        % (open_attr, sid, title, hint, body)
+    )
+
+
+def _nav_html(items: list[tuple[str, str]]) -> str:
+    """段导航：条目＝各内容段，顺序＝view.sections 顺序（与页面里的段一一对应）。"""
+    links = []
+    for i, (key, title) in enumerate(items):
+        cls = "nav-i on" if i == 0 else "nav-i"
+        cur = ' aria-current="location"' if i == 0 else ""
+        links.append('<a class="%s" href="#%s"%s>%s</a>'
+                     % (cls, esc(_section_id(key)), cur, esc(title)))
+    return ('<nav class="board-nav" id="board-nav" aria-label="段导航">%s</nav>'
+            % "".join(links))
+
+
 def render_html(payload: dict) -> str:
     global REPO_PLACEHOLDER
     REPO_PLACEHOLDER = payload.get("repo") or "local/repo"
@@ -1744,10 +1915,15 @@ def render_html(payload: dict) -> str:
     subtitle = str(CONFIG.get("subtitle") or "")
     name = str(CONFIG.get("name") or "board")
     sections = []
+    nav_items = []
     for sec in CONFIG.get("view", {}).get("sections", []):
-        renderer = SECTION_RENDERERS.get(str(sec.get("key") or ""))
-        if renderer:
-            sections.append(renderer(payload))
+        key = str(sec.get("key") or "")
+        renderer = SECTION_RENDERERS.get(key)
+        if not renderer:
+            continue
+        sections.append(_section_details(key, renderer(payload)))
+        nav_items.append((key, _section_title(key)))
+    nav = _nav_html(nav_items) if (_view_flag("nav", True) and nav_items) else ""
 
     stage_names = {"all": "全部"}
     stage_names.update({k: v for k, v in STAGE_LABEL.items()})
@@ -1786,6 +1962,8 @@ def render_html(payload: dict) -> str:
 
 %s
 
+%s
+
 <footer>
   <div class="src">数据源：%s</div>
   <div>生成器 <code>render_%s.py</code> · 摘要 <code>%s</code> · 全量 <code>%s</code>
@@ -1804,6 +1982,7 @@ def render_html(payload: dict) -> str:
         kpi["open"], kpi["in_flight"], kpi["to_ship"], gen_ts, esc(gen_human),
         esc(payload["direction"]),
         kpi_html(kpi),
+        nav,
         "\n".join(sections),
         src_line,
         esc(name),

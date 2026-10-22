@@ -48,7 +48,7 @@ updated: 2026-10-22
 
 | 面 | 文件 | 读者 | 契约 |
 |---|---|---|---|
-| 人读面 | `<板名>/index.html` | 人 | 自包含（内联 CSS/JS，无 CDN、无运行时请求）；页面「刷新」只重读磁盘快照 |
+| 人读面 | `<板名>/index.html` | 人 | 自包含（内联 CSS/JS，无 CDN、无运行时请求）；页面「刷新」只重读磁盘快照；版面＝**板头 + 段导航 + 逐段可折叠** |
 | 机读面 | `<板名>/board.json` | AI / 脚本 | AI 侧**唯一**数据面；`schema` = `flight-info/1`；**必须 ≤ 25 KB** |
 
 ## 激活方式
@@ -114,6 +114,9 @@ python "<板库根>/<板名>/render_<板名>.py" --repo-root <项目仓根> [--q
 `index.html`（人读面）＋ `board.json`（摘要层）＋ `full.json`（全量层）＋ `history.jsonl` 追加一行。
 `history.jsonl` 每行含：生成时刻、`sources` 映射、`kpi`、三件产物的 sha256。
 
+人读面的版面：**板头（眉标 / 标题 / 刷新按钮 / 方向条 / KPI）＋ 段导航 ＋ 逐段可折叠**（原生 `details/summary`，默认全展开；打印时强制展开）。
+段顺序与导航条目顺序都由 `view.sections[]` 决定 —— 排班表要置顶，就把它排在该数组的第一位。
+
 ### 4. 索引页
 
 ```bash
@@ -158,6 +161,16 @@ python skills/航班信息/scripts/build_index.py --repo-root <项目仓根> [--
 | `direction` | object | 是 | — | `{template, variants[], min_rows, target_rows, max_ship_list}`，见下 |
 | `summary` | object | 否 | `{}` | 摘要层形状：`max_flights` / `max_bytes` / `flight_stages[]` / `flight_fields[]` / `schedule_fields[]` / `max_schedule_rows` |
 | `view` | object | 否 | `{}` | 视图：`sections[]`（每条 `{key,title,hint}`）/ `filters[]` / `kpis[]` / `search_placeholder` |
+| `view.nav` | boolean | 否 | `true` | 板头之下、第一个内容段之上是否渲染**段导航**（条目＝各内容段，顺序＝`view.sections` 顺序，标题取该段 `title`） |
+| `view.collapsible` | boolean | 否 | `true` | 内容段是否**逐段可折叠**（`true`＝原生 `details/summary`；`false`＝退回普通 `h2` 段落，锚点不变） |
+| `view.collapsible_default` | string | 否 | `open` | 折叠段的默认状态：`open`＝默认全展开（一眼看全），`closed`＝默认折起 |
+
+**段顺序 / 段导航 / 折叠**
+
+- `view.sections[]` 的顺序**同时**决定页面里的段顺序与导航条目顺序；两处永远一致。
+- 板头（眉标 / 标题 / 刷新按钮 / 方向条 / KPI）不动，**导航条插在板头之后、第一个内容段之前**。
+- 段锚点 id ＝ `sec-<段 key>`，挂在该段的 `<summary>` 上；`summary` 永远可见，所以段折着也定位得到。
+- 折叠纯前端表现：`board.json` / `full.json` / `sources` / `kpi` / `history.jsonl` 的形状与语义**一律不变**。
 
 **source type 与参数**
 

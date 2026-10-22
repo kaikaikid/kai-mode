@@ -147,10 +147,13 @@
       { "cls": "hold", "key": "hold", "label": "挡住" },
       { "cls": "done", "key": "closed_today", "label": "今日已收尾" }
     ],
+    "nav": true,
+    "collapsible": true,
+    "collapsible_default": "open",
     "sections": [
+      { "key": "schedules", "title": "塔台排班", "hint": "{schedules_date} · 任务表只由塔台写" },
       { "key": "milestones", "title": "里程碑进度", "hint": "进度＝已收尾 ÷ 全部；下一班按「待发货 → 审查 → 在飞 → 可领」取" },
       { "key": "flights", "title": "航班信息表", "hint": "阶段链：{stage_chain}" },
-      { "key": "schedules", "title": "塔台排班", "hint": "{schedules_date} · 任务表只由塔台写" },
       { "key": "ysk", "title": "钩子提醒", "hint": "You should know · 只留最近 {ysk_limit} 条" },
       { "key": "handoffs", "title": "交接日报", "hint": "近 {handoff_days} 天索引，点开看全文" }
     ]

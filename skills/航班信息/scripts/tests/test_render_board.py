@@ -9,11 +9,14 @@
 - 页面契约：阶段链、刷新按钮、数据源清单都在，页面标题是「航班信息」，不出现 plan.json；
 - 自包含：HTML 内联 CSS/JS，无 CDN、无运行时 fetch；
 - 摘要层：只收配置指定的阶段与字段，且不超过 summary.max_bytes；
-- `--no-network`：一次 gh 都不发，评论源记 skipped。
+- `--no-network`：一次 gh 都不发，评论源记 skipped；
+- 版面：排班表排第一、段导航逐条对得上锚点、每段都包在 details/summary 里、默认展开；
+- 旧配置（没有 nav / collapsible / collapsible_default）照常出板。
 """
 import importlib.util
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -187,6 +190,115 @@ def test_render_html_is_self_contained():
     assert "cdn" not in html.lower()
     assert html.count("<style>") == 1
     assert html.count("<script>") == 1
+
+
+# ───────────────────────── 段导航 / 逐段可折叠 ─────────────────────────
+
+def _nav_targets(html: str) -> list[str]:
+    """导航条里每个条目指向的锚点。"""
+    return re.findall(r'<a class="nav-i[^"]*" href="#([^"]+)"', html)
+
+
+def _section_ids(html: str) -> list[str]:
+    """各内容段的锚点 id（挂在 summary 上；summary 永远可见 ⇒ 折着也定位得到）。"""
+    return re.findall(r'<summary class="sect-hd" id="([^"]+)"', html)
+
+
+def test_board_has_a_section_nav():
+    mod = _load()
+    html = mod.render_html(_payload(mod))
+    assert '<nav class="board-nav" id="board-nav"' in html
+    assert 'aria-label="段导航"' in html
+    # 导航在板头之后、第一个内容段之前。
+    assert html.index('<nav class="board-nav"') < html.index('<details class="sect"')
+    # 导航在 KPI 条之后（板头不动，导航插在它下面）。
+    assert html.index('<div class="kpis">') < html.index('<nav class="board-nav"')
+
+
+def test_every_nav_item_pairs_with_a_section_anchor():
+    mod = _load()
+    html = mod.render_html(_payload(mod))
+    targets = _nav_targets(html)
+    ids = _section_ids(html)
+    assert len(targets) == 5
+    assert len(ids) == 5
+    # 逐个配对：导航里每个 href 都要在 HTML 里找到一个同名的段锚点 id。
+    for target in targets:
+        assert ('id="%s"' % target) in html, "导航指向的锚点不存在：%s" % target
+    # 反过来也一样：每个段都要被导航指到，不能有孤儿段。
+    for sid in ids:
+        assert sid in targets, "段没有对应导航条目：%s" % sid
+
+
+def test_every_section_is_a_details_with_a_summary():
+    mod = _load()
+    html = mod.render_html(_payload(mod))
+    assert html.count('<details class="sect" open>') == 5
+    assert html.count('<summary class="sect-hd"') == 5
+    # 段名与提示都在 summary 里（人读文字，不套 mono）。
+    assert '<summary class="sect-hd" id="sec-schedules">' in html
+    assert "<span class=\"sect-t\">塔台排班</span>" in html
+    assert 'class="hint"' in html
+    # 折叠指示器用 CSS 箭头（不用图标库、不引外部资源）。
+    assert '<span class="sect-arrow" aria-hidden="true"></span>' in html
+    assert "sect-arrow" in html
+
+
+def test_schedules_is_the_first_content_section():
+    mod = _load()
+    html = mod.render_html(_payload(mod))
+    at_schedules = html.index('id="sec-schedules"')
+    at_milestones = html.index('id="sec-milestones"')
+    at_flights = html.index('id="sec-flights"')
+    assert at_schedules < at_milestones < at_flights
+    # 导航条目顺序＝页面里的段顺序。
+    assert _nav_targets(html) == ["sec-schedules", "sec-milestones", "sec-flights",
+                                   "sec-ysk", "sec-handoffs"]
+    assert _section_ids(html) == ["sec-schedules", "sec-milestones", "sec-flights",
+                                   "sec-ysk", "sec-handoffs"]
+
+
+def test_sections_are_open_by_default():
+    mod = _load()
+    html = mod.render_html(_payload(mod))
+    assert html.count('<details class="sect" open>') == 5
+    assert '<details class="sect">' not in html
+
+
+def test_legacy_config_without_new_view_keys_still_renders():
+    """旧配置（没有 nav / collapsible / collapsible_default）照常出板。"""
+    mod = _load()
+    cfg = json.loads(json.dumps(mod.CONFIG))
+    view = cfg["view"]
+    for key in ("nav", "collapsible", "collapsible_default"):
+        view.pop(key, None)
+    mod.apply_config(cfg)
+    html = mod.render_html(_payload(mod))
+    assert 'id="board-nav"' in html
+    assert html.count('<details class="sect" open>') == 5
+    assert len(_nav_targets(html)) == 5
+    for target in _nav_targets(html):
+        assert ('id="%s"' % target) in html
+
+
+def test_nav_and_collapsible_switches_work():
+    mod = _load()
+    cfg = json.loads(json.dumps(mod.CONFIG))
+    cfg["view"]["nav"] = False
+    cfg["view"]["collapsible"] = False
+    mod.apply_config(cfg)
+    html = mod.render_html(_payload(mod))
+    assert 'id="board-nav"' not in html
+    assert "<details class=\"sect\"" not in html
+    # 不可折叠时退回 h2，锚点照旧在（导航关掉了，但 id 还得有）。
+    assert '<h2 id="sec-schedules">' in html
+    # 默认展开可配。
+    cfg["view"]["collapsible"] = True
+    cfg["view"]["collapsible_default"] = "closed"
+    mod.apply_config(cfg)
+    html = mod.render_html(_payload(mod))
+    assert html.count('<details class="sect">') == 5
+    assert '<details class="sect" open>' not in html
 
 
 def test_summary_layer_is_trimmed_and_bounded():
