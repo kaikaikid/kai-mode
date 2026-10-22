@@ -119,6 +119,23 @@ def test_dispatch_unknown_board_is_rc2(monkeypatch):
     assert t.dispatch("flight-info://refresh/不存在的板") == 2
 
 
+def test_task_xml_is_utf16_with_bom(monkeypatch, tmp_path):
+    """schtasks /Create /XML 只吃 UTF-16（带 BOM）的 XML。
+
+    写 UTF-8 会被判「任务 XML 格式不正确 · (1,40) 无法切换编码」——开哥机器上实测如此。
+    """
+    t = _load()
+    monkeypatch.setattr(t.tempfile, "gettempdir", lambda: str(tmp_path))
+    # 用相对路径：本仓 doctor 不许出现机器绝对路径（盘符、家目录之类），注释里也别写
+    bat = Path("板库") / "refresh.timer.bat"
+    p, _ = t.task_xml("x", bat, 5)
+    raw = p.read_bytes()
+    assert raw[:2] == b"\xff\xfe", "缺 UTF-16 LE BOM"
+    text = raw.decode("utf-16")
+    assert 'encoding="UTF-16"' in text
+    assert "<Command>%s</Command>" % bat in text
+
+
 def test_dispatch_pins_stdin_for_pythonw(monkeypatch, tmp_path):
     """stdin 必须钉死 DEVNULL：协议是被 pythonw（GUI 进程、无控制台）拉起的，
     子进程会继承一个无效 stdin，里面的 git / gh 读它就挂住 ——

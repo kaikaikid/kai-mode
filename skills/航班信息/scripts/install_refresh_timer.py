@@ -318,10 +318,14 @@ def task_xml(board: str, real_bat: Path, every: int) -> tuple[Path, str]:
     schtasks 直接报「系统找不到指定的文件」；改塞纯 ASCII 包装脚本也不行 ——
     包装里的中文按 GBK 写，cmd 当前代码页不是 936 时照样读成乱码、0 秒返回且板没刷。
     XML 导入绕开命令行解析，是唯一走得通的路。
+
+    第二个坑：XML 文件本身要写 **UTF-16（带 BOM）**，声明也得是 UTF-16。
+    写 UTF-8 会被 schtasks 判「任务 XML 格式不正确 · (1,40) 无法切换编码」——
+    任务计划程序导出的 tasks 就是 UTF-16，照它的规矩来。
     """
     start = time.strftime("%Y-%m-%dT%H:%M:%S")
     xml = (
-        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<?xml version="1.0" encoding="UTF-16"?>\n'
         '<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">\n'
         "  <RegistrationInfo>\n"
         "    <Description>航班信息板定时刷新（零 token、跨 agent）</Description>\n"
@@ -357,7 +361,7 @@ def task_xml(board: str, real_bat: Path, every: int) -> tuple[Path, str]:
         "</Task>\n" % (start, every, real_bat)
     )
     tmp = Path(tempfile.gettempdir()) / ("flight-info-%s.xml" % _tag(board))
-    tmp.write_text(xml, encoding="utf-8")
+    tmp.write_text(xml, encoding="utf-16")  # utf-16 codec 自带 BOM，正是 schtasks 要的
     return tmp, xml
 
 
