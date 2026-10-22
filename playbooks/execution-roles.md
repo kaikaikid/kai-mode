@@ -1,3 +1,5 @@
+> 状态（2026-10-22 同步）：按项目仓 ADR-0137 残留表保留；文中租约/班次/按铃/五角色等已退役机制以 ADR-0137 为准（日表＋Issue＋分支三件记录面、塔台独占 push）。
+
 # 组内执行三职：Researcher / Implementer / Reviewer
 
 > 编排角色（Tower/Ground/Coordinator/Group）不变；这三个是 Group 内部的**执行角色**，不是编排角色。

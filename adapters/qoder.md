@@ -1,78 +1,46 @@
-# Qoder 适配器：只按铃子会话
+# Qoder 适配器：30 分钟塔台定时任务 ＋ 按铃子会话
 
-> 2026-10-21 实测：定时执行会话（`independent`/`merged`）**没有** `qoder_cron`；同一会话**有** `create_chat_session`；它开出的普通子会话**有** `qoder_cron`。因此 Qoder 的按铃路径是“角色 → 子会话 → run 目标班”。
+> 2026-10-21 实测（ADR-0137 D1/D5 的宿主中立装配，实测事实沿用）：定时执行会话（`independent`/`merged`）**没有** `qoder_cron`；同一会话**有** `create_chat_session`；它开出的普通子会话**有** `qoder_cron`。
 
 ## 能力判据（现测，别抄）
 
 ```bash
 # 在目标角色的执行会话里测，不在主会话里测
-mcp_list(keyword="cron")        # 预期 0 条（定时执行会话）
-mcp_get("mcp__builtin__create_chat_session")  # 预期可用
+mcp_list(keyword="cron")                       # 预期 0 条（定时执行会话）
+mcp_get("mcp__builtin__create_chat_session")   # 预期可用
 ```
 
-子会话里再测一次 `mcp_list(keyword="cron")`；有 `qoder_cron` 才走本适配器。没有 ⇒ 按 `adapters/opencode.md` 或 `adapters/codex.md` 起角色；仍不行 ⇒ `no-launcher`。
+子会话里再测一次 `mcp_list(keyword="cron")`；有 `qoder_cron` 才走按铃路径。没有 ⇒ 按 `adapters/opencode.md` 或 `adapters/codex.md` 起角色；仍不行 ⇒ 缺件如实登记（塔台只能人工 `/塔台`）。
 
-## 形状
+## 主形状：塔台 30 分钟定时任务
 
 ```text
-角色（定时执行会话，无 qoder_cron）
-  └─ 写 handoff-<from>-<to>.json（≤500B）
-     └─ create_chat_session(固定“只按铃”prompt)
-        └─ 子会话（有 qoder_cron）
-           ├─ 校验 handoff schema/必带字段/目标注册档
-           ├─ 校验 commits 存在且可达；Ground 还要 verdict=pass、unverified=[]
-           ├─ 目标在岗 ⇒ already-running，不按
-           ├─ qoder_cron run(jobId) 一次
-           └─ 写 activation-receipt-<ts>.json 后结束
+qoder_cron 任务（每 30 分钟，enabled）
+  ├─ cwd：主树绝对路径
+  ├─ outputMode：independent（独立会话）
+  ├─ executionAuthorization：true（Full Access）
+  └─ prompt 薄壳：读取并执行 skills/塔台/SKILL.md 全文；任务名 cron-tower-<日期>-<时分>
 ```
 
-## 固定 prompt（逐字带上，不许自由发挥）
+- prompt 只放薄壳，长规则只住技能正本，任务配置里不存第二份。
+- 建完必回读：`list` 看 `enabled` / `nextRunAt`（换算成人话几点）；`pauseReason=manual` ＝ 有人手动停，别自动重开。
+- 旧的多枚定时任务先 `disable` → 确认 `runningAt` 为空 → 再 `remove`；**别对正在跑的直接 remove**；不得与 30 分钟塔台并存（ADR-0137 D5）。
+
+## 备用形状：按铃子会话（拉起塔台之外的角色）
 
 ```text
-你是启动器，只按铃＋验门，不干活；最多 3 次工具调用。
-1) 读 <handoff 文件>；校验 schema 与必带字段（schema/from/to/tickets/commits/branch/acceptance/at/seq）；缺一 ⇒ activation-failed，结束。
-2) 目标必须是 <项目根>/.git/kai-scope/shift-runners.local.json 的 shifts 键之一；jobId 从该档读，读不到 ⇒ missing-jobid，结束。
-3) 每个 commit 必须存在且在当前分支可达（git cat-file -e <sha>^{commit}；git merge-base --is-ancestor <sha> <branch>）；不过 ⇒ activation-failed。
-4) 若目标=ground：读 acceptance.path 摘要，verdict 必须 pass 且 unverified 为空；不过 ⇒ activation-failed，不按。
-5) 检查 .ai/scope/on-duty-<目标>.json：holder 非空且心跳新鲜 ⇒ already-running，结束。
-6) qoder_cron run(jobId) 一次；写 activation-receipt-<ts>.json（handoff_sha256、目标、jobId、run id、结果、失败原因），结束。
-硬边界：不改产品文件、不建树、不 push、不再 create_chat_session、不建/删任务；不读票面/验收全文。
+角色会话（无 qoder_cron）
+  └─ create_chat_session(固定「只按铃」prompt)
+     └─ 子会话（有 qoder_cron）
+        ├─ 确认目标不在岗（在岗 ⇒ already-running，不按）
+        ├─ qoder_cron run(jobId) 一次
+        └─ 写回执后结束
 ```
 
-## 回执
+- 子会话是点火器不是执行体：只负责把目标拉起，不替角色干活、不替审查下结论。
+- 塔台停摆拉起继任机长走同一条路；缺会话口就把缺件写进 `/set-kai-mode` 的缺件登记。
 
-```json
-{"schema":1,"handoff_sha256":"...","target":"ground","job_id":"...","run_id":"...","result":"dispatched|already-running|activation-failed|missing-jobid|no-launcher","reason":"...","at":"..."}
-```
+## 边界
 
-## 幂等与边界
-
-- 目标在岗不按；同一 handoff 发两次只起一次（令牌/心跳判活）。
-- 白名单＝注册档 `shifts` 键；jobId 只从注册档读，不猜。
-- 子会话只按铃；发现它在改产品文件 ⇒ 本次交接判红。
-- 代际上限 1：子会话不许再开子会话。
-- 失败不静默；由低频 Coordinator 兜底。
-
-## 成本
-
-- 每次按铃有子会话固定入场开销；**批量**（2–5 张一按）、目标在岗不按、≤3 次工具调用，是主要省法。
-- 子会话不读票面/验收全文；只看 handoff＋注册档＋令牌＋验收摘要。
-- 若按铃频率高到子会话开销不可接受，再评估常驻激活器（用户另拍）。
-
-## 组内执行三职（Qoder 原生子代理映射）
-
-> Qoder **不暴露** Magpie 的 `worker`/`reviewer` 名字；能直接用的是 Qoder 原生子代理。
-> 这张表是“派子代理”在 Qoder 上的落地口径，不是可选建议；`set-kai-mode` 的 Magpie 表管的是 Codex 腿。
-
-| 执行角色 | Qoder 工具 | 约束 |
-|---|---|---|
-| Researcher | `Explore`（快速定位）或 `general-purpose`（多步调研） | 只读；产出 `research-<票>.md`；不改代码 |
-| Implementer | `general-purpose` | 必带租约/派工卡；有 `isolation=worktree` 时优先用独立树；不 push、不并车 |
-| Reviewer | **新起**的 `general-purpose`（只读 prompt） | 必须是另一次调用；不得复用 implementer 的会话；只拿 AC/diff/证据；写 `acceptance-<票>.json` |
-
-- **不能用 `Plan` 当 reviewer**：它产出实施计划，不做验收。
-- **不能用 `Explore` 做代码审查/设计文档审计**：它只读摘录，会漏全文；这类用 `general-purpose`。
-- **定时执行会话没有 `Agent` 工具时**：用 `create_chat_session` 开一个 fresh 子会话，把 reviewer/implementer prompt 交给它；仍然要求“另一次上下文”，不许组主上下文自判。
-- **子代理不是越多越好**：implementer 只在文件域不重叠时并行；reviewer 每票一个；researcher 按需。
-- **账上记 `subagents: [{role,id,ticket}]`**：有代码/schema 改动而缺 reviewer，或 `reviewer == implementer` ⇒ 不算独立验收，Ground 不接 ship handoff。
-
+- 会话口与定时口都是宿主专有能力：必须有 ①能力探测 ②降级腿 ③缺件如实登记（ADR-0137 D1 宿主中立）。
+- 不替角色施工；只把角色按契约跑起来。

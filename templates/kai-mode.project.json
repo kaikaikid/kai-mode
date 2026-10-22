@@ -1,72 +1,67 @@
 {
-  "schema": 1,
+  "schema": 2,
   "project": "<project-name>",
   "repo_root": ".",
-  "ship_mode": "direct",
+  "ship_mode": "tower",
   "paths": {
-    "plan": ".ai/scope/plan.json",
-    "state_dir": ".git/kai-scope",
-    "task_state_dir": ".git/kai-scope/tasks",
-    "checkpoint_dir": ".git/kai-scope/checkpoints",
-    "shifts": ".ai/scope/shifts",
-    "activation": ".ai/scope/activation",
-    "loop_protocol": "loops/loop-protocol.md"
+    "day_tables": ".ai/tasks",
+    "daily_report": "handoff",
+    "loop_protocol": "loops/loop-protocol.md",
+    "skills": "skills",
+    "state_dir": ".git/kai-scope"
   },
   "execution": {
     "preferred": "qoder",
     "fallbacks": ["codex", "opencode"],
-    "roles": {
-      "researcher": "fresh-context-read-only",
-      "implementer": "fresh-context",
-      "reviewer": "fresh-context-independent"
+    "subagent_roles": {
+      "builder": "fresh-context (own worktree + branch)",
+      "reviewer": "fresh-context-independent (read-only, never the builder)",
+      "utility": "support-only (env checks, gates, flaky repro; no product code)"
     },
     "host_tools": {
       "qoder": {
-        "researcher": "Explore",
-        "implementer": "general-purpose",
-        "reviewer": "general-purpose (new invocation, read-only)"
+        "builder": "general-purpose",
+        "reviewer": "general-purpose (new invocation, read-only)",
+        "researcher": "Explore"
       },
       "codex": {
-        "researcher": "codex exec -s read-only",
-        "implementer": "codex exec -s workspace-write",
-        "reviewer": "codex exec -s read-only"
+        "builder": "codex exec -s workspace-write",
+        "reviewer": "codex exec -s read-only (separate invocation)",
+        "researcher": "codex exec -s read-only"
       },
       "opencode": {
-        "researcher": "opencode run (read-only prompt)",
-        "implementer": "opencode run",
-        "reviewer": "opencode run (read-only prompt)"
+        "builder": "opencode run",
+        "reviewer": "opencode run (read-only prompt, separate invocation)",
+        "researcher": "opencode run (read-only prompt)"
       }
     },
     "reviewer_required_for": ["code", "schema", "high-risk"]
   },
   "runtime": {
-    "plan": "python scripts/plan.py",
-    "lease": "python scripts/scope-check.py",
-    "token": "python scripts/on-duty-check.py",
+    "backend_python": "<main-tree>/runtimes/python/Scripts/python.exe",
+    "node": "<main-tree>/runtimes/node/node.exe",
+    "close_gate": "python scripts/scope-check.py close-gate",
     "gate": "python scripts/framework-gate.py",
-    "close_gate": "python scripts/scope-check.py close-gate"
+    "loop_gate": "python scripts/loop-gate.py"
   },
-  "activation": {
-    "adapter": "child-session",
-    "targets": ["tower", "ground", "group-a", "group-b"],
-    "job_ids_from": ".git/kai-scope/shift-runners.local.json",
-    "tested_at": null
+  "tower_cron": {
+    "interval_min": 30,
+    "prompt_shell": "读取并执行 skills/塔台/SKILL.md 全文；任务名 cron-tower-<日期>-<时分>",
+    "output_mode": "independent",
+    "execution_authorization": true,
+    "job_ids_from": "<local-only config, not tracked>"
   },
   "wip": {
-    "pilot_global": 1,
-    "pilot_hours": 24,
-    "per_group": 2,
+    "per_pilot": 2,
+    "pilots": ["main", "deputy"],
     "global": 4
   },
   "limits": {
-    "max_attempts": 3,
+    "max_attempts": 2,
     "same_error_stop": 2,
     "task_timeout_min": 60,
     "attempt_timeout_min": 30,
     "run_timeout_min": 120,
-    "token_ttl_min": 45,
-    "lease_ttl_min": null,
-    "cooldown_min": 15,
     "circuit_breaker_failures": 3,
     "daily_wallclock_min": 480,
     "daily_token_budget": null
@@ -74,17 +69,11 @@
   "approval": {
     "auto_ship_max_risk": "medium",
     "human_required": ["high"],
-    "policy_changes_require_human": true,
-    "auto_close_low_risk_after_pilot": true
+    "policy_changes_require_human": true
   },
   "acceptance": {
     "mode": "ai-full",
     "reviewer": "fresh-context"
-  },
-  "batch": {
-    "ship_trigger": 2,
-    "ship_interval_min": 15,
-    "ship_max": 3
   },
   "audit": {
     "events": ".git/kai-scope/events.jsonl",
