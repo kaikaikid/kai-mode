@@ -2,3 +2,7 @@
 __pycache__/
 *.pyc
 *.pyo
+.pytest_cache/
+
+# 临时目录（脚本 / 工具的中间产物）
+.tmp/
