@@ -124,7 +124,7 @@ python scripts/doctor.py --with-tests
 - 不把项目专用路径、票号、job id 写进技能正文。
 - 项目专用件（ADR、票、日报、门禁脚本、项目专用剧本）不进本仓。
 - 个人技能默认 `install: manual`，不进中央库。
-- 装机正本＝本仓（`registry.json` 的 `install:auto` 条目）；项目仓 `.ai/skills/` 只作镜像，不再是装机源（见 `MIGRATION.md`）。⚠ 项目仓那份 `magpie-sync.py` 若被再跑，会把中央库刷回项目仓版本 ⇒ 须与本仓对齐或停用。
+- 装机正本＝本仓（`registry.json` 的 `install:auto` 条目）；项目仓 `.ai/skills/` 只作镜像，不再是装机源（见 `MIGRATION.md`）。中央库记住装机来源（`<库根>/.kai-mode-source.json`）：从库里那份脚本跑，正本根也回到本仓，不会被 cwd 里的项目仓顶掉。⚠ 项目仓那份**旧** `magpie-sync.py` 若被再跑（它没有标记逻辑），仍会把中央库刷回项目仓版本 ⇒ 须与本仓对齐或停用。
 
 ## 判据正本
 

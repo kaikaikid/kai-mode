@@ -84,6 +84,9 @@ python $S apply           # 正本 → 库 → 各家链接
   ③ `python 框架仓门禁` 过（注册表与盘面必须对上）。
 - 库位**不写死机器路径**：沿既有链接反查；读不出用环境变量 `KAI_MAGPIE_LIBRARY` 指到 `<...>/library/skills`，
   仍读不出就 rc=2 如实报，不猜一个路径写下去。
+- **中央库记住装机来源**（`<库根>/.kai-mode-source.json`，`apply` 真跑完才写，`--dry-run` 不写）：
+  从库里那份脚本跑，正本根也回到记录的那个仓，不会被 cwd 里的项目仓顶掉。
+  标记坏了／那个仓没了 ⇒ 退回老路（跳过库根，继续按脚本位置／cwd 反查），不硬失败。
 - 三条硬规矩：① 写库前**整包备份 ＋ SHA-256 基线**；② 脚本**只新增、只覆盖同路径，绝不删**库里多出来的东西；
   ③ Magpie 进程在跑时可能用内存版覆盖回注册档 ⇒ `apply` 后隔 ≥90 s 再 `check` 一次。
 - 存证同批归零：`python scripts/skill-attest.py attest --by human:<批准人> && python scripts/skill-attest.py verify`（rc=0；脚本在项目仓）。

@@ -34,6 +34,7 @@ import os
 import shutil
 import sys
 import tempfile
+from datetime import datetime, timezone
 
 try:  # Windows 控制台下中文输出
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -65,6 +66,60 @@ VALID_KINDS = ("framework", "personal")
 VALID_SCOPES = ("global", "owner")
 VALID_INSTALL = ("auto", "manual", "none")
 REQUIRED_ENTRY_FIELDS = ("name", "path", "kind", "scope", "install", "summary")
+# 装机来源标记：中央库记住「自己是从哪个仓装来的」——谁跑装机器都回那个仓，不被 cwd 里的项目仓顶掉。
+SOURCE_MARKER_NAME = ".kai-mode-source.json"
+SOURCE_SCHEMA = "kai-mode-source/1"
+
+
+def library_root(library: str) -> str:
+    """中央库根＝library skills 目录的上一级（装机来源标记放这儿）。"""
+    return os.path.dirname(os.path.abspath(library))
+
+
+def source_marker_path(library: str) -> str:
+    """装机来源标记文件：`<库根>/.kai-mode-source.json`。"""
+    return os.path.join(library_root(library), SOURCE_MARKER_NAME)
+
+
+def write_source_marker(library: str, root: str, skills: int) -> str:
+    """apply 真跑完 ⇒ 记下「这个库是从哪个仓装来的」：原子写（临时档 + os.replace，同 patch_registry 一路数）。"""
+    path = source_marker_path(library)
+    data = {
+        "schema": SOURCE_SCHEMA,
+        "root": os.path.abspath(root),
+        "applied_at": datetime.now(timezone.utc).isoformat(),
+        "skills": skills,
+    }
+    fd, tmp = tempfile.mkstemp(prefix=".kai-mode-source.", suffix=".tmp", dir=os.path.dirname(path))
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+            f.write("\n")
+        os.replace(tmp, path)
+    except OSError as exc:
+        if os.path.exists(tmp):
+            os.remove(tmp)
+        raise SystemExit(f"装机来源标记写入失败：{exc}")
+    return path
+
+
+def marked_root(lib_root: str) -> str | None:
+    """读库根上的装机来源标记：指向一个**存在的目录** ⇒ 那是正本根；
+    标记缺失／损坏／schema 不认识／目录没了 ⇒ None（不硬失败，走老路）。"""
+    path = os.path.join(lib_root, SOURCE_MARKER_NAME)
+    if not os.path.isfile(path):
+        return None
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return None
+    if not isinstance(data, dict) or data.get("schema") != SOURCE_SCHEMA:
+        return None
+    root = data.get("root")
+    if not root or not os.path.isdir(root):
+        return None
+    return os.path.abspath(root)
 
 
 def has_anchor(root: str) -> bool:
@@ -196,8 +251,10 @@ def _root_candidates(script_dir: str | None = None) -> list:
 
 
 def _is_library_root(cand: str, lib: str | None) -> bool:
-    """候选根其实是中央库根（跑的是库里那份脚本时，上溯会撞到它）：
-    那层的 `skills/` 就是库本身，拿它当正本根＝拿库跟自己比，永远「一致」。跳过。"""
+    """候选根本身是中央库根：要么是 `find_library()` 认出来的那个库的上一级，
+    要么它自带装机来源标记（标记在 ⇒ 库根自证是库根，不靠外部发现）。"""
+    if os.path.isfile(os.path.join(cand, SOURCE_MARKER_NAME)):
+        return True
     if not lib:
         return False
     return os.path.realpath(os.path.join(cand, "skills")) == os.path.realpath(lib)
@@ -216,10 +273,18 @@ def default_root() -> str:
 
 
 def resolve_root(script_dir: str | None = None) -> str | None:
-    """正本根：先按脚本位置上溯认（认两种布局），再退到 cwd 上溯认——各家宿主可能跑的是**库里那份脚本**，
-    那时脚本位置不在仓里，只有 cwd（工作区根）才是正本。两处都没有就如实读不出。"""
+    """正本根：**中央库记住自己是从哪个仓装来的**（`<库根>/.kai-mode-source.json`）——
+    候选里出现库根时先读那个标记：标记指向的仓就是正本根（谁跑都回本仓，不会被 cwd 里的项目仓顶掉）；
+    标记缺失／坏／目录没了 ⇒ 维持老路（跳过库根，继续走脚本链 → cwd 链）。"""
     lib = find_library()
-    for cand in _root_candidates(script_dir):
+    cands = _root_candidates(script_dir)
+    for cand in cands:
+        if not _is_library_root(cand, lib):
+            continue
+        marked = marked_root(cand)
+        if marked:
+            return marked
+    for cand in cands:
         if _is_library_root(cand, lib):
             continue
         if has_anchor(cand):
@@ -470,6 +535,7 @@ def apply(root: str, library: str, dry: bool, home: str | None = None) -> int:
         except SystemExit as exc:
             print(f"  注册档预演被自证挡下：{exc}")
     made, failed = link_faces(library, list(plan), home, dry)
+    marker = None if dry else write_source_marker(library, root, len(plan))
     for p in written:
         print(f"  {'将写' if dry else '写入'} {p}")
     for a in added:
@@ -478,6 +544,8 @@ def apply(root: str, library: str, dry: bool, home: str | None = None) -> int:
         print(f"  链接 {'将建' if dry else '建好'} {l}")
     for f in failed:
         print(f"  落点失败 {f}")
+    if marker:
+        print(f"  装机来源标记 {marker}（记住这个库是从哪个仓装来的）")
     if dry:
         print("（dry-run：盘上未改动）")
         return 0
@@ -537,6 +605,39 @@ def selftest() -> int:
             fails.append("框架仓布局仍读不出正本根")
         elif os.path.normcase(picked_fw) != os.path.normcase(os.path.abspath(fw_root)):
             fails.append(f"框架仓布局正本根认错：{picked_fw}")
+        # 装机来源标记：库记住自己是从哪个仓装来的 ⇒ 谁跑都回那个仓，不被 cwd 里的项目仓顶掉
+        marked_repo = os.path.join(tmp, "markedrepo")
+        os.makedirs(os.path.join(marked_repo, "skills", ANCHOR), exist_ok=True)
+        with open(os.path.join(marked_repo, "skills", ANCHOR, "SKILL.md"), "w", encoding="utf-8") as f:
+            f.write("---\nname: t\n---\n# 正本\n")
+        fake_lib_root = os.path.join(tmp, "fakelib")
+        fake_lib = os.path.join(fake_lib_root, "skills")
+        fake_script = os.path.join(fake_lib, "set-kai-mode", "scripts")
+        os.makedirs(fake_script, exist_ok=True)
+        # 像项目仓的 cwd：它也有 .ai/skills/project-skills/kai-mode/SKILL.md
+        fake_proj = os.path.join(tmp, "fakeproj")
+        os.makedirs(os.path.join(fake_proj, ".ai", "skills", "project-skills", ANCHOR), exist_ok=True)
+        with open(os.path.join(fake_proj, ".ai", "skills", "project-skills", ANCHOR, "SKILL.md"),
+                  "w", encoding="utf-8") as f:
+            f.write("---\nname: t\n---\n# 项目仓旧版\n")
+        old_cwd = os.getcwd()
+        os.chdir(fake_proj)
+        try:
+            picked_nomark = resolve_root(script_dir=fake_script)
+        finally:
+            os.chdir(old_cwd)
+        if os.path.normcase(picked_nomark or "") != os.path.normcase(os.path.abspath(fake_proj)):
+            fails.append(f"无标记时应维持老路（走 cwd 链拿到项目仓根），读到 {picked_nomark}")
+        with open(os.path.join(fake_lib_root, SOURCE_MARKER_NAME), "w", encoding="utf-8") as f:
+            json.dump({"schema": SOURCE_SCHEMA, "root": os.path.abspath(marked_repo),
+                       "applied_at": "2026-10-22T00:00:00+00:00", "skills": 1}, f, ensure_ascii=False)
+        os.chdir(fake_proj)
+        try:
+            picked_mark = resolve_root(script_dir=fake_script)
+        finally:
+            os.chdir(old_cwd)
+        if os.path.normcase(picked_mark or "") != os.path.normcase(os.path.abspath(marked_repo)):
+            fails.append(f"有标记时正本根应是标记里那个仓（不是 cwd 里的项目仓），读到 {picked_mark}")
         os.makedirs(os.path.join(library, ANCHOR))
         with open(os.path.join(library, ANCHOR, "SKILL.md"), "w", encoding="utf-8") as f:
             f.write("---\nname: t\n---\n# 库内旧版\n")
@@ -574,6 +675,19 @@ def selftest() -> int:
             fails.append(f"注册档条目数应为 {len(FAMILIES)}，读到 {len(after['skills'])}")
         if after.get("icons") != {"x": 1} or after["applied"]["other"] != {"skills": ["zzz"], "mcp": ["keep"]}:
             fails.append("注册档动了无关条目")
+        # 真 apply ⇒ 库根出现装机来源标记，内容里的 root 就是本次正本根
+        marker_path = source_marker_path(library)
+        if not os.path.isfile(marker_path):
+            fails.append(f"apply 后库根没有装机来源标记：{marker_path}")
+        else:
+            with open(marker_path, encoding="utf-8") as f:
+                marker = json.load(f)
+            if marker.get("schema") != SOURCE_SCHEMA:
+                fails.append(f"装机来源标记 schema 不对：{marker.get('schema')}")
+            if os.path.normcase(str(marker.get("root") or "")) != os.path.normcase(os.path.abspath(root)):
+                fails.append(f"装机来源标记的 root 不是本次正本根：{marker.get('root')}")
+            if marker.get("skills") != len(FAMILIES):
+                fails.append(f"装机来源标记的 skills 应为 {len(FAMILIES)}，读到 {marker.get('skills')}")
         # 幂等：再跑一次不该写出任何字节
         again = []
         for name in FAMILIES:
@@ -610,9 +724,21 @@ def selftest() -> int:
         with open(registry_path(reg_library), "w", encoding="utf-8") as f:
             json.dump({"skills": [{"name": ANCHOR, "agents": ["fake"]}], "icons": {"x": 1}, "applied": {}},
                       f, ensure_ascii=False)
+        # dry-run ⇒ 绝不写装机来源标记
+        apply(reg_root, reg_library, dry=True, home=home)
+        if os.path.exists(source_marker_path(reg_library)):
+            fails.append("dry-run 竟写了装机来源标记")
         rc_reg = apply(reg_root, reg_library, dry=False, home=home)
         if rc_reg != 0:
             fails.append(f"注册表驱动的 apply 没收敛 rc={rc_reg}")
+        reg_marker = source_marker_path(reg_library)
+        if not os.path.isfile(reg_marker):
+            fails.append(f"apply 后库根没有装机来源标记：{reg_marker}")
+        else:
+            with open(reg_marker, encoding="utf-8") as f:
+                reg_marker_data = json.load(f)
+            if os.path.normcase(str(reg_marker_data.get("root") or "")) != os.path.normcase(os.path.abspath(reg_root)):
+                fails.append(f"装机来源标记的 root 不是本次正本根：{reg_marker_data.get('root')}")
         if not os.path.isdir(os.path.join(reg_library, "auto-x")):
             fails.append("auto-x 是 install:auto 却没装进库")
         if os.path.realpath(os.path.join(reg_face, "auto-x")) != os.path.realpath(os.path.join(reg_library, "auto-x")):
