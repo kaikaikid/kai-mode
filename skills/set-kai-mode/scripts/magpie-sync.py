@@ -6,6 +6,7 @@
 本仓 `.ai/skills/**` 是正本，Magpie 中央库才是各家宿主真正读到的那份：库里每条是一个目录，
 `~/.<agent>/skills/<名>` 是指向库目录的符号链接。正本与库是**拷贝**关系 ⇒ 「改了正本」≠「家家生效」。
 本脚本把这一步变成一条命令，并让漂移可复查。
+正本根认两种布局：项目仓 `.ai/skills/project-skills/<名>`（`loop` 在 `.ai/skills/loop`）与框架仓 `skills/<名>`。
 
 用法：
     python magpie-sync.py check              # 只读：漂移表；有漂移 exit 1
@@ -47,19 +48,94 @@ FAMILIES = {
     "塔台": os.path.join(".ai", "skills", "project-skills", "塔台"),
     "机长": os.path.join(".ai", "skills", "project-skills", "机长"),
     "副机长": os.path.join(".ai", "skills", "project-skills", "副机长"),
+    "航班信息": os.path.join(".ai", "skills", "project-skills", "航班信息"),
 }
+# 正本根认两种布局：项目仓 `.ai/skills/project-skills/<名>` 与框架仓 `skills/<名>`。
+ANCHOR_MARKERS = (
+    os.path.join(".ai", "skills", "project-skills", ANCHOR, "SKILL.md"),
+    os.path.join("skills", ANCHOR, "SKILL.md"),
+)
+ROOT_WALK_LIMIT = 8  # 上溯层级上限（脚本最深在仓根下 5 层，留余量）
+
+
+def has_anchor(root: str) -> bool:
+    """这个根下有没有 anchor 正本（两种布局任一）。"""
+    return any(os.path.isfile(os.path.join(root, m)) for m in ANCHOR_MARKERS)
+
+
+def family_candidates(name: str) -> list:
+    """某技能的候选源目录（相对正本根）：项目仓布局在前，框架仓布局在后，重复去重。"""
+    primary = FAMILIES[name]
+    out = [primary]
+    alt = os.path.join("skills", name)
+    if alt not in out:
+        out.append(alt)
+    return out
+
+
+def family_src(root: str, name: str) -> str:
+    """候选里第一个真实存在的源目录；都不在就退回首选（报错文案用）。"""
+    for rel in family_candidates(name):
+        p = os.path.join(root, rel)
+        if os.path.isdir(p):
+            return p
+    return os.path.join(root, FAMILIES[name])
+
+
+def _ancestors(base: str, limit: int = ROOT_WALK_LIMIT) -> list:
+    """从 base 自身起逐级上溯，最多 limit 层（含 base 本身）。"""
+    out, cur = [], os.path.abspath(base)
+    for _ in range(limit):
+        out.append(cur)
+        parent = os.path.dirname(cur)
+        if parent == cur:
+            break
+        cur = parent
+    return out
+
+
+def _root_candidates(script_dir: str | None = None) -> list:
+    """候选正本根：脚本位置的上溯链在前，cwd 的上溯链在后（去重保序）。"""
+    here = script_dir or os.path.dirname(os.path.abspath(__file__))
+    out, seen = [], set()
+    for base in (here, os.path.abspath(os.getcwd())):
+        for anc in _ancestors(base):
+            key = os.path.normcase(anc)
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(anc)
+    return out
+
+
+def _is_library_root(cand: str, lib: str | None) -> bool:
+    """候选根其实是中央库根（跑的是库里那份脚本时，上溯会撞到它）：
+    那层的 `skills/` 就是库本身，拿它当正本根＝拿库跟自己比，永远「一致」。跳过。"""
+    if not lib:
+        return False
+    return os.path.realpath(os.path.join(cand, "skills")) == os.path.realpath(lib)
 
 
 def default_root() -> str:
-    """脚本住在 <repo>/.ai/skills/project-skills/set-kai-mode/scripts/ ⇒ 上溯五级是仓库根。"""
-    return os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), *[".."] * 5))
+    """脚本位置反查的仓库根：项目仓布局下脚本住 `<repo>/.ai/skills/project-skills/set-kai-mode/scripts/`
+    ⇒ 上溯五级是仓库根；框架仓布局下脚本住 `<repo>/skills/set-kai-mode/scripts/` ⇒ 上溯三级是仓库根。
+    两种布局都试，谁有 anchor 正本谁算数；都没有就退回五级的老读数。"""
+    here = os.path.dirname(os.path.abspath(__file__))
+    for up in (3, 5):
+        cand = os.path.abspath(os.path.join(here, *[".."] * up))
+        if has_anchor(cand):
+            return cand
+    return os.path.abspath(os.path.join(here, *[".."] * 5))
 
 
-def resolve_root() -> str | None:
-    """正本根：先按脚本位置反查，再退到 cwd——各家宿主可能跑的是**库里那份脚本**，
+def resolve_root(script_dir: str | None = None) -> str | None:
+    """正本根：先按脚本位置上溯认（认两种布局），再退到 cwd 上溯认——各家宿主可能跑的是**库里那份脚本**，
     那时脚本位置不在仓里，只有 cwd（工作区根）才是正本。两处都没有就如实读不出。"""
-    for cand in (default_root(), os.path.abspath(os.getcwd())):
-        if os.path.isfile(os.path.join(cand, FAMILIES[ANCHOR], "SKILL.md")):
+    lib = find_library()
+    for cand in _root_candidates(script_dir):
+        if _is_library_root(cand, lib):
+            continue
+        if has_anchor(cand):
             return cand
     return None
 
@@ -128,10 +204,11 @@ def check(root: str, library: str, home: str | None = None) -> tuple:
     rows, drifted = [], False
     faces = find_faces(library, home)
     data, reg_err = read_registry(library)
-    for name, rel in FAMILIES.items():
-        src, dst = os.path.join(root, rel), os.path.join(library, name)
+    for name in FAMILIES:
+        src, dst = family_src(root, name), os.path.join(library, name)
         if not os.path.isdir(src):
-            rows.append((name, "正本缺失", "-", src, "red"))
+            tried = "、".join(os.path.join(root, r) for r in family_candidates(name))
+            rows.append((name, "正本缺失", f"试过：{tried}", src, "red"))
             drifted = True
             continue
         a = tree_files(src)
@@ -170,7 +247,7 @@ def check(root: str, library: str, home: str | None = None) -> tuple:
 
 
 def copy_family(root: str, library: str, name: str, dry: bool) -> list:
-    src = os.path.join(root, FAMILIES[name])
+    src = family_src(root, name)
     written = []
     if not os.path.isdir(src):
         return written
@@ -330,6 +407,35 @@ def selftest() -> int:
             os.makedirs(os.path.join(root, rel), exist_ok=True)
             with open(os.path.join(root, rel, "SKILL.md"), "w", encoding="utf-8") as f:
                 f.write("---\nname: t\n---\n# 正本\n")
+        # 项目仓布局优先：同名框架仓布局也在时，family_src 仍先认 `.ai/skills/...`
+        for name in FAMILIES:
+            alt = os.path.join(root, "skills", name)
+            os.makedirs(alt, exist_ok=True)
+            with open(os.path.join(alt, "SKILL.md"), "w", encoding="utf-8") as f:
+                f.write("---\nname: alt\n---\n# 框架仓布局同名件\n")
+        for name in FAMILIES:
+            got = family_src(root, name)
+            if got != os.path.join(root, FAMILIES[name]):
+                fails.append(f"{name} 项目仓布局没被优先认（读到 {got}）")
+        # 框架仓布局：skills/<名>/SKILL.md 要能被 family_src 认出来
+        fw_root = os.path.join(tmp, "fwrepo")
+        for name in FAMILIES:
+            d = os.path.join(fw_root, "skills", name)
+            os.makedirs(d, exist_ok=True)
+            with open(os.path.join(d, "SKILL.md"), "w", encoding="utf-8") as f:
+                f.write("---\nname: t\n---\n# 框架仓正本\n")
+        for name in FAMILIES:
+            got = family_src(fw_root, name)
+            if got != os.path.join(fw_root, "skills", name):
+                fails.append(f"{name} 框架仓布局没被 family_src 认出（读到 {got}）")
+        # 有 skills/kai-mode/SKILL.md 的仓，正本根必须读得出（不再报「正本根读不出」）
+        fw_script = os.path.join(fw_root, "skills", "set-kai-mode", "scripts")
+        os.makedirs(fw_script, exist_ok=True)
+        picked_fw = resolve_root(script_dir=fw_script)
+        if picked_fw is None:
+            fails.append("框架仓布局仍读不出正本根")
+        elif os.path.normcase(picked_fw) != os.path.normcase(os.path.abspath(fw_root)):
+            fails.append(f"框架仓布局正本根认错：{picked_fw}")
         os.makedirs(os.path.join(library, ANCHOR))
         with open(os.path.join(library, ANCHOR, "SKILL.md"), "w", encoding="utf-8") as f:
             f.write("---\nname: t\n---\n# 库内旧版\n")
@@ -394,7 +500,7 @@ def main() -> int:
     root = a.root or resolve_root()
     if root is None:
         print(f"ROOT=读不出：脚本上溯 {default_root()} 与 cwd {os.path.abspath(os.getcwd())} 两处都没有 "
-              f"{os.path.join(FAMILIES[ANCHOR], 'SKILL.md')}——在仓库根运行，或用 --root 指到仓库根")
+              f"{' 或 '.join(ANCHOR_MARKERS)}——在仓库根运行，或用 --root 指到仓库根")
         return 2
     library = a.library or find_library()
     if not library or not os.path.isdir(library):
