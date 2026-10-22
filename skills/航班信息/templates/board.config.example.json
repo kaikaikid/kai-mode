@@ -1,0 +1,158 @@
+{
+  "schema": "flight-info-board/1",
+  "name": "airport",
+  "title": "航班信息板",
+  "subtitle": "机场 · 当日在飞全景",
+  "repo": "",
+  "output": {
+    "root": ".design/航班信息/HTML",
+    "index_html": "index.html",
+    "board_json": "board.json",
+    "full_json": "full.json",
+    "history": "history.jsonl",
+    "snapshots_dir": "snapshots",
+    "payload_schema": "flight-info/1"
+  },
+  "sources": [
+    {
+      "id": "issues",
+      "type": "github-issues",
+      "repo": "",
+      "state": "open",
+      "limit": 300,
+      "closed_limit": 100,
+      "closed_days": 1
+    },
+    {
+      "id": "milestones",
+      "type": "github-milestones",
+      "repo": "",
+      "limit": 60
+    },
+    {
+      "id": "tasks",
+      "type": "tasks-table",
+      "path": ".ai/tasks",
+      "include": ["*-main.md", "*-deputy.md"]
+    },
+    {
+      "id": "worktrees",
+      "type": "git-worktrees",
+      "branch_prefix": "exec/"
+    },
+    {
+      "id": "comments",
+      "type": "issue-comments",
+      "repo": "",
+      "tickets": "auto",
+      "last": 3
+    },
+    {
+      "id": "ysk",
+      "type": "notes-jsonl",
+      "path": "~/.codex/ysk/notes.jsonl",
+      "limit": 6
+    },
+    {
+      "id": "handoffs",
+      "type": "handoff-dir",
+      "path": "handoff",
+      "days": 7,
+      "max_docs": 14
+    }
+  ],
+  "stages": [
+    { "key": "queued", "label": "排队" },
+    { "key": "flying", "label": "在飞" },
+    { "key": "review", "label": "审查" },
+    { "key": "to_ship", "label": "待发货" },
+    { "key": "closed", "label": "已收尾" }
+  ],
+  "off_chain_stages": [
+    { "key": "ready", "label": "可领" },
+    { "key": "hold", "label": "挡住" }
+  ],
+  "stage_rules": [
+    { "when": "state_closed", "stage": "closed" },
+    { "when": "label_equals", "value": "hold", "stage": "hold" },
+    { "when": "comment_contains", "value": "待发货", "stage": "to_ship", "why": "评论：待发货" },
+    { "when": "comment_contains", "value": "审查(通过|完成)|施工完成", "stage": "review", "why": "评论：审查/施工完成" },
+    { "when": "comment_contains", "value": "卡点|退票|阻塞|Blocked by", "stage": "hold", "why": "评论：卡点", "ignore_case": true },
+    { "when": "branch_exists", "stage": "flying", "why": "分支 {branch}" },
+    { "when": "table_note_contains", "value": "在制|在飞|施工中", "stage": "flying", "why": "日表：{note}" },
+    { "when": "label_equals", "value": "ready-for-agent", "stage": "ready" },
+    { "when": "assignee_exists", "stage": "flying", "why": "已指派 {assignee}" },
+    { "when": "else", "stage": "queued" }
+  ],
+  "next_text": {
+    "queued": "等塔台排班",
+    "ready": "可领 · 等机长领取",
+    "flying": "等审查判词",
+    "review": "等审查判词",
+    "to_ship": "等塔台下一轮发货",
+    "hold": "等解 Blocked by",
+    "closed": "已收尾"
+  },
+  "role_labels": {
+    "main": "主机长",
+    "deputy": "副机长",
+    "tower": "塔台"
+  },
+  "owner_labels": {
+    "to_ship": "塔台",
+    "unplanned": "未排"
+  },
+  "badges": {
+    "priority": ["P0", "P1", "P2", "P3", "hold", "ready-for-agent"],
+    "show": ["P0", "P1", "P2", "P3", "hold"],
+    "highlight": ["P0", "P1"],
+    "highlight_class": "p",
+    "hold_class": "hold"
+  },
+  "direction": {
+    "template": "塔台下一轮：先发货 {to_ship}，再给两张日表补位。",
+    "min_rows": 5,
+    "target_rows": 10,
+    "max_ship_list": 4,
+    "variants": [
+      {
+        "when": "to_ship",
+        "template": "塔台下一轮：先发货 {to_ship}，再给两张日表补位。"
+      },
+      {
+        "when": "no_to_ship_low_tables",
+        "template": "当前没有待发货。塔台下一轮以排班为主：主机长 {main_rows}/{target_rows} 行、副机长 {deputy_rows}/{target_rows} 行，低于 {min_rows} 行先补位。"
+      },
+      {
+        "when": "no_to_ship",
+        "template": "当前没有待发货，两张日表都已排满。下一轮按审查判词推进在飞票。"
+      }
+    ]
+  },
+  "summary": {
+    "max_flights": 20,
+    "max_bytes": 25600,
+    "flight_stages": ["to_ship", "flying", "review", "hold", "ready"],
+    "flight_fields": ["number", "title", "stage", "stage_label", "next", "owner", "planned", "why", "updated", "milestone"],
+    "schedule_fields": ["ticket", "summary", "note"],
+    "max_schedule_rows": 20
+  },
+  "view": {
+    "search_placeholder": "搜票号 / 标题 / 掌机 / 备注",
+    "filters": ["flying", "review", "to_ship", "ready", "hold"],
+    "kpis": [
+      { "cls": "fly", "key": "in_flight", "label": "在飞（含审查）" },
+      { "cls": "ship", "key": "to_ship", "label": "待发货" },
+      { "cls": "", "key": "ready_plus_queued", "label": "待领 · 排队" },
+      { "cls": "hold", "key": "hold", "label": "挡住" },
+      { "cls": "done", "key": "closed_today", "label": "今日已收尾" }
+    ],
+    "sections": [
+      { "key": "milestones", "title": "里程碑进度", "hint": "进度＝已收尾 ÷ 全部；下一班按「待发货 → 审查 → 在飞 → 可领」取" },
+      { "key": "flights", "title": "航班信息表", "hint": "阶段链：{stage_chain}" },
+      { "key": "schedules", "title": "塔台排班", "hint": "{schedules_date} · 任务表只由塔台写" },
+      { "key": "ysk", "title": "钩子提醒", "hint": "You should know · 只留最近 {ysk_limit} 条" },
+      { "key": "handoffs", "title": "交接日报", "hint": "近 {handoff_days} 天索引，点开看全文" }
+    ]
+  }
+}
