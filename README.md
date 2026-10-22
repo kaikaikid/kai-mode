@@ -1,7 +1,8 @@
 # kai-mode —— 机场体系的技能与通用剧本仓库
 
 > **状态：0.3.0（2026-10-22 同步 ADR-0137；同日加技能注册表与 doctor）。** 技能与协议已对齐项目仓现行机场体系
-> （ADR-0137：四角色＋30 分钟塔台轮巡）；**切换前项目仓仍是唯一直播源**，本仓同名文件是 staging。
+> （ADR-0137：四角色＋30 分钟塔台轮巡）；**本仓已于 2026-10-22 成为宿主装机正本**（`magpie-sync apply --root <本仓>`，
+> 8 个宿主装齐 8 个技能），项目仓那份技能副本自此只作镜像。
 > 旧五角色（Tower/Ground/Coordinator/Group-A/B）、租约、班次、handoff 按铃那套已随 ADR-0137 退役
 > （git 历史可捞）。
 
@@ -123,7 +124,7 @@ python scripts/doctor.py --with-tests
 - 不把项目专用路径、票号、job id 写进技能正文。
 - 项目专用件（ADR、票、日报、门禁脚本、项目专用剧本）不进本仓。
 - 个人技能默认 `install: manual`，不进中央库。
-- 切换 magpie-sync 的 root 到本仓之前，项目仓 `.ai/skills/` 仍是宿主装配的直播源（见 `MIGRATION.md`）。
+- 装机正本＝本仓（`registry.json` 的 `install:auto` 条目）；项目仓 `.ai/skills/` 只作镜像，不再是装机源（见 `MIGRATION.md`）。⚠ 项目仓那份 `magpie-sync.py` 若被再跑，会把中央库刷回项目仓版本 ⇒ 须与本仓对齐或停用。
 
 ## 判据正本
 
