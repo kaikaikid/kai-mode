@@ -76,8 +76,12 @@ python $S apply --dry-run # 看将写哪些字节
 python $S apply           # 正本 → 库 → 各家链接
 ```
 
-- 要装/更新的技能（装机清单＝`scripts/magpie-sync.py` 里的 `FAMILIES` 注册表）：
+- 要装/更新的技能（装机清单＝仓根 `registry.json` 里 `install:auto` 的条目；`magpie-sync.py` 从注册表派生，
+  没有 registry.json 的老根目录回落内置清单）：
   `kai-mode`、`set-kai-mode`、`loop`、`地勤`、`塔台`、`机长`、`副机长`、`航班信息`。
+- 加技能＝三步：① 放目录 `skills/<名>/`（`SKILL.md` ＋ 可选 `scripts/`、`templates/`）
+  ② 仓根 `registry.json` 加一行（`install:auto` 才进中央库与宿主；`manual`／`none` 不装）
+  ③ `python 框架仓门禁` 过（注册表与盘面必须对上）。
 - 库位**不写死机器路径**：沿既有链接反查；读不出用环境变量 `KAI_MAGPIE_LIBRARY` 指到 `<...>/library/skills`，
   仍读不出就 rc=2 如实报，不猜一个路径写下去。
 - 三条硬规矩：① 写库前**整包备份 ＋ SHA-256 基线**；② 脚本**只新增、只覆盖同路径，绝不删**库里多出来的东西；

@@ -7,6 +7,8 @@
 `~/.<agent>/skills/<名>` 是指向库目录的符号链接。正本与库是**拷贝**关系 ⇒ 「改了正本」≠「家家生效」。
 本脚本把这一步变成一条命令，并让漂移可复查。
 正本根认两种布局：项目仓 `.ai/skills/project-skills/<名>`（`loop` 在 `.ai/skills/loop`）与框架仓 `skills/<名>`。
+装机清单的单一事实源＝仓根 `registry.json`：只有 `install:auto` 的条目被拷贝、链到各家宿主、写进注册档；
+没有 registry.json 的老根目录回落内置默认清单（照旧工作，不报错退出）。
 
 用法：
     python magpie-sync.py check              # 只读：漂移表；有漂移 exit 1
@@ -56,6 +58,13 @@ ANCHOR_MARKERS = (
     os.path.join("skills", ANCHOR, "SKILL.md"),
 )
 ROOT_WALK_LIMIT = 8  # 上溯层级上限（脚本最深在仓根下 5 层，留余量）
+# 装机清单的单一事实源＝仓根 registry.json；FAMILIES 只是「没有 registry.json 的老根目录」的回落清单。
+REGISTRY_NAME = "registry.json"
+REGISTRY_SCHEMA = "kai-mode-registry/1"
+VALID_KINDS = ("framework", "personal")
+VALID_SCOPES = ("global", "owner")
+VALID_INSTALL = ("auto", "manual", "none")
+REQUIRED_ENTRY_FIELDS = ("name", "path", "kind", "scope", "install", "summary")
 
 
 def has_anchor(root: str) -> bool:
@@ -63,23 +72,101 @@ def has_anchor(root: str) -> bool:
     return any(os.path.isfile(os.path.join(root, m)) for m in ANCHOR_MARKERS)
 
 
-def family_candidates(name: str) -> list:
-    """某技能的候选源目录（相对正本根）：项目仓布局在前，框架仓布局在后，重复去重。"""
-    primary = FAMILIES[name]
-    out = [primary]
-    alt = os.path.join("skills", name)
-    if alt not in out:
-        out.append(alt)
+def default_source(name: str) -> str:
+    """装机源缺省值：项目仓布局 `.ai/skills/project-skills/<名>`。"""
+    return os.path.join(".ai", "skills", "project-skills", name)
+
+
+def read_skill_registry(root: str) -> tuple:
+    """读 `<root>/registry.json`（仓内技能注册表）：没有 ⇒ (None, None)（回落内置清单）；
+    有但读不出或 schema 不认识 ⇒ (None, 错误)（调用方退出非 0，不猜）。
+    （中央库的注册档是另一个东西，见下面那个 `read_registry`。）"""
+    path = os.path.join(root, REGISTRY_NAME)
+    if not os.path.isfile(path):
+        return None, None
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError) as exc:
+        return None, f"注册档读不出：{path}（{exc}）"
+    if not isinstance(data, dict):
+        return None, f"注册档不是对象：{path}"
+    if data.get("schema") != REGISTRY_SCHEMA:
+        return None, f"注册档 schema 不认识：{path}（期望 {REGISTRY_SCHEMA}，读到 {data.get('schema')!r}）"
+    return data, None
+
+
+def registry_entry_problems(data: dict) -> list:
+    """注册档逐条字段校验：返回问题清单（空＝过）。装机尺与 doctor 共用这一份口径。"""
+    problems = []
+    for i, entry in enumerate(data.get("skills") or []):
+        if not isinstance(entry, dict):
+            problems.append(f"skills[{i}] 不是对象")
+            continue
+        for field in REQUIRED_ENTRY_FIELDS:
+            if not str(entry.get(field) or "").strip():
+                problems.append(f"skills[{i}].{field} 缺")
+        if entry.get("kind") not in VALID_KINDS:
+            problems.append(f"skills[{i}].kind 取值非法：{entry.get('kind')!r}")
+        if entry.get("scope") not in VALID_SCOPES:
+            problems.append(f"skills[{i}].scope 取值非法：{entry.get('scope')!r}")
+        if entry.get("install") not in VALID_INSTALL:
+            problems.append(f"skills[{i}].install 取值非法：{entry.get('install')!r}")
+        if "tags" in entry and not isinstance(entry["tags"], list):
+            problems.append(f"skills[{i}].tags 不是数组")
+    return problems
+
+
+def install_plan(root: str) -> dict:
+    """装机清单（name -> {"source", "path"}）：取注册表 `install == "auto"` 的条目；
+    没有 registry.json（老根目录）⇒ 回落内置 FAMILIES，照旧工作，不报错退出。"""
+    data, err = read_skill_registry(root)
+    if err:
+        raise SystemExit(err)
+    if data is None:
+        return {name: {"source": src, "path": os.path.join("skills", name)}
+                for name, src in FAMILIES.items()}
+    plan = {}
+    for entry in data.get("skills") or []:
+        if not isinstance(entry, dict) or entry.get("install") != "auto":
+            continue
+        name = entry.get("name")
+        if not name:
+            continue
+        plan[name] = {
+            "source": entry.get("source") or default_source(name),
+            "path": entry.get("path") or os.path.join("skills", name),
+        }
+    return plan
+
+
+def family_candidates(name: str, plan: dict | None = None) -> list:
+    """某技能的候选源目录（相对正本根）：① 装机源（注册表 source 或缺省）
+    ② 注册表 path（框架仓布局，如 `skills/航班信息`）③ `skills/<名>`；去重保序
+    （去重按归一化后的路径算：`skills/x` 与 `skills\\x` 是同一个目录）。"""
+    info = (plan or {}).get(name) or {}
+    out, seen = [], set()
+    for rel in (info.get("source") or FAMILIES.get(name) or default_source(name),
+                info.get("path") or os.path.join("skills", name),
+                os.path.join("skills", name)):
+        if not rel:
+            continue
+        key = os.path.normpath(rel)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(rel)
     return out
 
 
-def family_src(root: str, name: str) -> str:
+def family_src(root: str, name: str, plan: dict | None = None) -> str:
     """候选里第一个真实存在的源目录；都不在就退回首选（报错文案用）。"""
-    for rel in family_candidates(name):
+    plan = plan if plan is not None else install_plan(root)
+    for rel in family_candidates(name, plan):
         p = os.path.join(root, rel)
         if os.path.isdir(p):
             return p
-    return os.path.join(root, FAMILIES[name])
+    return os.path.join(root, FAMILIES.get(name) or default_source(name))
 
 
 def _ancestors(base: str, limit: int = ROOT_WALK_LIMIT) -> list:
@@ -148,10 +235,18 @@ def sha256(path: str) -> str:
     return h.hexdigest()
 
 
+CACHE_DIRS = ("__pycache__", ".pytest_cache")
+
+
 def tree_files(root: str) -> dict:
+    """技能目录的实文件清单：跳过缓存产物（__pycache__/.pytest_cache/*.pyc）。
+    否则跑一次 pytest，装机就把缓存带进中央库、再链到各家宿主——机器上还分不清哪份是正本。"""
     out = {}
-    for base, _dirs, files in os.walk(root):
+    for base, dirs, files in os.walk(root):
+        dirs[:] = [d for d in dirs if d not in CACHE_DIRS]
         for name in files:
+            if name.endswith((".pyc", ".pyo")):
+                continue
             p = os.path.join(base, name)
             if not os.path.islink(p):
                 out[os.path.relpath(p, root).replace(os.sep, "/")] = p
@@ -200,14 +295,15 @@ def read_registry(library: str):
         return None, f"注册档读不出：{path}（{exc}）"
 
 
-def check(root: str, library: str, home: str | None = None) -> tuple:
+def check(root: str, library: str, home: str | None = None, plan: dict | None = None) -> tuple:
     rows, drifted = [], False
     faces = find_faces(library, home)
     data, reg_err = read_registry(library)
-    for name in FAMILIES:
-        src, dst = family_src(root, name), os.path.join(library, name)
+    plan = plan if plan is not None else install_plan(root)
+    for name in plan:
+        src, dst = family_src(root, name, plan), os.path.join(library, name)
         if not os.path.isdir(src):
-            tried = "、".join(os.path.join(root, r) for r in family_candidates(name))
+            tried = "、".join(os.path.join(root, r) for r in family_candidates(name, plan))
             rows.append((name, "正本缺失", f"试过：{tried}", src, "red"))
             drifted = True
             continue
@@ -229,7 +325,7 @@ def check(root: str, library: str, home: str | None = None) -> tuple:
         rows.append((name, status, detail, "", kind))
         for p in diff:
             rows.append((f"    · {p}", "内容不符", sha256(a[p])[:12] + " ↔ " + sha256(b[p])[:12], "", "red"))
-    for name in FAMILIES:
+    for name in plan:
         absent = [f for f in faces if not os.path.lexists(os.path.join(f, name))]
         if absent:
             drifted = True
@@ -239,15 +335,15 @@ def check(root: str, library: str, home: str | None = None) -> tuple:
         rows.append(("注册档", "读不出", reg_err, "", "red"))
     else:
         names = {s.get("name") for s in data.get("skills", []) if isinstance(s, dict)}
-        for name in FAMILIES:
+        for name in plan:
             if name not in names:
                 drifted = True
                 rows.append((name, "注册缺条目", registry_path(library), "", "red"))
     return rows, drifted, len(faces)
 
 
-def copy_family(root: str, library: str, name: str, dry: bool) -> list:
-    src = family_src(root, name)
+def copy_family(root: str, library: str, name: str, dry: bool, plan: dict | None = None) -> list:
+    src = family_src(root, name, plan)
     written = []
     if not os.path.isdir(src):
         return written
@@ -361,18 +457,19 @@ def link_faces(library: str, names, home: str | None = None, dry: bool = False):
 
 
 def apply(root: str, library: str, dry: bool, home: str | None = None) -> int:
-    rows, drifted, nfaces = check(root, library, home)
+    plan = install_plan(root)
+    rows, drifted, nfaces = check(root, library, home, plan)
     print(f"正本根={root}  库={library}  落点面={nfaces} 家  写前漂移={'有' if drifted else '无'}")
     written = []
-    for name in FAMILIES:
-        written += copy_family(root, library, name, dry)
-    added = [] if dry else patch_registry(library, list(FAMILIES))
+    for name in plan:
+        written += copy_family(root, library, name, dry, plan)
+    added = [] if dry else patch_registry(library, list(plan))
     if dry:
         try:
-            added = patch_registry(library, list(FAMILIES), dry=True)
+            added = patch_registry(library, list(plan), dry=True)
         except SystemExit as exc:
             print(f"  注册档预演被自证挡下：{exc}")
-    made, failed = link_faces(library, list(FAMILIES), home, dry)
+    made, failed = link_faces(library, list(plan), home, dry)
     for p in written:
         print(f"  {'将写' if dry else '写入'} {p}")
     for a in added:
@@ -428,6 +525,10 @@ def selftest() -> int:
             got = family_src(fw_root, name)
             if got != os.path.join(fw_root, "skills", name):
                 fails.append(f"{name} 框架仓布局没被 family_src 认出（读到 {got}）")
+        # 没有 registry.json 的根 ⇒ 回落内置清单（老根目录照旧工作）
+        fallback = install_plan(root)
+        if len(fallback) != len(FAMILIES):
+            fails.append(f"无 registry.json 的根应回落内置 {len(FAMILIES)} 条，读到 {len(fallback)}")
         # 有 skills/kai-mode/SKILL.md 的仓，正本根必须读得出（不再报「正本根读不出」）
         fw_script = os.path.join(fw_root, "skills", "set-kai-mode", "scripts")
         os.makedirs(fw_script, exist_ok=True)
@@ -479,6 +580,56 @@ def selftest() -> int:
             again += copy_family(root, library, name, dry=False)
         if again:
             fails.append(f"二次 apply 仍在写字节（不幂等）：{again}")
+        # 带 registry.json 的假根：install:auto 的装，manual/none 的不装（不进库、不建链接、不进注册档）
+        reg_root = os.path.join(tmp, "regrepo")
+        reg_library = os.path.join(tmp, "regdata", "library", "skills")
+        reg_face = os.path.join(home, ".regagent", "skills")
+        os.makedirs(reg_root)
+        reg_entries = [
+            {"name": ANCHOR, "path": f"skills/{ANCHOR}", "kind": "framework", "scope": "global",
+             "install": "auto", "summary": "入口"},
+            {"name": "auto-x", "path": "skills/auto-x", "kind": "personal", "scope": "owner",
+             "install": "auto", "summary": "该装"},
+            {"name": "manual-x", "path": "skills/manual-x", "kind": "personal", "scope": "owner",
+             "install": "manual", "summary": "手工装"},
+            {"name": "none-x", "path": "skills/none-x", "kind": "personal", "scope": "owner",
+             "install": "none", "summary": "不装"},
+        ]
+        for e in reg_entries:
+            d = os.path.join(reg_root, *e["path"].split("/"))
+            os.makedirs(d, exist_ok=True)
+            with open(os.path.join(d, "SKILL.md"), "w", encoding="utf-8") as f:
+                f.write(f"---\nname: {e['name']}\n---\n# 正本\n")
+        with open(os.path.join(reg_root, REGISTRY_NAME), "w", encoding="utf-8") as f:
+            json.dump({"schema": REGISTRY_SCHEMA, "version": 1, "skills": reg_entries}, f, ensure_ascii=False)
+        os.makedirs(os.path.join(reg_library, ANCHOR))
+        with open(os.path.join(reg_library, ANCHOR, "SKILL.md"), "w", encoding="utf-8") as f:
+            f.write("---\nname: t\n---\n# 库内旧版\n")
+        os.makedirs(reg_face)
+        os.symlink(os.path.join(reg_library, ANCHOR), os.path.join(reg_face, ANCHOR), target_is_directory=True)
+        with open(registry_path(reg_library), "w", encoding="utf-8") as f:
+            json.dump({"skills": [{"name": ANCHOR, "agents": ["fake"]}], "icons": {"x": 1}, "applied": {}},
+                      f, ensure_ascii=False)
+        rc_reg = apply(reg_root, reg_library, dry=False, home=home)
+        if rc_reg != 0:
+            fails.append(f"注册表驱动的 apply 没收敛 rc={rc_reg}")
+        if not os.path.isdir(os.path.join(reg_library, "auto-x")):
+            fails.append("auto-x 是 install:auto 却没装进库")
+        if os.path.realpath(os.path.join(reg_face, "auto-x")) != os.path.realpath(os.path.join(reg_library, "auto-x")):
+            fails.append("auto-x 落点链接没指回库")
+        for name in ("manual-x", "none-x"):
+            if os.path.isdir(os.path.join(reg_library, name)):
+                fails.append(f"{name} 不是 install:auto 却进了库")
+            if os.path.lexists(os.path.join(reg_face, name)):
+                fails.append(f"{name} 不是 install:auto 却建了落点链接")
+        with open(registry_path(reg_library), encoding="utf-8") as f:
+            reg_after = json.load(f)
+        reg_names = {s.get("name") for s in reg_after["skills"]}
+        if "auto-x" not in reg_names:
+            fails.append("注册档少了 auto-x")
+        for name in ("manual-x", "none-x"):
+            if name in reg_names:
+                fails.append(f"注册档多了非 auto 条目 {name}")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     print("SELFTEST", "ok" if not fails else "FAIL")

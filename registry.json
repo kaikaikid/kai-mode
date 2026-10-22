@@ -1,0 +1,87 @@
+{
+  "schema": "kai-mode-registry/1",
+  "version": 1,
+  "skills": [
+    {
+      "name": "kai-mode",
+      "path": "skills/kai-mode",
+      "kind": "framework",
+      "scope": "global",
+      "install": "auto",
+      "summary": "所有剧本的统一入口：判断 → 拷问 → 定稿 → 拍板 → 路由，不执行具体活。",
+      "tags": ["entry"],
+      "since": "0.2.0"
+    },
+    {
+      "name": "set-kai-mode",
+      "path": "skills/set-kai-mode",
+      "kind": "framework",
+      "scope": "global",
+      "install": "auto",
+      "summary": "初始化安装入口：注入方法论与技能、把技能装到宿主、装塔台定时器、doctor、缺件登记。",
+      "tags": ["install", "doctor"],
+      "since": "0.2.0"
+    },
+    {
+      "name": "loop",
+      "path": "skills/loop",
+      "kind": "framework",
+      "scope": "global",
+      "install": "auto",
+      "source": ".ai/skills/loop",
+      "summary": "机长 / 副机长共用的单票闭环协议薄导航：读日表、按票施工与审查。",
+      "tags": ["protocol"],
+      "since": "0.2.0"
+    },
+    {
+      "name": "地勤",
+      "path": "skills/地勤",
+      "kind": "framework",
+      "scope": "global",
+      "install": "auto",
+      "summary": "机场体系的地勤：对话、规划、分流想法、开可执行票；不写码、不 push、不派施工。",
+      "tags": ["role"],
+      "since": "0.2.0"
+    },
+    {
+      "name": "塔台",
+      "path": "skills/塔台",
+      "kind": "framework",
+      "scope": "global",
+      "install": "auto",
+      "summary": "机场体系的塔台：30 分钟轮巡先排班后发货，独占 push 与关票，不写产品代码。",
+      "tags": ["role"],
+      "since": "0.2.0"
+    },
+    {
+      "name": "机长",
+      "path": "skills/机长",
+      "kind": "framework",
+      "scope": "global",
+      "install": "auto",
+      "summary": "机场体系的机长：goal 模式每机 2 张票，派施工与审查子代理；只管理不写码、不 push。",
+      "tags": ["role"],
+      "since": "0.2.0"
+    },
+    {
+      "name": "副机长",
+      "path": "skills/副机长",
+      "kind": "framework",
+      "scope": "global",
+      "install": "auto",
+      "summary": "机场体系的副机长：与机长同权另起一条 loop，独立日表与身份，只管理不写码。",
+      "tags": ["role"],
+      "since": "0.2.0"
+    },
+    {
+      "name": "航班信息",
+      "path": "skills/航班信息",
+      "kind": "framework",
+      "scope": "global",
+      "install": "auto",
+      "summary": "板工坊：一份板配置＋一份自包含适配脚本＝一块板，归档到各项目仓的板库。",
+      "tags": ["board", "tools"],
+      "since": "0.3.0"
+    }
+  ]
+}
