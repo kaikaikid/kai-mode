@@ -150,7 +150,7 @@ def unregister_protocol(board: str, apply: bool) -> tuple[int, str]:
     return 0, "已卸「%s」；没有板用了，协议一并删掉" % board
 
 
-def hook_text(kind: str) -> str:
+def hook_text(kind: str, spawner: str = "") -> str:
     """项目仓 .githooks/post-commit 或 post-merge 的正文（LF，bash）。
 
     四条都是实测踩出来的，别改回去：
@@ -197,16 +197,20 @@ def hook_text(kind: str) -> str:
         '    [ "$AGE" -lt 60 ] && continue\n'
         "  fi\n\n"
         '  BOARD="$(basename "$(dirname "$BAT")")"\n'
+        '  BDIR="$(dirname "$BAT")"\n'
         "  # ① 优先：叫醒已装的定时任务（异步，不阻塞 commit）。Git Bash 下开关要 // 双写。\n"
         '  if [ -n "$BOARD" ] && command -v schtasks >/dev/null 2>&1; then\n'
-        '    schtasks //Run //TN "%s-$BOARD" >/dev/null 2>&1 && continue\n'
+        '    schtasks //Run //TN "@TASK@-$BOARD" >/dev/null 2>&1 && continue\n'
         "  fi\n"
-        "  # 没定时任务 ⇒ 只提示，绝不硬刷（硬刷几十秒会把 commit 卡死）\n"
-        '  echo "航班信息板：没装定时任务，跳过刷新（装：install_refresh_timer.py --repo-root'
-        ' <仓根> --all --every 5 --apply）" >&2\n'
+        "  # ② 定时任务没装、或 schtasks 被安全策略挡（本机实测 Access is denied）⇒ 甩脱离进程：\n"
+        "  #    钩子毫秒级返回，刷新在后台自己跑完，同样不阻塞 commit。\n"
+        '  PY="$(sed -n \'s/^"\\([^"]*[Pp]ython[^"]*\\.exe\\)".*/\\1/p\' "$BAT" | head -1)"\n'
+        '  [ -n "$PY" ] || PY=python\n'
+        '  "$PY" "@SPAWNER@" --spawn "$BDIR" >/dev/null 2>&1 || true\n'
         "done\n\n"
-        "exit 0\n" % TASK_PREFIX
-    )
+        "exit 0\n"
+    # 用占位符替换而不是 % 格式化：正文里的 `date +%s` 含 %s，会被当成占位符吃掉
+    ).replace("@TASK@", TASK_PREFIX).replace("@SPAWNER@", spawner or "install_refresh_timer.py")
 
 
 def install_hook(repo_root: Path, apply: bool) -> tuple[int, str]:
@@ -214,6 +218,7 @@ def install_hook(repo_root: Path, apply: bool) -> tuple[int, str]:
     hooks = repo_root / ".githooks"
     if not hooks.is_dir():
         return 2, "这个仓没有 .githooks/（先 `git config core.hooksPath .githooks`）"
+    spawner = str(Path(__file__).resolve())
     lines = []
     worst = 0
     for kind in ("post-commit", "post-merge"):
@@ -221,11 +226,12 @@ def install_hook(repo_root: Path, apply: bool) -> tuple[int, str]:
         if p.exists():
             lines.append("  %s：已存在，不动它（要重写先自己删）" % kind)
             continue
+        text = hook_text(kind, spawner)
         if not apply:
-            lines.append("  将写 %s（%d 字节）" % (kind, len(hook_text(kind))))
+            lines.append("  将写 %s（%d 字节）" % (kind, len(text)))
             continue
         try:
-            p.write_bytes(hook_text(kind).encode("utf-8"))  # 明确 LF，CRLF 会让 bash 钩子炸
+            p.write_bytes(text.encode("utf-8"))  # 明确 LF，CRLF 会让 bash 钩子炸
             os.chmod(p, 0o755)
             lines.append("  已写 %s 并给执行权限" % kind)
         except OSError as exc:
@@ -243,6 +249,35 @@ def _python_from_bat(bat: Path) -> str | None:
         return None
     m = re.search(r'"([^"]*[Pp]ython[^"]*\.exe)"', text)
     return m.group(1) if m else None
+
+
+def spawn_refresh(board_dir: Path, board: str) -> int:
+    """脱离父进程启动一次刷新，**不依赖 schtasks**（那玩意儿常被安全策略挡）。
+
+    用在 git 钩子里：钩子调它，它把真正的刷新丢出去就返回（毫秒级），
+    自己退出后那个刷新进程照样跑完 —— 所以 commit 不会被 55 秒的联网刷新卡住。
+    """
+    render = board_dir / ("render_%s.py" % board)
+    py = _python_from_bat(board_dir / ("refresh_%s.timer.bat" % board)) or sys.executable
+    if not render.is_file():
+        print("找不到适配脚本：%s" % render)
+        return 2
+    log = board_dir / "refresh.log"
+    flags = 0
+    if os.name == "nt":
+        flags = (subprocess.DETACHED_PROCESS
+                 | subprocess.CREATE_NEW_PROCESS_GROUP
+                 | subprocess.CREATE_NO_WINDOW)
+    try:
+        f = open(log, "w", encoding="utf-8")
+        subprocess.Popen([py, str(render), "--quiet"], cwd=str(board_dir),
+                         stdin=subprocess.DEVNULL, stdout=f,
+                         stderr=subprocess.STDOUT,
+                         creationflags=flags, close_fds=True)
+    except (OSError, ValueError) as exc:
+        print("甩不出去：%s" % exc)
+        return 3
+    return 0
 
 
 def dispatch(url: str) -> int:
@@ -552,10 +587,16 @@ def main(argv: list[str] | None = None) -> int:
                     help="给项目仓挂 post-commit / post-merge（事件驱动；不碰既有钩子）")
     ap.add_argument("--dispatch", default=None, metavar="URL",
                     help="内部用：协议被拉起时由系统调用，别手敲")
+    ap.add_argument("--spawn", default=None, metavar="板目录",
+                    help="甩出一个脱离进程去刷新，自己立刻返回（git 钩子用；不依赖 schtasks）")
     args = ap.parse_args(argv)
 
     if args.dispatch is not None:
         return dispatch(args.dispatch)
+
+    if args.spawn is not None:
+        d = Path(args.spawn).resolve()
+        return spawn_refresh(d, d.name)
 
     if not args.repo_root:
         print("要给哪个仓：--repo-root <项目仓根>", file=sys.stderr)

@@ -1651,28 +1651,61 @@ JS = r"""
   });
   if(q) q.addEventListener('input',apply);
 
-  // 刷新：装了 flight-info:// 协议 ⇒ 叫系统真去生成一次，等它写完再重载；
-  //       没装协议 ⇒ 退化成只重读磁盘上的旧文件（iframe 打不开自定义协议时是静默失败，不影响页面）。
+  // 刷新：装了 flight-info:// 协议 ⇒ 叫系统真去生成一次；没装协议 ⇒ 只重读磁盘旧文件
+  //       （iframe 打不开自定义协议时是静默失败，不影响页面）。
+  // 联网的板刷一次要几十秒（实测 55 秒），所以不能傻等 4 秒就重载 ——
+  // 改成「盯着数据生成时刻，变了才算刷完」，最多等 6 轮。
+  var genEl0=document.getElementById('generated');
+  var curTs=genEl0?genEl0.getAttribute('data-ts'):'';
+  var reload=function(){
+    var u=new URL(location.href);
+    u.searchParams.set('t',String(Date.now()));
+    location.replace(u.toString());
+  };
   var btn=document.getElementById('refresh');
   if(btn) btn.addEventListener('click',function(){
     btn.disabled=true;btn.classList.add('spin');
     var proto=btn.getAttribute('data-proto');
-    var waited=0;
-    if(proto){
-      try{
-        var f=document.createElement('iframe');
-        f.style.display='none';f.src=proto;
-        document.body.appendChild(f);
-        waited=4000;
-      }catch(e){waited=0;}
-    }
-    var go=function(){
-      var u=new URL(location.href);
-      u.searchParams.set('t',String(Date.now()));
-      location.replace(u.toString());
-    };
-    if(waited){setTimeout(go,waited);}else{go();}
+    if(!proto){reload();return;}
+    try{
+      sessionStorage.setItem('flight-info-refresh-from',curTs||'');
+      sessionStorage.setItem('flight-info-refresh-tries','0');
+    }catch(e){}
+    try{
+      var f=document.createElement('iframe');
+      f.style.display='none';f.src=proto;
+      document.body.appendChild(f);
+    }catch(e){}
+    setTimeout(reload,20000);
   });
+  (function(){
+    var from=null,n=0;
+    try{
+      from=sessionStorage.getItem('flight-info-refresh-from');
+      n=parseInt(sessionStorage.getItem('flight-info-refresh-tries')||'0',10);
+    }catch(e){return;}
+    if(from===null)return;
+    var toast=function(msg){
+      var t=document.getElementById('toast');
+      if(!t)return;
+      t.textContent=msg;t.classList.add('on');
+      setTimeout(function(){t.classList.remove('on');},2600);
+    };
+    var done=function(msg){
+      try{
+        sessionStorage.removeItem('flight-info-refresh-from');
+        sessionStorage.removeItem('flight-info-refresh-tries');
+      }catch(e){}
+      toast(msg);
+    };
+    if(curTs&&curTs!==from){done('航班信息板已刷新');return;}
+    if(n>=6){done('刷新还没跑完，稍后再点一次');return;}
+    try{sessionStorage.setItem('flight-info-refresh-tries',String(n+1));}catch(e){}
+    var w=document.getElementById('refresh');
+    if(w){w.disabled=true;w.classList.add('spin');}
+    toast('正在重新生成（约需 1 分钟）…');
+    setTimeout(reload,15000);
+  })();
   // 快照年龄：静态渲染时写死，JS 只负责把它读成「几分钟前」。
   var gen=document.getElementById('generated');
   if(gen){
