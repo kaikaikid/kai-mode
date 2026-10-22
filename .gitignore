@@ -1,0 +1,4 @@
+# Python 运行产物（pytest / 脚本执行生成的缓存）
+__pycache__/
+*.pyc
+*.pyo
