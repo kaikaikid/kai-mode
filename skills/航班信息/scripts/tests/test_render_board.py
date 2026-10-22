@@ -384,6 +384,61 @@ def test_write_outputs_writes_all_layers(tmp_path, monkeypatch):
     assert len(entry["artifacts"]["index.html"]) == 64
 
 
+# ───────────────────────── 暖纸配色（回退中央库冷灰＋暖黄） ─────────────────────────
+
+def test_warm_paper_tokens_are_present():
+    """板子自己的暖纸令牌必须在（值逐字取自 477472c^ 的旧板）。"""
+    mod = _load()
+    css = re.sub(r"\s+", "", mod.CSS)
+    for name, value in (
+        ("--paper", "#f7f4ec"),
+        ("--card", "#fffefb"),
+        ("--ink", "#211f1a"),
+        ("--muted", "#7c7368"),
+        ("--line", "#e6dfd1"),
+        ("--accent", "#b4552d"),
+        ("--accent-soft", "#f3e5dc"),
+    ):
+        assert ("%s:%s;" % (name, value)) in css, "缺暖纸令牌：%s" % name
+
+
+def test_soft_design_color_palette_is_gone():
+    """中央库 soft 色板零残留；几何 --soft-shell-* 等不在禁用清单里。"""
+    mod = _load()
+    text = mod.CSS + mod._status_html({"a": "ok", "b": "fail", "c": "skipped"},
+                                      "airport", "2026-10-22 13:00:00")
+    for token in (
+        "--soft-accent", "--soft-canvas", "--soft-surface", "--soft-text-",
+        "--soft-status-", "--soft-white", "--soft-sunken", "--soft-black",
+        "--soft-nav-ancestor-bg", "--soft-border-", "--soft-divider-",
+    ):
+        assert token not in text, "soft 色板残留：%s" % token
+
+
+def test_sidebar_active_item_is_paper_not_dark_app():
+    """当前项＝淡朱砂底 ＋ 主墨字 ＋ 朱砂左标记，不能是深色 App 侧栏。"""
+    mod = _load()
+    css = re.sub(r"\s+", "", mod.CSS)
+    active = re.search(r"\.shell-nav\.is-active\{([^}]*)\}", css)
+    assert active, "侧栏当前项样式不存在"
+    body = active.group(1)
+    assert "background:var(--accent-soft)" in body
+    assert "color:var(--ink)" in body
+    assert "inset2px00var(--accent)" in body
+
+
+def test_status_lamps_use_board_semantic_colors():
+    """状态灯：ok→go，跳读→faint，fail→accent，其余→muted。"""
+    mod = _load()
+    html = mod._status_html({"a": "ok", "b": "skipped", "c": "fail", "d": "absent"},
+                            "airport", "2026-10-22 13:00:00")
+    assert "background:var(--go)" in html
+    assert "background:var(--faint)" in html
+    assert "background:var(--accent)" in html
+    assert "background:var(--muted)" in html
+    assert "--soft-" not in html
+
+
 def test_no_network_makes_no_gh_call(monkeypatch):
     mod = _load()
     calls = []
