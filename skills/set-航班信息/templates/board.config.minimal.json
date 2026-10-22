@@ -1,0 +1,17 @@
+{
+  "_note": "通用最小板配置：任何仓都能起。只读任务表目录 .ai/tasks；目录不在时该源记 absent，板照样出、页脚点名。阶段链与判据（stages / stage_rules / view / summary）由 set-航班信息 的装配面补通用缺省，不用手写。要加源（GitHub issues / 里程碑 / 交接日报 / 分支）就照 skills/航班信息/templates/board.config.example.json 抄；_note 这个键板会忽略。",
+  "schema": "flight-info-board/1",
+  "name": "航班",
+  "title": "航班信息板",
+  "output": {
+    "root": ".design/航班信息/HTML"
+  },
+  "sources": [
+    {
+      "id": "tasks",
+      "type": "tasks-table",
+      "path": ".ai/tasks",
+      "include": ["*-main.md", "*-deputy.md"]
+    }
+  ]
+}

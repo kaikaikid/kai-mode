@@ -19,6 +19,9 @@
   装机清单从它派生（取 `install: auto` 的条目），老根目录（没有 `registry.json` 的）回落内置清单。
 - **仓级校验入口 `scripts/doctor.py`**：`python scripts/doctor.py [--root <仓根>] [--with-tests] [--json]`；
   一条命令验注册表 / 契约 / 链接 / 绝对路径 / 行尾 / 版本 / 测试。
+- **0.4.0 新增两个面**：装配技能 `set-航班信息`（`skills/set-航班信息/`；给单个项目仓装一块板，
+  默认不动中央库，`--install` 才装）＋ doctor 第 13 项 `install-sync`（中央库副本与本仓逐字对账、
+  核对装机来源是不是本仓）。技能清单仍以仓根 `registry.json` 为准（现 9 条，装机清单 9 条待 `apply`）。
 - 技能目录契约 `docs/skill-layout.md` ＋ 骨架模板 `templates/skill/SKILL.md`；版本变更记录 `CHANGELOG.md`。
 - 单票闭环协议 v5：`loops/loop-protocol.md`。
 - `adapters/` 三份按现役模型改写（塔台 30 分钟定时＋按铃子会话；opencode/codex 备胎与执行三职）。

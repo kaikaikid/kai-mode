@@ -42,7 +42,7 @@ updated: 2026-10-21
 
 | # | 装什么 | 验收 |
 |---|---|---|
-| 1 | 注入方法论与技能（仓库内正本） | 八个技能文件在位，入口/角色/协议互指一致 |
+| 1 | 注入方法论与技能（仓库内正本） | 九个技能文件在位，入口/角色/协议互指一致 |
 | 2 | 装技能到宿主（四角色 ＋ 入口/安装/协议技能） | 宿主技能列表里能看见，内容与正本同哈希 |
 | 3 | 装 30 分钟塔台定时器 | `list` 回读 `enabled=true`、周期 30 分钟 |
 | 4 | worktree 环境自检（三项） | 解释器 / node / 依赖三项都有明确读数 |
@@ -57,6 +57,7 @@ updated: 2026-10-21
   - 四角色：`skills/{地勤,塔台,机长,副机长}/SKILL.md`
   - 单票闭环：`skills/loop/SKILL.md` ＋ `loops/loop-protocol.md`
   - 航班信息：`skills/航班信息/SKILL.md`（板工坊：板配置＋模板＋脚手架；板库在各项目仓 `.design/航班信息/HTML/`，不入技能目录 ⇒ 不进中央库）
+  - 装配面：`skills/set-航班信息/SKILL.md`（给单个项目仓装一块板；默认不动中央库）
 - 项目仓把它们落在 `.ai/skills/{project-skills/,loop}/`；剧本登记面＝项目仓 `.ai/router.md`；
   新增剧本在那里加一行，**不在本文件或入口里复制判据**。
 - 两种布局都认：项目仓 `.ai/skills/project-skills/<名>`（`loop` 在 `.ai/skills/loop`）与本仓 `skills/<名>`；
@@ -78,7 +79,8 @@ python $S apply           # 正本 → 库 → 各家链接
 
 - 要装/更新的技能（装机清单＝仓根 `registry.json` 里 `install:auto` 的条目；`magpie-sync.py` 从注册表派生，
   没有 registry.json 的老根目录回落内置清单）：
-  `kai-mode`、`set-kai-mode`、`loop`、`地勤`、`塔台`、`机长`、`副机长`、`航班信息`。
+  `kai-mode`、`set-kai-mode`、`set-航班信息`、`loop`、`地勤`、`塔台`、`机长`、`副机长`、`航班信息`。
+- **本技能装的是整套框架；给单个仓装一块航班信息板走 `set-航班信息`。**
 - 加技能＝三步：① 放目录 `skills/<名>/`（`SKILL.md` ＋ 可选 `scripts/`、`templates/`）
   ② 仓根 `registry.json` 加一行（`install:auto` 才进中央库与宿主；`manual`／`none` 不装）
   ③ `python 框架仓门禁` 过（注册表与盘面必须对上）。

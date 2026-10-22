@@ -23,6 +23,16 @@
       "since": "0.2.0"
     },
     {
+      "name": "set-航班信息",
+      "path": "skills/set-航班信息",
+      "kind": "framework",
+      "scope": "global",
+      "install": "auto",
+      "summary": "给项目仓装一块航班信息板：选配置 → 建板 → 补忽略规则 → 出第一版板 → 回执",
+      "tags": ["install", "board"],
+      "since": "0.4.0"
+    },
+    {
       "name": "loop",
       "path": "skills/loop",
       "kind": "framework",
