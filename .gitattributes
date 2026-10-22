@@ -1,0 +1,12 @@
+# 行尾口径：仓内统一存 LF（blob），按类型在 checkout 时定行尾。
+# 为什么要显式钉：core.autocrlf=input 只在提交时归一，checkout 不还原 CRLF
+# ⇒ .bat/.cmd 落回 LF 后 cmd.exe 会把 REM 行当命令执行（批处理直接崩）。
+* text=auto
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+*.py text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
