@@ -114,7 +114,7 @@ CHANGELOG.md      版本变更记录
 python scripts/doctor.py --with-tests
 ```
 
-覆盖：注册表 schema / 字段 / 枚举、每个技能的目录与 `SKILL.md`、frontmatter 八字段与顺序、三处 name 一致、盘上有技能目录但没登记、`SKILL.md` 相对链接断链、机器绝对路径入正文、仓内行尾口径、`VERSION` 与本文件版本串一致，以及各技能自己的 pytest。
+覆盖：注册表 schema / 字段 / 枚举、每个技能的目录与 `SKILL.md`、frontmatter 八字段与顺序、三处 name 一致、盘上有技能目录但没登记、`SKILL.md` 相对链接断链、机器绝对路径入正文、仓内行尾口径、`VERSION` 与本文件版本串一致、中央库副本与本仓是否逐字相同＋库记住的装机来源是不是本仓（第 13 项 `install-sync`；中央库定位不到时跳过），以及各技能自己的 pytest。
 
 单独跑某个技能的测试：见该技能 `SKILL.md` 的「验证命令」段（如 `python -m pytest skills/航班信息/scripts/tests/ -q`）。
 

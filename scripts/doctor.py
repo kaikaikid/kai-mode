@@ -4,7 +4,7 @@
 kai-mode 框架仓 doctor（单一校验入口）
 =====================================
 用法：
-    python scripts/doctor.py                # 逐项检查（12 项）
+    python scripts/doctor.py                # 逐项检查（13 项）
     python scripts/doctor.py --with-tests   # 追加跑各技能自己的 pytest
     python scripts/doctor.py --json         # 机器可读：{"ok":bool,"checks":[{id,status,detail}]}
 
@@ -12,6 +12,7 @@ kai-mode 框架仓 doctor（单一校验入口）
 只读：除 pytest 自己的缓存外不写盘；只用标准库，不装任何东西。
 注册表口径只有一份：本仓 `skills/set-kai-mode/scripts/magpie-sync.py` 里的注册表读写与装机集派生，
 这里 import 那个模块来比，不复制第二份逻辑。
+第 13 项 `install-sync` 依赖宿主状态（中央库在不在、装没装）：库定位不到 ⇒ 跳过，不是红。
 """
 
 from __future__ import annotations
@@ -388,6 +389,53 @@ def chk_skill_tests(root, ms):
     return "ok", f"{len(targets)} 个技能测试目录全绿（{'、'.join(n for n, _ in targets)}）"
 
 
+def chk_install_sync(root, ms):
+    """13 装机同步：中央库里的技能副本还等于本仓吗？库记住的装机来源是不是本仓？（只读，不写盘）
+    这是「本仓为准」从口头约定变成可发现的关键闸：项目仓那份旧脚本若被再跑会把库刷回旧版，
+    这项检查当场点名并给修法。库定位不到 ⇒ 跳过（本仓可以脱离宿主单跑）。"""
+    if ms is None:
+        return "fail", "magpie-sync 读不出来"
+    lib = ms.find_library()
+    if not lib or not os.path.isdir(lib):
+        return "skip", f"中央库定位不到（{getattr(ms, 'LIBRARY_ENV', 'KAI_MAGPIE_LIBRARY')} 未设，~/*/skills/kai-mode 没有指向库的链接）"
+    fix = (f"python skills/set-kai-mode/scripts/magpie-sync.py apply --root {root} --library {lib}")
+    try:
+        plan = ms.install_plan(root)
+    except SystemExit as exc:
+        return "fail", f"magpie-sync 拒绝这份注册表：{exc}"
+    problems = []
+    # ① 库副本 vs 本仓正本：逐文件 SHA-256（tree_files 已跳过缓存产物，不会误报 __pycache__）
+    for name in plan:
+        src = ms.family_src(root, name, plan)
+        dst = os.path.join(lib, name)
+        if not os.path.isdir(dst):
+            problems.append(f"{name}：库内没有这一条")
+            continue
+        a, b = ms.tree_files(src), ms.tree_files(dst)
+        for p in sorted(x for x in set(a) & set(b) if ms.sha256(a[x]) != ms.sha256(b[x])):
+            problems.append(f"{name}/{p}：内容不符")
+        for p in sorted(set(a) - set(b)):
+            problems.append(f"{name}/{p}：库内缺件")
+        for p in sorted(set(b) - set(a)):
+            problems.append(f"{name}/{p}：库内多出")
+    # ② 装机来源标记：库得记得自己是从本仓装的（判据用 magpie-sync 的 marked_root，这里只补人话原因）
+    lib_root = ms.library_root(lib)
+    marker_path = ms.source_marker_path(lib)
+    marked = ms.marked_root(lib_root)
+    if marked is None:
+        if not os.path.isfile(marker_path):
+            problems.append(f"装机来源没钉死：库根没有 {marker_path}（谁在别的仓目录下跑装机器就会刷回旧版）")
+        else:
+            problems.append(f"装机来源没钉死：标记读不出用不了（{marker_path} 损坏／schema 不认识／指向的仓不在了）")
+    elif os.path.normcase(marked) != os.path.normcase(os.path.abspath(root)):
+        problems.append(f"这个库是从 {marked} 装的，不是本仓")
+    if problems:
+        head = "；".join(problems[:6])
+        more = f"（共 {len(problems)} 处）" if len(problems) > 6 else ""
+        return "fail", f"{head}{more}。修法：{fix}"
+    return "ok", f"{len(plan)} 个技能副本与本仓逐字相同；装机来源＝本仓（{root}）"
+
+
 CHECKS = (
     ("registry-file", "注册表文件", chk_registry_file),
     ("registry-fields", "注册表字段", chk_registry_fields),
@@ -401,6 +449,7 @@ CHECKS = (
     ("install-set-match", "装机集合与注册表一致", chk_install_set),
     ("version-in-readme", "VERSION 与 README 口径一致", chk_version_readme),
     ("skill-tests", "各技能 pytest 全绿", chk_skill_tests),
+    ("install-sync", "装机同步（库副本与来源）", chk_install_sync),
 )
 
 

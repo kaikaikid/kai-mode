@@ -49,8 +49,36 @@ def make_repo(tmp_path, skills=("alpha",)):
     return root
 
 
-def run_doctor(root, *extra):
+def make_library(tmp_path, root, skills=("alpha",), marker_root=None):
+    """造假中央库：`<tmp>/lib/skills/<名>/…` ＋ 可选 `<tmp>/lib/.kai-mode-source.json`。"""
+    lib_root = tmp_path / "lib"
+    lib = lib_root / "skills"
+    lib.mkdir(parents=True)
+    for name in skills:
+        d = lib / name
+        d.mkdir(parents=True)
+        (d / "SKILL.md").write_text((root / "skills" / name / "SKILL.md").read_text(encoding="utf-8"),
+                                    encoding="utf-8")
+    if marker_root is not None:
+        (lib_root / ".kai-mode-source.json").write_text(
+            json.dumps({"schema": "kai-mode-source/1", "root": str(marker_root),
+                        "applied_at": "2026-10-22T00:00:00+00:00", "skills": len(skills)},
+                       ensure_ascii=False), encoding="utf-8")
+    return lib
+
+
+def run_doctor(root, *extra, library=None, isolate_home=True):
+    """跑 doctor（子进程）。默认把中央库从环境里摘掉（HOME 指到空目录）⇒ 第 13 项跳过，
+    免得测到本机真库；要用假库就传 `library=`。"""
     env = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONDONTWRITEBYTECODE="1")
+    env.pop("KAI_MAGPIE_LIBRARY", None)
+    if library:
+        env["KAI_MAGPIE_LIBRARY"] = str(library)
+    if isolate_home:
+        fake_home = str(root.parent / "fakehome")
+        os.makedirs(fake_home, exist_ok=True)
+        env["HOME"] = fake_home
+        env["USERPROFILE"] = fake_home
     p = subprocess.run([sys.executable, DOCTOR, "--root", str(root), "--json", *extra],
                        capture_output=True, text=True, encoding="utf-8", env=env)
     return p.returncode, json.loads(p.stdout)
@@ -175,3 +203,76 @@ def test_install_set_must_match_registry(tmp_path):
     rc, out = run_doctor(root)
     assert rc == 1
     assert status_of(out, "install-set-match") == "fail"
+
+
+# ── 13 install-sync：装机同步（库副本 vs 本仓 ＋ 装机来源标记）────────────────────
+
+
+def test_install_sync_green_when_library_matches(tmp_path):
+    root = make_repo(tmp_path)
+    lib = make_library(tmp_path, root, marker_root=root)
+    rc, data = run_doctor(root, library=lib)
+    assert status_of(data, "install-sync") == "ok"
+    assert "逐字相同" in detail_of(data, "install-sync")
+    assert rc == 0
+
+
+def test_install_sync_red_when_library_content_differs(tmp_path):
+    root = make_repo(tmp_path)
+    lib = make_library(tmp_path, root, marker_root=root)
+    bad = lib / "alpha" / "SKILL.md"
+    bad.write_text(bad.read_text(encoding="utf-8") + " ", encoding="utf-8")
+    rc, data = run_doctor(root, library=lib)
+    assert rc == 1
+    assert status_of(data, "install-sync") == "fail"
+    detail = detail_of(data, "install-sync")
+    assert "alpha/SKILL.md" in detail and "内容不符" in detail
+    assert "apply --root" in detail  # 给出修法
+
+
+def test_install_sync_red_when_library_missing_a_file(tmp_path):
+    root = make_repo(tmp_path)
+    lib = make_library(tmp_path, root, marker_root=root)
+    (lib / "alpha" / "SKILL.md").unlink()
+    rc, data = run_doctor(root, library=lib)
+    assert rc == 1
+    assert status_of(data, "install-sync") == "fail"
+    assert "缺件" in detail_of(data, "install-sync")
+
+
+def test_install_sync_red_when_marker_missing(tmp_path):
+    root = make_repo(tmp_path)
+    lib = make_library(tmp_path, root, marker_root=None)  # 不写标记
+    rc, data = run_doctor(root, library=lib)
+    assert rc == 1
+    assert status_of(data, "install-sync") == "fail"
+    detail = detail_of(data, "install-sync")
+    assert "没钉死" in detail
+    assert "apply --root" in detail
+
+
+def test_install_sync_red_when_marker_points_elsewhere(tmp_path):
+    root = make_repo(tmp_path)
+    other = tmp_path / "otherrepo"
+    other.mkdir()
+    lib = make_library(tmp_path, root, marker_root=other)
+    rc, data = run_doctor(root, library=lib)
+    assert rc == 1
+    assert status_of(data, "install-sync") == "fail"
+    detail = detail_of(data, "install-sync")
+    assert str(other) in detail  # 点名那个别的仓
+
+
+def test_install_sync_skipped_when_no_library(tmp_path):
+    root = make_repo(tmp_path)
+    rc, data = run_doctor(root)  # 不给 library，且 HOME 指向空目录 ⇒ 库定位不到
+    assert status_of(data, "install-sync") == "skip"
+    assert rc == 0  # 跳过不是红
+
+
+def test_install_sync_present_in_json_output(tmp_path):
+    root = make_repo(tmp_path)
+    rc, data = run_doctor(root)
+    ids = [c["id"] for c in data["checks"]]
+    assert "install-sync" in ids
+    assert len(ids) == 13
