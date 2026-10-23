@@ -12,4 +12,4 @@ The five canonical role labels, used as-is. See `docs/agents/triage-labels.md`.
 
 ### Domain docs
 
-Single-context: one `CONTEXT.md` plus `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+Single-context: one `GLOSSARY.md` plus `docs/adr/` at the repo root, this repo's own numbering from `0001`. See `docs/agents/domain.md`.

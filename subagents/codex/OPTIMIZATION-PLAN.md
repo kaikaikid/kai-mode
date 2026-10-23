@@ -13,7 +13,7 @@
 4. **①"收口三条"事实上没生效。** 写进 `routing.md` / `handoff.md` / `delegation-prompts.md` 的"必 close"之后，未关闭率从 **54% → 50%**（v3.1 前 16/29 open，之后 4/8 open）。`max_concurrent_threads_per_session = 3`，20 条 open 边意味着并发额度长期被名义占用。
 5. **唯一真正生效的一条是角色打标。** v3.1 前 37 条里 28 条 `agent_role` 为空（76%），之后 8 条 **0 空**。说明"把字段写成模板必填项"有效，"把义务写成散文条款"无效——这条规律应当决定后续所有契约的写法。
 6. **本模块与 kai-mode 之间有一处结构性撞车**：kai-mode 已有角色体系（机长 / 副机长 / 地勤 / 塔台，ADR-0137 四角色 + 30 分钟轮巡），本模块另有一套七角色 + 六档。**同一件事现在有两个正本**。不先定归属，模块就是第二套真相，正好犯 magpie 文本 §P2-6 自己诊断的病。
-7. **一处现成的 ADR 冲突（必须显式处置，不能静默覆盖）**：本模块带进 `max_depth = 1` 与 `max_concurrent_threads_per_session = 3` 两道硬上限，而 kai-mode 已明文决定**不设子代理编制上限**——`skills/机长/SKILL.md` 引用 `ADR-0141-subagent-cap-removal.md`（"去掉子代理编制上限；只约束一机长同时 2 张 issue"），`skills/set-kai-mode/SKILL.md:213` 进一步写"子代理数只受宿主容量约束，**不得写死个数**"。模块的上限与该 ADR 直接对立；且 `max_depth = 1` 会禁止子代理再派子代理，可能掐断塔台轮巡与机长→施工/审查子代理的派发链（`skills/塔台/SKILL.md:63`、`skills/地勤/SKILL.md:117`）。**处置见 P0-bis，未决前不要把这两行同步进任何宿主。**
+7. **子代理上限是本仓尚未裁决的第一个议题，不是外部冲突。** 本模块带进 `max_depth = 1` 与 `max_concurrent_threads_per_session = 3` 两道硬上限，而项目仓的 `ADR-0141-subagent-cap-removal.md`（"去掉子代理编制上限"）**不约束本仓**——`docs/adr/0001-repo-independence.md` 已定：本仓裁决只记在 `docs/adr/`，不续接项目仓 `ADR-01xx`。所以正确读法不是"模块违反了某条 ADR"，而是"这两行是别人机器上的既成配置，本仓还没就上限做过自己的决定"。附带一个真风险：`max_depth = 1` 禁止子代理再派子代理，若塔台轮巡或机长→施工/审查依赖嵌套派发（`skills/塔台/SKILL.md:63`、`skills/地勤/SKILL.md:117`），它改变的是本仓闭环的形状。**未决前不要把这两行同步进任何宿主。**
 
 ## 1. 实测证据
 
@@ -55,15 +55,15 @@
 - **落点：** `contracts/delegation-prompts.md` 每个模板首行的 `模型：` 改为**逐角色硬编码具体 slug**（reviewer 行写死 `group/tier-v`），去掉"由主代理填写"的空间；`contracts/routing.md` 收口三条后追加一行"本条由 `scripts/measure-subagents.py` 度量，open_rate > 10% 视为契约失效"。
 - **验收线：** 连续 10 次派发后跑 `measure-subagents.py --since <本次开工时刻>`，`model_per_role` 里 reviewer 只能出现 `tier-v`，open_rate ≤ 10%。达不到就承认"提示词路线无效"，转 P1 的外部闸，不要再加第三条散文。
 
-### P0-bis · 先解 ADR-0141 冲突（在 P0 之前）
+### P0-bis · 上限由本仓自己裁决，落成 ADR-0002（在 P0 之前）
 
-上限问题不该由提示词层裁决。三条路，选一条写进 `contracts/routing.md` 顶部：
+上限问题不该由提示词层裁决，也不该沿用别仓结论。本仓需要一条自己的 ADR，三条候选：
 
-- **(a) 遵从 ADR-0141（建议）**：删掉模块里的 `max_depth` / `max_concurrent` 承诺，把"并发是否成问题"交给 §1 的度量——若 `measure-subagents.py` 的 open_rate 长期高且派发确实排队，再以"实测证据 + 新 ADR"的形式恢复上限，而不是沿用 magpie 的 3/1。
-- **(b) 推翻 ADR-0141**：若 P1 证明僵尸边真在吃额度，则 amend ADR-0141，明确"编制不设上限，但生命周期必须收口"，上限改为闸门而非配置。
-- **(c) 分层**：`max_depth = 1` 保留（禁嵌套，与编制数无关，且不违反 ADR-0141 的字面口径），`max_concurrent` 交给 P1 的软闸。
+- **(a) 不设上限，只设度量**：删掉 `max_depth` / `max_concurrent` 的承诺，把"并发是否成问题"交给 §1 的度量——若 `measure-subagents.py` 的 open_rate 长期高且派发确实排队，再以"实测证据 + ADR-0002"的形式恢复上限。与 `skills/set-kai-mode/SKILL.md:213`"不得写死个数"的既有口径同向，但那是引用，不是依据。
+- **(b) 设上限并说明理由**：若 P1 证明僵尸边真在吃额度，则正式写"编制可无限，生命周期必须收口"，上限以闸门形式存在而非配置文件。
+- **(c) 分层**：`max_depth = 1` 单独裁决（禁嵌套与"编制数量"是两件事，ADR-0001 之后没有外部条款替我们合并它们），`max_concurrent` 交给 P1 的软闸。
 
-无论选哪条：**`config.template.toml` 里这两行加注"与 ADR-0141 冲突，未裁决前勿下发"**，避免有人照模板配宿主。
+裁决写成 `docs/adr/0002-*.md`。在此之前，`config.template.toml` 顶部已注明这两行属"来源机器的既成值、本仓未裁决"，别有人照模板配宿主。
 
 ### P1 · 外部生命周期闸（两周内）
 
@@ -108,4 +108,5 @@
 1. **`planner` / `archivist` 折叠、`visual-designer` 休眠**——这是与 magpie 文本"不要动角色集"直接冲突的一票，我按数据建议动。
 2. **`tier-r/p/g/w` 四档是标 `reserved` 还是留作池待用**。
 3. **正本归属**：magpie 写 / kai-mode 读，还是反过来。
-4. **ADR-0141 与模块上限怎么合**：P0-bis 的 (a) / (b) / (c) 选一。我倾向 (a)：遵从既有 ADR，删承诺、留度量，让证据再决定要不要重新设限。
+4. **上限怎么定**：P0-bis 的 (a) / (b) / (c) 选一，我写成 `docs/adr/0002-*.md`。ADR-0001 之后这已是本仓自己的问题，项目仓结论只能当参考。
+5. **既有"以项目仓 ADR 为准"的条款清到哪一步**：ADR-0001 宣布项目仓 ADR 不约束本仓，但仓里仍有多处正面让权——`MIGRATION.md:39`「ADR 正本在项目仓；本仓只引用」、`MIGRATION.md:56`「机场体系裁决仍以项目仓 ADR 为准」、`loops/loop-protocol.md:5`、若干 `skills/*/SKILL.md` 的 `resource: 项目仓 docs/artifacts/adrs/...`。这些是**本仓技能的正本**，改了会经 `registry.json` 下发到 8 个宿主，属于我没有动你的部分。要么现在逐处改写，要么先只改 `MIGRATION.md` 那两条总纲、技能内的引用等各自轮到用时再收。

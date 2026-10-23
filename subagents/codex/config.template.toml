@@ -3,9 +3,11 @@
 # home path removed -- fill in <SET-YOUR-OWN> before use. Never commit a real
 # token: the source file carried the GitHub MCP Authorization header.
 #
-# WARNING: max_depth and max_concurrent_threads_per_session below contradict
-# kai-mode ADR-0141 (subagent headcount cap removed). Do not apply these two
-# lines to any host until OPTIMIZATION-PLAN.md P0-bis is decided.
+# WARNING: max_depth and max_concurrent_threads_per_session below are values
+# from the source machine. This repo has not ruled on subagent caps yet --
+# see docs/adr/0001-repo-independence.md (project-repo ADRs do not bind here)
+# and OPTIMIZATION-PLAN.md P0-bis, which will become ADR-0002. Do not apply
+# these two lines to any host before that ruling exists.
 
 model_reasoning_effort = "max"
 approval_policy = "never"
