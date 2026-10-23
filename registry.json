@@ -92,6 +92,66 @@
       "summary": "板工坊：一份板配置＋一份自包含适配脚本＝一块板，归档到各项目仓的板库。",
       "tags": ["board", "tools"],
       "since": "0.3.0"
+    },
+    {
+      "name": "principle-ask-one-question-at-a-time",
+      "path": "skills/principle-ask-one-question-at-a-time",
+      "kind": "framework",
+      "scope": "global",
+      "install": "auto",
+      "summary": "拷问原则：一次一问逐个确认、每题带推荐默认，只问 ADR 级分叉；规划表一格是唯一不吃快捷回话的审批点。",
+      "tags": ["principle"],
+      "since": "0.7.0"
+    },
+    {
+      "name": "principle-visible-and-redline-only",
+      "path": "skills/principle-visible-and-redline-only",
+      "kind": "framework",
+      "scope": "global",
+      "install": "auto",
+      "summary": "审批原则：只问肉眼可见的表象与三条红线，看不见的按头部企业规范自决并记代决清单。",
+      "tags": ["principle"],
+      "since": "0.7.0"
+    },
+    {
+      "name": "principle-one-semantics-one-home",
+      "path": "skills/principle-one-semantics-one-home",
+      "kind": "framework",
+      "scope": "global",
+      "install": "auto",
+      "summary": "正本原则：一个语义只许一个家；写第二条同义判据前先问「第一条住哪」，别处只留指针。",
+      "tags": ["principle"],
+      "since": "0.7.0"
+    },
+    {
+      "name": "principle-report-missing-parts",
+      "path": "skills/principle-report-missing-parts",
+      "kind": "framework",
+      "scope": "global",
+      "install": "auto",
+      "summary": "缺件原则：缺件按三格如实登记（缺什么/卡在哪/要谁拍），不许写成已实现、不静默吞错、不猜路径。",
+      "tags": ["principle"],
+      "since": "0.7.0"
+    },
+    {
+      "name": "principle-measure-dont-ask",
+      "path": "skills/principle-measure-dont-ask",
+      "kind": "framework",
+      "scope": "global",
+      "install": "auto",
+      "summary": "实证原则：能跑一下量出来的事实自决、留读数；只有产品向与偏好判断才问她。",
+      "tags": ["principle"],
+      "since": "0.7.0"
+    },
+    {
+      "name": "principle-ceremony-collapses-with-scale",
+      "path": "skills/principle-ceremony-collapses-with-scale",
+      "kind": "framework",
+      "scope": "global",
+      "install": "auto",
+      "summary": "规模原则：仪式随规模塌缩，两行改动不配四页脚手架；每张工单带 TIMEBOX，到点交半成品并写明停在哪。",
+      "tags": ["principle"],
+      "since": "0.7.0"
     }
   ]
 }

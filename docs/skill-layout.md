@@ -60,7 +60,7 @@ updated: <YYYY-MM-DD>
 - terse 中文；结论先行、事实优先。
 - 不写营销词（「强大」「一站式」「极大提升」）。
 - 正文禁入：项目专用路径、票号、job id、机器绝对路径、真实项目名之外的私密信息。
-- 一条判据只写一份，别处只留指针。
+- 一条判据只写一份，别处只留指针；判据细则唯一正本：[`skills/principle-one-semantics-one-home/`](../skills/principle-one-semantics-one-home/SKILL.md)（何时进场/判据/反例/验证）。
 
 ## 5. 注册表字段表
 

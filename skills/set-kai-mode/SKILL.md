@@ -51,7 +51,7 @@ updated: 2026-10-23
 | 3 | 装 30 分钟塔台定时器 | `list` 回读 `enabled=true`、周期 30 分钟 |
 | 4 | worktree 环境自检（三项） | 解释器 / node / 依赖三项都有明确读数 |
 | 5 | doctor | 项目仓 `ready.py` 与 `env-doctor` 全绿或如实点红 |
-| 6 | 缺件登记与交接 | 缺什么、卡在哪、要谁拍，写进日报 |
+| 6 | 缺件登记与交接 | 缺件如实登记进日报（三格判据唯一正本：[`principle-report-missing-parts`](../principle-report-missing-parts/SKILL.md)） |
 
 ### 0. 缺口扫描（只读，先看缺什么再决定装不装）
 
@@ -156,8 +156,8 @@ python $S apply           # 正本 → 库 → 各家链接
    **`enable` 返回成功不等于它一直开着**；看到 `pauseReason=manual` ＝ 有人手动停，**别自动重开**，
    报状态时把「建过、现在是停的」两句都写出来。建完写一条 jobId 到本机配置（不入 tracked 模板）。
 
-4. **缺件如实登记**：宿主没有定时口 ⇒ 写「缺定时口，塔台只能人工 `/塔台`」，**不许写成已实现**；
-   进日报「要你拍」或平台私有清单，附缺的是什么口、什么权限。
+4. **缺件如实登记**：宿主没有定时口 ⇒ 写「缺定时口，塔台只能人工 `/塔台`」；
+   三格判据与三个不许（不许写成已实现等）的唯一正本＝[`skills/principle-report-missing-parts/`](../principle-report-missing-parts/SKILL.md)。
 
 **其它宿主：先探测，再把可用档位给用户选**（一次一问，推荐项排第一）：
 
@@ -202,7 +202,7 @@ python scripts/framework-gate.py --selftest   # 推前框架门自证
 
 ### 6. 缺件登记与交接
 
-- 缺件写三格：**缺什么口 / 卡在哪一步 / 要谁拍**；进项目配置 `paths.handoff_dir` 当日日报「要你拍」段。
+- **缺件登记判据细则唯一正本**：[`skills/principle-report-missing-parts/`](../principle-report-missing-parts/SKILL.md)（何时进场/判据/反例/验证）；本步只管交接——缺件登记进项目配置 `paths.handoff_dir` 当日日报「要你拍」段。
 - 装完交一张「安装回执」：装了哪几件技能、定时器 jobId 与周期、三项环境读数、doctor 结果、缺件清单。
 - **不把状态写进本地台账**：票状态只看 GitHub；日表只写排班视图。
 
@@ -225,7 +225,7 @@ python scripts/framework-gate.py --selftest   # 推前框架门自证
 ## 改配置的四条规矩
 
 1. **一次一项**，改完当场跑「改完跑什么」那一列，读数写进对应票面。**没读数＝没改完**。
-2. **一个语义只许一个家**：ADR/脚本是正本，技能与 router 是指针；想在第二处写第二条判据，先问「第一条住哪」。
+2. **一个语义只许一个家**：判据细则唯一正本＝[`skills/principle-one-semantics-one-home/`](../principle-one-semantics-one-home/SKILL.md)（何时进场/判据/反例/验证）；本清单只留规矩位，不复述细则。
 3. **机制类改动先设计后落地**：先出图与代价进 ADR；写进 ADR 不算落地，用户拍板后才动执行面。
 4. **宿主中立**：依赖某家专有能力（会话口 / 定时口 / 子代理类型）必须同时有 ①能力探测 ②降级腿
    ③缺件如实登记，否则只能进「平台私有」清单，**不得写进流程正本**。
