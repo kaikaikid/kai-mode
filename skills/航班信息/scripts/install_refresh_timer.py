@@ -270,10 +270,12 @@ def spawn_refresh(board_dir: Path, board: str) -> int:
                  | subprocess.CREATE_NO_WINDOW)
     try:
         f = open(log, "w", encoding="utf-8")
+        # close_fds=False：父进程（钩子）马上就退出，日志句柄必须能传给子进程，
+        # 否则 refresh.log 只会被清空、永远等不到 BOARD_OK 那行（实测踩过）。
         subprocess.Popen([py, str(render), "--quiet"], cwd=str(board_dir),
                          stdin=subprocess.DEVNULL, stdout=f,
                          stderr=subprocess.STDOUT,
-                         creationflags=flags, close_fds=True)
+                         creationflags=flags, close_fds=False)
     except (OSError, ValueError) as exc:
         print("甩不出去：%s" % exc)
         return 3
