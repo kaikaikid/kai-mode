@@ -5,13 +5,17 @@ approved_by: human:kaikaikid
 approved: 2026-10-21
 sources:
   - resource: "skills/机长/SKILL.md"
-    note: "同一套围栏与自决；本文件只写车道差异"
+    note: "同一套围栏与自决（含等待与止损执行清单）；本文件写车道差异与副机长措辞"
   - resource: "loops/loop-protocol.md"
     note: "单票闭环唯一详细源"
+  - resource: "框架仓旧裁决"
+    note: "等待与止损三层机制（2026-10-23 定稿）判据出处"
+  - resource: "loops/loop-protocol.md"
+    note: "「八、等待纪律」「九、增量提交」细则正本；本技能「等待与止损」节只写执行清单与指针"
 description: >
   机场体系的副机长：与机长同权限、同一套流程，独立日表 `-deputy.md`。
   触发：`/副机长`，或塔台 / `/kai-mode` 拉起。
-version: 2.1.0
+version: 2.2.0
 updated: 2026-10-23
 ---
 
@@ -41,6 +45,18 @@ python scripts/captain-preflight.py --lane deputy
 
 `CONTINUE` 继续；`REVIEW` 判完确实没活加 `--ack-review`；`STOP` 才停；
 `BLOCKED` 写卡点，不得当空表。
+
+## 等待与止损（硬）
+
+与机长同一套判据，只对自己的 `-deputy.md` 车道票执行。细则正本＝
+[`../../loops/loop-protocol.md`](../../loops/loop-protocol.md)「八、等待纪律」「九、增量提交」
+（判据出处：[0005](../../框架仓旧裁决)）；deputy 执行清单：
+
+- wait 超时 **60–120 秒**一轮；连续**两次空轮询** → 活性探测（子进程在不在、工作树文件动没动）。
+- 每轮 wait 之间干本地活（不开新票、不动在飞票的工作树）；同一票阻塞**累计超 10 分钟** → 自己向用户播报一次（停在哪、在等谁、下一步）——各车道各报各的，不代机长报；机长停摆照旧等塔台改日表，不自动接管。
+- **20 分钟无新 commit** → interrupt 当次等待，向施工子代理要中间回执（仍 ≤40 行）。
+- **超预算** → close_agent 固化断点，再派新针从断点续；先关再发。
+- **增量提交**：派工卡硬性写明（agents 交接契约第 8 项）；收回执核 `commits` 数，单笔大提交按违反增量提交记教训。
 
 ## 隔离（硬）
 
