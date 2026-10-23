@@ -13,7 +13,7 @@ Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all o
 
 Infer the repo from `git remote -v`; `gh` does this automatically when run inside a clone.
 
-> **Precondition not yet met in this repo**: `git remote -v` is currently empty, so `gh` cannot resolve an owner/repo. Add the GitHub remote (and push) before any skill here tries to create or read issues; until then these commands fail.
+This repo's remote is `kaikaikid/kai-mode` (private, `https://github.com/kaikaikid/kai-mode`). The five triage labels from `docs/agents/triage-labels.md` must exist in that repo before `/triage` can apply them; create them once with `gh label create <name> --repo kaikaikid/kai-mode` for any label that `gh label list` doesn't already show.
 
 ## Pull requests as a triage surface
 
