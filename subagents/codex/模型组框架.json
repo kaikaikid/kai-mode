@@ -1,0 +1,221 @@
+{
+  "version": "4",
+  "note": "v3.2 口径（2026-10-23）：子代理模型只能取六个 group/tier-*。本文件由 data/providers.json 的 groups.tier-* 生成，改池子或改合法推理档后重新生成并重启 magpie 重下发 magpie-models.json。reasoning 取值 = 该档全体成员共有的推理档（实测），不是设想值。R 保持 none（纯闪池，不带思考）。",
+  "architecture": {
+    "magpie_owns": [
+      "name",
+      "description",
+      "prompt",
+      "skills",
+      "mcp"
+    ],
+    "tier_pools_own": [
+      "members",
+      "levels (合法推理档)",
+      "context"
+    ],
+    "dispatch_carries": [
+      "model = group/tier-X",
+      "reasoning effort"
+    ],
+    "codex_parent_owns": [
+      "default_subagent_model (漏配保险丝)",
+      "default_subagent_reasoning_effort",
+      "max_concurrent_threads_per_session",
+      "max_depth"
+    ]
+  },
+  "tiers": {
+    "tier-r": {
+      "label": "R 读档",
+      "model": "group/tier-r",
+      "context": 200000,
+      "legalReasoning": [
+        "none"
+      ],
+      "reasoning": "none",
+      "poolSize": 11,
+      "members": [
+        "zhipu/glm-4.7-flash",
+        "workbuddy-ai/hy3",
+        "workbuddy/hy3",
+        "opencode-zen-free/mimo-v2.6-flash-free",
+        "opencode-zen-free/deepseek-v4.1-flash-free",
+        "opencode-zen-free/glm-5.3-flash-free",
+        "opencode-zen-free/beam-free",
+        "sensenova/deepseek-v4-flash",
+        "sensenova/deepseek-v4.1-flash",
+        "zhipu/glm-4.5-flash",
+        "sensenova/sensenova-6.8-flash-lite"
+      ]
+    },
+    "tier-c": {
+      "label": "C 编码档",
+      "model": "group/tier-c",
+      "context": 400000,
+      "legalReasoning": [
+        "high",
+        "low"
+      ],
+      "reasoning": "high",
+      "poolSize": 6,
+      "members": [
+        "workbuddy-ai/step-5-preview",
+        "workbuddy-ai/deepseek-v4.1-flash",
+        "workbuddy/step-5-preview",
+        "workbuddy/deepseek-v4.1-flash",
+        "opencode-zen-free/deepseek-v4.1-flash-free",
+        "minimax-code/MiniMax-M3.1-Flash"
+      ]
+    },
+    "tier-p": {
+      "label": "P 规划档",
+      "model": "group/tier-p",
+      "context": 400000,
+      "legalReasoning": [
+        "high",
+        "low"
+      ],
+      "reasoning": "high",
+      "poolSize": 8,
+      "members": [
+        "workbuddy-ai/step-5-preview",
+        "workbuddy-ai/deepseek-v4.1-flash",
+        "workbuddy/step-5-preview",
+        "workbuddy/glm-5.3-flash",
+        "workbuddy/deepseek-v4.1-flash",
+        "opencode-zen-free/beam-free",
+        "opencode-zen-free/deepseek-v4.1-flash-free",
+        "opencode-zen-free/glm-5.3-flash-free"
+      ]
+    },
+    "tier-v": {
+      "label": "V 审查档",
+      "model": "group/tier-v",
+      "context": 400000,
+      "legalReasoning": [
+        "high"
+      ],
+      "reasoning": "high",
+      "poolSize": 11,
+      "members": [
+        "workbuddy-ai/step-5-preview",
+        "workbuddy-ai/deepseek-v4.1-flash",
+        "workbuddy/step-5-preview",
+        "workbuddy/deepseek-v4.1-flash",
+        "workbuddy/glm-5.3-flash",
+        "sensenova/deepseek-flash",
+        "opencode-zen-free/beam-free",
+        "opencode-zen-free/deepseek-v4.1-flash-free",
+        "opencode-zen-free/glm-5.3-flash-free",
+        "minimax-code/MiniMax-M3.1-Flash",
+        "minimax-code/MiniMax-M3"
+      ]
+    },
+    "tier-g": {
+      "label": "G 图档",
+      "model": "group/tier-g",
+      "context": 256000,
+      "legalReasoning": [
+        "high",
+        "low"
+      ],
+      "reasoning": "high",
+      "poolSize": 10,
+      "members": [
+        "google/gemini-3.8-flash",
+        "google/gemini-3-flash-preview",
+        "sensenova/sensenova-6.8-flash-lite",
+        "sensenova/deepseek-v4.1-flash",
+        "minimax-code/MiniMax-M3.1-Flash",
+        "opencode-zen-free/deepseek-v4.1-flash-free",
+        "opencode-zen-free/glm-5.3-flash-free",
+        "zhipu/glm-4.6v-flash",
+        "opencode-zen-free/mimo-v2.6-flash-free",
+        "ollama/qwen3.5:latest"
+      ]
+    },
+    "tier-w": {
+      "label": "W 宽页档",
+      "model": "group/tier-w",
+      "context": 1000000,
+      "legalReasoning": [
+        "high",
+        "low"
+      ],
+      "reasoning": "high",
+      "poolSize": 9,
+      "members": [
+        "workbuddy-ai/step-5-preview",
+        "workbuddy-ai/deepseek-v4.1-flash",
+        "workbuddy/step-5-preview",
+        "sensenova/deepseek-flash",
+        "workbuddy/glm-5.3-flash",
+        "workbuddy/deepseek-v4.1-flash",
+        "opencode-zen-free/beam-free",
+        "minimax-code/MiniMax-M3.1-Flash",
+        "google/gemini-3.8-flash"
+      ]
+    }
+  },
+  "roleAssignments": {
+    "explorer": {
+      "tier": "tier-r",
+      "model": "group/tier-r",
+      "reasoning": "none",
+      "sandbox": "read-only"
+    },
+    "librarian": {
+      "tier": "tier-r",
+      "model": "group/tier-r",
+      "reasoning": "none",
+      "sandbox": "read-only"
+    },
+    "worker": {
+      "tier": "tier-c",
+      "model": "group/tier-c",
+      "reasoning": "high",
+      "sandbox": "workspace-write"
+    },
+    "planner": {
+      "tier": "tier-p",
+      "model": "group/tier-p",
+      "reasoning": "high",
+      "sandbox": "read-only"
+    },
+    "reviewer": {
+      "tier": "tier-v",
+      "model": "group/tier-v",
+      "reasoning": "high",
+      "sandbox": "read-only"
+    },
+    "visual-designer": {
+      "tier": "tier-g",
+      "model": "group/tier-g",
+      "reasoning": "high",
+      "sandbox": "read-only"
+    },
+    "archivist": {
+      "tier": "tier-w",
+      "model": "group/tier-w",
+      "reasoning": "high",
+      "sandbox": "read-only"
+    }
+  },
+  "currentDefaults": {
+    "default_subagent_model": "group/tier-c",
+    "default_subagent_reasoning_effort": "high",
+    "max_concurrent_threads_per_session": 3,
+    "max_depth": 1,
+    "note": "兜底设在 C 档 + high：漏配时代价不对称——兜底设无思考的便宜档等于拿它改代码且坏了看不出来。"
+  },
+  "openItems": [
+    "tier-r 有 5/11 成员不支持 none；tier-g 有 3/10 成员无推理档，需裁池",
+    "tier-r 有 5/11 成员不支持 none；tier-g 有 3/10 成员无推理档，需裁池",
+    "只读角色真机 sandbox_policy 仍全是 disabled，未强制",
+    "acceptance.md 行为验收未跑",
+    "按档聚合 data/routing/*.jsonl.gz 的成本度量脚本未建"
+  ],
+  "verify": "python scripts/check-tiers.py",
+  "catalogState": "magpie-models.json 已于 2026-10-23 01:55 自动重下发，六档 levels 与 providers.json 一致"
+}

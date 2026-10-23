@@ -53,7 +53,7 @@ updated: 2026-10-21
 | 角色 | 口令 | 管什么 | 正本 |
 |---|---|---|---|
 | 地勤 | `/地勤` | 跟用户对话、规划、开票、收 BOOM 想法 | [`skills/地勤/SKILL.md`](../地勤/SKILL.md) |
-| 塔台 | `/塔台` | 每 30 分钟或人工：先排班、后发货；合并、push、关票 | [`skills/塔台/SKILL.md`](../塔台/SKILL.md) |
+| 塔台 | `/塔台` | 每 30 分钟或人工：先发货、后补排班（排班放最后）；合并、push、关票 | [`skills/塔台/SKILL.md`](../塔台/SKILL.md) |
 | 机长 | `/机长` | goal 模式读 `-main` 日表，同时最多 2 张 | [`skills/机长/SKILL.md`](../机长/SKILL.md) |
 | 副机长 | `/副机长` | 同一条 loop 的另一分支，读 `-deputy` 日表 | [`skills/副机长/SKILL.md`](../副机长/SKILL.md) |
 

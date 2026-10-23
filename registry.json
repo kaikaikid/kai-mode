@@ -59,7 +59,7 @@
       "kind": "framework",
       "scope": "global",
       "install": "auto",
-      "summary": "机场体系的塔台：30 分钟轮巡先排班后发货，独占 push 与关票，不写产品代码。",
+      "summary": "机场体系的塔台：30 分钟轮巡先发货后排班（排班放最后），独占 push 与关票，不写产品代码。",
       "tags": ["role"],
       "since": "0.2.0"
     },

@@ -1,0 +1,224 @@
+# 口径基准 v3.1（2026-10-23）：模型只能在六个 group/tier-* 档位里选（R/C/P/V/G/W）。
+# 每个角色的 model 是派活时的必填值，主代理照抄进 spawn，不再靠父配置碰运气。
+# 父配置 ~/.codex/config.toml [agents] 的 default_subagent_model 已抬到 group/tier-c + high，
+# 只当"漏配保险丝"：漏配的后果从"拿最便宜的模型改代码"变成"多花几倍单价"。
+# 推理档取值依据 = 该档成员模型实际支持的推理档交集（2026-10-23 用 providers.json + 网关目录实测）：
+#   tier-r 成员只有 sensenova 系支持 none，故 R 固定 none（已批准口径）
+#   tier-c 成员交集 = low/high（max 只有 4/6 支持，别用）
+#   tier-p 成员交集 = low/high；tier-v 成员交集 = high only
+#   tier-g 有 3 个成员目录无推理档，需按"image 输入 ∧ 支持 high"重挑池子（待办）
+#   tier-w 成员交集 = low/high
+# 校验脚本：scripts/check-tiers.py（角色↔档↔推理档↔config.toml 四方一致，不一致即红）
+version: 3
+updated_at: "2026-10-23"
+
+tiers:
+  R: { model: "group/tier-r", reasoning_effort: none,  cost: "最低" }
+  C: { model: "group/tier-c", reasoning_effort: high,  cost: "中" }
+  P: { model: "group/tier-p", reasoning_effort: high,  cost: "高" }
+  V: { model: "group/tier-v", reasoning_effort: high,  cost: "高" }
+  G: { model: "group/tier-g", reasoning_effort: high,  cost: "中高（池子待重挑）" }
+  W: { model: "group/tier-w", reasoning_effort: high,  cost: "按量" }
+
+roles:
+  - id: explorer
+    purpose: "Locate code, trace execution paths, and report blast radius."
+    read_only: true
+    model_class: "fast-read"
+    tier: R
+    model: "group/tier-r"
+    reasoning_effort: none
+    context_budget: "200K"
+    allowed_actions:
+      - read_files
+      - search_code
+      - run_read_only_commands
+      - use_codegraph
+    outputs:
+      - facts
+      - files_and_symbols
+      - execution_path
+      - impact_surface
+      - unknowns
+    evidence:
+      - file_paths
+      - symbols
+      - commands
+    lifecycle:
+      must_close: true
+      reuse_before_respawn: true
+      on_timeout: unreconciled
+    handoff:
+      implementation: worker
+      external_research: librarian
+
+  - id: planner
+    purpose: "Turn ambiguous work into an ordered, testable implementation plan."
+    read_only: true
+    model_class: "deep-planning"
+    tier: P
+    model: "group/tier-p"
+    reasoning_effort: high
+    context_budget: "400K"
+    allowed_actions:
+      - read_files
+      - search_code
+      - use_codegraph
+    outputs:
+      - goal
+      - assumptions
+      - ordered_steps
+      - risks
+      - acceptance_criteria
+      - open_questions
+    evidence:
+      - referenced_files
+      - assumptions
+    lifecycle:
+      must_close: true
+      reuse_before_respawn: true
+      on_timeout: unreconciled
+    handoff:
+      plan_review: reviewer
+      implementation: worker
+
+  - id: worker
+    purpose: "Implement a bounded task and verify the result."
+    read_only: false
+    model_class: "coding"
+    tier: C
+    model: "group/tier-c"
+    reasoning_effort: high
+    context_budget: "400K"
+    allowed_actions:
+      - read_files
+      - edit_files
+      - run_tests
+      - run_build
+    outputs:
+      - changed_files
+      - reason_for_change
+      - verification_commands
+      - test_results
+      - remaining_risks
+    evidence:
+      - git_diff
+      - command_output
+    lifecycle:
+      must_close: true
+      reuse_before_respawn: true
+      on_timeout: unreconciled
+    handoff:
+      independent_review: reviewer
+
+  - id: reviewer
+    purpose: "Independently review a plan or a diff and report real risks."
+    read_only: true
+    model_class: "deep-review"
+    tier: V
+    model: "group/tier-v"
+    reasoning_effort: high
+    context_budget: "400K"
+    allowed_actions:
+      - read_files
+      - inspect_diff
+      - run_read_only_checks
+      - run_tests
+    outputs:
+      - findings_by_severity
+      - file_and_line_references
+      - reproduction_conditions
+      - residual_assumptions
+    evidence:
+      - diff
+      - tests
+      - source_references
+    modes:
+      - plan_review
+      - code_review
+    lifecycle:
+      must_close: true
+      reuse_before_respawn: true
+      on_timeout: unreconciled
+    handoff:
+      implementation: worker
+
+  - id: librarian
+    purpose: "Verify external, current, and version-sensitive facts with sources."
+    read_only: true
+    model_class: "fast-research"
+    tier: R
+    model: "group/tier-r"
+    reasoning_effort: none
+    context_budget: "200K"
+    allowed_actions:
+      - search_external_sources
+      - read_documentation
+      - read_repositories
+    outputs:
+      - direct_answer
+      - sources
+      - version_impact
+      - unresolved_points
+    evidence:
+      - source_url
+      - publication_date
+      - version
+    lifecycle:
+      must_close: true
+      reuse_before_respawn: true
+      on_timeout: unreconciled
+
+  - id: visual-designer
+    purpose: "Produce design-system-aligned layouts, specs, and visual assets."
+    read_only: true
+    model_class: "vision"
+    tier: G
+    model: "group/tier-g"
+    reasoning_effort: high
+    context_budget: "256K"
+    allowed_actions:
+      - read_files
+      - inspect_images
+      - use_design_assets
+    outputs:
+      - design_direction
+      - layout
+      - component_spec
+      - states
+      - responsive_behavior
+      - open_questions
+    evidence:
+      - source_images
+      - design_tokens
+    lifecycle:
+      must_close: true
+      reuse_before_respawn: true
+      on_timeout: unreconciled
+    caveat: "tier-g 池内 3 个成员无推理档声明，需按 image 输入 ∧ 支持 high 重挑成员后再定档"
+
+  - id: archivist
+    purpose: "Absorb a single source larger than 256K and return traceable compressed findings."
+    read_only: true
+    model_class: "wide-read"
+    tier: W
+    model: "group/tier-w"
+    reasoning_effort: high
+    context_budget: "1M"
+    trigger: "单一来源超过 256K 且无法靠 rg/codegraph 定位解决"
+    allowed_actions:
+      - read_files
+      - search_code
+    outputs:
+      - source_scope
+      - coverage_ratio
+      - confirmed_facts
+      - inferences_and_unknowns
+      - unread_regions
+    evidence:
+      - file_paths
+      - line_or_section_refs
+    lifecycle:
+      must_close: true
+      reuse_before_respawn: false
+      on_timeout: unreconciled
