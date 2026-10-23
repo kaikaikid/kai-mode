@@ -18,7 +18,7 @@
       "kind": "framework",
       "scope": "global",
       "install": "auto",
-      "summary": "初始化安装入口：注入方法论与技能、把技能装到宿主、装塔台定时器、doctor、缺件登记。",
+      "summary": "初始化安装入口：注入方法论与技能、把技能装到宿主、装塔台定时器、项目配置实例生成/校验/迁移（schema 3）与装机回执档位核对、按项目生成技能骨架、doctor、缺件登记。",
       "tags": ["install", "doctor"],
       "since": "0.2.0"
     },

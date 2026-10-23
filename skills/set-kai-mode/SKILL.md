@@ -6,6 +6,8 @@ approved: 2026-10-21
 sources:
   - resource: "框架仓旧裁决"
     note: "唯一现行裁决：四角色（D1）、并发与隔离（D2）、任务面（D3）、30 分钟轮巡（D5）、清退与新增（D8）；判据出处：项目仓 框架仓旧裁决（历史），已由本仓 0003 重述接管"
+  - resource: "框架仓旧裁决"
+    note: "项目差异层唯一事实源（schema 3）：D2 字段表与六档映射、D4 仓库根探测、D5 本技能分工（生成/校验/迁移/装机回执「档位核对」格）"
   - resource: "skills/kai-mode/SKILL.md"
     note: "入口本体；本技能只装它脚下的东西，不改它的流程"
   - resource: "skills/{地勤,塔台,机长,副机长}/SKILL.md"
@@ -15,10 +17,12 @@ sources:
 description: >
   kai-mode 的初始化安装入口（不是日常施工）：**先看缺什么、列出推荐清单跟用户确认，再只装缺的**，
   避免重复安装。覆盖：注入方法论与技能、把四角色技能装到宿主（Magpie / Qoder 或其它宿主）、
-  装 30 分钟塔台定时器、worktree 环境自检（主树正本解释器绝对路径、node、依赖三项）、doctor、
-  缺件如实登记。触发：新 agent 接手装配、换宿主、装/改定时器、修技能落点、问「这套东西都住在哪」。
+  装 30 分钟塔台定时器、worktree 环境自检（主树正本解释器绝对路径、node、依赖三项）、
+  项目配置实例生成/校验/迁移（schema 2→3）与装机回执「档位核对」格、按项目生成技能骨架（首例验收/验证）、
+  doctor、缺件如实登记。触发：新 agent 接手装配、换宿主、装/改定时器、修技能落点、
+  给项目出技能骨架、迁旧配置实例、问「这套东西都住在哪」。
   不做日常施工。
-version: 4.1.0
+version: 4.2.0
 updated: 2026-10-23
 ---
 
@@ -36,6 +40,8 @@ updated: 2026-10-23
 - 技能改了却没在别家生效（正本与库不一致）。
 - worktree 里跑不动（缺解释器、缺 node、缺依赖）。
 - 撞见「同一条判据两处说法不一样」——配置面漂移，回到这里对表。
+- 给目标项目仓生成项目本地技能骨架（生成式腿，首例＝验收/验证技能）。
+- 项目仓配置实例还是 schema 2（读取端记 warn）——走迁移腿，别拖过双仓回归期。
 
 ## 一步配置（装完即可用）
 
@@ -65,12 +71,14 @@ updated: 2026-10-23
 | 4 环境三项 | `test -x` 解释器/node、`test -d node_modules` | 三项都有明确读数 | 任一项缺（报绝对路径） |
 | 5 doctor | 项目仓 `ready.py` / `env-doctor --hooks` / 本仓 `python 框架仓门禁` | 全绿或只基线告警 | 有红（列出哪道门） |
 | 6 存证 | 项目仓 `python scripts/skill-attest.py verify`（项目仓有该脚本时） | rc=0 全过 | 有哈希不符（列出哪个文件） |
+| 7 项目配置实例 | [0004](../../框架仓旧裁决) D4 仓库根探测（只读）：`git rev-parse --show-toplevel` → 读 `<root>/.ai/kai-mode.project.json` 的 `schema` 字段 | schema 3 实例在位且过「档位核对」 | 无实例 → 按 D4 报缺件三格（怎么补＝本技能生成或手工按模板填）；schema 2 → 走「迁移腿」 |
 
 **产出与动作**：
 - 把清单念给用户：**已就位逐项说「跳过，不重复装」**；**需处理项列成推荐清单**，附原因。
 - 用户点头后才执行步骤 1–6 里对应的「需处理」项；**标「已就位」的项只回读确认、不做任何写操作**（不重装、不重同步、不重建定时器）。
 - 一条铁律：**能只读判定的，绝不做写操作**；写盘（sync apply / 建定时器 / attest）只在缺口清单确有该项时才发生。
-- 步骤 1–6 因此变成「执行缺口清单」——只动清单里标了需处理的项，不是无脑六步全跑。
+- 步骤 1–6 因此变成「执行缺口清单」——只动清单里标了需处理的项，不是无脑六步全跑；
+  两条腿**探到才走**：清单第 7 项探到 schema 2 实例 → 走迁移腿，用户要点生成 → 走生成式腿。
 
 ### 1. 注入方法论与技能
 
@@ -203,8 +211,65 @@ python scripts/framework-gate.py --selftest   # 推前框架门自证
 ### 6. 缺件登记与交接
 
 - **缺件登记判据细则唯一正本**：[`skills/principle-report-missing-parts/`](../principle-report-missing-parts/SKILL.md)（何时进场/判据/反例/验证）；本步只管交接——缺件登记进项目配置 `paths.handoff_dir` 当日日报「要你拍」段。
-- 装完交一张「安装回执」：装了哪几件技能、定时器 jobId 与周期、三项环境读数、doctor 结果、缺件清单。
+- 装完交一张「安装回执」：装了哪几件技能、定时器 jobId 与周期、三项环境读数、doctor 结果、缺件清单、**实例档位核对**。
+- **回执含「档位核对」格**（判据出处：[0004](../../框架仓旧裁决) D2/D5）：对项目配置实例
+  `models.roles` 核三件事——①词表只含 R/C/P/V/G/W；②六角色（code/judgment/review_panel/verification/watch/orchestration）
+  各有着落或显式缺省（有意不配、靠 `models.default` 兜底并注明，不认「漏配」）；③零模型 slug（tier→具体模型的解析住
+  `adapters/<宿主>.md`）。核对结果原样写进回执；红项按缺件三格登记，不静默。
 - **不把状态写进本地台账**：票状态只看 GitHub；日表只写排班视图。
+
+## 按项目生成（生成式腿 · 装机时可选）
+
+> 判据出处：[0004](../../框架仓旧裁决) D4/D5——缺了实例「怎么补」＝本技能生成；
+> 生成＝从模板抄实例＋逐段问答填实，**占位不落盘**。生成式腿首例＝验收/验证技能骨架
+> （模式参照 pstack `create-verification-skill` 的「探项目 → 出骨架 → 命令项目自己填」，自研精简版，不抄内容）。
+
+**两段生成，顺序不倒**：
+
+1. **生成项目配置实例**：从 `templates/kai-mode.project.json`（schema 3 正本模板）抄底，逐段问答填实，
+   落 `<项目仓根>/.ai/kai-mode.project.json`（tracked）。**填不实的字段不落盘**——带着占位符的实例不算生成完，
+   先报缺件清单等补齐（缺什么/谁需要/怎么补，D4 三格）。
+2. **生成项目本地技能骨架**（首例＝验收/验证技能）：
+   - **探测（只读）**：在项目仓根列技术栈证据——包管理锁文件、测试配置、门脚本目录——逐项记读数；
+     证据列不出就报「技术栈探不出」，不许猜一个栈往下走。
+   - **产出**：按骨架模板 [`templates/verification-skill/SKILL.md`](templates/verification-skill/SKILL.md)
+     出占位文件，落到实例 `registry.skills.project_skills_dir` 指向的项目技能目录；
+     **验证命令一个都不猜**——生成端只探技术栈，命令由项目自己填实。
+   - **登记与判据**：骨架填实后由项目在实例 `registry.playbooks[]` 加登记行；生成端不替项目写判据与命令——
+     判据正本仍在框架层与项目 ADR，骨架只留「去哪读」的指针。
+3. **生成完当场校验**（[0004](../../框架仓旧裁决) D5 校验口径）：字段齐、路径字段指向存在的目录、
+   六档只含 R/C/P/V/G/W 且零模型 slug、`issue.platform` 在枚举内；红项按缺件三格登记，不静默。
+
+- **不真跑**：真机生成属双仓回归那刀的活；本段先落流程与模板。
+
+## schema 2→3 实例迁移（迁移腿 · 探到旧实例才走）
+
+> 缺口扫描第 7 项探到项目仓实例 `schema==2` 才走本腿；没有旧实例整段跳过。
+> 判据出处：[0004](../../框架仓旧裁决) **D2 字段表**（逐字段去向的全表正本，这里只留流程位）
+> ＋「验证」段（零数据丢失：逐字段 diff 留档）。兼容读口径：schema 2 迁移期可读（doctor 记 warn），
+> **两轮双仓回归后即废**——迁移别拖过回归期。
+
+1. **整包备份（迁移前）**：原实例整份拷到本地不入库的位置（文件名带日期），至少保留到迁移验收完；
+   备份读不出就停下来报缺件，不许凭记忆重造。
+2. **逐字段映射**（去向四类：改写/沿用/删除/新增；全表＝0004 D2 字段表）：
+   - **改写**：旧 `paths.day_tables` → `paths.day_tables_dir`（补 `day_table_pattern`/`lanes`，问答填实）；
+     旧 `paths.daily_report` → `paths.handoff_dir`；旧 `paths.skills` / `paths.loop_protocol` →
+     `registry.skills.project_skills_dir` / `loop_dir`；旧 runtime 三门 → `gates` 段
+     （`close_gate`/`framework_gate`/`loop_gate`，其余门按项目仓盘点补齐）；
+     旧 runtime 机器绝对路径 → 发现方式字段（[0004](../../框架仓旧裁决) D2.1：
+     机器值走 env `KAI_BACKEND_PYTHON` 与主树相对路径，**不入 tracked 实例**）。
+   - **沿用**：`project`/`repo_root`/`ship_mode`、`execution`（除 host_tools）、`tower_cron`、`wip`、
+     `limits`、`approval`、`acceptance`、`audit`。
+   - **删除**：仅 `execution.host_tools` 一种——宿主差异迁 `adapters/<宿主>.md`（0004 D6）；
+     迁移完成的验收之一＝**实例内没有 host_tools**。
+   - **新增**（问答填实，占位不落盘）：`registry.playbooks[]`（原登记面收编）、`models` 六档映射
+     （词表只 R/C/P/V/G/W，永不写模型 slug）、`registry.adrs`/`registry.rules`、`issue` 票平台段、
+     `paths` 新增记录面字段（本项目没有的写 null）。
+3. **逐字段 diff 留档**：schema 2 的每个字段在 diff 里都有明确去向，diff 写进交接日报（实例 `paths.handoff_dir`）；
+   「零数据丢失」的口径就是这张 diff——字段级对不上号就停，不许静默丢字段。
+4. **迁后校验**：新实例过 D5 校验口径（字段齐、路径在、六档词表零 slug、`issue.platform` 在枚举内、host_tools 已不存在）；
+   填不实的字段按缺件三格登记，不落占位。
+5. **不真跑**：真机迁移属双仓回归那刀的活；本段先落流程与判据。
 
 ## 配置面总表（唯一对照表）
 
@@ -221,6 +286,9 @@ python scripts/framework-gate.py --selftest   # 推前框架门自证
 | worktree 环境三项 | 本技能「4.」＋ 本机 `agents.local.md`（不入库） | 三项各有读数；缺件报错不静默 |
 | 剧本登记面 | 配置实例 `registry.playbooks[]`（框架仓旧裁决，router.md 退役） | 新增剧本只加登记行，入口与技能不复述 |
 | 项目配置实例（落点 / 读取 / 缺件） | [0004](../../框架仓旧裁决) **D3/D4**（实例＝`<项目仓根>/.ai/kai-mode.project.json`） | 读不到实例 → 按 D4 rc≠0 报缺件清单（缺什么/谁需要/怎么补），永不猜路径 |
+| 六档映射（models） | 实例 `models.roles`（判据＝[0004](../../框架仓旧裁决) **D2** 六档表） | 回执「档位核对」格全过：词表只 R/C/P/V/G/W、六角色有着落或显式缺省、零 slug |
+| 生成式项目本地技能 | 本技能「按项目生成」段 ＋ [`templates/verification-skill/SKILL.md`](templates/verification-skill/SKILL.md) | 骨架落实例 `registry.skills.project_skills_dir` ＋ 项目在 `registry.playbooks[]` 登记一行 |
+| schema 2→3 迁移 | 本技能「迁移」段 ＋ [0004](../../框架仓旧裁决) **D2** 字段表 | 逐字段 diff 留档 ＋ host_tools 已不存在 ＋ 新实例过 D5 校验口径 |
 
 ## 改配置的四条规矩
 
@@ -248,3 +316,5 @@ python scripts/framework-gate.py --selftest   # 推前框架门自证
 | 为什么这么设计 | [`框架仓旧裁决`](../../框架仓旧裁决)（判据出处：项目仓 框架仓旧裁决，历史） |
 | 本机环境事实（解释器、node、坑） | 本机 `agents.local.md`（不入库，每台一份） |
 | 改了技能正本怎么让各家吃到 | 本技能「2. 装技能到宿主」＋ `magpie-sync.py` |
+| 给项目出验收/验证技能骨架（生成式腿） | 本技能「按项目生成」段 ＋ [`templates/verification-skill/SKILL.md`](templates/verification-skill/SKILL.md) |
+| 项目仓旧实例怎么升 schema 3 | 本技能「schema 2→3 实例迁移」段 ＋ [0004](../../框架仓旧裁决) D2 字段表 |
