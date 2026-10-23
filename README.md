@@ -1,9 +1,9 @@
 # kai-mode —— 机场体系的技能与通用剧本仓库
 
-> **状态：0.7.0（2026-10-23 机长 / 副机长 / loop 三份提示词压到 1.5k 字符级，围栏与负担分层；先版同步 ADR-0137 / ADR-0140 / ADR-0141、加技能注册表 / doctor / 板装配面与板定时刷新）。** 技能与协议已对齐项目仓现行机场体系
-> （ADR-0137：四角色＋30 分钟塔台轮巡）；**本仓已于 2026-10-22 成为宿主装机正本**（`magpie-sync apply --root <本仓>`，
+> **状态：0.7.0（2026-10-23 机长 / 副机长 / loop 三份提示词压到 1.5k 字符级，围栏与负担分层；先版同步机场体系判据（判据出处：项目仓 ADR-0137/0140/0141，历史）、加技能注册表 / doctor / 板装配面与板定时刷新）。** 技能与协议已对齐本仓现行机场体系
+> （[0003：四角色＋30 分钟塔台轮巡](docs/adr/0003-airport-rebuild-four-roles.md)）；**本仓已于 2026-10-22 成为宿主装机正本**（`magpie-sync apply --root <本仓>`，
 > 8 个宿主装齐 8 个技能），项目仓那份技能副本自此只作镜像。
-> 旧五角色（Tower/Ground/Coordinator/Group-A/B）、租约、班次、handoff 按铃那套已随 ADR-0137 退役
+> 旧五角色（Tower/Ground/Coordinator/Group-A/B）、租约、班次、handoff 按铃那套已随机场体系重做退役（本仓 [0003](docs/adr/0003-airport-rebuild-four-roles.md)；判据出处：项目仓 ADR-0137，历史）
 > （git 历史可捞）。
 
 ## 这是什么
@@ -33,7 +33,7 @@ kai-mode 是「一句话需求 → 票 → 排班 → 施工 → 审查 → 发�
 | 塔台 | `/塔台` | 30 分钟轮巡：先发货（合并/push/关票）、后补排班（日表 5–10 行，放本轮最后） | 写码、替审查下结论 |
 | 机长 / 副机长 | `/机长` `/副机长` | goal 模式各管 2 张票；每票 1 施工＋1 审查（新上下文），子代理按需展开 | 写码、push、合并 |
 
-**权限硬线（ADR-0137）**：塔台**独占** push 与关票；机长/副机长只管理不写码；地勤只开票；记录面三分——日表只由塔台写、状态只写 Issue 评论、代码只进分支。
+**权限硬线（[0003](docs/adr/0003-airport-rebuild-four-roles.md)）**：塔台**独占** push 与关票；机长/副机长只管理不写码；地勤只开票；记录面三分——日表只由塔台写、状态只写 Issue 评论、代码只进分支。
 
 ## 闭环
 
@@ -96,7 +96,7 @@ CHANGELOG.md      版本变更记录
 1. 项目根写 `.ai/kai-mode.project.json`（从 `templates/` 复制），填主树解释器/node 绝对路径与门禁命令。
 2. 把本仓 `skills/` 与 `loops/loop-protocol.md` 落到项目仓 `.ai/skills/` 与 `loops/`（或由 `set-kai-mode` 按宿主装配）。
 3. `/set-kai-mode` 探测宿主能力（定时口 / 会话创建口 / shell 启动器），按四档装配 30 分钟塔台定时器；缺件如实登记。
-4. 项目仓 ADR 记角色与权限裁决（先例：ADR-0137）；开票走地勤六件套；用一张真票走通「排班→施工→审查→发货」全链路做自证。
+4. 项目 ADR 记角色与权限裁决（先例：本仓 [0003](docs/adr/0003-airport-rebuild-four-roles.md)；判据出处：项目仓 ADR-0137，历史）；开票走地勤六件套；用一张真票走通「排班→施工→审查→发货」全链路做自证。
 5. 项目专用路径、票号、job id 只进项目配置与本机文件，不进本仓技能正文。
 
 ## 给别的仓装一块航班信息板
@@ -139,8 +139,8 @@ python scripts/doctor.py --with-tests
 
 ## 判据正本
 
-- 机场体系唯一现行裁决：项目仓 `docs/artifacts/adrs/ADR-0137-airport-rebuild-four-roles.md`（supersedes ADR-0131/0132/0133/0135/0136 的对应裁决，残留表在该 ADR §取代明细）
-- 单句入口与拍板：项目仓 `docs/artifacts/adrs/ADR-0130-kai-mode-and-dual-lane-rewire.md`
+- 机场体系唯一现行裁决：本仓 [`docs/adr/0003-airport-rebuild-four-roles.md`](docs/adr/0003-airport-rebuild-four-roles.md)（判据出处：项目仓 ADR-0137，历史；收编并部分取代项目仓 ADR-0131/0132/0133/0135/0136 的对应裁决，取代明细见 0003 §退役与保留）
+- 单句入口与拍板：本仓 [`docs/adr/0002-single-entry-and-dual-lane.md`](docs/adr/0002-single-entry-and-dual-lane.md)（判据出处：项目仓 ADR-0130，历史）
 - 单票闭环协议：本仓 `loops/loop-protocol.md`（v5）
 - **技能清单与装机清单**：仓根 [`registry.json`](registry.json)（装机清单＝其中 `install: auto` 的条目）
 - **技能目录契约**：[`docs/skill-layout.md`](docs/skill-layout.md)（目录结构 / frontmatter 八字段与顺序 / 注册表字段 / 读契约）

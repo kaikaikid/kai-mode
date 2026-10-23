@@ -5,7 +5,7 @@ How the engineering skills should consume this repo's domain documentation when 
 ## Before exploring, read these
 
 - **`GLOSSARY.md`** at the repo root — this repo's canonical vocabulary file. `/domain-modeling` writes it under exactly this name (22 references), and it is what the other skills should be reading.
-- **`docs/adr/`**: read ADRs that touch the area you're about to work in. This repo's numbering starts at `0001` and does **not** continue the project repo's `ADR-01xx` series — see `docs/adr/0001-repo-independence.md`. A bare `ADR-0137`-style reference elsewhere in this repo is a migration-era citation, not a live ruling.
+- **`docs/adr/`**: read ADRs that touch the area you're about to work in. This repo's numbering starts at `0001` and does **not** continue the project repo's `ADR-01xx` series — see `docs/adr/0001-repo-independence.md`. The airport-sentry rulings restated from the project repo now live here as `docs/adr/0002-single-entry-and-dual-lane.md` (single-sentence entry, grilling, one-shot approval) and `docs/adr/0003-airport-rebuild-four-roles.md` (four-role airport); a bare `ADR-0137`-style reference elsewhere in this repo is a historical provenance note, not a live ruling.
 
 Some skills in this family (notably `/setup-matt-pocock-skills` and `/improve-codebase-architecture`) name the same object `CONTEXT.md` / `CONTEXT-MAP.md`. **Read `GLOSSARY.md` in their place** — this repo keeps no `CONTEXT.md`. The writer skill (`/domain-modeling`) is what creates the file, and it only ever writes `GLOSSARY.md`, so the reader docs follow it. If the repo ever splits into multiple contexts, the map file is `GLOSSARY-MAP.md` and it points at per-context `GLOSSARY.md` files.
 

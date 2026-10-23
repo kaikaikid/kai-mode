@@ -110,7 +110,7 @@ V1.0 的“初始 1 个”是稳定性选择，不是产品目标。试点 24h �
 
 阶段 2/3 的实现票在 #1829 落地、框架迁移 P2 之后开；在此之前只落契约，不改直播面。
 
-> **2026-10-21 独立 reviewer 修正**：运行态文件改用 `task-state-<票>.json`（与 scope-check 的 `current-task-<票>.json` 分开）；PR 模板改为合并后回填；文件域租约 TTL 标为未实现（45 分钟只适用跑道牌/出货牌）；P2 座位映射、`acceptance` 的 `implementer` 必填与 reviewer 独立性、任务 schema 的 `null`/`approval_required`/`deadline` 已补齐。详见 ADR-0136「评审修正」。
+> **2026-10-21 独立 reviewer 修正**：运行态文件改用 `task-state-<票>.json`（与 scope-check 的 `current-task-<票>.json` 分开）；PR 模板改为合并后回填；文件域租约 TTL 标为未实现（45 分钟只适用跑道牌/出货牌）；P2 座位映射、`acceptance` 的 `implementer` 必填与 reviewer 独立性、任务 schema 的 `null`/`approval_required`/`deadline` 已补齐。判据出处：项目仓 ADR-0136「评审修正」（历史出处，判据待迁）。
 
 ## 六、闭环完成的十条（本框架口径）
 
@@ -143,7 +143,9 @@ V1.0 §十二的十条完成定义，逐条落到本框架的判据：
 
 ## 八、与既有 ADR 的关系
 
-- 角色拆分、按铃适配器、AI 全判：ADR-0135（已 accepted）。
-- 租约与出货单点：ADR-0133（D2 的“出货单点归塔台”已被 ADR-0135 改归 Ground）。
-- 机场体系与剧本层：ADR-0132。
-- 本文件的裁决在项目仓以 ADR-0136 登记；若两者冲突，以 ADR-0136 为准并回改本文件。
+（以下均为项目仓历史出处注记，判据待迁；本仓不引项目仓裁决为现行事实——见 [0001](adr/0001-repo-independence.md)。）
+
+- 角色拆分、按铃适配器、AI 全判：项目仓 ADR-0135（历史出处，判据待迁；已 accepted）。
+- 租约与出货单点：项目仓 ADR-0133（历史出处，判据待迁；D2 的“出货单点归塔台”已被 ADR-0135 改归 Ground）。
+- 机场体系与剧本层：项目仓 ADR-0132（历史出处，判据待迁）；机场体系现行正本＝本仓 [0003](adr/0003-airport-rebuild-four-roles.md)。
+- 本文件的裁决 originally 在项目仓以 ADR-0136 登记（判据出处：项目仓 ADR-0136，历史）；本仓接管后判据以本文件为准，项目仓那份不再约束本仓（见 [0001](adr/0001-repo-independence.md)）。
