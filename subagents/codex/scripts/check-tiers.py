@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 # check-tiers.py - drift guard for the magpie subagent tier system.
 #
+# Note (kai-mode 针B 2026-10-23): kai-mode's own specialized contracts/ (roles.yaml,
+# delegation-prompts.md, ...) were superseded by the host-neutral personas in the
+# kai-mode repo-root agents/ directory. This script keeps reading magpie's own copy
+# under <repo>/codex-agents/final/contracts/ because day-to-day subagent management
+# is magpie's job; agents/ carries discipline (R/C/P/V/G/W vocab only), not model
+# plumbing. kai-mode's retired copies live in _superseded/subagents-codex-contracts/.
+#
 # Question it answers: is every "role -> group/tier-X -> effort" triple both
 # self-consistent across the config files AND actually servable by the models
 # inside that tier pool?

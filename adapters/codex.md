@@ -34,7 +34,7 @@ codex exec -C <仓库根> -s read-only --json -o <回执文件> \
   "按票面 AC 评审 <票号>；只输出 verdict 与逐条证据路径。"
 ```
 
-## 执行三职（判据出处：项目仓 ADR-0136，历史；判据由 [playbooks/execution-roles.md](../playbooks/execution-roles.md) 承载：researcher / implementer / reviewer）
+## 执行三职（判据出处：项目仓 ADR-0136，历史；判据由 [skills/kai-mode/playbooks/execution-roles.md](../skills/kai-mode/playbooks/execution-roles.md) 承载：researcher / implementer / reviewer）
 
 - **Researcher**：`codex exec -s read-only`，产出 `research-<票>.md`；不写实现。
 - **Implementer**（＝施工子代理）：`codex exec -s workspace-write`；必带派工卡（票号/AC/允许禁止修改/验证命令/环境口径）；独立 worktree 与分支；不 push、不合并。

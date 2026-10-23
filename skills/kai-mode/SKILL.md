@@ -95,6 +95,18 @@ updated: 2026-10-21
 **kai-mode 可自行判断拉起角色**：宿主有会话口 / 定时口就起；没有就把缺件写进 `/set-kai-mode` 的缺件登记，
 交人工拉起。拉起只是发起，不代替角色干活、不改角色判据。
 
+## 剧本索引（七件治理剧本）
+
+七件治理剧本住本技能 `playbooks/`，一行一条；叶子按需读，入口不复述剧本判据。
+
+- **任务合同.** 开票前落合同十字段与 Definition of Ready，关票前逐条过 Definition of Done（文件：`playbooks/task-contract.md`）
+- **执行三职.** 组内施工怎么分工：Researcher／Implementer／Reviewer 各管什么、禁区在哪（文件：`playbooks/execution-roles.md`）
+- **可靠性.** 租约、重试、去重、恢复、熔断与预算——失败怎么停、到限怎么断（文件：`playbooks/reliability.md`）
+- **审批.** 哪些动作自动允许、哪些必须人工审批；风险分级与不得自批（文件：`playbooks/approval.md`）
+- **审计.** 事件日志记什么不记什么；通知只发有决策价值的事件（文件：`playbooks/audit.md`）
+- **上下文.** 每票只加载什么；65%／80% 检查点阈值与四种文件边界（文件：`playbooks/context.md`）
+- **验收.** 跃迁验收 AI 全判不抽样——逐条 AC 对证据，红线仍归人（文件：`playbooks/acceptance.md`）
+
 ## 分层与硬互斥线
 
 | 层 | 管什么 | 正本 |

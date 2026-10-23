@@ -19,7 +19,10 @@ from pathlib import Path
 LOCAL = timezone(timedelta(hours=8))
 DB = Path.home() / ".codex" / "state_5.sqlite"
 
-# Gates. Keep in sync with contracts/routing.md 收口三条 + contracts/roles.yaml tiers.
+# Gates. Keep in sync with the lifecycle rules (收口三条) in kai-mode agents/README.md
+# (host-neutral personas, repo root) and the tier numbers in magpie's
+# codex-agents/final/contracts/roles.yaml. kai-mode's own contracts/ copies were
+# superseded by agents/ and archived to _superseded/subagents-codex-contracts/.
 GATE_OPEN_RATE = 0.10  # unclosed agents eat the concurrency budget (max_concurrent=3)
 GATE_NULL_ROLE_RATE = 0.0  # an untagged spawn cannot be routed to its tier at all
 

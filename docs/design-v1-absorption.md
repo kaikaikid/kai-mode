@@ -2,25 +2,25 @@
 
 > 来源：用户 2026-10-21 提供的《Kai-vass Autonomous Work Loop V1.0》。
 > 结论：**吸收设计意图，不照抄实现形态。** 与本框架已有契约冲突的地方，按下表裁决；裁决理由写在同一行，避免下一个人再猜。
-> 本文件是设计层唯一对照表。具体执行以 `playbooks/` 与项目 ADR 为准。
+> 本文件是设计层唯一对照表。具体执行以 `skills/kai-mode/playbooks/` 与项目 ADR 为准。
 
 ## 一、总裁决
 
 | V1.0 主张 | 本框架裁决 | 落在哪 |
 |---|---|---|
-| GitHub Issues/PR 是任务与协作中心 | **Issues 采纳为票面唯一事实源**；PR 不强制。默认 `ship_mode=direct`（门禁后直推 dev），需要人工审查的项目可切 `pr` 或 `hybrid` | `playbooks/task-contract.md`、`playbooks/approval.md`、项目配置 `ship_mode` |
-| 调度器是流程控制者，不依赖 AI 记忆 | 采纳。任务账住 GitHub＋`plan.json`，运行态住本机状态文件，主会话不存任务账 | `playbooks/state-machine.md`、`playbooks/audit.md` |
+| GitHub Issues/PR 是任务与协作中心 | **Issues 采纳为票面唯一事实源**；PR 不强制。默认 `ship_mode=direct`（门禁后直推 dev），需要人工审查的项目可切 `pr` 或 `hybrid` | `skills/kai-mode/playbooks/task-contract.md`、`skills/kai-mode/playbooks/approval.md`、项目配置 `ship_mode` |
+| 调度器是流程控制者，不依赖 AI 记忆 | 采纳。任务账住 GitHub＋`plan.json`，运行态住本机状态文件，主会话不存任务账 | `playbooks/state-machine.md`、`skills/kai-mode/playbooks/audit.md` |
 | Codex 是首选执行器 | **采纳“执行器可替换”，不采纳“Codex 唯一”**。项目配置 `execution.preferred`，按宿主探测结果选；本仓当前 Qoder 为主、Codex/opencode 为备 | `adapters/`、`templates/kai-mode.project.json` |
-| 每任务独立会话、独立工作区 | 采纳。每张票一个 fresh context，工作树隔离，租约限定文件域 | `playbooks/shifts/group.md`、`playbooks/context.md` |
-| 自动修复有限次 | 采纳。默认最多 3 轮；同一错误签名出现 2 次提前停 | `playbooks/reliability.md` |
-| 所有任务必须有终止条件 | 采纳。状态机、超时、尝试上限、预算、停机牌共同构成终止条件 | `playbooks/state-machine.md`、`playbooks/reliability.md` |
-| 高风险操作走系统权限门禁，不靠提示词 | 采纳。风险分级矩阵＋不可自批规则 | `playbooks/approval.md` |
-| 本地 SQLite 保存运行状态、锁、尝试次数、检查点、事件 | **契约采纳，引擎暂缓。** 单机低维护场景用原子 JSON＋`events.jsonl` 已能覆盖；触发迁移条件见 §四 | `playbooks/state-machine.md`、`playbooks/audit.md` |
-| 执行角色只保留 Researcher／Implementer／Reviewer | 采纳为**组内执行角色**，不新增编排角色。编排层仍是 Tower／Ground／Coordinator／Group-A/B | `playbooks/execution-roles.md` |
+| 每任务独立会话、独立工作区 | 采纳。每张票一个 fresh context，工作树隔离，租约限定文件域 | `playbooks/shifts/group.md`、`skills/kai-mode/playbooks/context.md` |
+| 自动修复有限次 | 采纳。默认最多 3 轮；同一错误签名出现 2 次提前停 | `skills/kai-mode/playbooks/reliability.md` |
+| 所有任务必须有终止条件 | 采纳。状态机、超时、尝试上限、预算、停机牌共同构成终止条件 | `playbooks/state-machine.md`、`skills/kai-mode/playbooks/reliability.md` |
+| 高风险操作走系统权限门禁，不靠提示词 | 采纳。风险分级矩阵＋不可自批规则 | `skills/kai-mode/playbooks/approval.md` |
+| 本地 SQLite 保存运行状态、锁、尝试次数、检查点、事件 | **契约采纳，引擎暂缓。** 单机低维护场景用原子 JSON＋`events.jsonl` 已能覆盖；触发迁移条件见 §四 | `playbooks/state-machine.md`、`skills/kai-mode/playbooks/audit.md` |
+| 执行角色只保留 Researcher／Implementer／Reviewer | 采纳为**组内执行角色**，不新增编排角色。编排层仍是 Tower／Ground／Coordinator／Group-A/B | `skills/kai-mode/playbooks/execution-roles.md` |
 | `PR Ready` / `Merged` | 映射为 `ship_ready` / `landed`。启用 `pr` 模式时 `ship_ready` 的落地动作就是开 PR | `playbooks/state-machine.md` |
-| 初始只允许 1 个编码任务并发 | **试点期采纳**：`pilot_global_wip=1`；24h 指标通过后按项目配置调到 2（组内）/4（全局） | `playbooks/reliability.md`、项目配置 `limits` |
-| 上下文 65% 准备交接、80% 停止堆积 | 采纳为检查点阈值。handoff 仍 ≤500 B；检查点是独立文件，只给接任者读 | `playbooks/context.md` |
-| 通知只针对有决策价值的事件 | 采纳。与既有“日报四类”合并：完成、待审批、连续失败、长期阻塞、预算阈值、安全拦截 | `playbooks/audit.md` |
+| 初始只允许 1 个编码任务并发 | **试点期采纳**：`pilot_global_wip=1`；24h 指标通过后按项目配置调到 2（组内）/4（全局） | `skills/kai-mode/playbooks/reliability.md`、项目配置 `limits` |
+| 上下文 65% 准备交接、80% 停止堆积 | 采纳为检查点阈值。handoff 仍 ≤500 B；检查点是独立文件，只给接任者读 | `skills/kai-mode/playbooks/context.md` |
+| 通知只针对有决策价值的事件 | 采纳。与既有“日报四类”合并：完成、待审批、连续失败、长期阻塞、预算阈值、安全拦截 | `skills/kai-mode/playbooks/audit.md` |
 | 不引入另一个大型 Agent Harness | 采纳。不新建执行框架，只补契约与状态 | 本文件 §六 |
 
 ## 二、角色映射

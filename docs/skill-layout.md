@@ -108,3 +108,14 @@ python scripts/doctor.py --with-tests
 一条命令验全仓：注册表 schema/字段/枚举、每个注册条目的目录与 `SKILL.md`、frontmatter 八字段与顺序、三处 name 一致、盘上有技能目录但没登记、机器绝对路径入正文、`SKILL.md` 相对链接断链、仓内行尾口径、`VERSION` 与 README 版本串一致。
 
 各技能自己的 pytest：见该技能 `SKILL.md` 的「验证命令」段（如 `python -m pytest skills/航班信息/scripts/tests/ -q`）。
+
+## 9. agents 层（泛用子代理人格，不是技能）
+
+子代理人格不进 `skills/`、不进注册表，住仓根 [`agents/`](../agents/README.md)，与 `skills/` 平级。契约正本＝[`agents/README.md`](../agents/README.md)，要点：
+
+- **一份泛用设定（单一真相源）**：kai-mode 只保留一份子代理人格设定，宿主中立；原 Codex 特化契约七件已退役归档 `_superseded/`，不再作依据。
+- **目录形状**：`agents/README.md`（层契约）＋ `agents/<名>.md`（人格文件，kebab-case，如 `kai-worker.md`）。人格文件＝frontmatter 三字段（`name`／`description`／`version`）＋人格与纪律＋输入／输出契约＋宿主适配点；spawn 时主代理**整读全文**放进派活 prompt，所以文件必须自足。
+- **宿主中立与装机自适配**：正文不写死工具名、子代理类型、模型 slug；装机时由 set-kai-mode 按 [`adapters/<宿主>.md`](../adapters/) 翻译（spawn 参数、只读／可写落法、并发与深度）；magpie 侧对接走 magpie 自己的角色管理。
+- **六档词表**：档位只写 R/C/P/V/G/W（正本＝[ADR-0004](adr/0004-project-config-schema.md) D2）；tier→具体模型解析住 adapters/<宿主>.md，其余任何文件出现模型 slug 即违例。
+- **互指不复制**：人格＝怎么干活的性格与纪律；四角色职责判据＝干什么，住 [ADR-0003](adr/0003-airport-rebuild-four-roles.md)；票内单票闭环住 [`loops/loop-protocol.md`](../loops/loop-protocol.md)。同一判据只写一份，人格件互指并指向这两处正本。
+- **校验**：doctor 不扫 `agents/`；改完按 `agents/README.md` 的「验收」段自查相对链接互指闭环与六档词表。

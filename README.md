@@ -65,7 +65,7 @@ kai-mode 是「一句话需求 → 票 → 排班 → 施工 → 审查 → 发�
 - 施工回执 ≤40 行：`ticket/role/verdict/files/commits/checks/summary/evidence/risks/next`；禁止贴 diff 全文与原始日志。
 - 塔台发货**只认审查子代理的判词**（`verdict=pass` 且逐条 AC 有证据），不认机长口头总结。
 
-## 可靠性（`playbooks/reliability.md`）
+## 可靠性（`skills/kai-mode/playbooks/reliability.md`）
 
 - 单票失败 **1 次重试**；再失败 → 卡点停票；同错连发触发熔断。
 - 上限全部进项目配置 `limits`；到限写 `blocked`/`failed` 留读数，不许「再试一次看看」。
@@ -75,12 +75,12 @@ kai-mode 是「一句话需求 → 票 → 排班 → 施工 → 审查 → 发�
 
 ```text
 skills/           技能目录：一个技能一目录，必含 SKILL.md（清单见 registry.json）
+skills/kai-mode/playbooks/  七件治理剧本：task-contract / execution-roles / reliability / approval / audit / context / acceptance（入口索引见 skills/kai-mode/SKILL.md）
 skills/航班信息/   板工坊：SKILL.md ＋ templates/（生成器模板＋板配置样例）＋ scripts/（脚手架/索引页/刷新）
 skills/set-航班信息/  装配面：给项目仓装一块板
 registry.json     技能注册表：技能清单的单一事实源（装机清单从它派生）
 scripts/          仓级工具：doctor.py（校验入口，一条命令验全仓）
 loops/            loop-protocol.md（v5 单票闭环正本）
-playbooks/        task-contract / execution-roles / reliability / approval / audit / context / acceptance
 schemas/          task / acceptance / event
 adapters/         qoder（30 分钟塔台定时＋按铃子会话）、opencode、codex
 templates/        kai-mode.project.json（schema 2：日表/轮巡/名额/限额/审批/审计）
