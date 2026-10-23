@@ -4,7 +4,7 @@
 kai-mode 框架仓 doctor（单一校验入口）
 =====================================
 用法：
-    python scripts/doctor.py                # 逐项检查（13 项）
+    python scripts/doctor.py                # 逐项检查（14 项）
     python scripts/doctor.py --with-tests   # 追加跑各技能自己的 pytest
     python scripts/doctor.py --json         # 机器可读：{"ok":bool,"checks":[{id,status,detail}]}
 
@@ -49,6 +49,25 @@ MACHINE_RE = (
 EXAMPLE_RE = re.compile(r"例|示例|example", re.IGNORECASE)
 LINK_RE = re.compile(r"\[[^\]]*\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
 ALLOW_MARK = "# doctor:allow-machine-path"
+
+# ── 14 解耦门（ADR-0004「代价与迁移」）：项目硬路径不许回流进框架正本 ──────────
+DECOUPLE_DIRS = ("skills", "loops", "templates")
+DECOUPLE_EXT = (".md", ".py", ".json", ".bat", ".tsv")
+# 模式按 ADR 判据的 grep 口径（大小写敏感）；命中行报「文件:行号:模式」。
+DECOUPLE_PATTERNS = ("kai-vass", ".ai/router", ".ai/tasks", "docs/artifacts/adrs", ".ai/scope", "kai-vass-v2")
+# 配置模板本体是项目差异层的载体：audit_dir 等字段采样值就是硬路径的合法新家（ADR-0004 D2 把
+# .ai/scope/audit 收编进 paths.audit_dir），所以模板只对 .ai/scope 豁免；退役面（.ai/router）与
+# 项目专名（kai-vass）在模板里同样不许出现，照扫。
+CONFIG_TEMPLATE_REL = "templates/kai-mode.project.json"
+CONFIG_TEMPLATE_EXEMPT = (".ai/scope",)
+# 六档词表：models 六档字段只许出现这六个档位字母；tier→具体模型的解析住 adapters/<宿主>.md，
+# 实例里出现任何疑似模型 slug 即违例（ADR-0004 D2）。
+TIER_VOCAB = ("R", "C", "P", "V", "G", "W")
+SLUG_MARKS = ("group/", "-xhigh", "claude", "grok", "gpt", "gemini", "deepseek", "qwen",
+              "kimi", "glm-", "minimax", "anthropic")
+DECOUPLE_FIX = ("修法：硬路径改读项目配置实例字段（<项目仓根>/.ai/kai-mode.project.json，schema 3），"
+                "字段映射见 docs/adr/0004-project-config-schema.md D2；读不到实例就 rc≠0 报缺件清单，别猜路径；"
+                "档位只写 R/C/P/V/G/W，tier→模型解析住 adapters/<宿主>.md")
 
 
 def load_magpie_sync():
@@ -436,6 +455,120 @@ def chk_install_sync(root, ms):
     return "ok", f"{len(plan)} 个技能副本与本仓逐字相同；装机来源＝本仓（{root}）"
 
 
+def _decouple_whitelisted(rel: str) -> bool:
+    """解耦门白名单（仓内相对路径、正斜杠）：docs/adr（出处注记区）、_superseded/ 归档、
+    缓存产物、本门自己的测试 fixture（scripts/tests/；当前扫描面不含 scripts/，这条防扫描面日后扩大）。"""
+    segs = rel.split("/")
+    if rel.endswith(".pyc") or "__pycache__" in segs or ".pytest_cache" in segs:
+        return True
+    if "_superseded" in segs[:-1]:  # 归档目录（仓根或任意层级）不算正本
+        return True
+    if any(segs[i] == "docs" and segs[i + 1] == "adr" for i in range(len(segs) - 1)):
+        return True
+    return rel.startswith("scripts/tests/")
+
+
+def _template_models_problems(tpl) -> list:
+    """schema 3 配置模板的六档子检查：models 六档字段只许 R/C/P/V/G/W，整段不许夹带疑似模型 slug。"""
+    vocab = "/".join(TIER_VOCAB)
+    problems = []
+    models = tpl.get("models")
+    if not isinstance(models, dict):
+        return ["models 段缺失或不是对象（六档映射必须有家）"]
+    tiers = models.get("tiers")
+    if tiers is not None and (not isinstance(tiers, list)
+                              or any(not isinstance(t, str) or t not in TIER_VOCAB for t in tiers)):
+        problems.append(f"models.tiers={tiers!r}（词表只有 {vocab}）")
+    dflt = models.get("default")
+    if dflt is not None and (not isinstance(dflt, str) or dflt not in TIER_VOCAB):
+        problems.append(f"models.default={dflt!r}（词表只有 {vocab}）")
+    roles = models.get("roles")
+    if roles is not None:
+        if not isinstance(roles, dict):
+            problems.append("models.roles 不是对象")
+        else:
+            for rname, spec in roles.items():
+                if isinstance(spec, dict) and "tier" in spec:
+                    t = spec["tier"]
+                    if not isinstance(t, str) or t not in TIER_VOCAB:
+                        problems.append(f"models.roles.{rname}.tier={t!r}（词表只有 {vocab}）")
+
+    def walk(node, path):
+        if isinstance(node, dict):
+            for k, v in node.items():
+                walk(v, f"{path}.{k}")
+        elif isinstance(node, list):
+            for i, v in enumerate(node):
+                walk(v, f"{path}[{i}]")
+        elif isinstance(node, str):
+            low = node.lower()
+            for mark in SLUG_MARKS:
+                if mark in low:
+                    problems.append(f"{path} 含疑似模型 slug `{mark}`")
+                    return
+
+    walk(models, "models")
+    return problems
+
+
+def chk_decoupling(root, ms):
+    """14 解耦门（ADR-0004「代价与迁移」）：skills/ loops/ templates/ 的文本文件里不许再有项目硬路径
+    （kai-vass、.ai/router、.ai/tasks、docs/artifacts/adrs、.ai/scope、kai-vass-v2），命中即红并按
+    「文件:行号:模式」点名。白名单：docs/adr（出处注记）、_superseded/、缓存产物、本门测试 fixture；
+    配置模板本体只对 .ai/scope 豁免（字段采样值是硬路径的合法新家），其余模式照扫。
+    子检查：配置模板 schema==3 时，models 六档字段只许 R/C/P/V/G/W，整段不许夹带疑似模型 slug。"""
+    bases = [os.path.join(root, d) for d in DECOUPLE_DIRS if os.path.isdir(os.path.join(root, d))]
+    if not bases:
+        return "skip", "没有 skills/、loops/、templates/ 目录（不适用）"
+    hits, scanned = [], 0
+    for base in bases:
+        for b, dirs, files in os.walk(base):
+            dirs[:] = [x for x in dirs if x not in ("__pycache__", ".pytest_cache")]
+            for fn in sorted(files):
+                if not fn.lower().endswith(DECOUPLE_EXT):
+                    continue
+                p = os.path.join(b, fn)
+                rel = os.path.relpath(p, root).replace("\\", "/")
+                if _decouple_whitelisted(rel):
+                    continue
+                scanned += 1
+                pats = [x for x in DECOUPLE_PATTERNS
+                        if rel != CONFIG_TEMPLATE_REL or x not in CONFIG_TEMPLATE_EXEMPT]
+                try:
+                    with open(p, encoding="utf-8") as f:
+                        lines = f.read().splitlines()
+                except (OSError, UnicodeDecodeError):
+                    continue
+                for i, line in enumerate(lines, 1):
+                    matched = [x for x in pats if x in line]
+                    # 长模式命中就不再报被它包含的短模式（kai-vass-v2 命中不重复报 kai-vass）
+                    matched = [x for x in matched if not any(x != y and x in y for y in matched)]
+                    hits.extend(f"{rel}:{i}:{x}" for x in matched)
+    problems = []
+    if hits:
+        head = "；".join(hits[:6]) + (f"（共 {len(hits)} 处）" if len(hits) > 6 else "")
+        problems.append(f"硬路径残留：{head}")
+    tpl_note = ""
+    tpl_path = os.path.join(root, *CONFIG_TEMPLATE_REL.split("/"))
+    if os.path.isfile(tpl_path):
+        try:
+            with open(tpl_path, encoding="utf-8") as f:
+                tpl = json.load(f)
+        except (OSError, ValueError) as exc:
+            problems.append(f"{CONFIG_TEMPLATE_REL} 不是合法 JSON：{exc}")
+        else:
+            if tpl.get("schema") == 3:
+                problems.extend(_template_models_problems(tpl))
+            else:
+                tpl_note = f"；配置模板 schema={tpl.get('schema')!r}，六档子检查只对 schema 3 生效"
+    else:
+        tpl_note = "；配置模板不在，六档子检查跳过"
+    if problems:
+        return "fail", "；".join(problems) + "。" + DECOUPLE_FIX
+    return "ok", (f"skills/loops/templates 扫了 {scanned} 份文本文件，六种硬路径 0 命中；"
+                  f"配置模板六档合规（{'/'.join(TIER_VOCAB)}，无模型 slug）{tpl_note}")
+
+
 CHECKS = (
     ("registry-file", "注册表文件", chk_registry_file),
     ("registry-fields", "注册表字段", chk_registry_fields),
@@ -450,6 +583,7 @@ CHECKS = (
     ("version-in-readme", "VERSION 与 README 口径一致", chk_version_readme),
     ("skill-tests", "各技能 pytest 全绿", chk_skill_tests),
     ("install-sync", "装机同步（库副本与来源）", chk_install_sync),
+    ("decoupling-gate", "解耦门（项目硬路径零残留）", chk_decoupling),
 )
 
 

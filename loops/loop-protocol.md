@@ -2,7 +2,7 @@
 
 > **定位**：机长与副机长共用的**单票闭环协议正文**，不是用户入口。用户入口是 `/kai-mode` 与角色口令
 > （`/机长`、`/副机长`、`/塔台`、`/地勤`）。
-> **2026-10-21 按项目仓 ADR-0137 重写**（`docs/artifacts/adrs/ADR-0137-airport-rebuild-four-roles.md`）；旧机场机器已退役，见 ADR-0137。
+> **2026-10-21 按机场体系重做裁决重写**（现行正本＝[0003 四角色机场](../docs/adr/0003-airport-rebuild-four-roles.md)；判据出处：项目仓 ADR-0137，历史）；旧机场机器已退役，见 0003。
 > **执行器**：[`skills/loop/SKILL.md`](../skills/loop/SKILL.md)（导航壳）＋ [`skills/{机长,副机长}/SKILL.md`](../skills/)（角色细节）。
 > 本文只写「一张票从领到发怎么走、谁写什么、卡住怎么办」；塔台的排班与发货细节归塔台技能。
 
@@ -10,7 +10,7 @@
 
 | 记录面 | 写的人 | 管什么 | 生命周期 |
 |---|---|---|---|
-| **日表** `.ai/tasks/YYYY-MM-DD-{main,deputy}.md` | **塔台** | 排班视图：一天一份、每机长一份、5–10 行 | 当日；状态不写表 |
+| **日表** 项目配置 `paths.day_tables_dir`＋`day_table_pattern`（`YYYY-MM-DD-{main,deputy}.md`） | **塔台** | 排班视图：一天一份、每机长一份、5–10 行 | 当日；状态不写表 |
 | **Issue 正文与评论** | 地勤开票；**机长写状态** | 唯一事实源：AC、边界、开工/施工/审查/待发货/卡点 | 长期 |
 | **分支与提交** | **施工子代理** | 代码与回执 | 票内；合并后归档 |
 
@@ -87,11 +87,11 @@
 - **scoped commit**：`git commit -- <pathspec>`，pathspec 取自回执 files；禁止 `git add -A`。
 - **禁止**：force-push、`reset --hard`、`git clean`、`--no-verify`、绕钩子。
 - 一票一 worktree；拆树用项目仓 `scripts/worktree-teardown.py`；`.git` 异常停手报告不修。
-- **环境三项**（工作树里没有 `runtimes/`、`node_modules`）：
+- **环境三项**（工作树里没有主树运行时与依赖目录；检查目录由项目配置实例 `runtime` 段声明，见 ADR-0004 D2.1）：
   后端一律用**主树正本解释器绝对路径**；node 用主树正本 node 绝对路径；
   前端定向测例先在树内 `pnpm install --offline`，**绝不 junction 主树 `node_modules` 后跑 pnpm**；
   全量前端腿由审查/塔台在主树合并后跑。缺件报错，不静默跳过。
-- 完整条文见项目仓 `.ai/rules/RULES.md`「Git 写入约定」＋ `.ai/rules/annex-worktree.md`。
+- 完整条文见项目仓规则目录（项目配置 `registry.rules.dir`）的「Git 写入约定」正本与 worktree 附录条文。
 
 ## 七、失败、红线与恢复
 
@@ -125,5 +125,5 @@
 
 ## 十一、历史
 
-旧机场机器（2026-10-21 前那套）已整体退役，协议按 ADR-0137 的四角色与三件记录面重写；
-历史归档件里的旧词不改写，读时以 ADR-0137 为准。
+旧机场机器（2026-10-21 前那套）已整体退役，协议按 [0003](../docs/adr/0003-airport-rebuild-four-roles.md) 的四角色与三件记录面重写；
+历史归档件里的旧词不改写，读时以 0003 为准。

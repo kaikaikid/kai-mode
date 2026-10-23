@@ -4,8 +4,8 @@ status: active
 approved_by: human:kaikaikid
 approved: <YYYY-MM-DD>
 sources:
-  - resource: "项目仓 docs/artifacts/adrs/ADR-xxxx-<裁决名>.md"
-    note: "裁决来源：这份技能凭什么这么定"
+  - resource: "项目配置实例 registry.adrs.dir 指向的 ADR（ADR-xxxx-<裁决名>）"
+    note: "裁决来源：这份技能凭什么这么定；落点读项目配置实例（ADR-0004 D2），读不到实例 ⇒ 按 D4 报缺件"
 description: >
   一句话：做什么 / 不做什么 / 触发词。
   触发：<触发口令或自然语言关键词>。

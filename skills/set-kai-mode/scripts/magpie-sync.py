@@ -3,10 +3,11 @@
 """
 技能回写中央库（#1819）
 ========================
-本仓 `.ai/skills/**` 是正本，Magpie 中央库才是各家宿主真正读到的那份：库里每条是一个目录，
+本仓技能目录是正本，Magpie 中央库才是各家宿主真正读到的那份：库里每条是一个目录，
 `~/.<agent>/skills/<名>` 是指向库目录的符号链接。正本与库是**拷贝**关系 ⇒ 「改了正本」≠「家家生效」。
 本脚本把这一步变成一条命令，并让漂移可复查。
-正本根认两种布局：项目仓 `.ai/skills/project-skills/<名>`（`loop` 在 `.ai/skills/loop`）与框架仓 `skills/<名>`。
+正本根认两种布局：项目仓落点读项目配置实例 `<root>/.ai/kai-mode.project.json` 的
+`registry.skills.project_skills_dir`／`loop_dir`（框架仓旧裁决，无实例回落内置缺省）；框架仓 `skills/<名>`。
 装机清单的单一事实源＝仓根 `registry.json`：只有 `install:auto` 的条目被拷贝、链到各家宿主、写进注册档；
 没有 registry.json 的老根目录回落内置默认清单（照旧工作，不报错退出）。
 
@@ -43,6 +44,14 @@ except Exception:
 
 ANCHOR = "kai-mode"  # 库位与落点面都沿这条既有条目反查，不写死机器路径
 LIBRARY_ENV = "KAI_MAGPIE_LIBRARY"
+# 项目技能落点缺省（框架仓旧裁决 registry.skills 的模板缺省值）：只在项目配置实例
+# 不在／没写 registry.skills 时回落用；实例给了就以实例为准（一个语义一个家）。
+PROJECT_CONFIG = os.path.join(".ai", "kai-mode.project.json")
+REGISTRY_SKILLS_DEFAULT = {
+    "project_skills_dir": os.path.join(".ai", "skills", "project-skills"),
+    "loop_dir": os.path.join(".ai", "skills", "loop"),
+}
+# 老根目录回落清单（无 registry.json 时用；值＝上面缺省布局的逐名展开）。
 FAMILIES = {
     "kai-mode": os.path.join(".ai", "skills", "project-skills", "kai-mode"),
     "set-kai-mode": os.path.join(".ai", "skills", "project-skills", "set-kai-mode"),
@@ -53,9 +62,9 @@ FAMILIES = {
     "副机长": os.path.join(".ai", "skills", "project-skills", "副机长"),
     "航班信息": os.path.join(".ai", "skills", "project-skills", "航班信息"),
 }
-# 正本根认两种布局：项目仓 `.ai/skills/project-skills/<名>` 与框架仓 `skills/<名>`。
+# 正本根认两种布局：项目仓落点（实例 registry.skills，缺省同上）与框架仓 `skills/<名>`。
 ANCHOR_MARKERS = (
-    os.path.join(".ai", "skills", "project-skills", ANCHOR, "SKILL.md"),
+    os.path.join(REGISTRY_SKILLS_DEFAULT["project_skills_dir"], ANCHOR, "SKILL.md"),
     os.path.join("skills", ANCHOR, "SKILL.md"),
 )
 ROOT_WALK_LIMIT = 8  # 上溯层级上限（脚本最深在仓根下 5 层，留余量）
@@ -127,9 +136,42 @@ def has_anchor(root: str) -> bool:
     return any(os.path.isfile(os.path.join(root, m)) for m in ANCHOR_MARKERS)
 
 
-def default_source(name: str) -> str:
-    """装机源缺省值：项目仓布局 `.ai/skills/project-skills/<名>`。"""
-    return os.path.join(".ai", "skills", "project-skills", name)
+def read_project_config(root: str) -> tuple:
+    """读项目配置实例 `<root>/.ai/kai-mode.project.json`（框架仓旧裁决/D4）。
+    没有 ⇒ (None, None)；有但读不出/不是对象 ⇒ (None, 错误说明)。"""
+    path = os.path.join(root, PROJECT_CONFIG)
+    if not os.path.isfile(path):
+        return None, None
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError) as exc:
+        return None, f"项目配置实例读不出：{path}（{exc}）"
+    if not isinstance(data, dict):
+        return None, f"项目配置实例不是对象：{path}"
+    return data, None
+
+
+def skills_dirs(root: str | None) -> dict:
+    """项目技能落点（框架仓旧裁决 registry.skills）：实例给了用实例的；
+    无实例/字段缺 ⇒ 回落 REGISTRY_SKILLS_DEFAULT（模板缺省，仅此一处）。"""
+    cfg, _err = read_project_config(root) if root else (None, None)
+    skills = ((cfg or {}).get("registry") or {}).get("skills") or {}
+    out = dict(REGISTRY_SKILLS_DEFAULT)
+    for key in out:
+        value = str(skills.get(key) or "").strip()
+        if value:
+            out[key] = value
+    return out
+
+
+def default_source(name: str, root: str | None = None) -> str:
+    """装机源缺省值：项目技能落点读配置实例 `registry.skills.*`（框架仓旧裁决）；
+    无实例回落 REGISTRY_SKILLS_DEFAULT。loop 用 loop_dir，其余住 project_skills_dir。"""
+    dirs = skills_dirs(root)
+    if name == "loop":
+        return dirs["loop_dir"]
+    return os.path.join(dirs["project_skills_dir"], name)
 
 
 def read_skill_registry(root: str) -> tuple:
@@ -179,8 +221,9 @@ def install_plan(root: str) -> dict:
     if err:
         raise SystemExit(err)
     if data is None:
-        return {name: {"source": src, "path": os.path.join("skills", name)}
-                for name, src in FAMILIES.items()}
+        return {name: {"source": default_source(name, root),
+                       "path": os.path.join("skills", name)}
+                for name in FAMILIES}
     plan = {}
     for entry in data.get("skills") or []:
         if not isinstance(entry, dict) or entry.get("install") != "auto":
@@ -189,19 +232,19 @@ def install_plan(root: str) -> dict:
         if not name:
             continue
         plan[name] = {
-            "source": entry.get("source") or default_source(name),
+            "source": entry.get("source") or default_source(name, root),
             "path": entry.get("path") or os.path.join("skills", name),
         }
     return plan
 
 
-def family_candidates(name: str, plan: dict | None = None) -> list:
-    """某技能的候选源目录（相对正本根）：① 装机源（注册表 source 或缺省）
-    ② 注册表 path（框架仓布局，如 `skills/航班信息`）③ `skills/<名>`；去重保序
-    （去重按归一化后的路径算：`skills/x` 与 `skills\\x` 是同一个目录）。"""
+def family_candidates(name: str, plan: dict | None = None, root: str | None = None) -> list:
+    """某技能的候选源目录（相对正本根）：① 装机源（注册表 source，缺省读配置实例
+    registry.skills）② 注册表 path（框架仓布局，如 `skills/航班信息`）③ `skills/<名>`；
+    去重保序（去重按归一化后的路径算：`skills/x` 与 `skills\\x` 是同一个目录）。"""
     info = (plan or {}).get(name) or {}
     out, seen = [], set()
-    for rel in (info.get("source") or FAMILIES.get(name) or default_source(name),
+    for rel in (info.get("source") or default_source(name, root),
                 info.get("path") or os.path.join("skills", name),
                 os.path.join("skills", name)):
         if not rel:
@@ -217,11 +260,11 @@ def family_candidates(name: str, plan: dict | None = None) -> list:
 def family_src(root: str, name: str, plan: dict | None = None) -> str:
     """候选里第一个真实存在的源目录；都不在就退回首选（报错文案用）。"""
     plan = plan if plan is not None else install_plan(root)
-    for rel in family_candidates(name, plan):
+    for rel in family_candidates(name, plan, root):
         p = os.path.join(root, rel)
         if os.path.isdir(p):
             return p
-    return os.path.join(root, FAMILIES.get(name) or default_source(name))
+    return os.path.join(root, default_source(name, root))
 
 
 def _ancestors(base: str, limit: int = ROOT_WALK_LIMIT) -> list:
@@ -261,8 +304,9 @@ def _is_library_root(cand: str, lib: str | None) -> bool:
 
 
 def default_root() -> str:
-    """脚本位置反查的仓库根：项目仓布局下脚本住 `<repo>/.ai/skills/project-skills/set-kai-mode/scripts/`
-    ⇒ 上溯五级是仓库根；框架仓布局下脚本住 `<repo>/skills/set-kai-mode/scripts/` ⇒ 上溯三级是仓库根。
+    """脚本位置反查的仓库根：项目仓布局下脚本住 `<repo>/<registry.skills>/set-kai-mode/scripts/`
+    （缺省布局＝REGISTRY_SKILLS_DEFAULT，实例可改落点）⇒ 上溯五级是仓库根；
+    框架仓布局下脚本住 `<repo>/skills/set-kai-mode/scripts/` ⇒ 上溯三级是仓库根。
     两种布局都试，谁有 anchor 正本谁算数；都没有就退回五级的老读数。"""
     here = os.path.dirname(os.path.abspath(__file__))
     for up in (3, 5):
@@ -368,7 +412,7 @@ def check(root: str, library: str, home: str | None = None, plan: dict | None = 
     for name in plan:
         src, dst = family_src(root, name, plan), os.path.join(library, name)
         if not os.path.isdir(src):
-            tried = "、".join(os.path.join(root, r) for r in family_candidates(name, plan))
+            tried = "、".join(os.path.join(root, r) for r in family_candidates(name, plan, root))
             rows.append((name, "正本缺失", f"试过：{tried}", src, "red"))
             drifted = True
             continue
@@ -593,6 +637,25 @@ def selftest() -> int:
             got = family_src(fw_root, name)
             if got != os.path.join(fw_root, "skills", name):
                 fails.append(f"{name} 框架仓布局没被 family_src 认出（读到 {got}）")
+        # 项目配置实例 registry.skills 自定义落点（框架仓旧裁决）：装机源缺省要认实例
+        cfg_root = os.path.join(tmp, "cfgrepo")
+        custom_dir = os.path.join(".ai", "skills", "custom")
+        custom_loop = os.path.join(".ai", "skills", "custom-loop")
+        os.makedirs(os.path.join(cfg_root, custom_dir, ANCHOR), exist_ok=True)
+        os.makedirs(os.path.join(cfg_root, custom_loop), exist_ok=True)
+        with open(os.path.join(cfg_root, PROJECT_CONFIG), "w", encoding="utf-8") as f:
+            json.dump({"schema": 3, "registry": {"skills": {
+                "project_skills_dir": custom_dir, "loop_dir": custom_loop}}},
+                f, ensure_ascii=False)
+        got = family_src(cfg_root, ANCHOR, install_plan(cfg_root))
+        if os.path.normcase(got) != os.path.normcase(
+                os.path.join(cfg_root, custom_dir, ANCHOR)):
+            fails.append(f"实例 registry.skills 自定义落点没被认（读到 {got}）")
+        if default_source("loop", cfg_root) != custom_loop:
+            fails.append(f"loop 没按实例 registry.skills.loop_dir 读（读到 {default_source('loop', cfg_root)}）")
+        # 无实例的根照旧回落模板缺省布局
+        if default_source("loop", None) != REGISTRY_SKILLS_DEFAULT["loop_dir"]:
+            fails.append("无实例时 loop 缺省回落不对")
         # 没有 registry.json 的根 ⇒ 回落内置清单（老根目录照旧工作）
         fallback = install_plan(root)
         if len(fallback) != len(FAMILIES):

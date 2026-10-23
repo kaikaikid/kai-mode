@@ -7,7 +7,7 @@
 - 缺 --repo-root ⇒ 退 2；
 - 同名板已存在：没 --force ⇒ 退 2；有 --force ⇒ 覆盖成功；
 - 目标仓 .gitignore 规则**幂等**（装两次不重写、不动已有行）；
-- 目标仓没有 .ai/tasks ⇒ 仍装得出板（该源记 absent，不报错）；
+- 实例在而日表目录不在 ⇒ 仍装得出板（该源记 absent，不报错）；
 - 出板降级（假装 gh 不可用）⇒ 退出码仍 0 且回执点名降级源；
 - 板配置校验错（坏的源类型）⇒ 退 2 并打印错在哪。
 """
@@ -33,11 +33,26 @@ def _load():
     return mod
 
 
-def _fake_repo(tmp_path, tasks: bool = True, handoff: bool = True) -> Path:
-    """造假目标仓：.git 标记 + .ai/tasks 日表 + handoff 日报。"""
+def _write_instance(repo: Path, tasks_rel: Path | None = None,
+                    handoff_rel: str = "handoff") -> None:
+    """目标仓项目配置实例（ADR-0004 D3/D4）：板脚本的源路径缺省从它的 paths 段读。"""
+    ai = repo / ".ai"
+    ai.mkdir(parents=True, exist_ok=True)
+    (ai / "kai-mode.project.json").write_text(json.dumps({
+        "schema": 3,
+        "paths": {"day_tables_dir": str(tasks_rel or Path(".ai") / "tasks"),
+                  "handoff_dir": handoff_rel},
+    }, ensure_ascii=False), encoding="utf-8")
+
+
+def _fake_repo(tmp_path, tasks: bool = True, handoff: bool = True,
+               instance: bool = True) -> Path:
+    """造假目标仓：.git 标记 + 项目配置实例 + 日表目录 + 日报目录。"""
     repo = tmp_path / "repo"
     (repo / ".git").mkdir(parents=True)
     today = datetime.now().strftime("%Y-%m-%d")
+    if instance:
+        _write_instance(repo)
     if tasks:
         d = repo / ".ai" / "tasks"
         d.mkdir(parents=True)
@@ -168,6 +183,18 @@ def test_missing_tasks_dir_still_installs_board(tmp_path, capsys):
     assert (board / "index.html").exists()
     data = json.loads((board / "board.json").read_text(encoding="utf-8"))
     assert data["sources"]["tasks"] == "absent"
+
+
+def test_missing_instance_fails_loudly(tmp_path, capsys):
+    """实例与显式 path 都没有 ⇒ 板脚本按缺件报（三格），装配退 3
+    （ADR-0004 D1：读不到配置实例永不猜路径、不退回硬路径）。"""
+    mod = _load()
+    repo = _fake_repo(tmp_path, instance=False)
+    rc = mod.main(["--repo-root", str(repo)])
+    assert rc == 3, capsys.readouterr().out
+    err = capsys.readouterr().err
+    assert "缺件" in err
+    assert "怎么补" in err
 
 
 def test_degraded_source_keeps_exit_zero_and_is_named(tmp_path, capsys, monkeypatch):

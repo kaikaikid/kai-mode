@@ -1,16 +1,111 @@
 {
-  "schema": 2,
+  "schema": 3,
+  "_note_0": "kai-mode 项目差异层实例模板（schema 3）。落点：<项目仓根>/.ai/kai-mode.project.json（tracked）。唯一项目差异事实源：技能运行时读它拿路径/档位/平台；读不到 rc!=0 报缺件，永不猜路径。占位一律 <尖括号>，装机由 set-kai-mode 填实（占位不落盘）；_note_* 键与 _comment 值为注释性说明，读取端忽略。字段表见 docs/adr/0004-project-config-schema.md D2。",
+
   "project": "<project-name>",
   "repo_root": ".",
   "ship_mode": "tower",
+
+  "registry": {
+    "_note": "①判据/剧本注册面（ADR-0004 D2①）：剧本登记行全量收编于此（原登记面文件退役），新增剧本只在 playbooks[] 加一行，入口与技能不复述；判据落点 registry.adrs / registry.rules。路径相对项目仓根。",
+    "playbooks": [
+      { "name": "塔台", "trigger": "/塔台 或 30 分钟轮巡", "route": "塔台", "notes": "先发货后补排班；push 与关票独占" },
+      { "name": "机长", "trigger": "/机长", "route": "机长", "notes": "读 -main 日表，同时最多 2 张" },
+      { "name": "副机长", "trigger": "/副机长", "route": "副机长", "notes": "同一条 loop 的另一分支，读 -deputy 日表" },
+      { "name": "地勤", "trigger": "/地勤", "route": "地勤", "notes": "对话、规划、开票、收想法；开票权归它" },
+      { "name": "<剧本名>", "trigger": "<触发口令或场景>", "route": "<入口技能目录名，按 registry.skills 布局解析>", "notes": "<一句话备注>" }
+    ],
+    "skills": {
+      "project_skills_dir": ".ai/skills/project-skills",
+      "loop_dir": ".ai/skills/loop"
+    },
+    "adrs": {
+      "dir": "<adr-dir>"
+    },
+    "rules": {
+      "dir": ".ai/rules"
+    }
+  },
+
   "paths": {
-    "day_tables": ".ai/tasks",
-    "daily_report": "handoff",
-    "loop_protocol": "loops/loop-protocol.md",
-    "skills": "skills",
+    "_note": "②日表/记录面落点：技能正文一律从这里读，不写死。day_table_pattern 中 {lane} 取 lanes 之一；塔台是 day_tables_dir 唯一写者（0003 D3），机长/地勤只读。记录面目录本项目没有的写 null，消费方读到 null 如实报「该项目无此记录面」，不猜路径。",
+    "day_tables_dir": "<day-tables-dir>",
+    "day_table_pattern": "YYYY-MM-DD-{lane}.md",
+    "lanes": ["main", "deputy"],
+    "handoff_dir": "handoff",
+    "ideas_dir": "ideas",
+    "audit_dir": ".ai/scope/audit",
+    "module_cards": null,
+    "dashboard": null,
     "state_dir": ".git/kai-scope"
   },
+
+  "models": {
+    "_note": "③六档映射：词表只有 R(读)/C(码)/P(排)/V(审)/G(图)/W(宽页)，本文件禁止出现任何模型 slug（doctor 拦）。tier→具体模型解析住 adapters/<宿主>.md。default 是漏配兜底档；本项目不派的角色不写键（G/W 本项目默认不派）。",
+    "tiers": ["R", "C", "P", "V", "G", "W"],
+    "default": "C",
+    "roles": {
+      "code": { "tier": "C" },
+      "judgment": { "tier": "V" },
+      "review_panel": { "tier": "V", "rotation": true, "size": 2 },
+      "verification": { "tier": "C", "speed": "fast" },
+      "watch": { "tier": "R" },
+      "orchestration": { "tier": "P" }
+    }
+  },
+
+  "runtime": {
+    "_note": "④运行时环境三项=发现方式，不是机器路径（0004 D2.1）。main_tree 由 git worktree 公共目录反推，任意 worktree 内可解析回主树；backend_python 优先环境变量（set-kai-mode 装机写入 KAI_BACKEND_PYTHON），退回主树相对路径；依赖绝不 junction/软链主树 node_modules 后跑包管理器（0003 D2）。discover 取值：git_common_dir | env | main_tree | worktree。",
+    "main_tree": {
+      "discover": "git_common_dir",
+      "env_fallback": "KAI_MAIN_TREE"
+    },
+    "backend_python": {
+      "discover": "env",
+      "var": "KAI_BACKEND_PYTHON",
+      "fallback": { "discover": "main_tree", "rel": "runtimes/python/Scripts/python.exe" }
+    },
+    "node": {
+      "discover": "main_tree",
+      "rel": "runtimes/node/node.exe"
+    },
+    "deps": {
+      "policy": "worktree_offline_install",
+      "install_cmd": "pnpm install --offline",
+      "check_dir_rel": "<frontend-dir>/node_modules",
+      "forbid_link_main_tree": true,
+      "full_frontend_suite": "main_tree_after_merge"
+    }
+  },
+
+  "gates": {
+    "_note": "项目仓门/脚本注册（0004 D2 新增段，schema 2 runtime 三门泛化）：相对项目仓根。null=本项目无此门，消费方跑到时 rc!=0 报缺件，不许猜路径；长期红的门只走基线文件，不改判据。",
+    "captain_preflight": "scripts/captain-preflight.py",
+    "scope_check": "scripts/scope-check.py",
+    "docs_check": "scripts/docs-check.py",
+    "close_gate": "scripts/scope-check.py close-gate",
+    "framework_gate": "scripts/framework-gate.py",
+    "loop_gate": "scripts/loop-gate.py",
+    "ready": "scripts/ready.py",
+    "env_doctor": "scripts/env-doctor.py",
+    "worktree_teardown": "scripts/worktree-teardown.py",
+    "handoff_cleanup": "scripts/handoff-cleanup.py",
+    "skill_attest": "scripts/skill-attest.py",
+    "pre_push_hook": ".githooks/pre-push"
+  },
+
+  "issue": {
+    "_note": "⑤票平台：platform ∈ github | gitlab | jira | azure-boards | none；repo 为平台仓标识（github=owner/name）。ready_label=后备池门票标；verdict_marker=发货判词行首（塔台只认它）；milestone_gating=未挂开放里程碑不进后备池；boom_summary_ticket=BOOM 想法池汇总票号，没有则 null。",
+    "platform": "github",
+    "repo": "<owner>/<repo>",
+    "ready_label": "ready-for-agent",
+    "verdict_marker": "verdict=pass",
+    "milestone_gating": true,
+    "boom_summary_ticket": null
+  },
+
   "execution": {
+    "_note": "沿用 schema 2。宿主工具契约（builder/reviewer/researcher 在本宿主怎么探测、怎么降级）住 adapters/<宿主>.md（ADR-0004 D6），实例不再承载 host_tools。",
     "preferred": "qoder",
     "fallbacks": ["codex", "opencode"],
     "subagent_roles": {
@@ -18,32 +113,9 @@
       "reviewer": "fresh-context-independent (read-only, never the builder)",
       "utility": "support-only (env checks, gates, flaky repro; no product code)"
     },
-    "host_tools": {
-      "qoder": {
-        "builder": "general-purpose",
-        "reviewer": "general-purpose (new invocation, read-only)",
-        "researcher": "Explore"
-      },
-      "codex": {
-        "builder": "codex exec -s workspace-write",
-        "reviewer": "codex exec -s read-only (separate invocation)",
-        "researcher": "codex exec -s read-only"
-      },
-      "opencode": {
-        "builder": "opencode run",
-        "reviewer": "opencode run (read-only prompt, separate invocation)",
-        "researcher": "opencode run (read-only prompt)"
-      }
-    },
     "reviewer_required_for": ["code", "schema", "high-risk"]
   },
-  "runtime": {
-    "backend_python": "<main-tree>/runtimes/python/Scripts/python.exe",
-    "node": "<main-tree>/runtimes/node/node.exe",
-    "close_gate": "python scripts/scope-check.py close-gate",
-    "gate": "python scripts/framework-gate.py",
-    "loop_gate": "python scripts/loop-gate.py"
-  },
+
   "tower_cron": {
     "interval_min": 30,
     "prompt_shell": "读取并执行 skills/塔台/SKILL.md 全文；任务名 cron-tower-<日期>-<时分>",
@@ -51,11 +123,13 @@
     "execution_authorization": true,
     "job_ids_from": "<local-only config, not tracked>"
   },
+
   "wip": {
     "per_pilot": 2,
     "pilots": ["main", "deputy"],
     "global": 4
   },
+
   "limits": {
     "max_attempts": 2,
     "same_error_stop": 2,
@@ -66,15 +140,18 @@
     "daily_wallclock_min": 480,
     "daily_token_budget": null
   },
+
   "approval": {
     "auto_ship_max_risk": "medium",
     "human_required": ["high"],
     "policy_changes_require_human": true
   },
+
   "acceptance": {
     "mode": "ai-full",
     "reviewer": "fresh-context"
   },
+
   "audit": {
     "events": ".git/kai-scope/events.jsonl",
     "retention_days": 30,

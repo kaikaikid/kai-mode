@@ -21,6 +21,8 @@ import sys
 import time
 from pathlib import Path
 
+import pytest
+
 SKILL_ROOT = Path(__file__).resolve().parents[2]
 TEMPLATE = SKILL_ROOT / "templates" / "render_board.template.py"
 EXAMPLE = SKILL_ROOT / "templates" / "board.config.example.json"
@@ -439,7 +441,61 @@ def test_status_lamps_use_board_semantic_colors():
     assert "--soft-" not in html
 
 
-def test_no_network_makes_no_gh_call(monkeypatch):
+def _fake_repo(tmp_path):
+    """假项目仓：项目配置实例（paths 段指向日表/日报目录，ADR-0004 D3/D4）。"""
+    repo = tmp_path / "repo"
+    (repo / ".ai").mkdir(parents=True)
+    (repo / ".ai" / "kai-mode.project.json").write_text(json.dumps({
+        "schema": 3,
+        "paths": {"day_tables_dir": str(Path(".ai") / "tasks"),
+                  "day_table_pattern": "YYYY-MM-DD-{lane}.md",
+                  "handoff_dir": "handoff"},
+    }, ensure_ascii=False), encoding="utf-8")
+    return repo
+
+
+def test_tasks_source_reads_instance_day_tables_dir(tmp_path):
+    """tasks 源不写 path ⇒ 落点读项目配置实例 paths.day_tables_dir（ADR-0004 D2/D4）。"""
+    mod = _load()
+    repo = _fake_repo(tmp_path)
+    tasks = repo / ".ai" / "tasks"
+    tasks.mkdir()
+    (tasks / "2026-10-22-main.md").write_text(
+        "| 序 | 票号 | 里程碑 | 一句话 | 塔台备注 |\n"
+        "|---|---|---|---|---|\n| 1 | #1859 | M | 机场体系重做 | 在制 |\n",
+        encoding="utf-8")
+    mod.configure(str(repo))
+    data, status = mod.collect_tasks_table(
+        {"id": "tasks", "type": "tasks-table", "include": ["*-main.md"]},
+        "2026-10-22")
+    assert status == "ok"
+    assert data["main"]["rows"][0]["ticket"] == "1859"
+
+
+def test_source_base_reports_missing_pieces(tmp_path):
+    """实例不在 ⇒ source_base 抛缺件（三格消息），永不猜路径（ADR-0004 D1/D4）。"""
+    mod = _load()
+    mod.configure(str(tmp_path))
+    with pytest.raises(mod.MissingPieces) as exc:
+        mod.source_base({"type": "tasks-table"}, "day_tables_dir")
+    message = str(exc.value)
+    assert "缺件" in message and "谁需要它" in message and "怎么补" in message
+
+
+def test_instance_field_missing_reports_missing_pieces(tmp_path):
+    """实例在但 paths 字段缺 ⇒ 同样报缺件，字段名点名。"""
+    mod = _load()
+    repo = tmp_path / "repo"
+    (repo / ".ai").mkdir(parents=True)
+    (repo / ".ai" / "kai-mode.project.json").write_text(
+        json.dumps({"schema": 3, "paths": {}}), encoding="utf-8")
+    mod.configure(str(repo))
+    with pytest.raises(mod.MissingPieces) as exc:
+        mod.source_base({"type": "handoff-dir"}, "handoff_dir")
+    assert "handoff_dir" in str(exc.value)
+
+
+def test_no_network_makes_no_gh_call(monkeypatch, tmp_path):
     mod = _load()
     calls = []
 
@@ -455,6 +511,9 @@ def test_no_network_makes_no_gh_call(monkeypatch):
     assert status == "skipped"
     assert calls == []
 
+    repo = _fake_repo(tmp_path)
+    (repo / ".ai" / "tasks").mkdir()
+    mod.configure(str(repo))
     payload = mod.build(allow_network=False)
     assert calls == []
     assert payload["sources"]["comments"] == "skipped"

@@ -102,6 +102,15 @@ def test_index_missing_lib_root_exits_nonzero(tmp_path):
     assert rc != 0
 
 
+def test_index_without_lib_root_argument_reports_missing_pieces(tmp_path, capsys):
+    """板库根没有第二份缺省：不给 --lib-root ⇒ 退 2 报缺件（ADR-0004 D1）。"""
+    mod = _load()
+    rc = mod.main(["--repo-root", str(tmp_path)])
+    assert rc == 2
+    err = capsys.readouterr().err
+    assert "缺件" in err and "--lib-root" in err
+
+
 def test_index_empty_library(tmp_path):
     mod = _load()
     lib = tmp_path / "lib"

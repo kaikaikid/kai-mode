@@ -1,6 +1,6 @@
 # Qoder 适配器：30 分钟塔台定时任务 ＋ 按铃子会话
 
-> 2026-10-21 实测（ADR-0137 D1/D5 的宿主中立装配，实测事实沿用）：定时执行会话（`independent`/`merged`）**没有** `qoder_cron`；同一会话**有** `create_chat_session`；它开出的普通子会话**有** `qoder_cron`。
+> 2026-10-21 实测（[0003](../docs/adr/0003-airport-rebuild-four-roles.md) D1/D5 的宿主中立装配，实测事实沿用；判据出处：项目仓 ADR-0137，历史）：定时执行会话（`independent`/`merged`）**没有** `qoder_cron`；同一会话**有** `create_chat_session`；它开出的普通子会话**有** `qoder_cron`。
 
 ## 能力判据（现测，别抄）
 
@@ -11,6 +11,13 @@ mcp_get("mcp__builtin__create_chat_session")   # 预期可用
 ```
 
 子会话里再测一次 `mcp_list(keyword="cron")`；有 `qoder_cron` 才走按铃路径。没有 ⇒ 按 `adapters/opencode.md` 或 `adapters/codex.md` 起角色；仍不行 ⇒ 缺件如实登记（塔台只能人工 `/塔台`）。
+
+## 宿主工具探测（schema 2 `execution.host_tools` 契约迁入，[0004](../docs/adr/0004-project-config-schema.md) D6）
+
+- **Builder（施工）**：`create_chat_session` 起普通子会话（general-purpose），带派工卡与独立 worktree；开不出会话口 ⇒ 降级 `opencode.md` / `codex.md` 起角色。
+- **Reviewer（评审）**：**另起一次**子会话、只读 prompt（新上下文，永不复用施工会话）；复用 ⇒ 不算独立验收。
+- **Researcher（检索/探索）**：探索型子代理（`Explore`）；没有探索口 ⇒ 只读子会话顶替。
+- **降级登记**：探测不过的口写进 `/set-kai-mode` 缺件登记（缺什么口/卡在哪一步/要谁拍），不静默换形状。
 
 ## 主形状：塔台 30 分钟定时任务
 
@@ -24,7 +31,7 @@ qoder_cron 任务（每 30 分钟，enabled）
 
 - prompt 只放薄壳，长规则只住技能正本，任务配置里不存第二份。
 - 建完必回读：`list` 看 `enabled` / `nextRunAt`（换算成人话几点）；`pauseReason=manual` ＝ 有人手动停，别自动重开。
-- 旧的多枚定时任务先 `disable` → 确认 `runningAt` 为空 → 再 `remove`；**别对正在跑的直接 remove**；不得与 30 分钟塔台并存（ADR-0137 D5）。
+- 旧的多枚定时任务先 `disable` → 确认 `runningAt` 为空 → 再 `remove`；**别对正在跑的直接 remove**；不得与 30 分钟塔台并存（[0003](../docs/adr/0003-airport-rebuild-four-roles.md) D5）。
 
 ## 备用形状：按铃子会话（拉起塔台之外的角色）
 
@@ -42,5 +49,5 @@ qoder_cron 任务（每 30 分钟，enabled）
 
 ## 边界
 
-- 会话口与定时口都是宿主专有能力：必须有 ①能力探测 ②降级腿 ③缺件如实登记（ADR-0137 D1 宿主中立）。
+- 会话口与定时口都是宿主专有能力：必须有 ①能力探测 ②降级腿 ③缺件如实登记（[0003](../docs/adr/0003-airport-rebuild-four-roles.md) D1 宿主中立）。
 - 不替角色施工；只把角色按契约跑起来。

@@ -4,10 +4,10 @@ status: active
 approved_by: human:kaikaikid
 approved: 2026-10-21
 sources:
-  - resource: "项目仓 docs/artifacts/adrs/框架仓旧裁决-airport-rebuild-four-roles.md"
-    note: "角色、隔离、任务面与失败恢复的现行裁决"
-  - resource: "项目仓 docs/artifacts/adrs/框架仓旧裁决-subagent-cap-removal.md"
-    note: "去掉子代理编制上限；只约束一机长同时 2 张 issue"
+  - resource: "框架仓旧裁决"
+    note: "角色、隔离、任务面与失败恢复的现行裁决；判据出处：项目仓 框架仓旧裁决（历史），已由本仓 0003 重述接管"
+  - resource: "loops/loop-protocol.md"
+    note: "去掉子代理编制上限（判据出处：项目仓 框架仓旧裁决，历史，判据已由本文件「不设数量硬上限」承载）；只约束一机长同时 2 张 issue"
   - resource: "loops/loop-protocol.md"
     note: "单票闭环唯一详细源；本技能只写入口、围栏与自决"
 description: >
@@ -20,8 +20,8 @@ updated: 2026-10-23
 
 # 机长
 
-> 判据正本：项目仓 `docs/artifacts/adrs/框架仓旧裁决-airport-rebuild-four-roles.md`（D1–D6）
-> 与 框架仓旧裁决-subagent-cap-removal.md`（amends D2）。流程细节只看 `loops/loop-protocol.md`。
+> 判据正本：[0003 四角色机场](../../框架仓旧裁决)（D1–D6；判据出处：项目仓 框架仓旧裁决，历史）
+> ＋ 子代理口径「不设数量硬上限」（判据出处：项目仓 框架仓旧裁决，历史；已由 [`loops/loop-protocol.md`](../../loops/loop-protocol.md) 承载）。流程细节只看 `loops/loop-protocol.md`。
 
 ## 启动
 
@@ -46,7 +46,7 @@ goal 模式：表里还有活就继续跑，不逐票问用户。
 
 - 不写产品代码 / 测试 / 配置。再小的修复也交施工子代理。
 - 不 push、不合并 `dev`、不关票。
-- 不写 `.ai/tasks/**`；不改票面 AC / 里程碑 / 标签；不改审查判词；不给 `fail` 出 pass。
+- 不写日表（`paths.day_tables_dir`，日表只由塔台写）；不改票面 AC / 里程碑 / 标签；不改审查判词；不给 `fail` 出 pass。
 - 一张票同一时刻只有一个施工写手；同一文件域不并行。
 - 审查必须新上下文，施工者不得自审。
 - 只做 `-main.md` 里的票，不碰副机长的票、分支、工作树。

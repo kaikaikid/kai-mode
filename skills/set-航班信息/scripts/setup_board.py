@@ -42,24 +42,15 @@ NEW_BOARD = FLIGHT_SCRIPTS / "new_board.py"
 BUILD_INDEX = FLIGHT_SCRIPTS / "build_index.py"
 MAGPIE_SYNC = FRAMEWORK_ROOT / "skills" / "set-kai-mode" / "scripts" / "magpie-sync.py"
 MINIMAL_CONFIG = SKILL_ROOT / "templates" / "board.config.minimal.json"
-LIB_ROOT_REL = ".design/航班信息/HTML"
-
-# 目标仓 .gitignore 要补的两条（只补缺的那条；已有行一字不改）
-GITIGNORE_RULES = [
-    ".design/航班信息/HTML/*/full.json",
-    ".design/航班信息/HTML/*/snapshots/",
-]
-GITIGNORE_COMMENT = [
-    "# 航班信息板：正本＝Issue＋日表＋交接日报，入库只会造第二份事实；",
-    "# 但「建立过的板」要留档 ⇒ 人读面/配置/脚本/history 入库，只有全量层与时刻快照不入库。",
-]
+# 板库根＝板配置 output.root（相对项目仓根），本脚本不带第二份缺省值（框架仓旧裁决）。
+PROJECT_CONFIG_REL = Path(".ai") / "kai-mode.project.json"
 
 # 通用缺省：用户配置只写 name ＋ sources 时，阶段链与判据吃这一层。
 # 与板工坊的判据同一套口径（排队→在飞→审查→待发货→已收尾；可领/挡住在链条外）。
+# 注意：这里不带 output.root——板库根只来自用户/最小配置（框架仓旧裁决，脚本无第二份缺省）。
 DEFAULT_CONFIG = json.loads(r"""
 {
   "schema": "flight-info-board/1",
-  "output": {"root": ".design/航班信息/HTML"},
   "stages": [
     {"key": "queued", "label": "排队"},
     {"key": "flying", "label": "在飞"},
@@ -207,22 +198,60 @@ def merge_defaults(cfg: dict) -> dict:
     return merged
 
 
-def lib_root_of(repo_root: Path, cfg: dict) -> Path:
-    """板库根＝<仓根>/<output.root>（口径与板工坊 new_board.py 一致）。"""
-    rel = str((cfg.get("output") or {}).get("root") or LIB_ROOT_REL)
+def lib_root_of(repo_root: Path, cfg: dict) -> Path | None:
+    """板库根＝<仓根>/<output.root>（口径与板工坊 new_board.py 一致）。
+    配置没带 output.root ⇒ None（调用方按缺件报——本脚本不带第二份缺省，框架仓旧裁决）。"""
+    rel = str((cfg.get("output") or {}).get("root") or "").strip()
+    if not rel:
+        return None
     root = Path(rel)
     return root if root.is_absolute() else repo_root / root
 
 
+def read_instance(repo_root: Path) -> tuple[dict | None, str]:
+    """读目标仓项目配置实例 <仓根>/.ai/kai-mode.project.json（框架仓旧裁决/D4）。
+    没有 ⇒ (None, "")；有但读不出 ⇒ (None, 说明)。"""
+    path = repo_root / PROJECT_CONFIG_REL
+    if not path.is_file():
+        return None, ""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        return None, "%s 读不出：%s" % (PROJECT_CONFIG_REL.as_posix(), exc)
+    if not isinstance(data, dict):
+        return None, "%s 根必须是 JSON 对象" % PROJECT_CONFIG_REL.as_posix()
+    return data, ""
+
+
+def gitignore_rules(lib_root: Path, repo_root: Path) -> list[str]:
+    """目标仓 .gitignore 要补的两条（全量层与时刻快照不入库），按板库根现算。"""
+    try:
+        rel = lib_root.relative_to(repo_root).as_posix()
+    except ValueError:
+        rel = lib_root.as_posix()
+    return ["%s/*/full.json" % rel, "%s/*/snapshots/" % rel]
+
+
+GITIGNORE_COMMENT = [
+    "# 航班信息板：正本＝Issue＋日表＋交接日报，入库只会造第二份事实；",
+    "# 但「建立过的板」要留档 ⇒ 人读面/配置/脚本/history 入库，只有全量层与时刻快照不入库。",
+]
+
+
 # ───────────────────────────── 各步实现 ─────────────────────────────
 def probe_repo(repo_root: Path) -> dict:
-    """① 探测项目仓：像不像仓、有哪些源目录。判定宽松（.git / .ai / handoff 任一即可）。"""
+    """① 探测项目仓：像不像仓、配置实例与记录面在不在。判定宽松（.git / .ai / handoff 任一即可）。"""
+    instance, instance_err = read_instance(repo_root)
+    paths = (instance or {}).get("paths") or {}
     return {
         "is_git": (repo_root / ".git").exists(),
         "has_ai": (repo_root / ".ai").is_dir(),
         "has_handoff": (repo_root / "handoff").is_dir(),
-        "dirs": {rel: (repo_root / rel).is_dir()
-                 for rel in (".ai/tasks", "handoff", ".design")},
+        "instance": instance is not None,
+        "instance_err": instance_err,
+        "day_tables_dir": str(paths.get("day_tables_dir") or ""),
+        "handoff_dir": str(paths.get("handoff_dir") or ""),
+        "has_design": (repo_root / ".design").is_dir(),
     }
 
 
@@ -296,8 +325,8 @@ def build_board(new_board, repo_root: Path, cfg: dict, name: str, force: bool,
         board_dir / ("render_%s.py" % name), board_dir / ("refresh_%s.bat" % name)), ""
 
 
-def ensure_gitignore(repo_root: Path) -> list[str]:
-    """⑤ 补目标仓 .gitignore 的两条规则：幂等，只追加，已有行一字不改。
+def ensure_gitignore(repo_root: Path, rules: list[str]) -> list[str]:
+    """⑤ 补目标仓 .gitignore 的规则（幂等，只追加，已有行一字不改）。
 
     返回本次新增的规则行（空＝本来就齐了）。
     """
@@ -305,7 +334,7 @@ def ensure_gitignore(repo_root: Path) -> list[str]:
     text = path.read_text(encoding="utf-8", errors="replace") if path.is_file() else ""
     lines = text.splitlines()
     present = {ln.strip() for ln in lines}
-    missing = [rule for rule in GITIGNORE_RULES if rule not in present]
+    missing = [rule for rule in rules if rule not in present]
     if not missing:
         return []
     chunks = []
@@ -392,9 +421,13 @@ def main(argv: list[str] | None = None) -> int:
     out.step("① 探测项目仓")
     out.line("   仓根：%s" % repo_root)
     out.line("   git 仓：%s" % ("是" if probe["is_git"] else "否"))
-    out.line("   源目录：%s" % "、".join(
-        "%s（%s）" % (rel, "有" if has else "无")
-        for rel, has in probe["dirs"].items()))
+    out.line("   项目配置实例：%s" % (
+        "读不出（%s）" % probe["instance_err"] if probe["instance_err"]
+        else "有" if probe["instance"] else "无（源路径缺省要读它；没有就在板配置里给源写显式 path）"))
+    if probe["instance"]:
+        out.line("   paths.day_tables_dir：%s" % (probe["day_tables_dir"] or "（实例没写）"))
+        out.line("   paths.handoff_dir：%s" % (probe["handoff_dir"] or "（实例没写）"))
+    out.line("   .design 目录：%s" % ("有" if probe["has_design"] else "无"))
     if not (probe["is_git"] or probe["has_ai"] or probe["has_handoff"]):
         out.line("   ⚠ 不像项目仓（没有 .git / .ai / handoff）——照装，但多半取不到源")
 
@@ -438,6 +471,12 @@ def main(argv: list[str] | None = None) -> int:
 
     # ④ 建板
     lib_root = lib_root_of(repo_root, merged)
+    if lib_root is None:
+        err("缺件：板配置 output.root（板库根）\n"
+            "  · 谁需要它：建板 / 板库索引 / 定时刷新都要靠它定位板目录\n"
+            "  · 怎么补：板配置 output.root 写相对项目仓根的板库根"
+            "（可照 %s 抄）" % MINIMAL_CONFIG)
+        return 2
     board_dir = lib_root / name
     rc, sout, serr = build_board(new_board, repo_root, merged, name, args.force, lib_root)
     out.step("④ 建板")
@@ -447,8 +486,8 @@ def main(argv: list[str] | None = None) -> int:
         err((serr or sout or "建板失败").rstrip())
         return 2 if rc == 2 else 3
 
-    # ⑤ 目标仓 .gitignore（幂等）
-    added = ensure_gitignore(repo_root)
+    # ⑤ 目标仓 .gitignore（幂等；规则按板库根现算）
+    added = ensure_gitignore(repo_root, gitignore_rules(lib_root, repo_root))
     out.step("⑤ 目标仓 .gitignore")
     out.line("   %s" % ("补了：%s" % "、".join(added) if added else "两条规则已在（没重复写）"))
 

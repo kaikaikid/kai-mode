@@ -32,7 +32,6 @@
     {
       "id": "tasks",
       "type": "tasks-table",
-      "path": ".ai/tasks",
       "include": ["*-main.md", "*-deputy.md"]
     },
     {
@@ -56,7 +55,6 @@
     {
       "id": "handoffs",
       "type": "handoff-dir",
-      "path": "handoff",
       "days": 7,
       "max_docs": 14
     }

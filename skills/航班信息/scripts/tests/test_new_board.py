@@ -135,6 +135,13 @@ def test_generated_board_runs_offline(tmp_path):
     mod = _load()
     repo = tmp_path / "repo"
     (repo / ".ai" / "tasks").mkdir(parents=True)
+    # 项目配置实例：板脚本源路径缺省从 paths.day_tables_dir 读（ADR-0004 D2/D4）
+    (repo / ".ai" / "kai-mode.project.json").write_text(json.dumps({
+        "schema": 3,
+        "paths": {"day_tables_dir": str(Path(".ai") / "tasks"),
+                  "day_table_pattern": "YYYY-MM-DD-{lane}.md",
+                  "handoff_dir": "handoff"},
+    }, ensure_ascii=False), encoding="utf-8")
     (repo / ".ai" / "tasks" / "2026-10-22-main.md").write_text(
         "# 任务表\n\n| 序 | 票号 | 里程碑 | 一句话 | 塔台备注 |\n"
         "|---|---|---|---|---|\n| 1 | #1859 | M | 机场体系重做 | 塔台主持 |\n",
@@ -152,3 +159,32 @@ def test_generated_board_runs_offline(tmp_path):
     assert board["kind"] == "summary"
     assert board["sources"]["comments"] == "skipped"
     assert len((tmp_path / "lib" / "airport" / "full.json").read_bytes()) > 0
+
+
+def test_generated_board_reports_missing_pieces_without_instance(tmp_path):
+    """实例与显式 path 都没有 ⇒ rc!=0 且缺件三格（ADR-0004 D1：永不猜路径、不退回硬路径）。"""
+    mod = _load()
+    repo = tmp_path / "bare"
+    repo.mkdir()
+    cfg = _cfg(tmp_path, name="airport")
+    assert mod.main(["--repo-root", str(repo), "--config", str(cfg),
+                     "--out-root", str(tmp_path / "lib")]) == 0
+    script = tmp_path / "lib" / "airport" / "render_airport.py"
+    p = subprocess.run([sys.executable, str(script), "--repo-root", str(repo),
+                        "--no-network", "--quiet"],
+                       capture_output=True, text=True, encoding="utf-8")
+    assert p.returncode == 2, p.stdout
+    assert "缺件" in p.stderr and "怎么补" in p.stderr
+
+
+def test_output_root_is_required(tmp_path):
+    """板库根没有第二份缺省：板配置缺 output.root ⇒ 校验退 2 报缺件（脚本不带缺省值）。"""
+    mod = _load()
+    cfg = _cfg(tmp_path, name="airport")
+    raw = json.loads(cfg.read_text(encoding="utf-8"))
+    raw.pop("output")
+    errs = mod.validate_config(raw)
+    assert any("output.root" in e for e in errs)
+    cfg.write_text(json.dumps(raw, ensure_ascii=False), encoding="utf-8")
+    rc = mod.main(["--repo-root", str(tmp_path), "--config", str(cfg)])
+    assert rc == 2

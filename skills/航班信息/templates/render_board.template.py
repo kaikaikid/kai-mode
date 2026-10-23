@@ -6,6 +6,9 @@
 板配置烘焙在下方 CONFIG 里；配置是数据，不是代码 —— 改配置即改板。
 
 数据面：只读项目仓（任务表 / Issue / 分支 / 日报 / 钩子文件）。
+      源落点不写死：tasks-table / handoff-dir 缺省读项目配置实例
+      `<项目仓根>/.ai/kai-mode.project.json` 的 `paths.day_tables_dir` / `paths.handoff_dir`
+      （框架仓旧裁决/D4；板配置源里显式 `path` 可覆盖）；实例或字段读不到 ⇒ rc!=0 报缺件，永不猜路径。
 输出面：只写本板目录
   <out>/index.html      该板的人读面（自包含：内联 CSS/JS，无 CDN、无运行时请求）
   <out>/board.json      机读摘要层（AI 读这个；≤ summary.max_bytes，默认 25 KB）
@@ -19,7 +22,7 @@
   python render_<板名>.py --repo-root <项目仓根> --no-network   # 零网络
   python render_<板名>.py --repo-root <项目仓根> --snapshot     # 另存 HTML 快照
 
-根锚：默认从本脚本所在目录向上找项目仓根（找到日表目录或日报目录的那层），再退到当前目录；
+根锚：默认从本脚本所在目录向上找项目仓根（先认项目配置实例，再退日表/日报目录），再退到当前目录；
       --repo-root 可覆盖。--out 默认＝本脚本所在目录（板目录）。
 退出码：板生成成功（含降级）恒 0；硬失败（配置坏 / 写不出）非 0。
       降级事实读 board.json / full.json 的 sources 映射，不读退出码。
@@ -30,6 +33,7 @@ import argparse
 import hashlib
 import html
 import json
+import os
 import re
 import subprocess
 import sys
@@ -73,7 +77,6 @@ CONFIG = json.loads(r"""
     {
       "id": "tasks",
       "type": "tasks-table",
-      "path": ".ai/tasks",
       "include": [
         "*-main.md",
         "*-deputy.md"
@@ -100,7 +103,6 @@ CONFIG = json.loads(r"""
     {
       "id": "handoffs",
       "type": "handoff-dir",
-      "path": "handoff",
       "days": 7,
       "max_docs": 14
     }
@@ -363,6 +365,69 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT = SCRIPT_DIR
 OUT_DIR = SCRIPT_DIR
 
+# 项目配置实例（框架仓旧裁决/D4）：<项目仓根>/.ai/kai-mode.project.json。
+# configure() 装一次；源路径缺省从实例 paths 段读，读不到 ⇒ MissingPieces（rc!=0 报缺件，永不猜路径）。
+PROJECT_CONFIG_REL = Path(".ai") / "kai-mode.project.json"
+_INSTANCE: dict | None = None
+
+
+class MissingPieces(Exception):
+    """项目配置实例或其字段读不到（框架仓旧裁决/D4）；消息自带缺件三格。"""
+
+
+def _missing(what: str, who: str, how: str) -> MissingPieces:
+    """缺件清单三格：缺什么 / 谁需要它 / 怎么补。"""
+    return MissingPieces("缺件：%s\n  · 谁需要它：%s\n  · 怎么补：%s" % (what, who, how))
+
+
+def load_project_config(root: Path) -> tuple[dict | None, str]:
+    """读项目配置实例；文件不在/读不出/schema 不认 ⇒ (None, 说明)。
+    schema==2 迁移期兼容读（框架仓旧裁决），读法见 instance_paths。"""
+    path = root / PROJECT_CONFIG_REL
+    if not path.is_file():
+        return None, "%s 不在" % PROJECT_CONFIG_REL.as_posix()
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        return None, "%s 读不出：%s" % (PROJECT_CONFIG_REL.as_posix(), exc)
+    if not isinstance(data, dict):
+        return None, "%s 根必须是 JSON 对象" % PROJECT_CONFIG_REL.as_posix()
+    if data.get("schema") not in (2, 3):
+        return None, "%s schema 不认识：%r（只认 2〔迁移期〕/3）" % (
+            PROJECT_CONFIG_REL.as_posix(), data.get("schema"))
+    return data, ""
+
+
+def instance_paths() -> dict:
+    """实例 paths 段；schema==2 迁移期把旧键 day_tables 当 day_tables_dir 读（框架仓旧裁决 兼容读）。"""
+    paths = dict((_INSTANCE or {}).get("paths") or {})
+    if "day_tables_dir" not in paths and paths.get("day_tables"):
+        paths["day_tables_dir"] = paths["day_tables"]
+    return paths
+
+
+def source_base(spec: dict, instance_key: str) -> Path:
+    """源目录落点：板配置源显式 path 优先；否则读项目配置实例 paths.<instance_key>；
+    都读不到 ⇒ MissingPieces（rc!=0 报缺件，永不猜路径——框架仓旧裁决/D4）。"""
+    explicit = str(spec.get("path") or "").strip()
+    if explicit:
+        return resolve_path(explicit)
+    if _INSTANCE is None:
+        raise _missing(
+            "项目配置实例 %s（paths.%s 缺省落点无家可读）"
+            % (PROJECT_CONFIG_REL.as_posix(), instance_key),
+            "航班信息板 %s 源落点" % (spec.get("type") or "?"),
+            "/set-kai-mode 生成实例，或按 templates/kai-mode.project.json 手填，"
+            "或给板配置该源写显式 path")
+    rel = str(instance_paths().get(instance_key) or "").strip()
+    if not rel:
+        raise _missing(
+            "实例字段 paths.%s" % instance_key,
+            "航班信息板 %s 源缺省落点" % (spec.get("type") or "?"),
+            "在 <项目仓根>/%s 的 paths 段补 %s，或给板配置该源写显式 path"
+            % (PROJECT_CONFIG_REL.as_posix(), instance_key))
+    return resolve_path(rel)
+
 # 派生表（apply_config 重算；改配置要重跑 apply_config）。
 STAGES: list[tuple[str, str]] = []
 STAGE_LABEL: dict[str, str] = {}
@@ -499,11 +564,14 @@ def sha256_of(path: Path) -> str:
     return h.hexdigest()
 
 
-def detect_root(start: Path, tasks_rel: str = ".ai/tasks",
-                handoff_rel: str = "handoff") -> Path | None:
-    """从 start 向上找第一个「含任务表目录或日报目录」的目录；找不到回 None。"""
+def detect_root(start: Path, tasks_rel: str = "",
+                handoff_rel: str = "") -> Path | None:
+    """从 start 向上找项目仓根：先认项目配置实例（框架仓旧裁决/D4 的仓库根探测），
+    再退板配置显式声明的日表/日报目录；都找不到回 None。"""
     cur = Path(start).resolve()
     for cand in (cur, *cur.parents):
+        if (cand / PROJECT_CONFIG_REL).is_file():
+            return cand
         if tasks_rel and (cand / tasks_rel).is_dir():
             return cand
         if handoff_rel and (cand / handoff_rel).is_dir():
@@ -590,9 +658,21 @@ def _role_from_glob(pattern: str) -> str:
     return stem
 
 
+def _day_table_name(day: str, role: str) -> str:
+    """日表文件名：实例给了 day_table_pattern 就按它拼（{lane} 取角色），
+    没给退 <日期>-<lane>.md（框架仓旧裁决：日表落点与命名住配置实例）。"""
+    pattern = str(instance_paths().get("day_table_pattern") or "").strip()
+    if pattern:
+        return pattern.replace("YYYY-MM-DD", day).replace("{lane}", role)
+    return "%s-%s.md" % (day, role)
+
+
 def collect_tasks_table(spec: dict, today: str) -> tuple[dict, str]:
-    """当日任务表：每个 include 一张表；今天的没有就退到最近一份并点名。"""
-    base = resolve_path(spec.get("path") or ".ai/tasks")
+    """当日任务表：每个 include 一张表；今天的没有就退到最近一份并点名。
+
+    落点：板配置源显式 path 优先，缺省读项目配置实例 paths.day_tables_dir（框架仓旧裁决/D4）。
+    """
+    base = source_base(spec, "day_tables_dir")
     includes = spec.get("include") or ["*-main.md", "*-deputy.md"]
     if isinstance(includes, str):
         includes = [includes]
@@ -607,7 +687,7 @@ def collect_tasks_table(spec: dict, today: str) -> tuple[dict, str]:
         role = _role_from_glob(str(pattern))
         if not role:
             continue
-        exact = base / ("%s-%s.md" % (today, role))
+        exact = base / _day_table_name(today, role)
         parsed = parse_task_table(exact, role) if exact.exists() else None
         if parsed is None:
             for path in candidates:
@@ -727,7 +807,7 @@ def collect_branches(spec: dict) -> tuple[dict[str, str], str]:
 def collect_comments(spec: dict, ctx: dict, allow_network: bool) -> tuple[dict, str]:
     """只给「任务表里的票 ∪ 在飞票」取最后 N 条评论，拿原始正文给判据用。
 
-    全量票都拉评论会让一次生成打上百发 API；这里按断点物收口（框架仓旧裁决）。
+    全量票都拉评论会让一次生成打上百发 API；这里按断点物收口（0003 D6，框架仓旧裁决；判据出处：项目仓 框架仓旧裁决，历史）。
     `--no-network` 时一次 gh 都不发，直接回 skipped。
     """
     if not allow_network:
@@ -804,7 +884,9 @@ def _handoff_commit_days(base: Path) -> dict[str, str]:
 
 
 def collect_handoffs(spec: dict) -> tuple[list[dict], str]:
-    base = resolve_path(spec.get("path") or "handoff")
+    """近 N 天交接日报。落点：板配置源显式 path 优先，
+    缺省读项目配置实例 paths.handoff_dir（框架仓旧裁决/D4）。"""
+    base = source_base(spec, "handoff_dir")
     days = int(spec.get("days") or 7)
     if not base.is_dir():
         return [], "absent"
@@ -2003,6 +2085,14 @@ def _inline(text: str) -> str:
     return "".join(out)
 
 
+def _source_spec(kind: str) -> dict:
+    """按 type 找板配置里的源声明；没有回空 dict。"""
+    for spec in CONFIG.get("sources", []):
+        if spec.get("type") == kind:
+            return spec
+    return {}
+
+
 def handoff_html(docs: list[dict]) -> str:
     max_docs = 14
     for spec in CONFIG.get("sources", []):
@@ -2010,14 +2100,22 @@ def handoff_html(docs: list[dict]) -> str:
             max_docs = int(spec.get("max_docs") or max_docs)
     if not docs:
         return '<div class="empty">近 7 天没有交接日报。</div>'
+    # 日报链接＝板目录到日报目录的相对路径（落点读项目配置实例 paths.handoff_dir，不写死）。
+    try:
+        href_dir = Path(os.path.relpath(
+            source_base(_source_spec("handoff-dir"), "handoff_dir"),
+            OUT_DIR)).as_posix()
+    except (ValueError, MissingPieces):
+        href_dir = ""
     rows = []
     for d in docs[:max_docs]:
         tk = ('<span class="tk">#%s</span>' % esc(d["ticket"])) if d["ticket"] else ""
         rows.append(
-            '<a class="handoff" href="../../handoff/%s" target="_blank" rel="noreferrer">'
+            '<a class="handoff" href="%s" target="_blank" rel="noreferrer">'
             '<span class="d">%s</span><span class="t">%s</span>'
             '<span class="s">%s</span>%s</a>'
-            % (esc(d["file"]), esc(d["day"][5:]), esc(d["title"]), esc(d["summary"]), tk)
+            % (esc("%s/%s" % (href_dir, d["file"])) if href_dir else esc(d["file"]),
+               esc(d["day"][5:]), esc(d["title"]), esc(d["summary"]), tk)
         )
     return "".join(rows)
 
@@ -2471,8 +2569,9 @@ def _flights_from_tables_only(schedules: dict, branches: dict[str, str],
 
 
 def configure(repo_root: str | None = None, out: str | None = None) -> Path:
-    """定根锚与输出目录；返回项目仓根。"""
-    global ROOT, OUT_DIR
+    """定根锚与输出目录，并装项目配置实例（读不到不在这里炸：
+    哪个源真要用 paths 字段时才按缺件报）；返回项目仓根。"""
+    global ROOT, OUT_DIR, _INSTANCE
     tasks_rel, handoff_rel = configured_rel_dirs(CONFIG)
     if repo_root:
         root = Path(repo_root).resolve()
@@ -2482,6 +2581,7 @@ def configure(repo_root: str | None = None, out: str | None = None) -> Path:
                 or Path.cwd().resolve())
     ROOT = root
     OUT_DIR = Path(out).resolve() if out else SCRIPT_DIR
+    _INSTANCE, _err = load_project_config(root)
     return ROOT
 
 
@@ -2544,6 +2644,9 @@ def main(argv: list[str] | None = None) -> int:
     try:
         configure(args.repo_root, args.out)
         payload = build(allow_network=not args.no_network)
+    except MissingPieces as exc:  # 项目配置实例 / paths 字段缺 ⇒ 缺件三格，非 0（框架仓旧裁决/D4）
+        print(str(exc), file=sys.stderr)
+        return 2
     except Exception as exc:  # 配置坏 / 采集炸 ⇒ 硬失败，非 0
         print("生成失败：%s" % exc, file=sys.stderr)
         return 2

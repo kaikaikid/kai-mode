@@ -275,4 +275,4 @@ def test_install_sync_present_in_json_output(tmp_path):
     rc, data = run_doctor(root)
     ids = [c["id"] for c in data["checks"]]
     assert "install-sync" in ids
-    assert len(ids) == 13
+    assert len(ids) == 14  # 第 14 项 decoupling-gate（解耦门）入列

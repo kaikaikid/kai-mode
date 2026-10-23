@@ -8,10 +8,10 @@ sources:
     note: "实现正本：单文件生成器模板（只用标准库）；配置烘焙进去即成一块自包含的板"
   - resource: "skills/航班信息/templates/board.config.example.json"
     note: "板配置样例（机场那块板的真实配置）；照着改即得新板"
-  - resource: "项目仓 docs/artifacts/adrs/框架仓旧裁决-airport-rebuild-four-roles.md"
-    note: "模型来源：四角色与断点物（任务表 / 票评论 / 分支），阶段链由这三种证据合判"
-  - resource: ".ai/tasks/"
-    note: "日表目录（塔台写）：YYYY-MM-DD-main.md / -deputy.md，5–10 行"
+  - resource: "框架仓旧裁决"
+    note: "模型来源：四角色与断点物（任务表 / 票评论 / 分支），阶段链由这三种证据合判；判据出处：项目仓 框架仓旧裁决（历史），已由本仓 0003 重述接管"
+  - resource: "项目配置实例 paths.day_tables_dir"
+    note: "日表目录（塔台写）：day_table_pattern 如 YYYY-MM-DD-main.md / -deputy.md，5–10 行；读不到实例 ⇒ rc≠0 报缺件"
   - resource: "GitHub Issues（票面与评论）"
     note: "唯一事实源；阶段判词与断点都在评论里"
 description: >
@@ -28,7 +28,7 @@ updated: 2026-10-22
 
 # 航班信息 —— 板工坊（配置 → 脚本 → 归档）
 
-> 落地 框架仓旧裁决（项目仓 `docs/artifacts/adrs/框架仓旧裁决-airport-rebuild-four-roles.md`，本仓只引用不复制）的断点物模型。
+> 落地 [0003 四角色机场](../../框架仓旧裁决) 的断点物模型（判据出处：项目仓 框架仓旧裁决，历史）。
 > 实现正本：[`templates/render_board.template.py`](templates/render_board.template.py)；脚手架 [`scripts/new_board.py`](scripts/new_board.py)。
 > 本技能**只读项目仓、只写板库**；不改票面、不排班、不发货。
 
@@ -70,12 +70,12 @@ updated: 2026-10-22
 | 要什么 | 怎么做 |
 |---|---|
 | 给某个仓装一块板 | `/set-航班信息`，或直接跑 `python skills/set-航班信息/scripts/setup_board.py --repo-root <仓根>`（装完即出第一版板） |
-| 日常刷新 | 板目录里的 `refresh_<板名>.bat`（`<仓根>\.design\航班信息\HTML\<板名>\`） |
-| 装定时刷新（零 token） | `python skills/航班信息/scripts/install_refresh_timer.py --repo-root <仓根> --all --every 30 --apply` |
+| 日常刷新 | 板目录里的 `refresh_<板名>.bat`（板库根＝板配置 `output.root`，如 `<板库根>\<板名>\`） |
+| 装定时刷新（零 token） | `python skills/航班信息/scripts/install_refresh_timer.py --repo-root <仓根> --lib-root <板库根> --all --every 30 --apply` |
 | 查 / 停定时 | 同上加 `--list` 查状态；加 `--remove --apply` 停并删 |
-| 让页面「刷新」按钮真能刷新 | `install_refresh_timer.py --repo-root <仓根> --all --register-protocol --apply`（解绑 `--unregister-protocol --apply`） |
-| 出索引 | `python skills/航班信息/scripts/build_index.py --repo-root <仓根>` |
-| 板在哪 | `<仓根>\.design\航班信息\HTML\<板名>\` |
+| 让页面「刷新」按钮真能刷新 | `install_refresh_timer.py --repo-root <仓根> --lib-root <板库根> --all --register-protocol --apply`（解绑 `--unregister-protocol --apply`） |
+| 出索引 | `python skills/航班信息/scripts/build_index.py --repo-root <仓根> --lib-root <板库根>` |
+| 板在哪 | `<板库根>\<板名>\`（板库根＝板配置 `output.root`，相对项目仓根） |
 
 - 人读面＝`<板名>\index.html`；机读面＝`<板名>\board.json`（AI 只读这个；`full.json` 是全量层，可重生成、不入库）。
 - 装配只管「装」；造板 / 刷新 / 归档 / 索引的判据都在本技能。装配入口见 [`../set-航班信息/SKILL.md`](../set-航班信息/SKILL.md)。
@@ -142,10 +142,11 @@ python skills/航班信息/scripts/install_refresh_timer.py --repo-root <仓根>
 
 ## 板库落点
 
-**每块板的库都在各自项目仓内**（不跨仓共享）：
+**每块板的库都在各自项目仓内**（不跨仓共享）。板库根＝板配置 `output.root`（相对项目仓根；
+脚本与模板不带第二份缺省值，缺了按缺件报——框架仓旧裁决），布局如下：
 
 ```
-<项目仓根>\.design\航班信息\HTML\
+<项目仓根>\<板库根>\
     index.html                      ← 索引页：列出所有板（板名/标题/生成时刻/sources/kpi/链接）
     <板名>\
         index.html                  ← 该板的人读面（就地更新）
@@ -186,11 +187,15 @@ python "<板库根>/<板名>/render_<板名>.py" --repo-root <项目仓根> [--q
 
 | 参数 | 默认 | 说明 |
 |---|---|---|
-| `--repo-root` | 从脚本所在目录向上自动探测 | 项目仓根；`git` / `gh` 子进程的 cwd |
+| `--repo-root` | 从脚本所在目录向上自动探测（先认项目配置实例，再退日表/日报目录） | 项目仓根；`git` / `gh` 子进程的 cwd |
 | `--out` | 脚本所在板目录 | 输出目录 |
 | `--quiet` | 关 | 只打一行汇总（定时器用） |
 | `--no-network` | 关 | 一次网络都不发；票面 / 判词 / 里程碑记 `skipped` |
 | `--snapshot` | 关 | 另存 `snapshots/<板名>-<YYYYMMDD-HHMMSS>.html` |
+
+源落点（任务表 / 交接日报）不写死：板配置源里没写显式 `path` 时，缺省读项目配置实例
+`paths.day_tables_dir` / `paths.handoff_dir`（框架仓旧裁决/D4）；实例或字段读不到 ⇒ **rc≠0 报缺件三格**，
+永不猜路径。
 
 ### 3. 归档（刷新时自动写）
 
@@ -204,7 +209,7 @@ python "<板库根>/<板名>/render_<板名>.py" --repo-root <项目仓根> [--q
 ### 4. 索引页
 
 ```bash
-python skills/航班信息/scripts/build_index.py --repo-root <项目仓根> [--lib-root <板库根>]
+python skills/航班信息/scripts/build_index.py --repo-root <项目仓根> --lib-root <板库根>
 ```
 
 扫板库根下每块的 `board.json`，写 `<板库根>/index.html`：板名、标题、生成时刻、sources 状态、kpi 摘要，
@@ -228,13 +233,13 @@ python skills/航班信息/scripts/build_index.py --repo-root <项目仓根> [--
 | `title` | string | 否 | `name` | 页面主标题（`<h1>`） |
 | `subtitle` | string | 否 | 空 | 页面副标题（眉标） |
 | `repo` | string | 否 | 空 | GitHub slug；空 ⇒ 从 `--repo-root` 的 git remote 解析；解析不出 ⇒ 本地占位 |
-| `output.root` | string | 否 | `.design/航班信息/HTML` | 板库根（相对项目仓根） |
+| `output.root` | string | 是 | — | 板库根（相对项目仓根；脚本不带缺省值，缺 ⇒ 建板/索引/定时器一律报缺件） |
 | `output.index_html` / `board_json` / `full_json` / `history` / `snapshots_dir` | string | 否 | `index.html` / `board.json` / `full.json` / `history.jsonl` / `snapshots` | 产物文件名 |
 | `output.payload_schema` | string | 否 | `flight-info/1` | 写进 JSON 的 `schema` |
 | `sources[]` | array | 是 | — | 每条 `{id, type, ...params}`；`id` 唯一，是 `sources` 映射里的键 |
 | `sources[].type` | string | 是 | — | `github-issues` / `github-milestones` / `issue-comments` / `tasks-table` / `handoff-dir` / `git-worktrees` / `notes-jsonl` |
 | `sources[].repo` | string | 否 | 空 | 该源的仓 slug；空 ⇒ 用顶层 `repo` |
-| `sources[].path` / `include` / `days` / `limit` / `last` / `state` / `branch_prefix` / `tickets` / `max_docs` | — | 否 | 见类型 | 各类型的参数（见下表） |
+| `sources[].path` / `include` / `days` / `limit` / `last` / `state` / `branch_prefix` / `tickets` / `max_docs` | — | 否 | 见类型 | 各类型的参数（见下表）；`path` 给了用它，没给读项目配置实例对应字段（见下表），都没有 ⇒ rc≠0 报缺件 |
 | `stages[]` | array | 是 | — | 阶段链顺序，每条 `{key, label}` |
 | `off_chain_stages[]` | array | 否 | `[]` | 链条外的阶段（可领 / 挡住…），每条 `{key, label}` |
 | `stage_rules[]` | array | 是 | — | 阶段判据，每条 `{when, value?, stage, why?, ignore_case?}`；最后一条必须是 `{when:"else"}` |
@@ -268,8 +273,8 @@ python skills/航班信息/scripts/build_index.py --repo-root <项目仓根> [--
 | `github-issues` | `repo` / `state`（`open`｜`closed`｜`none`）/ `limit` / `closed_limit` / `closed_days` | 票面（含最近 closed） | `ok` / `skipped` / `fail` |
 | `github-milestones` | `repo` / `limit` | 开放里程碑与进度 | `ok` / `skipped` / `fail` |
 | `issue-comments` | `repo` / `tickets`（`auto`＝任务表 ∪ 在飞票，或写死列表）/ `last` | 每票最后 N 条评论**原文** | `ok` / `skipped` / `fail` |
-| `tasks-table` | `path` / `include`（通配数组，如 `["*-main.md","*-deputy.md"]`）/ `roles` | 当日任务表两张 | `ok` / `absent` |
-| `handoff-dir` | `path` / `days` / `max_docs` | 近 N 天交接日报 | `ok` / `absent` |
+| `tasks-table` | `path`（缺省＝配置实例 `paths.day_tables_dir`）/ `include`（通配数组，如 `["*-main.md","*-deputy.md"]`）/ `roles` | 当日任务表两张（文件名按实例 `day_table_pattern` 拼，如 `YYYY-MM-DD-{lane}.md`） | `ok` / `absent` |
+| `handoff-dir` | `path`（缺省＝配置实例 `paths.handoff_dir`）/ `days` / `max_docs` | 近 N 天交接日报 | `ok` / `absent` |
 | `git-worktrees` | `branch_prefix` | `exec/<票号>-*` ⇒ 在飞证据 | `ok` / `fail` |
 | `notes-jsonl` | `path` / `limit` | 钩子提醒 | `ok` / `absent` / `fail` |
 
@@ -365,7 +370,7 @@ python skills/航班信息/scripts/build_index.py --repo-root <项目仓根> [--
 ```bash
 python -m pytest skills/航班信息/scripts/tests/ -q
 python skills/航班信息/scripts/new_board.py --repo-root <项目仓根> --config <板配置.json>
-python skills/航班信息/scripts/build_index.py --repo-root <项目仓根>
+python skills/航班信息/scripts/build_index.py --repo-root <项目仓根> --lib-root <板库根>
 ```
 
 ## 正本
@@ -373,7 +378,7 @@ python skills/航班信息/scripts/build_index.py --repo-root <项目仓根>
 - 模板：[`skills/航班信息/templates/render_board.template.py`](templates/render_board.template.py) —— 实现正本。
 - 板配置样例：[`skills/航班信息/templates/board.config.example.json`](templates/board.config.example.json)。
 - 脚手架：[`skills/航班信息/scripts/new_board.py`](scripts/new_board.py)；索引：[`skills/航班信息/scripts/build_index.py`](scripts/build_index.py)。
-- 框架仓旧裁决：项目仓 `docs/artifacts/adrs/框架仓旧裁决-airport-rebuild-four-roles.md` —— 模型来源。
-- 日表：`.ai/tasks/YYYY-MM-DD-main.md` / `-deputy.md`（塔台写，本技能只读）。
+- [0003 四角色机场](../../框架仓旧裁决) —— 模型来源（判据出处：项目仓 框架仓旧裁决，历史）。
+- 日表：项目配置实例 `paths.day_tables_dir` ＋ `day_table_pattern`（如 `YYYY-MM-DD-main.md` / `-deputy.md`；塔台写，本技能只读；读不到实例 ⇒ rc≠0 报缺件）。
 - GitHub Issue 正文与评论（唯一事实源）。
 - [`skills/kai-mode/SKILL.md`](../kai-mode/SKILL.md) · [`skills/set-kai-mode/SKILL.md`](../set-kai-mode/SKILL.md) · [`loops/loop-protocol.md`](../../loops/loop-protocol.md)

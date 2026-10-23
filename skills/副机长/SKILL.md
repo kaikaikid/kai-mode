@@ -24,7 +24,7 @@ updated: 2026-10-23
 
 | 项 | 机长 | 副机长 |
 |---|---|---|
-| 日表 | `.ai/tasks/YYYY-MM-DD-main.md` | `.ai/tasks/YYYY-MM-DD-deputy.md` |
+| 日表 | 项目配置 `paths.day_tables_dir`＋`day_table_pattern`（`-main.md`） | 同 `paths.day_tables_dir`（`-deputy.md`） |
 | 预检 | `--lane main` | `--lane deputy` |
 | 可写 Issue | `-main.md` 里的票 | `-deputy.md` 里的票 |
 

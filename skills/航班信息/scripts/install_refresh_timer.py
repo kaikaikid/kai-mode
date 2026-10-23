@@ -16,7 +16,8 @@
   python install_refresh_timer.py --repo-root <项目仓根> [--board <板名> | --all] --remove
 
 参数：
-  --repo-root   项目仓根（板库＝<仓根>/.design/航班信息/HTML/<板名>/）
+  --repo-root   项目仓根
+  --lib-root    板库根（＝板配置 output.root，相对仓根或绝对路径；脚本不带缺省值，不给 ⇒ rc!=0 报缺件）
   --board       板名；不给 --all 时必填其一
   --all         扫板库里所有板，逐块装 / 查 / 停
   --every       周期（分钟，默认 30；Windows 1–1439，POSIX 会换算成 */N）
@@ -53,7 +54,6 @@ except ImportError:
 TASK_PREFIX = "flight-info"
 PROTOCOL = "flight-info"
 DEFAULT_EVERY = 30
-LIB_REL = os.path.join(".design", "航班信息", "HTML")
 
 
 def manifest_path() -> Path:
@@ -150,8 +150,11 @@ def unregister_protocol(board: str, apply: bool) -> tuple[int, str]:
     return 0, "已卸「%s」；没有板用了，协议一并删掉" % board
 
 
-def hook_text(kind: str, spawner: str = "") -> str:
+def hook_text(kind: str, spawner: str = "", lib_rel: str = "") -> str:
     """项目仓 .githooks/post-commit 或 post-merge 的正文（LF，bash）。
+
+    lib_rel＝板库根相对项目仓根的路径（来自 --lib-root，装机时烤进钩子——
+    钩子是装机产物，落点跟板配置 output.root 走，不在钩子模板里藏第二份缺省）。
 
     四条都是实测踩出来的，别改回去：
       ① 不能同步硬刷 —— 联网的板刷一次要几十秒，同步会把 commit 卡死；
@@ -186,7 +189,7 @@ def hook_text(kind: str, spawner: str = "") -> str:
         "set -uo pipefail\n\n"
         'ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0\n'
         '[ -n "$ROOT" ] || exit 0\n\n'
-        'BOARD_LIB="$ROOT/.design/航班信息/HTML"\n'
+        'BOARD_LIB="$ROOT/@LIB@"\n'
         '[ -d "$BOARD_LIB" ] || exit 0\n\n'
         "shopt -s nullglob\n"
         'for BAT in "$BOARD_LIB"/*/refresh_*.timer.bat; do\n'
@@ -210,15 +213,23 @@ def hook_text(kind: str, spawner: str = "") -> str:
         "done\n\n"
         "exit 0\n"
     # 用占位符替换而不是 % 格式化：正文里的 `date +%s` 含 %s，会被当成占位符吃掉
-    ).replace("@TASK@", TASK_PREFIX).replace("@SPAWNER@", spawner or "install_refresh_timer.py")
+    ).replace("@TASK@", TASK_PREFIX).replace("@SPAWNER@", spawner or "install_refresh_timer.py"
+    ).replace("@LIB@", (lib_rel or ".").replace("\\", "/"))
 
 
-def install_hook(repo_root: Path, apply: bool) -> tuple[int, str]:
+def install_hook(repo_root: Path, apply: bool, lib_root: Path | None = None) -> tuple[int, str]:
     """给项目仓挂 post-commit / post-merge 两枚钩子（不碰既有钩子）。"""
     hooks = repo_root / ".githooks"
     if not hooks.is_dir():
         return 2, "这个仓没有 .githooks/（先 `git config core.hooksPath .githooks`）"
     spawner = str(Path(__file__).resolve())
+    if lib_root is not None:
+        try:
+            lib_rel = lib_root.relative_to(repo_root).as_posix()
+        except ValueError:
+            lib_rel = str(lib_root)
+    else:
+        lib_rel = ""
     lines = []
     worst = 0
     for kind in ("post-commit", "post-merge"):
@@ -226,7 +237,7 @@ def install_hook(repo_root: Path, apply: bool) -> tuple[int, str]:
         if p.exists():
             lines.append("  %s：已存在，不动它（要重写先自己删）" % kind)
             continue
-        text = hook_text(kind, spawner)
+        text = hook_text(kind, spawner, lib_rel)
         if not apply:
             lines.append("  将写 %s（%d 字节）" % (kind, len(text)))
             continue
@@ -321,13 +332,19 @@ def dispatch(url: str) -> int:
     return p.returncode
 
 
-def lib_root(repo_root: Path) -> Path:
-    return repo_root / LIB_REL
+def lib_root(repo_root: Path, override: str | None = None) -> Path | None:
+    """板库根：--lib-root 显式给了用它的（相对仓根或绝对）；
+    没给回 None（调用方按缺件报——本脚本不带第二份板库缺省值，框架仓旧裁决）。"""
+    if not override or not str(override).strip():
+        return None
+    root = Path(str(override).strip())
+    if not root.is_absolute():
+        root = repo_root / root
+    return root
 
 
-def find_boards(repo_root: Path, name: str | None) -> list[tuple[str, Path, Path]]:
-    """扫板库：返回 [(板名, 板目录, 适配脚本)]。板名空 ⇒ 全扫。"""
-    root = lib_root(repo_root)
+def find_boards(root: Path, name: str | None) -> list[tuple[str, Path, Path]]:
+    """扫板库：返回 [(板名, 板目录, 适配脚本)]。板名空 ⇒ 全扫。root＝板库根（调用方先解析好）。"""
     out: list[tuple[str, Path, Path]] = []
     if not root.is_dir():
         return out
@@ -351,7 +368,7 @@ def _tag(board: str) -> str:
 def task_xml(board: str, real_bat: Path, every: int) -> tuple[Path, str]:
     """把任务写成 XML 再导入 —— 中文板库路径走 Unicode，不过命令行这一关。
 
-    踩过的坑（本机实证）：`/TR` 里塞 `.design\\航班信息\\...` 这种中文路径 ＋ `cmd /c "..."` 的引号嵌套，
+    踩过的坑（本机实证）：`/TR` 里塞中文板库路径 ＋ `cmd /c "..."` 的引号嵌套，
     schtasks 直接报「系统找不到指定的文件」；改塞纯 ASCII 包装脚本也不行 ——
     包装里的中文按 GBK 写，cmd 当前代码页不是 936 时照样读成乱码、0 秒返回且板没刷。
     XML 导入绕开命令行解析，是唯一走得通的路。
@@ -575,6 +592,8 @@ def main(argv: list[str] | None = None) -> int:
     # 不能 required：--dispatch 是被系统按协议拉起的，只有 URL、没有仓根，
     # required 会让 argparse 直接报错退出（实测：按钮点了没反应就是这个）。
     ap.add_argument("--repo-root", default=None, help="项目仓根")
+    ap.add_argument("--lib-root", default=None,
+                    help="板库根（＝板配置 output.root；不给 ⇒ 报缺件，脚本不带缺省值）")
     ap.add_argument("--board", default=None, help="板名；与 --all 二选一")
     ap.add_argument("--all", action="store_true", help="扫板库里所有板")
     ap.add_argument("--every", type=int, default=DEFAULT_EVERY, help="周期（分钟，默认 30）")
@@ -612,9 +631,16 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     repo_root = Path(args.repo_root).resolve()
-    boards = find_boards(repo_root, None if args.all else args.board)
+    root = lib_root(repo_root, args.lib_root)
+    if root is None:
+        print("缺件：板库根（--lib-root）\n"
+              "  · 谁需要它：定时器要扫板库找各板的刷新壳\n"
+              "  · 怎么补：传 --lib-root <板库根>（值＝板配置 output.root，相对项目仓根）",
+              file=sys.stderr)
+        return 2
+    boards = find_boards(root, None if args.all else args.board)
     if not boards:
-        print("板库里没找到板：%s（先跑 set-航班信息 装一块）" % lib_root(repo_root),
+        print("板库里没找到板：%s（先跑 set-航班信息 装一块）" % root,
               file=sys.stderr)
         return 2
 
@@ -627,7 +653,7 @@ def main(argv: list[str] | None = None) -> int:
         return 4
 
     if args.install_hook:
-        rc, msg = install_hook(repo_root, args.apply)
+        rc, msg = install_hook(repo_root, args.apply, root)
         print("── 事件驱动钩子 %s" % repo_root)
         print("  %s" % msg)
         return rc

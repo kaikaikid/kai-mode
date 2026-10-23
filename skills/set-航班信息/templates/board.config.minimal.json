@@ -1,5 +1,5 @@
 {
-  "_note": "通用最小板配置：任何仓都能起。只读任务表目录 .ai/tasks；目录不在时该源记 absent，板照样出、页脚点名。阶段链与判据（stages / stage_rules / view / summary）由 set-航班信息 的装配面补通用缺省，不用手写。要加源（GitHub issues / 里程碑 / 交接日报 / 分支）就照 skills/航班信息/templates/board.config.example.json 抄；_note 这个键板会忽略。",
+  "_note": "通用最小板配置：任何仓都能起。任务表目录不写死——缺省读目标仓项目配置实例 paths.day_tables_dir（框架仓旧裁决/D4）；实例不在且源没写显式 path ⇒ 该源报缺件（装不出来），实例在而目录不在 ⇒ 该源记 absent，板照样出、页脚点名。阶段链与判据（stages / stage_rules / view / summary）由 set-航班信息 的装配面补通用缺省，不用手写。要加源（GitHub issues / 里程碑 / 交接日报 / 分支）就照 skills/航班信息/templates/board.config.example.json 抄；_note 这个键板会忽略。",
   "schema": "flight-info-board/1",
   "name": "航班",
   "title": "航班信息板",
@@ -10,7 +10,6 @@
     {
       "id": "tasks",
       "type": "tasks-table",
-      "path": ".ai/tasks",
       "include": ["*-main.md", "*-deputy.md"]
     }
   ]

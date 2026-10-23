@@ -13,6 +13,13 @@ codex --version          # 本机实测 0.163.0-alpha.10.2
 
 没有入口 ⇒ 本档不可用，缺件如实登记（`no-launcher`）。
 
+## 宿主工具探测（schema 2 `execution.host_tools` 契约迁入，[0004](../docs/adr/0004-project-config-schema.md) D6）
+
+- **Builder（施工）**：`codex exec -s workspace-write`（沙箱给写权）；探测不到 `codex` 入口 ⇒ 本档不可用，缺件如实登记。
+- **Reviewer（评审）**：`codex exec -s read-only`，**另起一次调用**（新上下文）；复用施工会话 ⇒ 不算独立验收。
+- **Researcher（检索/探索）**：`codex exec -s read-only`，只产出研究稿，不写实现。
+- **降级**：无 Task 类子代理字段 ⇒ 三个角色都用独立 `codex exec` 进程顶替，各带各的 sandbox；付费未授权 ⇒ 记 `paid-not-authorized`，不偷偷跑。
+
 ## 起角色（可写）
 
 ```bash
@@ -27,7 +34,7 @@ codex exec -C <仓库根> -s read-only --json -o <回执文件> \
   "按票面 AC 评审 <票号>；只输出 verdict 与逐条证据路径。"
 ```
 
-## 执行三职（ADR-0136 残留：researcher / implementer / reviewer）
+## 执行三职（判据出处：项目仓 ADR-0136，历史；判据由 [playbooks/execution-roles.md](../playbooks/execution-roles.md) 承载：researcher / implementer / reviewer）
 
 - **Researcher**：`codex exec -s read-only`，产出 `research-<票>.md`；不写实现。
 - **Implementer**（＝施工子代理）：`codex exec -s workspace-write`；必带派工卡（票号/AC/允许禁止修改/验证命令/环境口径）；独立 worktree 与分支；不 push、不合并。

@@ -12,6 +12,13 @@ opencode --version          # 本机实测 1.19.3
 
 没有 shell 入口 ⇒ 本档不可用，缺件如实登记（`no-launcher`），不要写进流程正本。
 
+## 宿主工具探测（schema 2 `execution.host_tools` 契约迁入，[0004](../docs/adr/0004-project-config-schema.md) D6）
+
+- **Builder（施工）**：`opencode run`；探测不到 `opencode` 入口 ⇒ 本档不可用，缺件如实登记。
+- **Reviewer（评审）**：`opencode run`，**另起一次**只读 prompt（新上下文）；复用施工会话 ⇒ 不算独立验收。
+- **Researcher（检索/探索）**：`opencode run` 只读 prompt，产出研究稿，不写实现。
+- **降级**：无 Task 类子代理字段 ⇒ 三个角色都用独立 `opencode run` 进程顶替；起不动写 `launch-failed` 交人工，不重试到死。
+
 ## 起角色
 
 ```bash
@@ -20,10 +27,10 @@ opencode run --model <free-model> \
 ```
 
 - 后台起，不阻塞；用项目本机配置记录 runner/model/版本。
-- 角色技能从本仓 `skills/`（或项目仓 `.ai/skills/`）读，路径不写死。
+- 角色技能落点读项目配置实例 `registry.skills.project_skills_dir`（框架仓正本＝本仓 `skills/`），路径不写死（[0004](../docs/adr/0004-project-config-schema.md) D2/D6）。
 - 失败写 `launch-failed`；不重试到死，交人工。
 
-## 执行三职（ADR-0136 残留：researcher / implementer / reviewer）
+## 执行三职（判据出处：项目仓 ADR-0136，历史；判据由 [playbooks/execution-roles.md](../playbooks/execution-roles.md) 承载：researcher / implementer / reviewer）
 
 - **Researcher**：`opencode run` 只读 prompt，产出 `research-<票>.md`；不写实现。
 - **Implementer**（＝施工子代理）：`opencode run`，必带派工卡（票号/AC/允许禁止修改/验证命令/环境口径）；独立 worktree 与分支；不 push、不合并。

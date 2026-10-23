@@ -3,11 +3,12 @@
 """板库索引页：扫板目录 → <板库根>/index.html。
 
 用法：
-  python build_index.py --repo-root <项目仓根> [--lib-root <板库根>]
+  python build_index.py --repo-root <项目仓根> --lib-root <板库根>
 
-板库根默认 <项目仓根>/.design/航班信息/HTML；每块板读它的 board.json（摘要层）。
+板库根＝板配置 output.root（相对项目仓根）；本脚本不写第二份缺省值，
+--lib-root 不给 ⇒ rc!=0 报缺件（框架仓旧裁决/D4）。每块板读它的 board.json（摘要层）。
 输出自包含 HTML（内联 CSS，无 CDN、无运行时请求）。
-退出码：0＝索引写好了；2＝读不到板库；3＝写不出。
+退出码：0＝索引写好了；2＝读不到板库/缺件；3＝写不出。
 """
 from __future__ import annotations
 
@@ -17,8 +18,6 @@ import json
 import sys
 from datetime import datetime
 from pathlib import Path
-
-DEFAULT_LIB_ROOT = ".design/航班信息/HTML"
 
 CSS = """
 :root{
@@ -165,16 +164,19 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="生成板库索引页")
     ap.add_argument("--repo-root", required=True, help="项目仓根")
     ap.add_argument("--lib-root", default=None,
-                    help="板库根（默认 <repo-root>/%s）" % DEFAULT_LIB_ROOT)
+                    help="板库根（＝板配置 output.root；脚本不带缺省值）")
     args = ap.parse_args(argv)
 
     repo_root = Path(args.repo_root).resolve()
-    if args.lib_root:
-        lib_root = Path(args.lib_root)
-        if not lib_root.is_absolute():
-            lib_root = repo_root / lib_root
-    else:
-        lib_root = repo_root / DEFAULT_LIB_ROOT
+    if not args.lib_root or not str(args.lib_root).strip():
+        print("缺件：板库根（--lib-root）\n"
+              "  · 谁需要它：build_index 扫板库出索引页\n"
+              "  · 怎么补：传 --lib-root <板库根>（值＝板配置 output.root，相对项目仓根）",
+              file=sys.stderr)
+        return 2
+    lib_root = Path(args.lib_root)
+    if not lib_root.is_absolute():
+        lib_root = repo_root / lib_root
 
     if not lib_root.is_dir():
         print("板库根不存在：%s（先建板）" % lib_root, file=sys.stderr)

@@ -36,14 +36,18 @@ def _board(repo: Path, name: str = "航班"):
     return d
 
 
+LIB = Path(".design") / "航班信息" / "HTML"
+
+
 def test_find_boards_only_picks_renderable_dirs(tmp_path):
     t = _load()
     good = _board(tmp_path, "航班")
     (tmp_path / ".design" / "航班信息" / "HTML" / "空目录").mkdir(parents=True)
-    found = t.find_boards(tmp_path, None)
+    lib = tmp_path / LIB
+    found = t.find_boards(lib, None)
     assert [n for n, _, _ in found] == ["航班"]
     assert found[0][1] == good
-    assert t.find_boards(tmp_path, "不存在的板") == []
+    assert t.find_boards(lib, "不存在的板") == []
 
 
 def test_timer_bat_is_crlf_and_relative(tmp_path):
@@ -82,19 +86,30 @@ def test_dry_run_writes_nothing_and_apply_reports_blocked(tmp_path, capsys, monk
     d = _board(repo)
     bat = d / "refresh_航班.timer.bat"
 
-    rc = t.main(["--repo-root", str(repo), "--all", "--every", "30",
-                 "--python", "python3"])
+    rc = t.main(["--repo-root", str(repo), "--lib-root", str(LIB), "--all",
+                 "--every", "30", "--python", "python3"])
     assert rc == 0
     assert not bat.exists(), "干跑不许写刷新壳"
     assert "干跑" in capsys.readouterr().out
 
     monkeypatch.setattr(t, "run", lambda cmd: (127, "调不动 schtasks"))
-    rc2 = t.main(["--repo-root", str(repo), "--all", "--apply",
-                  "--python", "python3"])
+    rc2 = t.main(["--repo-root", str(repo), "--lib-root", str(LIB), "--all",
+                  "--apply", "--python", "python3"])
     assert rc2 == 3
     assert bat.exists(), "真装时刷新壳要落盘（系统闹钟装不上也先留着壳）"
     out = capsys.readouterr().out
     assert "调不动" in out or "失败" in out
+
+
+def test_main_without_lib_root_reports_missing_pieces(tmp_path, capsys):
+    """板库根没有第二份缺省：不给 --lib-root ⇒ 退 2 报缺件（ADR-0004 D1）。"""
+    t = _load()
+    repo = tmp_path / "repo"
+    _board(repo)
+    rc = t.main(["--repo-root", str(repo), "--all"])
+    assert rc == 2
+    err = capsys.readouterr().err
+    assert "缺件" in err and "--lib-root" in err
 
 
 def test_board_from_url_handles_encoded_chinese():

@@ -90,10 +90,17 @@ def validate_config(cfg: object) -> list[str]:
     output = cfg.get("output")
     if output is not None and not isinstance(output, dict):
         errs.append("output：必须是对象")
-    elif isinstance(output, dict):
+        output = None
+    if not isinstance(output, dict):
+        errs.append("output.root：必填（板库根，相对项目仓根；脚本不再带缺省值，"
+                    "缺了消费方一律报缺件）")
+    else:
         root = output.get("root")
         if root is not None and not isinstance(root, str):
             errs.append("output.root：必须是字符串")
+        elif not str(root or "").strip():
+            errs.append("output.root：必填（板库根，相对项目仓根；脚本不再带缺省值，"
+                        "缺了消费方一律报缺件）")
 
     sources = cfg.get("sources")
     if not isinstance(sources, list) or not sources:
@@ -251,15 +258,22 @@ def main(argv: list[str] | None = None) -> int:
 
     name = str(cfg["name"])
     repo_root = Path(args.repo_root).resolve()
-    out_root_cfg = str((cfg.get("output") or {}).get("root") or ".design/航班信息/HTML")
+    # 板库根：只认板配置 output.root / --out-root，脚本不带第二份缺省值（框架仓旧裁决）。
+    out_root_cfg = str((cfg.get("output") or {}).get("root") or "").strip()
     if args.out_root:
         lib_root = Path(args.out_root)
         if not lib_root.is_absolute():
             lib_root = repo_root / lib_root
-    else:
+    elif out_root_cfg:
         lib_root = Path(out_root_cfg)
         if not lib_root.is_absolute():
             lib_root = repo_root / lib_root
+    else:
+        print("缺件：板配置 output.root（板库根）\n"
+              "  · 谁需要它：建板 / 板库索引 / 定时刷新都要靠它定位板目录\n"
+              "  · 怎么补：板配置 output.root 写相对项目仓根的板库根，或命令行加 --out-root",
+              file=sys.stderr)
+        return 2
     board_dir = lib_root / name
 
     if board_dir.exists() and not args.force:
