@@ -9,7 +9,7 @@ sources:
 description: >
   机长 / 副机长共用的单票闭环（不是用户入口）。判据与本技能冲突时以 `loops/loop-protocol.md` 为准。
   触发：由 `/机长`、`/副机长` 自动带入；「loop」不是口令。
-version: 5.3.2
+version: 5.3.3
 updated: 2026-10-24
 allowed-tools: Read Grep
 compatibility: Host-agnostic
@@ -32,7 +32,8 @@ dependencies:
 ## 一张票
 
 开工评论 → 施工（独立 worktree，先红后绿）→ 施工完成评论 → 新上下文审查
-→ `fail` 修 1 次再审 → `pass` 后把判词原样写「待发货」。
+→ `fail` 修 1 次再审 → `pass` 后按判词格式写「待发货」（首行 `verdict=`、第二行 `ac=<通过数>/<总数>`；
+格式与窄读命令见兄弟技能 `pilot`）。
 
 ## 收工
 

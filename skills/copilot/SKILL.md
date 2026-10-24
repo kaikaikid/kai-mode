@@ -13,7 +13,7 @@ sources:
 description: >
   机场体系的副机长：与机长同权限、同一套流程，独立日表 `-deputy.md`。
   触发：`/副机长`（人工唤醒）；塔台只写日表/播报，kai-mode 只推荐命令，不自动起角色。
-version: 2.5.1
+version: 2.5.2
 updated: 2026-10-24
 allowed-tools: Bash(git:*) Read Grep
 compatibility: Requires git
@@ -43,6 +43,8 @@ dependencies:
 
 除机长技能里的围栏外，流程叙事、回执长度、评论详略、拆活方式和机动子代理都按情况自决；
 这些是负担，不是硬闸。
+
+读票用窄读、判词格式、收尾自检三件均同机长，不另立口径。
 
 ## 收工复查
 

@@ -14,7 +14,7 @@ description: >
   机场体系的机长：读自己日表，最多 2 张在飞；每票至少 1 施工 + 1 审查，机动按需。
   只管理不写码、不 push。
   触发：`/机长`（人工唤醒）；塔台只写日表/播报，kai-mode 只推荐命令，不自动起角色。
-version: 2.5.1
+version: 2.5.2
 updated: 2026-10-24
 allowed-tools: Bash(git:*) Read Grep
 compatibility: Requires git
@@ -76,7 +76,18 @@ goal 模式：表里还有活就继续跑，不逐票问用户。
 ## 单票闭环
 
 开工评论 → 派施工（独立 worktree + 分支）→ 施工完成评论 → 派新上下文审查 →
-`fail` 修 1 次再审，仍 `fail` 写卡点 → `pass` 把判词原样写进「待发货」。
+`fail` 修 1 次再审，仍 `fail` 写卡点 → `pass` 按「判词格式」写进「待发货」。
+
+**读票用窄读**：票体（AC／允许修改／验证命令）＋ 最近判词 ＋ 最后 3 条评论，不拉全量历史：
+
+```bash
+gh issue view <n> --json number,title,body,state,labels,comments --jq '{number,title,state,labels:[.labels[].name],body,latest_verdict:([.comments[]|select(.body|startswith("verdict="))]|last|.body // ""),recent:(.comments[-3:]|map(.body))}'
+```
+
+**判词格式**：首行 `verdict=pass` 或 `verdict=fail`，第二行 `ac=<通过数>/<总数>`。
+`fail` 逐条四要素（点、严重度、证据、建议修法）；`pass` 逐条证据写 `file:line`。
+机长只负责 marker 与计数准确、证据行可点开，不逐字转写叙述。
+
 字段、门禁、失败恢复见 `loops/loop-protocol.md`。
 
 ## 等待与止损（硬）
@@ -117,3 +128,6 @@ git worktree list                                             # 一票一 worktr
 ## 断点
 
 日表（塔台写）+ Issue 评论（你写）+ 分支提交（子代理写）。换人按这三样续跑，不重写半成品。
+
+**收尾自检**（每票判词落定后、开下一票前）：① 票面有最新判词；② 分支 HEAD sha 已写进票面；
+③ 该票工作树无未提交。三件齐＝这票随时可被别人接；不齐当场补齐，不带脏断点离开。
