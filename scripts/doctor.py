@@ -66,7 +66,7 @@ CONFIG_TEMPLATE_EXEMPT = (".ai/scope",)
 # 模型 slug 黑名单：框架仓与配置模板都不许写死具体模型（ADR-0008 D3：模型是用户的决定）。
 SLUG_MARKS = ("group/", "-xhigh", "claude", "grok", "gpt", "gemini", "deepseek", "qwen",
               "kimi", "glm-", "minimax", "anthropic")
-DECOUPLE_FIX = ("修法：硬路径改读项目配置实例字段（<项目仓根>/.ai/kai-mode.project.json，schema 3），"
+DECOUPLE_FIX = ("修法：硬路径改读项目配置实例字段（<项目仓根>/.ai/kai-mode.project.json，schema 4），"
                 "字段映射见 docs/adr/0004-project-config-schema.md D2；读不到实例就 rc≠0 报缺件清单，别猜路径；"
                 "模型只按人格配（models.agents.<人格>.model，null=宿主默认），见 docs/adr/0008")
 
@@ -1039,7 +1039,7 @@ def _decouple_whitelisted(rel: str) -> bool:
 
 
 def _template_models_problems(tpl, personas=()) -> list:
-    """schema 3 配置模板的 models 子检查（ADR-0008 D3）：只许 {_note, agents}；
+    """schema 3/4 配置模板的 models 子检查（ADR-0008 D3）：只许 {_note, agents}；
     `agents.<人格>.model` 只许 null（框架不写死模型）；键集与盘上人格双向一致。"""
     problems = []
     models = tpl.get("models")
@@ -1122,10 +1122,10 @@ def chk_decoupling(root, ms):
         except (OSError, ValueError) as exc:
             problems.append(f"{CONFIG_TEMPLATE_REL} 不是合法 JSON：{exc}")
         else:
-            if tpl.get("schema") == 3:
+            if tpl.get("schema") in (3, 4):
                 problems.extend(_template_models_problems(tpl, _agent_personas(root)))
             else:
-                tpl_note = f"；配置模板 schema={tpl.get('schema')!r}，models 子检查只对 schema 3 生效"
+                tpl_note = f"；配置模板 schema={tpl.get('schema')!r}，models 子检查只对 schema 3/4 生效"
     else:
         tpl_note = "；配置模板不在，models 子检查跳过"
     if problems:

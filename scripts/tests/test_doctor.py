@@ -467,7 +467,8 @@ def add_init(root, gates_extra=None):
     shutil.copyfile(os.path.join(REPO, "scripts", "init-project.py"),
                     str(root / "scripts" / "init-project.py"))
     tpl = {
-        "schema": 3, "_note_0": "t", "project": "<project-name>", "repo_root": ".",
+        "schema": 4, "_note_0": "t", "project": "<project-name>", "repo_root": ".",
+        "models": {"_note": "n", "agents": {}},
         "ship_mode": "tower",
         "host": {"_note": "n", "adapter": "<qoder|codex>"},
         "registry": {"_note": "n", "adrs": {"dir": "<adr-dir>"},

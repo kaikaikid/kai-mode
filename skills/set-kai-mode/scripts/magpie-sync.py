@@ -1001,7 +1001,7 @@ def selftest() -> int:
         os.makedirs(os.path.join(cfg_root, custom_dir, ANCHOR), exist_ok=True)
         os.makedirs(os.path.join(cfg_root, custom_loop), exist_ok=True)
         with open(os.path.join(cfg_root, PROJECT_CONFIG), "w", encoding="utf-8") as f:
-            json.dump({"schema": 3, "registry": {"skills": {
+            json.dump({"schema": 4, "registry": {"skills": {
                 "project_skills_dir": custom_dir, "loop_dir": custom_loop}}},
                 f, ensure_ascii=False)
         got = family_src(cfg_root, ANCHOR, install_plan(cfg_root))

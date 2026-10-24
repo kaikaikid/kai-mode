@@ -15,7 +15,7 @@ accepted —— 2026-10-25 用户令：「再梳理一遍用户得到的配置�
 | 2 | `gates` 12 键预置的全是**本仓**的门名（`ready`／`env_doctor`／`worktree_teardown`／`skill_attest`…），十一问只问了 `captain_preflight` 一个；生成项目里 12 个路径 **0 个存在** | `gates._note`：「null＝本项目无此门」；缺件原则：不许猜一个路径写下去 |
 | 3 | 宿主有两处：`host.adapter`（第 8 问）与 `execution.preferred`＋`fallbacks`（模板写死 `qoder`/`codex`/`opencode`） | `host._note`：「换宿主时改这一处」＝唯一家 |
 | 4 | `runtime.deps.install_cmd = pnpm install --offline`、`check_dir_rel = <frontend-dir>/node_modules`、唤醒周期在 `playbooks[].trigger` 里写死「1 小时轮巡」而正本在 `tower_cron.interval_min` | 0004：机器值/包管理选择不入 tracked 实例；一语义一家 |
-| 5 | 88 个叶子键里 **60 个全仓零读者**（`limits` 8、`runtime` 13、`execution` 6、`approval` 3、`acceptance` 2、`audit` 3、`wip` 3、`gates` 9、`issue` 3…） | AGENTS：运行时机制（重试/超时/熔断/预算）属宿主运行时，不属文档与实例 |
+| 5 | 88 个叶子键里约 60 个没有活契约读者（`limits` 8、`runtime` 13、`execution` 6、`approval` 3、`acceptance` 2、`audit` 3、`wip` 3、`gates` 9、`issue` 3…）<br>**更正**：这条按裸 token 量的，误伤 `paths.audit_dir`／`dashboard`／`module_cards`、`issue.verdict_marker` 四个确有读者的键；键集终局按 [0015](0015-schema-4-keys-with-consumers.md) 的 `段.键` 取证 | AGENTS：运行时机制（重试/超时/熔断/预算）属宿主运行时，不属文档与实例 |
 | 6 | 没有任何门校验生成的实例（0004 D 写了「set-kai-mode 负责校验」，doctor 的解耦门只扫模板与本仓硬路径） | 判据有写、量具没有＝等于没有 |
 
 ## Decision
@@ -40,14 +40,13 @@ accepted —— 2026-10-25 用户令：「再梳理一遍用户得到的配置�
 ② 值里零 `<占位>`；③ 零机器绝对路径；④ `gates` 里非 null 的键只能来自问答清单（现在只有 `captain_preflight`）。
 红＝配置面又在往用户项目里塞虚构值。假仓三条回归用例（预置门红／机器路径红／干净绿）。
 
-### D5 零读者段本轮不删，登记为待拍项
+### D5 零读者段本轮不删，登记为待拍项 → 已由 0015 执行
 
-`limits`／`wip`／`approval`／`acceptance`／`audit`／`execution.subagent_roles`／`runtime.*` 这批 60 键是 0004 从 schema 2「沿用」来的，
-没有任何件按名读它。删除＝schema 4 破坏性变更（用户已生成的实例要迁移），且与 0004 字段表冲突，
-需人工拍板后再动；本轮只做 D1–D4，不留"已清理"的假象。
+`limits`／`wip`／`approval`／`acceptance`／`audit`／`execution`／`runtime.deps` 这批键是 0004 从 schema 2「沿用」来的。
+本轮（0.20.0）只做 D1–D4；键集终局见 [0015](0015-schema-4-keys-with-consumers.md)（schema 4，88→44 叶子键）。
 
 ## Consequences
 
 - 新用户生成的实例里，每个非 null 值要么是他自己答的，要么是框架常量——不再有「照抄了别人项目的门名单」。
 - 代价：`gates` 全 null 后，机长/塔台跑到门步骤会如实报缺件（本来就该报），初始化输出的「下一棒」仍提示补门。
-- 配置面仍有 60 个零读者键（D5），这是下一次要拍的刀，不是本轮已办。
+- 配置面当时仍有约 60 个零读者键（D5）；下一步由 [0015](0015-schema-4-keys-with-consumers.md) 执行，88→44 叶子键。

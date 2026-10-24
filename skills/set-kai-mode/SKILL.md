@@ -14,11 +14,11 @@ description: >
   kai-mode 的初始化安装入口（不是日常施工）：**先看缺什么、列出推荐清单跟用户确认，再只装缺的**，
   避免重复安装。覆盖：注入方法论与技能、把四角色技能装到宿主（Magpie / Qoder 或其它宿主）、
   装 60 分钟唤醒定时器（只唤醒塔台）、worktree 环境自检（主树正本解释器绝对路径、node、依赖三项）、
-  项目配置实例生成/校验/迁移（schema 2→3）与装机回执「模型核对」格、按项目生成技能骨架（首例验收/验证）、
+  项目配置实例生成/校验/迁移（schema 2→3→4）与装机回执「模型核对」格、按项目生成技能骨架（首例验收/验证）、
   doctor、缺件如实登记。触发：新 agent 接手装配、换宿主、装/改定时器、修技能落点、
   给项目出技能骨架、迁旧配置实例、问「这套东西都住在哪」。
   不做日常施工。
-version: 4.7.1
+version: 4.8.0
 updated: 2026-10-24
 allowed-tools: Bash(*) Read Write Edit
 compatibility: Requires python3, git
@@ -65,7 +65,7 @@ python scripts/init-project.py --repo <目标仓> --answers a.json   # 机器填
 | 6 | 想法目录 | `ideas` | `paths.ideas_dir` |
 | 7 | ADR 目录 | `docs/adr` | `registry.adrs.dir` |
 | 8 | 宿主 | `qoder` | `host.adapter` |
-| 9 | 收工门禁脚本 | `scripts/captain-preflight.py` | `gates.captain_preflight` |
+| 9 | 收工门禁脚本（本项目没有就留空＝null，别抄别仓的门名） | 空 | `gates.captain_preflight` |
 | 10 | 想法池汇总票号 | 空 | `issue.boom_summary_ticket` |
 | 11 | 子代理模型（回车＝六个都用宿主默认／填一个模型名＝六个都用／`n`＝逐个填） | 全 null | `models.agents.<人格>.model` |
 
@@ -106,7 +106,7 @@ python scripts/init-project.py --repo <目标仓> --answers a.json   # 机器填
 | 4 环境三项 | `test -x` 解释器/node、`test -d node_modules` | 三项都有明确读数 | 任一项缺（报绝对路径） |
 | 5 门禁 | 项目仓 `ready.py` / `env-doctor --hooks` | 全绿或只基线告警 | 有红（列出哪道门） |
 | 6 存证 | 项目仓 `python scripts/skill-attest.py verify`（项目仓有该脚本时） | rc=0 全过 | 有哈希不符（列出哪个文件） |
-| 7 项目配置实例 | 仓库根探测（只读）：`git rev-parse --show-toplevel` → 读 `<root>/.ai/kai-mode.project.json` 的 `schema` 字段 | schema 3 实例在位且过「模型核对」 | 无实例 → 按 D4 报缺件三格（怎么补＝本技能生成或手工按模板填）；schema 2 → 走「迁移腿」 |
+| 7 项目配置实例 | 仓库根探测（只读）：`git rev-parse --show-toplevel` → 读 `<root>/.ai/kai-mode.project.json` 的 `schema` 字段 | schema 4 实例在位且过「模型核对」 | 无实例 → 按 D4 报缺件三格（怎么补＝本技能生成或手工按模板填）；schema 2/3 → 走「迁移腿」 |
 | 8 宿主子代理产物 | 列宿主 agent 目录（具体落点见 `adapters/README.md` §2）与实例 `models.agents` 的键集 | 盘上人格每个都有对应产物，权限与模型按实例落住 | 缺产物或权限没落住（软约束要登记）→ 按 `adapters/README.md` 补 |
 
 **产出与动作**：
@@ -242,12 +242,12 @@ python $S apply --profile core             # 正本 → 库 → 各家链接；�
 |---|---|---|
 | 后端解释器 | 主树正本解释器的**绝对路径**（从项目配置实例 `runtime.backend_python` 主树相对路径解析，装机写入 env `KAI_BACKEND_PYTHON`、读时优先 env） | 报「缺解释器」并给绝对路径；**不许退化成随便一个 `python`** |
 | node | 主树正本 node 的绝对路径（从项目配置实例 `runtime.node` 主树相对路径解析） | 报「缺 node」并点名路径 |
-| 依赖 | 树内 `pnpm install --offline` 后才有前端定向测例环境 | 报「缺依赖」并给安装命令；**绝不 junction 主树 `node_modules` 后跑 pnpm**（会改写主树链接） |
+| 依赖 | 树内用**项目自己的包管理器**离线装（从锁文件判定：`pnpm-lock.yaml`/`package-lock.json`/`yarn.lock`…）后才有前端定向测例环境 | 报「缺依赖」并点名判定结果；**绝不 junction/软链主树 `node_modules` 后跑安装**（会改写主树链接） |
 
 ```bash
 test -x "$KAI_BACKEND_PYTHON" && "$KAI_BACKEND_PYTHON" -V
 node_bin="<主树>/<项目配置实例 runtime.node 主树相对路径>"; test -x "$node_bin" && "$node_bin" -v
-test -d <前端目录>/node_modules || echo "缺依赖：树内 pnpm install --offline"
+test -d <前端目录>/node_modules || echo "缺依赖：树内用项目自己的包管理器离线装"
 ```
 
 - 全量前端腿**不在工作树跑**：由审查/塔台在主树合并后跑。
@@ -281,7 +281,7 @@ python scripts/framework-gate.py --selftest   # 推前框架门自证
 
 **两段生成，顺序不倒**：
 
-1. **生成项目配置实例**：从 `templates/kai-mode.project.json`（schema 3 正本模板）抄底，逐段问答填实，
+1. **生成项目配置实例**：从 `templates/kai-mode.project.json`（schema 4 正本模板）抄底，逐段问答填实，
    落 `<项目仓根>/.ai/kai-mode.project.json`（tracked）。**填不实的字段不落盘**——带着占位符的实例不算生成完，
    先报缺件清单等补齐（缺什么/谁需要/怎么补，D4 三格）。
 2. **生成项目本地技能骨架**（首例＝验收/验证技能）：
@@ -297,7 +297,7 @@ python scripts/framework-gate.py --selftest   # 推前框架门自证
 
 - **不真跑**：真机生成属双仓回归那刀的活；本段先落流程与模板。
 
-## schema 2→3 实例迁移（迁移腿 · 探到旧实例才走）
+## schema 2→3→4 实例迁移（迁移腿 · 探到旧实例才走）
 
 > 缺口扫描第 7 项探到项目仓实例 `schema==2` 才走本腿；没有旧实例整段跳过。
 > ＋「验证」段（零数据丢失：逐字段 diff 留档）。兼容读口径：schema 2 迁移期可读（doctor 记 warn），
@@ -309,12 +309,16 @@ python scripts/framework-gate.py --selftest   # 推前框架门自证
    - **改写**：旧 `paths.day_tables` → `paths.day_tables_dir`（补 `day_table_pattern`/`lanes`，问答填实）；
      旧 `paths.daily_report` → `paths.handoff_dir`；旧 `paths.skills` / `paths.loop_protocol` →
      `registry.skills.project_skills_dir` / `loop_dir`；旧 runtime 三门 → `gates` 段
-     （`close_gate`/`framework_gate`/`loop_gate`，其余门按项目仓盘点补齐）；
+     （活契约只读 `captain_preflight`/`scope_check`/`close_gate` 三键，其余门按项目仓实情自己扩键）；
      旧 runtime 机器绝对路径 → 发现方式字段（机器值走 env `KAI_BACKEND_PYTHON` 与主树相对路径，**不入 tracked 实例**）。
-   - **沿用**：`project`/`repo_root`/`ship_mode`、`execution`（除 host_tools）、`tower_cron`、`wip`、
-     `limits`、`approval`、`acceptance`、`audit`。
-   - **删除**：仅 `execution.host_tools` 一种——宿主差异迁 `adapters/<宿主>.md`；
-     迁移完成的验收之一＝**实例内没有 host_tools**。
+   - **沿用**：`project`/`repo_root`/`ship_mode`、`tower_cron.interval_min`、`runtime`（发现方式）。
+   - **删除**：`execution.host_tools`（宿主差异迁 `adapters/<宿主>.md`）；以及 schema 4 的零读者键——
+     `execution`、`wip`、`limits`、`approval`、`acceptance`、`audit` 六段，`gates` 里除三键外的门名，
+     `issue.ready_label`/`milestone_gating`，`tower_cron` 里除 `interval_min` 外的字段，`runtime.deps` 里除
+     `check_dir_rel` 外的字段。它们不是判据搬家，而是本来就没有读者：在飞名额、失败重试、审查独立、风险闸的家
+     ＝单票闭环协议与仓库红线，宿主工具契约的家＝`adapters/<宿主>.md`；实例里那份抄本没人读，删掉不丢任何约束。
+   - **迁移完成的验收**：实例内没有 host_tools；键集与 schema 4 模板逐键相等（装机方实跑初始化器对账）；
+     多出来的键是逐条列给用户、他点头才删，不静默丢字段。
    - **新增**（问答填实，占位不落盘）：`registry.playbooks[]`（原登记面收编）、`models.agents`
      （逐人格，值为用户给的模型名或 null＝宿主默认；**旧 `tiers`/`default`/`roles` 一并删掉，不迁移**）、
      `registry.adrs`/`registry.rules`、`issue` 票平台段、`paths` 新增记录面字段（本项目没有的写 null）。
@@ -341,7 +345,7 @@ python scripts/framework-gate.py --selftest   # 推前框架门自证
 | 项目配置实例（落点 / 读取 / 缺件） | 配置实例 schema 正本（实例＝`<项目仓根>/.ai/kai-mode.project.json`） | 读不到实例 → 按 rc≠0 报缺件清单（缺什么/谁需要/怎么补），永不猜路径 |
 | 子代理模型（`models.agents`） | 列在 `agents/README.md`；取值由用户在初始化第 11 问决定 | 回执「模型核对」格全过：键集＝盘上人格、各有模型名或显式 null |
 | 生成式项目本地技能 | 本技能「按项目生成」段 ＋ [`templates/verification-skill/SKILL.md`](templates/verification-skill/SKILL.md) | 骨架落实例 `registry.skills.project_skills_dir` ＋ 项目在 `registry.playbooks[]` 登记一行 |
-| schema 2→3 迁移 | 本技能「迁移」段的字段映射表 | 逐字段 diff 留档 ＋ host_tools 已不存在 ＋ 新实例过校验口径 |
+| schema 2→3→4 迁移 | 本技能「迁移」段的字段映射表 | 逐字段 diff 留档 ＋ host_tools 已不存在 ＋ 新实例过校验口径 |
 
 ## 改配置的四条规矩
 
@@ -369,4 +373,4 @@ python scripts/framework-gate.py --selftest   # 推前框架门自证
 | 本机环境事实（解释器、node、坑） | 本机 `agents.local.md`（不入库，每台一份） |
 | 改了技能正本怎么让各家吃到 | 本技能「2. 装技能到宿主」＋ `magpie-sync.py` |
 | 给项目出验收/验证技能骨架（生成式腿） | 本技能「按项目生成」段 ＋ [`templates/verification-skill/SKILL.md`](templates/verification-skill/SKILL.md) |
-| 项目仓旧实例怎么升 schema 3 | 本技能「schema 2→3 实例迁移」段 ＋ 该段字段映射表 |
+| 项目仓旧实例怎么升 schema 4 | 本技能「schema 2→3→4 实例迁移」段 ＋ 该段字段映射表 |

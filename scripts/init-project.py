@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """kai-mode 装到别的项目：QA 初始化
 ==================================
-一串问答 → 生成 `<目标仓>/.ai/kai-mode.project.json`（schema 3 实例）＋ 铺两个组件
+一串问答 → 生成 `<目标仓>/.ai/kai-mode.project.json`（schema 4 实例）＋ 铺两个组件
 （`handoff/` 交接与角色沟通面、`docs/` 长期正本面）。
 
 用法：
@@ -352,7 +352,7 @@ def main() -> int:
 
     print(f"\n已写 {os.path.relpath(out, repo)}（{len(files)} 个组件文件）")
     print("\n== 下一棒 ==")
-    print("  1) 补门禁：gates 里其余键（scope_check/docs_check/close_gate）按本仓实情填，缺的留 null")
+    print("  1) 补门禁：gates 三键（captain_preflight/scope_check/close_gate）按本仓实情填，缺的留 null；项目要加别的门就扩键")
     print("  2) 跑 python <kai-mode 仓>/scripts/doctor.py 确认本仓绿；在目标仓跑一轮角色自证")
     print("  3) 日表目录下写今日 -main.md / -deputy.md，再由塔台排班")
     return 0

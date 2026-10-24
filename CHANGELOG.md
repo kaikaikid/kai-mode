@@ -2,6 +2,21 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.21.0 — 2026-10-25
+
+- **schema 4：配置实例只留有消费者的键**（[ADR-0015](docs/adr/0015-schema-4-keys-with-consumers.md)）：按 `段.键` 点号形对全部活契约
+  （16 个自动技能正文与脚本、`loops/`、`agents/`、`adapters/`、`scripts/`、`schemas/`、AGENTS、README）逐键取证，叶子键 88→44、段 19→12。
+- 删：`wip`／`limits`／`approval`／`acceptance`／`audit`／`execution` 六段（名额/重试/审查独立/风险闸的家＝单票闭环协议与仓库红线，
+  宿主工具契约的家＝`adapters/<宿主>.md`，实例里那份抄本没人读）＋ `gates` 12→3 键、`issue` 去 `ready_label`/`milestone_gating`、
+  `tower_cron` 只留 `interval_min`、`runtime.deps` 只留 `check_dir_rel`。
+- 更正上一轮的量具偏差：`paths.audit_dir`／`dashboard`／`module_cards`、`issue.verdict_marker` 其实有读者（塔台与协议按名读），本轮保留；
+  0014 的「60 个零读者」是裸 token 匹配造成的误报，已在该 ADR 内标注更正。
+- 缺省值再收一遍：`paths.audit_dir` → null（本项目没这记录面就如实报缺件）、`paths.state_dir` → `.git/kai-mode`（不再借别仓命名空间）、
+  `set-kai-mode` 第 9 问缺省改空、依赖自检的包管理从 `pnpm` 改为按项目锁文件判定。
+- 同步：`config-instance` 与解耦门的 models 检查认 schema 3/4；`set-kai-mode` 迁移腿改 2→3→4 并列明删除清单与验收；测试夹具升 schema 4；
+  README 的「上限全部进项目配置 `limits`」改指 `loops/loop-protocol.md`。26 项全绿。
+- 存量 schema 3 实例不自动改写：迁移由 `set-kai-mode` 走，逐字段 diff、多出来的键列给用户点头才删。
+
 ## 0.20.0 — 2026-10-25
 
 - **配置实例零虚构值**（[ADR-0014](docs/adr/0014-config-instance-no-invented-values.md)）：从干净 clone 实跑 `init-project` 对账，
@@ -11,8 +26,8 @@
   第 9 问缺省从 `scripts/captain-preflight.py` 改空（别仓的门名不再自动进用户实例）。
 - doctor 新增第 26 项 `config-instance`：实跑初始化器 → 断言叶子键集与模板逐键相等、零占位、零机器绝对路径、
   `gates` 非 null 只能来自问答清单；红绿回归 3 条。25→26 项口径同步 AGENTS／package-layout／domain。
-- **没做的**：88 键里 60 个全仓零读者（`limits`／`runtime`／`execution`／`wip`／`approval`／`acceptance`／`audit`，
-  即 0004 从 schema 2「沿用」的那批）＝schema 4 破坏性删除，待拍板，登记在 ADR-0014 D5。
+- **量具有偏差**：同轮报的「60 个零读者」按裸 token 匹配，误伤了 4 个确有读者的键（`paths.audit_dir`／`dashboard`／
+  `module_cards`、`issue.verdict_marker`——塔台与 loop 协议按名读它们）。ADR-0015 改按 `段.键` 点号形重取证据后再删。
 
 ## 0.19.0 — 2026-10-24
 

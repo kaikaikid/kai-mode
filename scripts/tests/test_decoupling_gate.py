@@ -34,10 +34,10 @@ def test_whitelist_dirs_do_not_report(tmp_path):
 
 
 def test_schema3_template_reviving_tiers_is_red(tmp_path):
-    """③a schema 3 模板把六档字段写回来 ⇒ 红，文案点名已退役（ADR-0008 D3）。"""
+    """③a schema 4 模板把六档字段写回来 ⇒ 红，文案点名已退役（ADR-0008 D3）。"""
     root = make_repo(tmp_path)
     tpl = {
-        "schema": 3,
+        "schema": 4,
         "models": {
             "agents": {"worker": {"model": None}},
             "tiers": ["R", "C", "P", "V", "G", "W"],
@@ -59,7 +59,7 @@ def test_schema3_template_reviving_tiers_is_red(tmp_path):
 def test_schema3_template_with_model_name_is_red(tmp_path):
     """③b 模板把模型写死（非 null）⇒ 红：框架不写死模型，值归用户实例。"""
     root = make_repo(tmp_path)
-    tpl = {"schema": 3, "models": {"agents": {"worker": {"model": "group/tier-code-xhigh"}}}}
+    tpl = {"schema": 4, "models": {"agents": {"worker": {"model": "group/tier-code-xhigh"}}}}
     (root / "templates").mkdir()
     (root / "templates" / "kai-mode.project.json").write_text(
         json.dumps(tpl, ensure_ascii=False), encoding="utf-8")
@@ -73,7 +73,7 @@ def test_schema3_template_with_model_name_is_red(tmp_path):
 def test_schema3_template_metadata_junk_key_is_red(tmp_path):
     """③c agents.<人格> 里塞回 tier/spawn 之类 ⇒ 红（只许 model）。"""
     root = make_repo(tmp_path)
-    tpl = {"schema": 3, "models": {"agents": {"worker": {"model": None, "tier": "C"}}}}
+    tpl = {"schema": 4, "models": {"agents": {"worker": {"model": None, "tier": "C"}}}}
     (root / "templates").mkdir()
     (root / "templates" / "kai-mode.project.json").write_text(
         json.dumps(tpl, ensure_ascii=False), encoding="utf-8")
@@ -98,7 +98,7 @@ def test_template_config_path_values_are_not_flagged(tmp_path):
     root = make_repo(tmp_path)
     (root / "templates").mkdir()
     (root / "templates" / "kai-mode.project.json").write_text(json.dumps({
-        "schema": 3,
+        "schema": 4,
         "paths": {"audit_dir": ".ai/scope/audit"},
         "models": {"agents": {"worker": {"model": None}}},
     }, ensure_ascii=False), encoding="utf-8")
