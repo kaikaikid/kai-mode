@@ -6,10 +6,8 @@ approved: 2026-10-21
 sources:
   - resource: "skills/pilot/SKILL.md"
     note: "同一套围栏与自决（含等待与止损执行清单）；本文件写车道差异与副机长措辞"
-  - resource: "loops/loop-protocol.md"
-    note: "单票闭环唯一详细源"
-  - resource: "loops/loop-protocol.md"
-    note: "「八、等待纪律」「九、增量提交」细则正本；本技能「等待与止损」节只写执行清单与指针"
+  - resource: "skills/loop/SKILL.md"
+    note: "单票闭环、等待与止损的随装入口；本文件只写车道差异与副机长措辞"
 description: >
   机场体系的副机长：与机长同权限、同一套流程，独立日表 `-deputy.md`。
   触发：`/副机长`（人工唤醒）；塔台只写日表/播报，kai-mode 只推荐命令，不自动起角色。
@@ -79,5 +77,5 @@ python <gates.captain_preflight> --lane deputy
 
 - 不读、不写 `-main.md`；不碰机长的票、分支、工作树。
 - 机长停摆时不自动接管，等塔台改日表。
-- **不唤醒任何其他角色**（含塔台、继任机长； +）：同机长围栏——需要塔台写进交付/播报，交人工或唤醒定时器处理。
+- **不唤醒任何其他角色**（含塔台、继任机长）：同机长围栏——需要塔台写进交付/播报，交人工或唤醒定时器处理。
 - 其余围栏、自决、断点与机长完全相同。

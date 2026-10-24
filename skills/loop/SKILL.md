@@ -3,11 +3,9 @@ name: loop
 status: active
 approved_by: human:kaikaikid
 approved: 2026-10-21
-sources:
-  - resource: "loops/loop-protocol.md"
-    note: "单票闭环唯一详细源"
+sources: []
 description: >
-  机长 / 副机长共用的单票闭环（不是用户入口）。判据与本技能冲突时以 `loops/loop-protocol.md` 为准。
+  机长 / 副机长共用的单票闭环（不是用户入口）。判据与本技能冲突时以协议正本为准。
   触发：由 `/机长`、`/副机长` 自动带入；「loop」不是口令。
 version: 5.3.3
 updated: 2026-10-24
@@ -25,9 +23,9 @@ dependencies:
 
 # loop
 
-本技能只是导航：**怎么做**看 `loops/loop-protocol.md`，
+本技能只是导航：**怎么做**看协议正本，
 **什么不能碰、什么自己定**看角色技能。流程叙事、回执详略和机动子代理都是可省的负担；
-只有围栏、回执上限（住 `loops/loop-protocol.md` §五）与收工复查是硬约束。
+只有围栏、回执上限（住协议正本 §五）与收工复查是硬约束。
 
 ## 一张票
 

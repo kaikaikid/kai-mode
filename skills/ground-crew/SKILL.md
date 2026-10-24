@@ -8,8 +8,8 @@ sources:
     note: "日表目录（塔台写）；地勤只读，用来判断票是否已被排班"
   - resource: "GitHub Issues（票面与评论）"
     note: "唯一事实源；开票、补澄清都落这里"
-  - resource: "loops/loop-protocol.md"
-    note: "单票闭环参考正本；地勤只借它的票面质量口径，不执行施工"
+  - resource: "skills/loop/SKILL.md"
+    note: "单票闭环的随装入口；地勤只借它的票面质量口径，不执行施工"
 description: >
   机场体系的地勤：跟用户对话、规划、分流想法、开可执行票。
   想法进 BOOM（全文进项目配置 paths.ideas_dir 目录 + 想法池汇总票简述），可执行需求进 Issue（挂里程碑、ready-for-agent、AC、允许/禁止修改、验证命令）。

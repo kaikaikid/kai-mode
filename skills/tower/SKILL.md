@@ -8,8 +8,8 @@ sources:
     note: "日表目录：YYYY-MM-DD-main.md / -deputy.md，5–10 行，只由塔台写"
   - resource: "GitHub Issues（票面与评论）"
     note: "唯一事实源；审查判词与断点都在评论里"
-  - resource: "loops/loop-protocol.md"
-    note: "单票闭环参考正本；塔台只取发货与门禁口径，不替机长施工"
+  - resource: "skills/loop/SKILL.md"
+    note: "单票闭环的随装入口；塔台只取发货与门禁口径，不替机长施工"
 description: >
   机场体系的塔台：独立岗位，默认每 60 分钟由定时器唤醒，也可人工唤醒；kai-mode 只推荐命令，不唤醒。每轮先发货（本轮审查通过的票按票号合并进本地 dev，跑一次收尾门，推一次，关票），
   再排班（补日表到 5–10 行）放到本轮最后，确保 push 关票后日表立即补满、不空。
