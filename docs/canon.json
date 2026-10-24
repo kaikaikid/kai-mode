@@ -3,7 +3,7 @@
   "retired_terms": ["租约", "班次", "按铃", "Coordinator", "合同哈希", "五角色", "Group-A",
                     "tier_models", "agent-emit", "档位核对"],
   "scan_roots": ["skills", "agents", "adapters", "loops", "templates", "docs", "README.md", "AGENTS.md"],
-  "exempt": ["docs/adr", "docs/canon.json", "handoff", "skills/航班信息", "skills/set-航班信息"],
+  "exempt": ["docs/adr", "docs/canon.json", "handoff"],
   "canon_keys": [
     {
       "key": "receipt-max-lines",

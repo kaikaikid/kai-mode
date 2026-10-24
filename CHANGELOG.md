@@ -9,6 +9,7 @@
 - doctor 移除 `LEGACY_LOCKED` 兼容分支：`unregistered-skill` 恢复严格「盘面==注册表」；
   `skill-tests` / `host-neutral` 不再按目录名跳过。
 - `manifests/package-layout.json` 移除退役目录注记；ADR-0003 演进注改为「已从仓内移除」。
+- `docs/canon.json` 移除两个退役目录的豁免项；首次审计记录补「已执行」收尾注。
 
 ## 0.17.0 — 2026-10-24
 

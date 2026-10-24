@@ -12,6 +12,9 @@ persona: reviewer
 审计面：41 件（技能 19、人格 6、ADR 9、协议 1、规范 6）。盘点命令：
 `python skills/harness-audit/scripts/inventory.py --root . --summary`。
 
+> **2026-10-24 收尾注**：表中 `skills/航班信息`／`skills/set-航班信息` 已从仓内删除
+> （v0.17.1），本条保留为当时的评审记录；`docs/canon.json` 的对应豁免项已移除。
+
 | 件 | 判词 | 证据 | 建议 |
 |---|---|---|---|
 | `schemas/task.schema.json`、`schemas/event.schema.json` | Retire | task 仍要求 `lease_id`／`contract_sha256`／11 态；event 仍用五角色与 loop A/B/C；全仓无消费者，README 仍宣传 | 按现行四岗位/三记录面重写，或删除并移除 README/kai-mode 指针；不要留反向契约 |
