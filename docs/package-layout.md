@@ -1,6 +1,6 @@
 # 三层打包边界：本仓开发件 / 宿主安装件 / 项目生成件
 
-一句话：**本仓的开发记录不随技能装走，也不随初始化进用户项目；两边各自只拿清单里写明的东西。**
+一句话：**本仓的开发记录既不随技能装走，也不躺在仓库里给外部用户看；安装面与项目骨架各自只拿清单里写明的东西。**
 
 机读正本：[`manifests/package-layout.json`](../manifests/package-layout.json)。裁决：[ADR-0011](adr/0011-package-layout-three-layers.md)。
 
@@ -12,10 +12,10 @@
 | 宿主安装件 | `registry.json` 里 `install:auto` 的技能目录（`SKILL.md` ＋ 运行所需 `scripts/`、`templates/`、`schema/`；看板脚本随 `kai-handoff` 安装） | Magpie 中央库 → 各宿主 `<家>/skills/<名>` | `magpie-sync.py` |
 | 项目生成件 | `.ai/kai-mode.project.json`、`handoff/` 八槽与规范／模板、`GLOSSARY.md`、空 `docs/adr/` | 用户项目 | `init-project.py` |
 
-## 三条硬规矩
+## 硬规矩
 
 1. **开发件不进安装面。** 技能目录里的 `tests/`、`__pycache__`、`.pytest_cache`、`*.pyc` 不复制、不参与回执哈希；`apply` 会把库里已有的这类残留清掉（写前整包备份）。
-2. **骨架只从清单生成。** `project_scaffold` 之外不写；源只许 `templates/` 或 `handoff.files` 列出的四件规范／模板。`handoff/` 里的日期目录、评审件、归档都是本仓记录，任何一件都不能当源。
+2. **骨架只从清单生成。** `project_scaffold` 之外不写；源只许 `templates/` 或 `handoff.files` 列出的四件规范／模板。`handoff/` 里的日期目录、评审件、归档都是本仓记录，任何一件都不能当源——也不入库。
 3. **`docs/` 永不复制。** 用户项目的 `docs/adr/` 是空目录加 `.gitkeep`，ADR 由用户自己从 0001 开始写。
 4. **安装面自足。** 技能 payload 里的框架文档引用一律用 GitHub 绝对出处 URL；技能内部与兄弟技能才用相对链接。安装副本不依赖本仓目录结构。
 
@@ -24,6 +24,17 @@
 - 宿主技能库里：运行所需技能，没有本仓测试与缓存。
 - 用户项目里：配置实例、交接骨架（含两份模板）、`GLOSSARY.md` 骨架、空 `docs/adr/`。
 - 不会得到：本仓的 ADR、交接／评审历史、看板卡片、开发脚本、测试。
+
+## GitHub 上的仓库可见面
+
+外部用户 clone 到的应当只有**方法论 + 安装包**：技能与人格正本、协议、适配说明、ADR、规范与模板、
+安装／初始化脚本。本仓开发期间的流水不进 git：
+
+- `handoff/<槽>/YYYY-MM/`、`handoff/60-board/<状态>/*.md`：交接、评审、归档、看板工单 ⇒ 忽略。
+- 会话库／日志／缓存／验证报告／agent 数据 ⇒ 忽略（口径见 [agent-data-layout.md §7](agent-data-layout.md)）。
+- 槽位结构与四件规范／模板仍跟踪，它们是 `init-project.py` 的骨架源。
+
+已入库的老流水按红线处理：`git rm --cached` 移出索引，盘上证据不删。
 
 ## 关于技能里的框架文档引用
 
@@ -50,3 +61,4 @@ python scripts/doctor.py --with-tests   # 25 项；package-layout 报安装面�
 
 `package-layout` 红通常只有三种：安装面混进被排除文件、骨架源越界／缺失、实跑生成集合与清单不一致。
 `payload-refs` 红有两种：安装面 Markdown 出现指向本仓开发件的相对链接；框架绝对 URL 指向的本仓路径不存在。
+`tracked-cache` 红有两种：被跟踪的缓存／运行数据产物；被跟踪的本仓 `handoff/` 流水（规范与模板除外）。

@@ -26,3 +26,9 @@ __pycache__/
 /verify/
 /logs/
 /.cache/
+
+# 本仓开发流水：交接／看板的日期目录与工单不进仓库（GitHub 上只留规范与模板）
+# 判据正本：docs/package-layout.md
+/handoff/*/[0-9][0-9][0-9][0-9]-[0-9][0-9]/
+/handoff/60-board/*/*.md
+/handoff/60-board/*/*/*.md

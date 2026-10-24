@@ -322,10 +322,41 @@ TRACKED_DATA_SUFFIXES = (".pyc", ".pyo", ".db", ".db-wal", ".db-shm", ".db-journ
                          ".sqlite", ".sqlite3", ".log", ".tmp", ".pid", ".jsonl")
 TRACKED_DATA_DIRS = ("__pycache__", ".pytest_cache", ".workbuddy")
 TRACKED_DATA_ROOT_DIRS = ("agent-data", ".agent-data", "verify", "logs", ".cache")
+HANDOFF_MONTH_SEGMENT_RE = re.compile(r"^\d{4}-\d{2}$")
+
+
+def _is_tracked_handoff_flow(path):
+    """本仓 handoff/ 里被跟踪的文件，哪些算开发流水（GitHub 上不该看见）。"""
+    if not path.startswith("handoff/"):
+        return False
+    parts = path.split("/")
+    if any(HANDOFF_MONTH_SEGMENT_RE.match(seg) for seg in parts[1:-1]):
+        return True                              # 住在日期目录里的，连 .gitkeep 一起
+    if SCAFFOLD_HANDOFF_SOURCE_RE.match(path):
+        return False                             # 四件规范／模板＝init-project 的骨架源
+    if parts[-1] == ".gitkeep":
+        return len(parts) > 4                    # 槽位与看板状态目录之外的占位
+    return True                                  # 其余（看板工单等）
+
+
+def _tracked_dev_records(root, paths):
+    """返回 git 跟踪文件里属于「开发期间数据」的那些：缓存／运行产物 + 本仓 handoff 流水。"""
+    roots = tuple(d + "/" for d in TRACKED_DATA_ROOT_DIRS)
+    has_layout = os.path.isfile(os.path.join(root, *LAYOUT_REL.split("/")))
+    out = []
+    for x in paths:
+        path = x.replace("\\", "/")
+        if (path.endswith(TRACKED_DATA_SUFFIXES)
+                or any(seg in TRACKED_DATA_DIRS for seg in path.split("/"))
+                or path.startswith(roots)):
+            out.append(x)
+        elif has_layout and _is_tracked_handoff_flow(path):
+            out.append(x)
+    return out
 
 
 def chk_tracked_cache(root, ms):
-    """08 git 跟踪的文件里出现缓存或开发运行数据 ⇒ 红。"""
+    """08 git 跟踪的文件里出现缓存、运行数据或本仓开发流水 ⇒ 红。"""
     if not os.path.isdir(os.path.join(root, ".git")):
         return "skip", "不是 git 仓（不适用）"
     try:
@@ -335,17 +366,10 @@ def chk_tracked_cache(root, ms):
         return "skip", f"git 不可用：{exc}"
     if p.returncode != 0:
         return "skip", "git ls-files 失败（不适用）"
-    roots = tuple(d + "/" for d in TRACKED_DATA_ROOT_DIRS)
-    bad = []
-    for x in p.stdout.splitlines():
-        path = x.replace("\\", "/")
-        if (path.endswith(TRACKED_DATA_SUFFIXES)
-                or any(seg in TRACKED_DATA_DIRS for seg in path.split("/"))
-                or path.startswith(roots)):
-            bad.append(x)
+    bad = _tracked_dev_records(root, p.stdout.splitlines())
     if bad:
         return "fail", "；".join(bad[:6]) + (f"（共 {len(bad)} 处）" if len(bad) > 6 else "")
-    return "ok", "git 跟踪的文件里没有缓存/运行数据产物"
+    return "ok", "git 跟踪的文件里没有缓存/运行数据/开发流水"
 
 
 def chk_gitattributes(root, ms):
@@ -1606,7 +1630,7 @@ CHECKS = (
     ("missing-skill-path", "注册条目路径都在", chk_missing_path),
     ("machine-path", "没有机器绝对路径", chk_machine_path),
     ("broken-link", "SKILL.md 相对链接都在", chk_broken_link),
-    ("tracked-cache", "git 跟踪文件无缓存/运行数据", chk_tracked_cache),
+    ("tracked-cache", "git 跟踪文件无缓存/运行数据/开发流水", chk_tracked_cache),
     ("gitattributes-bat", ".gitattributes 钉住 .bat 行尾", chk_gitattributes),
     ("install-set-match", "装机集合与注册表一致", chk_install_set),
     ("version-in-readme", "VERSION 与 README 口径一致", chk_version_readme),

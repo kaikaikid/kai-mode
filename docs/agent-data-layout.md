@@ -71,4 +71,5 @@ opencode debug paths
 - `.gitignore` 已覆盖 `*.db`／`*.db-wal`／`*.db-shm`／`*.sqlite*`／`*.log`／`*.jsonl`／
   `*.tmp`／`*.pid`，以及根级 `agent-data/`、`.agent-data/`、`verify/`、`logs/`、`.cache/`。
 - 如果某件已被跟踪：先 `git rm --cached <path>` 移出索引，再加忽略规则；**不要直接删盘上的证据**。
-- `doctor` 的 `tracked-cache` 项会拦“被跟踪的缓存/运行数据”，当前仓库应为 0 命中。
+- 本仓 `handoff/` 的日期目录与看板工单同属开发流水 ⇒ 不入库，只跟踪规范与模板（三层边界见 [package-layout.md](package-layout.md)）。
+- `doctor` 的 `tracked-cache` 项会拦“被跟踪的缓存/运行数据/开发流水”，当前仓库应为 0 命中。

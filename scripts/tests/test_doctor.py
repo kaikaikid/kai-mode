@@ -500,7 +500,7 @@ def test_payload_refs_sibling_skill_is_green(tmp_path):
     assert rc == 0
 
 
-# ── 08 tracked-cache：缓存与开发运行数据都不许被跟踪 ─────────────────────────
+# ── 08 tracked-cache：缓存、运行数据与本仓开发流水都不许被跟踪 ────────────────
 def _git_init_add(root, force_paths=()):
     subprocess.run(["git", "-C", str(root), "init", "-q"], check=True, capture_output=True)
     subprocess.run(["git", "-C", str(root), "add", "-A"], check=True, capture_output=True)
@@ -529,3 +529,41 @@ def test_tracked_clean_repo_is_green(tmp_path):
     rc, data = run_doctor(root)
     assert status_of(data, "tracked-cache") == "ok"
     assert rc == 0
+
+
+def test_tracked_handoff_flow_is_red(tmp_path):
+    """本仓开发流水（日期目录里的评审件、看板工单）被跟踪 ⇒ 红。"""
+    root = make_repo(tmp_path)
+    add_layout(root)
+    d = root / "handoff" / "40-review" / "2026-10"
+    d.mkdir(parents=True)
+    (d / "2026-10-24-x-review.md").write_text("# 评审\n", encoding="utf-8")
+    b = root / "handoff" / "60-board" / "open"
+    b.mkdir(parents=True)
+    (b / "2026-10-24-x-task.md").write_text("# 工单\n", encoding="utf-8")
+    _git_init_add(root)
+    rc, data = run_doctor(root)
+    assert rc == 1
+    detail = detail_of(data, "tracked-cache")
+    assert "2026-10-24-x-review.md" in detail
+    assert "2026-10-24-x-task.md" in detail
+    assert "handoff/README.md" not in detail
+
+
+def test_tracked_handoff_spec_files_are_green(tmp_path):
+    """规范件、模板与槽位/看板状态占位 .gitkeep 是骨架源 ⇒ 绿。"""
+    root = make_repo(tmp_path)
+    add_layout(root, handoff_files={
+        "handoff/README.md": "handoff/README.md",
+        "handoff/60-board/README.md": "handoff/60-board/README.md",
+        "handoff/templates/HANDOFF-template.md": "handoff/templates/HANDOFF-template.md",
+    })
+    (root / "handoff" / "60-board" / "README.md").write_text("# 看板\n", encoding="utf-8")
+    (root / "handoff" / "templates").mkdir()
+    (root / "handoff" / "templates" / "HANDOFF-template.md").write_text("# 模板\n", encoding="utf-8")
+    (root / "handoff" / "40-review" / ".gitkeep").write_text("", encoding="utf-8")
+    (root / "handoff" / "60-board" / "open").mkdir()
+    (root / "handoff" / "60-board" / "open" / ".gitkeep").write_text("", encoding="utf-8")
+    _git_init_add(root)
+    rc, data = run_doctor(root)
+    assert status_of(data, "tracked-cache") == "ok"

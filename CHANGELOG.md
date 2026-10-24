@@ -2,6 +2,16 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.18.2 — 2026-10-24
+
+- **本仓开发流水出库**：外部用户 clone 到的应是干净的方法论＋安装包。`handoff/` 的 3 份日期目录件
+  （评审、重造交接／方案）与 `50-comms/2026-10/.gitkeep` 用 `git rm --cached` 移出索引，盘上证据不删。
+- `.gitignore` 屏蔽 `handoff/*/YYYY-MM/` 与 `handoff/60-board/*/*.md`（槽位与看板状态的 `.gitkeep` 保留）。
+- doctor 的 `tracked-cache` 加一轴：跟踪文件里出现本仓 handoff 流水 ⇒ 红；规范四件＋槽位占位放行，
+  清单不在（用户项目）时该轴不适用。当前仓库 0 命中，新增红／绿各一条回归用例。
+- 口径落点：`AGENTS.md` 红线补「this repo's own handoff records」，明细写进 `docs/package-layout.md`
+  新「GitHub 上的仓库可见面」一节，`manifests/package-layout.json` 的 `_repo_only_note` 同步。
+
 ## 0.18.1 — 2026-10-24
 
 - **开发数据不入库**：AGENTS 红线补「Commit/push development data」；`.gitignore` 扩到
