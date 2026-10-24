@@ -32,6 +32,10 @@ stays short on purpose, it is read every session):
 | Publish outward | deploy, release, post publicly, send mail |
 | Irreversible | history rewrite, force-push, data migration, destructive schema change, permission/security boundary change |
 | Delete uncommitted work | anyone's uncommitted files, worktrees, or logs |
+| Commit/push development data | runtime sessions, logs, DBs, caches, verification reports, agent data |
+
+Development data stays outside the repo (`KAI_AGENT_DATA_ROOT`) or in an ignored path. If it is
+already tracked, remove it from the index and add an ignore rule — never just hide it.
 
 On a red line: stop that ticket only, record why, ask the human. Never self-approve by editing the
 approval rule (or your own permissions) first. An approval must be traceable — it binds ticket +

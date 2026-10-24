@@ -318,8 +318,14 @@ def chk_broken_link(root, ms):
     return "ok", f"{scanned} 份 SKILL.md 的相对链接都在"
 
 
+TRACKED_DATA_SUFFIXES = (".pyc", ".pyo", ".db", ".db-wal", ".db-shm", ".db-journal",
+                         ".sqlite", ".sqlite3", ".log", ".tmp", ".pid", ".jsonl")
+TRACKED_DATA_DIRS = ("__pycache__", ".pytest_cache", ".workbuddy")
+TRACKED_DATA_ROOT_DIRS = ("agent-data", ".agent-data", "verify", "logs", ".cache")
+
+
 def chk_tracked_cache(root, ms):
-    """08 git 跟踪的文件里出现 __pycache__／.pyc／.pytest_cache ⇒ 红。"""
+    """08 git 跟踪的文件里出现缓存或开发运行数据 ⇒ 红。"""
     if not os.path.isdir(os.path.join(root, ".git")):
         return "skip", "不是 git 仓（不适用）"
     try:
@@ -329,11 +335,17 @@ def chk_tracked_cache(root, ms):
         return "skip", f"git 不可用：{exc}"
     if p.returncode != 0:
         return "skip", "git ls-files 失败（不适用）"
-    bad = [x for x in p.stdout.splitlines()
-           if "__pycache__" in x or x.endswith(".pyc") or ".pytest_cache" in x]
+    roots = tuple(d + "/" for d in TRACKED_DATA_ROOT_DIRS)
+    bad = []
+    for x in p.stdout.splitlines():
+        path = x.replace("\\", "/")
+        if (path.endswith(TRACKED_DATA_SUFFIXES)
+                or any(seg in TRACKED_DATA_DIRS for seg in path.split("/"))
+                or path.startswith(roots)):
+            bad.append(x)
     if bad:
         return "fail", "；".join(bad[:6]) + (f"（共 {len(bad)} 处）" if len(bad) > 6 else "")
-    return "ok", "git 跟踪的文件里没有缓存产物"
+    return "ok", "git 跟踪的文件里没有缓存/运行数据产物"
 
 
 def chk_gitattributes(root, ms):
@@ -1594,7 +1606,7 @@ CHECKS = (
     ("missing-skill-path", "注册条目路径都在", chk_missing_path),
     ("machine-path", "没有机器绝对路径", chk_machine_path),
     ("broken-link", "SKILL.md 相对链接都在", chk_broken_link),
-    ("tracked-cache", "git 跟踪文件无缓存产物", chk_tracked_cache),
+    ("tracked-cache", "git 跟踪文件无缓存/运行数据", chk_tracked_cache),
     ("gitattributes-bat", ".gitattributes 钉住 .bat 行尾", chk_gitattributes),
     ("install-set-match", "装机集合与注册表一致", chk_install_set),
     ("version-in-readme", "VERSION 与 README 口径一致", chk_version_readme),

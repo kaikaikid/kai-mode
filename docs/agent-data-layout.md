@@ -61,3 +61,14 @@ opencode debug paths
 - **Claude Desktop**：`%APPDATA%\Claude` 是桌面应用数据，不是 CLI 的 `CLAUDE_CONFIG_DIR`；不混为一谈。
 - **Copilot / Cursor**：本机未安装；装后按 §5 补。
 - **OpenCode Desktop**：桌面应用数据在 `%APPDATA%\ai.opencode.desktop`；本规范只接管 `opencode` CLI 启动。
+
+## 7. 开发数据不提交
+
+运行/验证产生的**会话、日志、数据库、缓存、验证报告、agent 数据**一律不进 git、不推送。
+
+- 全局数据住 `KAI_AGENT_DATA_ROOT`（仓库外）；验证报告住 `<root>/verify/`。
+- 仓库内只留可复用件（规范、代码、测试、模板、ADR）；临时产物走 `.gitignore`。
+- `.gitignore` 已覆盖 `*.db`／`*.db-wal`／`*.db-shm`／`*.sqlite*`／`*.log`／`*.jsonl`／
+  `*.tmp`／`*.pid`，以及根级 `agent-data/`、`.agent-data/`、`verify/`、`logs/`、`.cache/`。
+- 如果某件已被跟踪：先 `git rm --cached <path>` 移出索引，再加忽略规则；**不要直接删盘上的证据**。
+- `doctor` 的 `tracked-cache` 项会拦“被跟踪的缓存/运行数据”，当前仓库应为 0 命中。

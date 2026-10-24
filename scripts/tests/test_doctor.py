@@ -498,3 +498,34 @@ def test_payload_refs_sibling_skill_is_green(tmp_path):
     rc, data = run_doctor(root)
     assert status_of(data, "payload-refs") == "ok"
     assert rc == 0
+
+
+# ── 08 tracked-cache：缓存与开发运行数据都不许被跟踪 ─────────────────────────
+def _git_init_add(root, force_paths=()):
+    subprocess.run(["git", "-C", str(root), "init", "-q"], check=True, capture_output=True)
+    subprocess.run(["git", "-C", str(root), "add", "-A"], check=True, capture_output=True)
+    for rel in force_paths:
+        subprocess.run(["git", "-C", str(root), "add", "-f", rel], check=True,
+                       capture_output=True)
+
+
+def test_tracked_runtime_data_is_red(tmp_path):
+    root = make_repo(tmp_path)
+    (root / "session.db").write_text("x", encoding="utf-8")
+    (root / "agent-data").mkdir()
+    (root / "agent-data" / "run.txt").write_text("x", encoding="utf-8")
+    _git_init_add(root, ("session.db", "agent-data/run.txt"))
+    rc, data = run_doctor(root)
+    assert rc == 1
+    assert status_of(data, "tracked-cache") == "fail"
+    detail = detail_of(data, "tracked-cache")
+    assert "session.db" in detail
+    assert "agent-data" in detail
+
+
+def test_tracked_clean_repo_is_green(tmp_path):
+    root = make_repo(tmp_path)
+    _git_init_add(root)
+    rc, data = run_doctor(root)
+    assert status_of(data, "tracked-cache") == "ok"
+    assert rc == 0

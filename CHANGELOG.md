@@ -2,6 +2,14 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.18.1 — 2026-10-24
+
+- **开发数据不入库**：AGENTS 红线补「Commit/push development data」；`.gitignore` 扩到
+  会话/日志/DB/缓存/验证报告/agent 数据。
+- doctor 的 `tracked-cache` 扫面扩到 `.db`／`.sqlite*`／`.log`／`.jsonl`／`.tmp`／`.pid`
+  与根级 `agent-data/`、`verify/`、`logs/`、`.cache/`；当前仓库 0 命中。
+- `docs/agent-data-layout.md` 补 §7：运行数据不进 git，验证报告留在数据根。
+
 ## 0.18.0 — 2026-10-24
 
 - **Claude Code 适配**：新增 `adapters/claude.md`（探测、起角色、项目级 `.claude/agents/` 人格、
