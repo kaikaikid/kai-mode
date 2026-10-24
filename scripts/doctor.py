@@ -26,6 +26,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import urllib.parse
 
 try:  # Windows 控制台下中文输出
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -627,6 +628,7 @@ def chk_install_receipt(root: str, ms):
 
 LAYOUT_REL = "manifests/package-layout.json"
 LAYOUT_SCHEMA = "kai-mode-package-layout/1"
+FRAMEWORK_GITHUB = "https://github.com/kaikaikid/kai-mode/"
 SCAFFOLD_HANDOFF_SOURCE_RE = re.compile(
     r"^handoff/(?:README\.md|60-board/README\.md|templates/[^/]+\.md)$")
 
@@ -843,23 +845,32 @@ def chk_payload_refs(root: str, ms):
                 if fenced:
                     continue
                 for m in LINK_RE.finditer(line):
-                    target = m.group(1).strip()
-                    if (not target or target.startswith(("#", "http://", "https://", "mailto:", "/"))
-                            or re.match(r"^[A-Za-z]:[\\/]", target)):
+                    raw = m.group(1).strip()
+                    if (not raw or raw.startswith(("#", "mailto:", "/"))
+                            or re.match(r"^[A-Za-z]:[\\/]", raw)):
                         continue
-                    target = target.split("#", 1)[0]
+                    where = f"{name}/{os.path.relpath(path, src)}:{lineno}"
+                    if raw.startswith(("http://", "https://")):
+                        if raw.startswith(FRAMEWORK_GITHUB):
+                            rest = raw[len(FRAMEWORK_GITHUB):].split("#", 1)[0].split("?", 1)[0]
+                            mm = re.match(r"^(blob|tree)/main/(.+)$", rest)
+                            if mm:
+                                rel = urllib.parse.unquote(mm.group(2)).strip("/")
+                                if not os.path.exists(os.path.join(root, *rel.split("/"))):
+                                    bad.append(f"{where} → {raw}（本仓路径不存在：{rel}）")
+                        continue
+                    target = raw.split("#", 1)[0]
                     if not target:
                         continue
                     resolved = os.path.normpath(os.path.join(os.path.dirname(path), *target.split("/")))
                     relres = os.path.relpath(resolved, root).replace(os.sep, "/")
-                    where = f"{name}/{os.path.relpath(path, src)}:{lineno}"
                     if relres == ".." or relres.startswith("../"):
                         bad.append(f"{where} → {m.group(1)}（越出本仓）")
                     elif not any(relres == d or relres.startswith(d + "/") for d in allowed):
                         bad.append(f"{where} → {m.group(1)}（指向 {relres}，不随技能安装）")
     if bad:
         return "fail", "；".join(bad[:6]) + (f"（共 {len(bad)} 处）" if len(bad) > 6 else "")
-    return "ok", f"{scanned} 份安装面 Markdown：外部引用 0 处（仅自身/兄弟技能/http）"
+    return "ok", f"{scanned} 份安装面 Markdown：外部引用 0 处；框架 URL 路径均存在"
 
 
 def _decouple_whitelisted(rel: str) -> bool:

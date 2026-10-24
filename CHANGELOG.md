@@ -2,6 +2,15 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.17.2 — 2026-10-24
+
+- **引用口径收尾**：`docs/package-layout.md` 注明仓库当前为私有，绝对出处链接需仓库访问权限；
+  无权限用户会 404，但技能运行不依赖链接。
+- `vendor/README.md` 说明上游文档的 `./src/...` 等示例链接不是本仓文件、不参与 `broken-link`，
+  不改 vendor（避免 `vendor-sync --check` 漂移）。
+- `payload-refs` 增框架 URL 路径校验：指向 `kaikaikid/kai-mode` 的 `blob|tree/main/<path>`
+  必须在本仓真实存在；附「缺失路径红、存在路径绿」用例。
+
 ## 0.17.1 — 2026-10-24
 
 - **清理退役看板目录**：删除 `skills/航班信息`、`skills/set-航班信息`（v0.10.0 起由 `flight-info`

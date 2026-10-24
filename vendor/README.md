@@ -40,3 +40,8 @@ python scripts/vendor-sync.py --check    # 只校验：源变了没、vendor 被
 - 源：本机 `~/.workbuddy/skills/`（上游 mattpocock/skills 的本地镜像）
 - 清单：`vendor/manifest.json`（每个文件的 sha256，每次 sync 重写）
 - **不要手改 `vendor/` 里的任何文件**：`--check` 会报不一致，下次 sync 直接覆盖。要改行为，改调用它的流程位，或者去上游提。
+
+## 示例链接
+
+`vendor/skills/` 里部分上游文档含 `./src/...`、`./templates/...` 这类示例链接；它们是**上游示例路径**，
+不是本仓文件，也不参与 doctor 的 `broken-link`。不要为了消歧义改写 vendor——那会触发 `vendor-sync --check` 漂移。

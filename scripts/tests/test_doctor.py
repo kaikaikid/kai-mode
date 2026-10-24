@@ -473,11 +473,22 @@ def test_payload_refs_external_link_is_red(tmp_path):
 def test_payload_refs_absolute_url_is_green(tmp_path):
     root = make_repo(tmp_path)
     (root / "skills" / "alpha" / "notes.md").write_text(
-        "[ADR](https://github.com/kaikaikid/kai-mode/blob/main/docs/adr/0001-x.md)\n",
+        "[README](https://github.com/kaikaikid/kai-mode/blob/main/README.md)\n",
         encoding="utf-8")
     rc, data = run_doctor(root)
     assert status_of(data, "payload-refs") == "ok"
     assert rc == 0
+
+
+def test_payload_refs_framework_url_missing_path_is_red(tmp_path):
+    root = make_repo(tmp_path)
+    (root / "skills" / "alpha" / "notes.md").write_text(
+        "[ADR](https://github.com/kaikaikid/kai-mode/blob/main/docs/nope.md)\n",
+        encoding="utf-8")
+    rc, data = run_doctor(root)
+    assert rc == 1
+    assert status_of(data, "payload-refs") == "fail"
+    assert "本仓路径不存在" in detail_of(data, "payload-refs")
 
 
 def test_payload_refs_sibling_skill_is_green(tmp_path):
