@@ -426,16 +426,42 @@ def sha256(path: str) -> str:
 
 
 CACHE_DIRS = ("__pycache__", ".pytest_cache")
+PAYLOAD_LAYOUT_REL = os.path.join("manifests", "package-layout.json")
+PAYLOAD_DEFAULT = {
+    "exclude_dirs": CACHE_DIRS + ("tests",),
+    "exclude_suffixes": (".pyc", ".pyo"),
+}
 
 
-def tree_files(root: str) -> dict:
-    """技能目录的实文件清单：跳过缓存产物（__pycache__/.pytest_cache/*.pyc）。
-    否则跑一次 pytest，装机就把缓存带进中央库、再链到各家宿主——机器上还分不清哪份是正本。"""
+def payload_rules(root: str) -> dict:
+    """安装面排除规则＝manifests/package-layout.json 的 host_payload 段；老仓没有清单就回落缺省。"""
+    path = os.path.join(root, PAYLOAD_LAYOUT_REL)
+    if os.path.isfile(path):
+        try:
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+            hp = (data or {}).get("host_payload") or {}
+            dirs = hp.get("exclude_dirs")
+            sufs = hp.get("exclude_suffixes")
+            if isinstance(dirs, list) and isinstance(sufs, list):
+                return {"exclude_dirs": tuple(str(x) for x in dirs),
+                        "exclude_suffixes": tuple(str(x) for x in sufs)}
+        except (OSError, ValueError):
+            pass
+    return dict(PAYLOAD_DEFAULT)
+
+
+def payload_files(root: str, rules: dict | None = None) -> dict:
+    """安装面文件清单：跳过 tests/ 与缓存产物。
+    技能自带的 pytest 是本仓开发件，装进中央库会被链到各家宿主，分不清哪份是正本。"""
+    rules = rules or PAYLOAD_DEFAULT
+    dirs_ex = set(rules.get("exclude_dirs") or ())
+    suf_ex = tuple(rules.get("exclude_suffixes") or ())
     out = {}
     for base, dirs, files in os.walk(root):
-        dirs[:] = [d for d in dirs if d not in CACHE_DIRS]
+        dirs[:] = [d for d in dirs if d not in dirs_ex]
         for name in files:
-            if name.endswith((".pyc", ".pyo")):
+            if name.endswith(suf_ex):
                 continue
             p = os.path.join(base, name)
             if not os.path.islink(p):
@@ -443,10 +469,33 @@ def tree_files(root: str) -> dict:
     return out
 
 
-def tree_digest(root: str) -> str:
-    """整棵技能目录的稳定摘要：相对路径 + 每文件 SHA-256，用于回执比对。"""
+def prune_payload_excluded(library: str, name: str, rules: dict) -> list:
+    """把技能目录里的开发件从中央库清掉；返回清掉的相对路径。只在 apply 非 dry 时调用。"""
+    base_dir = os.path.join(library, name)
+    if not os.path.isdir(base_dir):
+        return []
+    dirs_ex = set(rules.get("exclude_dirs") or ())
+    suf_ex = tuple(rules.get("exclude_suffixes") or ())
+    removed = []
+    for base, dirs, files in os.walk(base_dir):
+        for d in list(dirs):
+            if d in dirs_ex:
+                p = os.path.join(base, d)
+                shutil.rmtree(p, ignore_errors=True)
+                removed.append(os.path.relpath(p, base_dir).replace(os.sep, "/"))
+                dirs.remove(d)
+        for f in files:
+            if f.endswith(suf_ex):
+                p = os.path.join(base, f)
+                os.remove(p)
+                removed.append(os.path.relpath(p, base_dir).replace(os.sep, "/"))
+    return removed
+
+
+def tree_digest(root: str, rules: dict | None = None) -> str:
+    """整棵技能安装面的稳定摘要：相对路径 + 每文件 SHA-256，用于回执比对。"""
     h = hashlib.sha256()
-    for rel, p in sorted(tree_files(root).items()):
+    for rel, p in sorted(payload_files(root, rules).items()):
         h.update(rel.encode("utf-8"))
         h.update(b"\0")
         h.update(bytes.fromhex(sha256(p)))
@@ -660,6 +709,7 @@ def check(root: str, library: str, home: str | None = None, plan: dict | None = 
     faces = find_faces(library, home)
     data, reg_err = read_registry(library)
     plan = plan if plan is not None else install_plan(root)
+    rules = payload_rules(root)
     for name in plan:
         src, dst = family_src(root, name, plan), os.path.join(library, name)
         if not os.path.isdir(src):
@@ -667,8 +717,8 @@ def check(root: str, library: str, home: str | None = None, plan: dict | None = 
             rows.append((name, "正本缺失", f"试过：{tried}", src, "red"))
             drifted = True
             continue
-        a = tree_files(src)
-        b = tree_files(dst) if os.path.isdir(dst) else {}
+        a = payload_files(src, rules)
+        b = payload_files(dst, rules) if os.path.isdir(dst) else {}
         missing = sorted(set(a) - set(b))
         extra = sorted(set(b) - set(a))
         diff = sorted(p for p in set(a) & set(b) if sha256(a[p]) != sha256(b[p]))
@@ -707,7 +757,7 @@ def copy_family(root: str, library: str, name: str, dry: bool, plan: dict | None
     written = []
     if not os.path.isdir(src):
         return written
-    for rel, p in sorted(tree_files(src).items()):
+    for rel, p in sorted(payload_files(src, payload_rules(root)).items()):
         dst = os.path.join(library, name, *rel.split("/"))
         if os.path.isfile(dst) and sha256(dst) == sha256(p):
             continue
@@ -827,9 +877,13 @@ def apply(root: str, library: str, dry: bool, home: str | None = None,
     if backup:
         print(f"  写前备份 {backup}")
     written, added, made, failed, marker = [], [], [], [], None
+    rules = payload_rules(root)
+    pruned = []
     try:
         for name in plan:
             written += copy_family(root, library, name, dry, plan)
+            if not dry:
+                pruned += [f"{name}/{rel}" for rel in prune_payload_excluded(library, name, rules)]
         if dry:
             try:
                 added = patch_registry(library, list(plan), dry=True)
@@ -839,7 +893,7 @@ def apply(root: str, library: str, dry: bool, home: str | None = None,
             added = patch_registry(library, list(plan))
         made, failed = link_faces(library, list(plan), home, dry)
         if not dry:
-            hashes = {name: tree_digest(family_src(root, name, plan)) for name in plan}
+            hashes = {name: tree_digest(family_src(root, name, plan), rules) for name in plan}
             marker = write_source_marker(
                 library, root, len(plan), profile=profile or marked_profile(library),
                 skill_names=list(plan), hashes=hashes, source_commit=source_commit(root))
@@ -851,6 +905,8 @@ def apply(root: str, library: str, dry: bool, home: str | None = None,
         raise SystemExit(f"apply 失败：{exc}")
     for p in written:
         print(f"  {'将写' if dry else '写入'} {p}")
+    for p in pruned:
+        print(f"  清开发件 {p}")
     for a in added:
         print(f"  注册 {a}")
     for l in made:

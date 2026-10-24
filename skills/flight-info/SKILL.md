@@ -161,5 +161,5 @@ python scripts/refresh.py --repo-root <临时仓> --config <板配置> --no-netw
 | 板配置样例 | [`templates/board.config.example.json`](templates/board.config.example.json) |
 | 阶段判据实现 | [`flightinfo/stage.py`](flightinfo/stage.py) |
 | 源清单 | [`flightinfo/sources/__init__.py`](flightinfo/sources/__init__.py) |
-| 看板卡片格式 | [`handoff/60-board/README.md`](../../handoff/60-board/README.md) |
-| 阶段模型来源 | [`框架仓旧裁决`](../../框架仓旧裁决) |
+| 看板卡片格式 | 项目内 `handoff/60-board/README.md` |
+| 阶段模型来源 | 框架仓 框架仓旧裁决（`框架仓旧裁决`，不随技能安装） |

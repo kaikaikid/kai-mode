@@ -1,7 +1,7 @@
 # kai-mode
 
 Framework repo, independent of any project repo. Run `python scripts/doctor.py` before and after
-every change — 23 checks, red means `rc=1`.  
+every change — 24 checks, red means `rc=1`.  
 `vendor/` is tracked (clones must be able to restore it); `scripts/tests/` runs under
 `doctor.py --with-tests` (needs pytest) and is part of that gate.
 
@@ -53,6 +53,7 @@ tools. Subagents within a ticket are not role sessions. Source of truth:
 | Out-of-ticket dispatch (when not to delegate, who may dispatch whom, concurrency, context budget) | `agents/dispatch.md` | pointer |
 | Method (how to explore / review / plan / implement) | `agents/<persona>.md` | pointer |
 | Host differences (launcher per role, how a persona becomes a native agent file, permissions, model) | `adapters/README.md` + `adapters/<host>.md` | pointer |
+| Artifact packaging (dev records vs host payload vs project scaffold) | `manifests/package-layout.json` + `docs/package-layout.md` | pointer |
 | Role wake permissions (who may wake whom) | `docs/adr/0010-role-wake-fence.md` | pointer in role skills |
 | Runtime mechanics (retry, timeout, circuit breaker, budget, TTL) | **not in docs** — belongs to the host runtime | — |
 | Project instance values (thresholds, paths, ticket ids, **agent models** `models.agents.<persona>.model`) | project config instance | template only |
@@ -94,7 +95,7 @@ Pick the slot from the type word in the filename. Full rules: `handoff/README.md
 ## Commands
 
 ```bash
-python scripts/doctor.py [--with-tests]          # 23 checks; --with-tests includes scripts/tests
+python scripts/doctor.py [--with-tests]          # 24 checks; --with-tests includes scripts/tests
 python scripts/new-skill.py <n> --summary "..."  # skill scaffold
 python scripts/vendor-sync.py [--check]          # vendored skills: pull from local mirror / detect drift
 python scripts/handoff-board.py list             # cross-agent board

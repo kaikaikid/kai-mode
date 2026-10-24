@@ -2,7 +2,7 @@
 
 > 跨 agent 框架（任何宿主：有 shell 就能读写）传活。纯 markdown + frontmatter，无平台依赖。
 > **结构化、AI 读写、人不读。**
-> **不是任务状态正本**——ADR-0003 D3 裁定正本＝issue。要升格须走 ADR。
+> **不是任务状态正本**——票源（Issue）才是正本；要升格须走 ADR。
 
 ## 1. 目录 = 状态流转
 
@@ -27,17 +27,20 @@ open/  →  claimed/  →  done/  →  archive/YYYY-MM/
 
 ## 3. 命令（全部走脚本，别手搬文件）
 
+脚本随 `kai-handoff` 技能安装：`python <本技能目录>/scripts/handoff-board.py …`
+（框架仓内可走兼容入口 `python scripts/handoff-board.py`）。没有脚本时按 §2 的格式手写卡片。
+
 ```bash
 # 有票
-python scripts/handoff-board.py new --title "修 ADR-0003 引用断链" --ticket "#12" --role 机长 --persona worker
+python <本技能目录>/scripts/handoff-board.py new --title "修文档引用断链" --ticket "#12" --role 机长 --persona worker
 # 无票热修
-python scripts/handoff-board.py new --title "热修 doctor 假红" --type hotfix
+python <本技能目录>/scripts/handoff-board.py new --title "热修门禁假红" --type hotfix
 
-python scripts/handoff-board.py list                 # 结构化列出
-python scripts/handoff-board.py show 20261024-01     # 单张全字段
-python scripts/handoff-board.py claim 20261024-01 --by 机长
-python scripts/handoff-board.py close  20261024-01 --outcome "断链已修"
-python scripts/handoff-board.py archive              # 归月 + 生成月度索引
+python <本技能目录>/scripts/handoff-board.py list                 # 结构化列出
+python <本技能目录>/scripts/handoff-board.py show 20261024-01     # 单张全字段
+python <本技能目录>/scripts/handoff-board.py claim 20261024-01 --by 机长
+python <本技能目录>/scripts/handoff-board.py close  20261024-01 --outcome "断链已修"
+python <本技能目录>/scripts/handoff-board.py archive              # 归月 + 生成月度索引
 ```
 
 ## 4. 规则
@@ -48,7 +51,7 @@ python scripts/handoff-board.py archive              # 归月 + 生成月度索�
 
 ## 5. 角色 vs 人格
 
-**岗位**＝会话身份管权责（正本 `docs/adr/0003-*.md`）｜**人格**＝委派契约管能力（正本 `agents/README.md`）。
+**岗位**＝会话身份管权责｜**人格**＝委派契约管能力。
 一个岗位可拉起多个人格，一个人格从不排班 → 两个字段，不是两套目录。
 一个角色可调用多个人格，反之亦然 → **两个字段，不是两套目录**。
 
@@ -67,7 +70,7 @@ python scripts/handoff-board.py archive              # 归月 + 生成月度索�
 | 数据层（本文） | `handoff/60-board/**` | AI / 脚本 | 卡片，脚本写 |
 | 展示层 | 板库 `<output.root>/<板名>/` | 人读 `index.html`；AI 只读 `board.json` | 渲染脚本生成 |
 
-- 展示层技能：`skills/flight-info/SKILL.md`（造板 / 刷新 / 归档；装配用同目录的 `scripts/init_board.py`）。
+- 展示层技能：`flight-info`（按宿主技能目录解析；造板 / 刷新 / 归档用同目录的 `scripts/`）。
 - **关联靠触发层，不靠共享文件**：git 钩子（`post-commit` / `post-merge`）只打脏标记，刷新由「有脏才刷」执行 ——
-  `python skills/flight-info/scripts/install_hook.py --repo-root <仓根> --apply`。零 token、跨 agent。
+  装配命令见该技能说明（`scripts/install_hook.py --repo-root <仓根> --apply`）。零 token、跨 agent。
 - **单向**：展示层只读、不写回卡片，不改票面。**卡片永远是正本，板是镜子。**

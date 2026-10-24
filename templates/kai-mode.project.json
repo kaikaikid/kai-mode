@@ -1,15 +1,15 @@
 {
   "schema": 3,
-  "_note_0": "kai-mode 项目差异层实例模板（schema 3）。落点：<项目仓根>/.ai/kai-mode.project.json（tracked）。唯一项目差异事实源：技能运行时读它拿路径/宿主/平台；读不到 rc!=0 报缺件，永不猜路径。占位一律 <尖括号>，装机由 set-kai-mode 填实（占位不落盘）；_note_* 键与 _comment 值为注释性说明，读取端忽略。字段表见 docs/adr/0004-project-config-schema.md D2。",
+  "_note_0": "kai-mode 项目差异层实例模板（schema 3）。落点：<项目仓根>/.ai/kai-mode.project.json（tracked）。唯一项目差异事实源：技能运行时读它拿路径/宿主/平台；读不到 rc!=0 报缺件，永不猜路径。占位一律 <尖括号>，装机由 set-kai-mode 填实（占位不落盘）；_note_* 键与 _comment 值为注释性说明，读取端忽略。字段语义写在对应段的 _note 里。",
   "project": "<project-name>",
   "repo_root": ".",
   "ship_mode": "tower",
   "host": {
-    "_note": "宿主选择器（ADR-0004 D2）：只记用哪份 adapters/<宿主>.md，不记宿主字段名、不记模型。换宿主时改这一处；宿主差异仍住 adapters/。",
+    "_note": "宿主选择器：只记用哪份宿主适配说明，不记宿主字段名、不记模型。换宿主时改这一处；宿主差异仍住适配说明。",
     "adapter": "<qoder|codex|opencode|claude|copilot|cursor>"
   },
   "registry": {
-    "_note": "①判据/剧本注册面（ADR-0004 D2①）：剧本登记行全量收编于此（原登记面文件退役），新增剧本只在 playbooks[] 加一行，入口与技能不复述；判据落点 registry.adrs / registry.rules。路径相对项目仓根。",
+    "_note": "①判据/剧本注册面：剧本登记行全量收编于此（原登记面文件退役），新增剧本只在 playbooks[] 加一行，入口与技能不复述；判据落点 registry.adrs / registry.rules。路径相对项目仓根。",
     "playbooks": [
       {
         "name": "tower",
@@ -54,7 +54,7 @@
     }
   },
   "paths": {
-    "_note": "②日表/记录面落点：技能正文一律从这里读，不写死。day_table_pattern 中 {lane} 取 lanes 之一；塔台是 day_tables_dir 唯一写者（0003 D3），机长/地勤只读。记录面目录本项目没有的写 null，消费方读到 null 如实报「该项目无此记录面」，不猜路径。",
+    "_note": "②日表/记录面落点：技能正文一律从这里读，不写死。day_table_pattern 中 {lane} 取 lanes 之一；塔台是 day_tables_dir 唯一写者，机长/地勤只读。记录面目录本项目没有的写 null，消费方读到 null 如实报「该项目无此记录面」，不猜路径。",
     "day_tables_dir": "<day-tables-dir>",
     "day_table_pattern": "YYYY-MM-DD-{lane}.md",
     "lanes": [
@@ -69,7 +69,7 @@
     "state_dir": ".git/kai-scope"
   },
   "models": {
-    "_note": "③子代理模型（ADR-0008 D3）：只按人格配，没有档位、没有 default、没有角色槽。键＝agents/<人格>.md 的文件名；model=null 表示不写 model、用宿主默认（inherit）。写者＝init-project.py；读者＝装机 agent 按 adapters/README.md 投影。本文件禁止出现任何模型 slug（doctor 拦）。",
+    "_note": "③子代理模型：只按人格配，没有档位、没有 default、没有角色槽。键＝agents/<人格>.md 的文件名；model=null 表示不写 model、用宿主默认（inherit）。写者＝项目初始化器；读者＝装机 agent 按宿主适配说明投影。本文件禁止出现任何模型 slug（doctor 拦）。",
     "agents": {
       "explorer": {
         "model": null
@@ -92,7 +92,7 @@
     }
   },
   "runtime": {
-    "_note": "④运行时环境三项=发现方式，不是机器路径（0004 D2.1）。main_tree 由 git worktree 公共目录反推，任意 worktree 内可解析回主树；backend_python 优先环境变量（set-kai-mode 装机写入 KAI_BACKEND_PYTHON），退回主树相对路径；依赖绝不 junction/软链主树 node_modules 后跑包管理器（0003 D2）。discover 取值：git_common_dir | env | main_tree | worktree。",
+    "_note": "④运行时环境三项=发现方式，不是机器路径。main_tree 由 git worktree 公共目录反推，任意 worktree 内可解析回主树；backend_python 优先环境变量（set-kai-mode 装机写入 KAI_BACKEND_PYTHON），退回主树相对路径；依赖绝不 junction/软链主树 node_modules 后跑包管理器。discover 取值：git_common_dir | env | main_tree | worktree。",
     "main_tree": {
       "discover": "git_common_dir",
       "env_fallback": "KAI_MAIN_TREE"
@@ -118,7 +118,7 @@
     }
   },
   "gates": {
-    "_note": "项目仓门/脚本注册（0004 D2 新增段，schema 2 runtime 三门泛化）：相对项目仓根。null=本项目无此门，消费方跑到时 rc!=0 报缺件，不许猜路径；长期红的门只走基线文件，不改判据。",
+    "_note": "项目仓门/脚本注册（schema 2 runtime 三门泛化）：相对项目仓根。null=本项目无此门，消费方跑到时 rc!=0 报缺件，不许猜路径；长期红的门只走基线文件，不改判据。",
     "captain_preflight": "scripts/captain-preflight.py",
     "scope_check": "scripts/scope-check.py",
     "docs_check": "scripts/docs-check.py",
@@ -142,7 +142,7 @@
     "boom_summary_ticket": null
   },
   "execution": {
-    "_note": "沿用 schema 2。宿主工具契约（builder/reviewer/researcher 在本宿主怎么探测、怎么降级）住 adapters/<宿主>.md（ADR-0004 D6），实例不再承载 host_tools。",
+    "_note": "沿用 schema 2。宿主工具契约（builder/reviewer/researcher 在本宿主怎么探测、怎么降级）住宿主适配说明，实例不再承载 host_tools。",
     "preferred": "qoder",
     "fallbacks": [
       "codex",
@@ -160,9 +160,9 @@
     ]
   },
   "tower_cron": {
-    "_note": "唤醒定时器配置（ADR-0003/0006）：只负责每 interval_min 分钟唤醒塔台一轮；塔台是独立岗位，无定时器时人工/kai-mode 唤醒。字段名沿用 tower_cron，不代表塔台角色。",
+    "_note": "唤醒定时器配置：只负责每 interval_min 分钟唤醒塔台一轮；塔台是独立岗位，无定时器时人工/kai-mode 唤醒。字段名沿用 tower_cron，不代表塔台角色。",
     "interval_min": 60,
-    "prompt_shell": "读取并执行 skills/tower/SKILL.md 全文；任务名 cron-tower-<日期>-<时分>",
+    "prompt_shell": "读取并执行 tower 技能（按宿主技能目录解析）；任务名 cron-tower-<日期>-<时分>",
     "output_mode": "independent",
     "execution_authorization": true,
     "job_ids_from": "<local-only config, not tracked>"

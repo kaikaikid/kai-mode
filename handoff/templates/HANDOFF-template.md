@@ -33,7 +33,7 @@ persona: -               # 人格，管委派能力：worker / reviewer / explor
 
 本次允许改动的范围，逐条列出（**路径一律相对仓根**，越界即违规）。
 
-- `skills/xxx/SKILL.md`
+- `<允许改动的路径>`
 
 ## 四、怎么算完成
 
@@ -52,7 +52,7 @@ persona: -               # 人格，管委派能力：worker / reviewer / explor
 
 ## 下一棒开工清单（必写）
 
-1. 前置命令：`python scripts/doctor.py --with-tests`
+1. 前置命令：本项目收工门禁（配置 `gates.*` 里列出的脚本）
 2. 第一步：...
 3. 第二步：...
 
@@ -60,7 +60,7 @@ persona: -               # 人格，管委派能力：worker / reviewer / explor
 
 - ADR：`docs/adr/000X-xxx.md`
 - 票：`#NNN`
-- 代码：`skills/xxx/...`
+- 代码：`<相对仓根的路径>`
 
 ## 沉淀检查
 
@@ -70,5 +70,5 @@ persona: -               # 人格，管委派能力：worker / reviewer / explor
 ---
 
 **落盘位置**：`handoff/<槽>/<YYYY-MM>/` —— 从第一份起就是两级
-（例：`handoff/20-plan/2026-10/2026-10-23-kai-mode-rebuild-plan.md`）。
+（例：`handoff/20-plan/2026-10/2026-10-23-<主题>-plan.md`）。
 拿不准槽位就查 `handoff/README.md` §二的判定表，或先扔 `00-inbox/2026-10/`。

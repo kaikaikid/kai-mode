@@ -126,7 +126,7 @@ updated: <YYYY-MM-DD>
 python scripts/doctor.py --with-tests
 ```
 
-一条命令验全仓：注册表 schema/字段/枚举、每个注册条目的目录与 `SKILL.md`、frontmatter 八字段与顺序、三处 name 一致、盘上有技能目录但没登记、机器绝对路径入正文、`SKILL.md` 相对链接断链、仓内行尾口径、`VERSION` 与 README 版本串一致、辅助件（`vendor/`）跟踪与漂移；`--with-tests` 追加技能测试与仓级 `scripts/tests`。
+一条命令验全仓：注册表 schema/字段/枚举、每个注册条目的目录与 `SKILL.md`、frontmatter 八字段与顺序、三处 name 一致、盘上有技能目录但没登记、机器绝对路径入正文、`SKILL.md` 相对链接断链、仓内行尾口径、`VERSION` 与 README 版本串一致、三层打包边界（安装面／项目骨架）、辅助件（`vendor/`）跟踪与漂移；`--with-tests` 追加技能测试与仓级 `scripts/tests`。
 
 各技能自己的 pytest：见该技能 `SKILL.md` 的「验证命令」段（如 `python -m pytest skills/flight-info/tests/ -q`）。
 

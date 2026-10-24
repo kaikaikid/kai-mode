@@ -371,3 +371,89 @@ def test_install_sync_present_in_json_output(tmp_path):
     ids = [c["id"] for c in data["checks"]]
     assert "install-sync" in ids
     assert len(ids) >= 19  # 项数随门增长；这里只锁 install-sync 在列，不锁死总数
+
+
+# ── 24 package-layout：三层打包边界 ───────────────────────────────────────────
+def add_layout(root, *, handoff_files=None, exclude_dirs=None, config_from=None):
+    """给假仓加一份最小清单：安装面 + 骨架。"""
+    (root / "manifests").mkdir(exist_ok=True)
+    (root / "templates").mkdir(exist_ok=True)
+    (root / "templates" / "kai-mode.project.json").write_text("{}\n", encoding="utf-8")
+    (root / "templates" / "GLOSSARY.md").write_text("# GLOSSARY\n", encoding="utf-8")
+    files = handoff_files if handoff_files is not None else {"handoff/README.md": "handoff/README.md"}
+    layout = {
+        "schema": "kai-mode-package-layout/1",
+        "repo_only": ["docs/"],
+        "host_payload": {
+            "source": "registry.json#install:auto",
+            "exclude_dirs": exclude_dirs or ["tests", "__pycache__", ".pytest_cache"],
+            "exclude_suffixes": [".pyc"],
+        },
+        "project_scaffold": {
+            "config": {
+                "from": config_from or "templates/kai-mode.project.json",
+                "to": ".ai/kai-mode.project.json",
+            },
+            "glossary": {"from": "templates/GLOSSARY.md", "to": "GLOSSARY.md"},
+            "handoff": {
+                "slots": ["00-inbox", "60-board"],
+                "monthly_slots": ["00-inbox"],
+                "board_slot": "60-board",
+                "board_children": ["open"],
+                "files": files,
+            },
+            "adr_dir": "docs/adr",
+            "placeholder": ".gitkeep",
+        },
+    }
+    (root / "manifests" / "package-layout.json").write_text(
+        json.dumps(layout, ensure_ascii=False), encoding="utf-8")
+
+
+def test_package_layout_absent_is_skip(tmp_path):
+    root = make_repo(tmp_path)
+    rc, data = run_doctor(root)
+    assert status_of(data, "package-layout") == "skip"
+    assert rc == 0
+
+
+def test_package_layout_source_tests_are_allowed(tmp_path):
+    """源仓里的 tests/ 是本仓开发件：只要安装面排除它，就不该判红。"""
+    root = make_repo(tmp_path)
+    add_layout(root)
+    (root / "skills" / "alpha" / "tests").mkdir()
+    (root / "skills" / "alpha" / "tests" / "test_a.py").write_text("def test_a():\n    pass\n",
+                                                                  encoding="utf-8")
+    rc, data = run_doctor(root)
+    assert status_of(data, "package-layout") == "ok"
+    assert rc == 0
+
+
+def test_package_layout_exclude_missing_is_red(tmp_path):
+    root = make_repo(tmp_path)
+    add_layout(root, exclude_dirs=["__pycache__", ".pytest_cache"])
+    rc, data = run_doctor(root)
+    assert rc == 1
+    assert status_of(data, "package-layout") == "fail"
+    assert "tests" in detail_of(data, "package-layout")
+
+
+def test_package_layout_history_source_is_red(tmp_path):
+    root = make_repo(tmp_path)
+    hist = root / "handoff" / "40-review" / "2026-10"
+    hist.mkdir(parents=True)
+    (hist / "dev-record.md").write_text("# 本仓开发记录\n", encoding="utf-8")
+    add_layout(root, handoff_files={"handoff/40-review/2026-10/dev-record.md": "handoff/x.md"})
+    rc, data = run_doctor(root)
+    assert rc == 1
+    assert status_of(data, "package-layout") == "fail"
+    assert "越界" in detail_of(data, "package-layout")
+
+
+def test_package_layout_missing_source_is_red(tmp_path):
+    root = make_repo(tmp_path)
+    add_layout(root, config_from="templates/nope.json")
+    rc, data = run_doctor(root)
+    assert rc == 1
+    assert status_of(data, "package-layout") == "fail"
+    assert "源件不存在" in detail_of(data, "package-layout")

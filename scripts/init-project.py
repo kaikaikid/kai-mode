@@ -34,11 +34,23 @@ except Exception:
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, ".."))
-TEMPLATE = os.path.join(ROOT, "templates", "kai-mode.project.json")
-SRC_HANDOFF = os.path.join(ROOT, "handoff")
+LAYOUT = os.path.join(ROOT, "manifests", "package-layout.json")
+LAYOUT_SCHEMA = "kai-mode-package-layout/1"
 
-SLOTS = ("00-inbox", "10-session", "20-plan", "30-research",
-         "40-review", "50-comms", "60-board", "90-archive")
+
+def load_layout() -> dict:
+    """项目骨架面的唯一清单：生成什么、从哪份源复制，只认 manifests/package-layout.json。"""
+    try:
+        with open(LAYOUT, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError) as exc:
+        raise SystemExit(f"读不出项目骨架清单 {LAYOUT}：{exc}")
+    if not isinstance(data, dict) or data.get("schema") != LAYOUT_SCHEMA:
+        raise SystemExit(f"{LAYOUT} schema 不是 {LAYOUT_SCHEMA}")
+    spec = data.get("project_scaffold")
+    if not isinstance(spec, dict):
+        raise SystemExit(f"{LAYOUT} 缺 project_scaffold")
+    return data
 
 
 def guess_slug(repo: str) -> str:
@@ -188,50 +200,57 @@ def apply(cfg: dict, ans: dict) -> dict:
     return cfg
 
 
-def gen_handoff(repo: str, ans: dict) -> list:
-    """铺交接组件：八个槽 + 规范 + 模板（规范文本从本仓复制，不复制历史件）。"""
+def gen_handoff(repo: str, ans: dict, layout: dict) -> list:
+    """铺交接组件：按清单的八槽 + 规范 + 模板；只复制列名件，历史记录一概不碰。"""
     import datetime as _dt
     done = []
     month = _dt.date.today().strftime("%Y-%m")
-    base = os.path.join(repo, ans.get("handoff_dir") or "handoff")
-    for slot in SLOTS:
-        if slot == "60-board":
-            subs = ["open", "claimed", "done", "archive"]
-        elif slot in ("50-comms", "00-inbox", "90-archive"):
-            subs = [month]
-        else:
-            subs = [month]
+    spec = layout["project_scaffold"]["handoff"]
+    base_rel = ans.get("handoff_dir") or "handoff"
+    base = os.path.join(repo, base_rel)
+    board_slot = spec["board_slot"]
+    for slot in spec["slots"]:
+        subs = spec["board_children"] if slot == board_slot else [month]
         for sub in subs:
             d = os.path.join(base, slot, sub)
             os.makedirs(d, exist_ok=True)
-            keep = os.path.join(d, ".gitkeep")
+            keep = os.path.join(d, layout["project_scaffold"]["placeholder"])
             if not os.path.exists(keep):
                 with open(keep, "w", encoding="utf-8", newline="") as f:
-                    f.write(f"{slot}/{sub} 占位；规范见 handoff/README.md\n")
-    for rel in ("README.md", "60-board/README.md", "templates/HANDOFF-template.md",
-                "templates/COMMS-template.md"):
-        s = os.path.join(SRC_HANDOFF, rel)
+                    f.write(f"{slot}/{sub} 占位；规范见 {base_rel}/README.md\n")
+    for src_rel, dst_rel in spec["files"].items():
+        s = os.path.join(ROOT, *src_rel.split("/"))
         if not os.path.isfile(s):
             continue
-        d = os.path.join(base, rel)
+        rel = base_rel + dst_rel[len("handoff"):] if dst_rel.startswith("handoff/") else dst_rel
+        d = os.path.join(repo, *rel.split("/"))
         if os.path.exists(d):
             continue
         os.makedirs(os.path.dirname(d), exist_ok=True)
         shutil.copy2(s, d)
-        done.append(f"{ans.get('handoff_dir') or 'handoff'}/{rel}")
+        done.append(rel)
     return done
 
 
-def gen_docs(repo: str, ans: dict) -> list:
-    """铺长期正本组件：docs/adr/ + GLOSSARY.md 骨架（不覆盖已有的）。"""
+def gen_docs(repo: str, ans: dict, layout: dict) -> list:
+    """铺长期正本组件：空 ADR 目录（带占位）+ GLOSSARY.md 骨架（不覆盖已有的）。"""
     done = []
-    adr_dir = os.path.join(repo, ans.get("adr_dir") or "docs/adr")
+    spec = layout["project_scaffold"]
+    adr_rel = ans.get("adr_dir") or spec["adr_dir"]
+    adr_dir = os.path.join(repo, *adr_rel.split("/"))
     os.makedirs(adr_dir, exist_ok=True)
-    g = os.path.join(repo, "GLOSSARY.md")
+    keep = os.path.join(adr_dir, spec["placeholder"])
+    if not os.path.exists(keep):
+        with open(keep, "w", encoding="utf-8", newline="") as f:
+            f.write("ADR 目录占位；从 0001 起编号。\n")
+        done.append(f"{adr_rel}/{spec['placeholder']}")
+    g_spec = spec["glossary"]
+    g = os.path.join(repo, *g_spec["to"].split("/"))
     if not os.path.exists(g):
-        with open(g, "w", encoding="utf-8", newline="") as f:
-            f.write("# GLOSSARY\n\n只放词义：一词一行，唯一正解。不放实现细节、不放方案。\n")
-        done.append("GLOSSARY.md")
+        src = os.path.join(ROOT, *g_spec["from"].split("/"))
+        os.makedirs(os.path.dirname(g), exist_ok=True)
+        shutil.copy2(src, g)
+        done.append(g_spec["to"])
     return done
 
 
@@ -247,20 +266,24 @@ def main() -> int:
     if not os.path.isdir(repo):
         print(f"目标仓不存在：{repo}")
         return 2
-    if not os.path.isfile(TEMPLATE):
-        print(f"缺模板：{TEMPLATE}")
+    layout = load_layout()
+    spec = layout["project_scaffold"]
+    cfg_src_rel = spec["config"]["from"]
+    cfg_src = os.path.join(ROOT, *cfg_src_rel.split("/"))
+    if not os.path.isfile(cfg_src):
+        print(f"缺模板：{cfg_src_rel}（清单 {os.path.relpath(LAYOUT, ROOT)} 指的文件不在）")
         return 2
 
     ans = normalize_answers(build_answers(repo, a, a.yes))
-    handoff_src = ("README.md", "60-board/README.md", "templates/HANDOFF-template.md",
-                   "templates/COMMS-template.md")
-    missing_src = [rel for rel in handoff_src if not os.path.isfile(os.path.join(SRC_HANDOFF, rel))]
+    scaffold_sources = [cfg_src_rel, spec["glossary"]["from"], *spec["handoff"]["files"]]
+    missing_src = [rel for rel in scaffold_sources
+                   if not os.path.isfile(os.path.join(ROOT, *rel.split("/")))]
     if missing_src:
-        print("缺件：框架仓 handoff/ 源件不全，未生成半成品实例：")
+        print("缺件：框架仓项目骨架源件不全，未生成半成品实例：")
         for rel in missing_src:
-            print(f"  - handoff/{rel}")
+            print(f"  - {rel}")
         return 2
-    with open(TEMPLATE, encoding="utf-8") as f:
+    with open(cfg_src, encoding="utf-8") as f:
         cfg = json.load(f)
     cfg = apply(cfg, ans)
 
@@ -275,11 +298,11 @@ def main() -> int:
             print("  -", m)
         return 1
 
-    out = os.path.join(repo, ".ai", "kai-mode.project.json")
+    out = os.path.join(repo, *spec["config"]["to"].split("/"))
     print("== 将生成 ==")
     print(" ", os.path.relpath(out, repo))
-    print("  handoff 八槽 + 规范 + 两份模板")
-    print("  docs/adr/ + GLOSSARY.md（已存在则不覆盖）")
+    print(f"  handoff {len(spec['handoff']['slots'])} 槽（{spec['handoff']['board_slot']} 用子目录；其余按月）")
+    print(f"  {spec['adr_dir']}/（空目录 + {spec['placeholder']}）+ {spec['glossary']['to']}（已存在则不覆盖）")
     print("\n== 关键取值 ==")
     for k in ("project", "ship_mode"):
         print(f"  {k} = {cfg.get(k)}")
@@ -299,7 +322,7 @@ def main() -> int:
     with open(out, "w", encoding="utf-8", newline="") as f:
         json.dump(cfg, f, ensure_ascii=False, indent=2)
         f.write("\n")
-    files = gen_handoff(repo, ans) + gen_docs(repo, ans)
+    files = gen_handoff(repo, ans, layout) + gen_docs(repo, ans, layout)
 
     print(f"\n已写 {os.path.relpath(out, repo)}（{len(files)} 个组件文件）")
     print("\n== 下一棒 ==")

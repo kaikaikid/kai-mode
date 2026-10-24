@@ -1,0 +1,83 @@
+{
+  "schema": "kai-mode-package-layout/1",
+  "version": 1,
+  "_note": "三层打包边界正本（ADR-0011）：repo_only=本仓开发件，永不进宿主库、也不进项目骨架；host_payload 的名单仍以 registry.json 的 install:auto 为唯一来源（本文件只补排除项）；project_scaffold 是 init-project.py 唯一可生成的面，源只许 templates/ 或 handoff.files 列出的规范件，docs/ 一律不得作生成源。",
+  "repo_only": [
+    "AGENTS.md",
+    "CHANGELOG.md",
+    "VERSION",
+    "README.md",
+    "GLOSSARY.md",
+    "docs/",
+    "handoff/",
+    "scripts/",
+    "agents/",
+    "adapters/",
+    "loops/",
+    "schemas/",
+    "vendor/",
+    "registry.json",
+    "manifests/"
+  ],
+  "_repo_only_note": "handoff/ 里只有 project_scaffold.handoff.files 列出的 4 件规范/模板可作生成源；其余（日期目录、评审件、归档）都是本仓开发记录。docs/ 任何内容都不得复制进用户项目。",
+  "host_payload": {
+    "_note": "装到宿主中央库的内容＝registry.json 里 install:auto 的技能目录，逐字复制；下列开发件即使住在技能目录里也不随装，apply 时还要从库里清掉。",
+    "source": "registry.json#install:auto",
+    "exclude_dirs": [
+      "tests",
+      "__pycache__",
+      ".pytest_cache"
+    ],
+    "exclude_suffixes": [
+      ".pyc",
+      ".pyo"
+    ]
+  },
+  "project_scaffold": {
+    "_note": "用户项目会生成的全部内容。源文件路径相对本仓根；dest 路径相对目标仓根。新增骨架件必须同时改这里，doctor 会实跑 init-project 对账。",
+    "config": {
+      "from": "templates/kai-mode.project.json",
+      "to": ".ai/kai-mode.project.json"
+    },
+    "glossary": {
+      "from": "templates/GLOSSARY.md",
+      "to": "GLOSSARY.md"
+    },
+    "handoff": {
+      "slots": [
+        "00-inbox",
+        "10-session",
+        "20-plan",
+        "30-research",
+        "40-review",
+        "50-comms",
+        "60-board",
+        "90-archive"
+      ],
+      "monthly_slots": [
+        "00-inbox",
+        "10-session",
+        "20-plan",
+        "30-research",
+        "40-review",
+        "50-comms",
+        "90-archive"
+      ],
+      "board_slot": "60-board",
+      "board_children": [
+        "open",
+        "claimed",
+        "done",
+        "archive"
+      ],
+      "files": {
+        "handoff/README.md": "handoff/README.md",
+        "handoff/60-board/README.md": "handoff/60-board/README.md",
+        "handoff/templates/HANDOFF-template.md": "handoff/templates/HANDOFF-template.md",
+        "handoff/templates/COMMS-template.md": "handoff/templates/COMMS-template.md"
+      }
+    },
+    "adr_dir": "docs/adr",
+    "placeholder": ".gitkeep"
+  }
+}

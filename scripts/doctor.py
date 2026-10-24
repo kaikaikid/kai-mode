@@ -4,7 +4,7 @@
 kai-mode 框架仓 doctor（单一校验入口）
 =====================================
 用法：
-    python scripts/doctor.py                # 逐项检查（23 项）
+    python scripts/doctor.py                # 逐项检查（24 项）
     python scripts/doctor.py --with-tests   # 追加跑各技能自己的 pytest
     python scripts/doctor.py --json         # 机器可读：{"ok":bool,"checks":[{id,status,detail}]}
 
@@ -25,6 +25,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 
 try:  # Windows 控制台下中文输出
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -461,7 +462,9 @@ def chk_install_sync(root, ms):
             return "fail", f"回执档位 {profile} 读不出：{exc}"
     problems = []
     blocked = []
-    # ① 库副本 vs 本仓正本：逐文件 SHA-256（tree_files 已跳过缓存产物，不会误报 __pycache__）
+    rules = ms.payload_rules(root)
+    # ① 库副本 vs 本仓正本：逐文件 SHA-256（payload_files 跳过 tests/ 与缓存产物，
+    #    技能自带测试是本仓开发件，不进安装面，也不该出现在库里）
     for name in plan:
         src = ms.family_src(root, name, plan)
         dst = os.path.join(lib, name)
@@ -469,7 +472,7 @@ def chk_install_sync(root, ms):
             problems.append(f"{name}：注册表指向的正本目录不存在（{src}）")
             continue
         try:
-            a = ms.tree_files(src)
+            a = ms.payload_files(src, rules)
         except PermissionError:
             # 环境（安全层/占用）拦读源件：这一条核对不了，如实记账，不判红也不假装通过
             blocked.append(name)
@@ -489,7 +492,7 @@ def chk_install_sync(root, ms):
             problems.append(f"{name}：库内没有这一条")
             continue
         try:
-            b = ms.tree_files(dst)
+            b = ms.payload_files(dst, rules)
         except PermissionError:
             blocked.append(name)
             continue
@@ -510,6 +513,21 @@ def chk_install_sync(root, ms):
             problems.append(f"装机来源没钉死：标记读不出用不了（{marker_path} 损坏／schema 不认识／指向的仓不在了）")
     elif os.path.normcase(marked) != os.path.normcase(os.path.abspath(root)):
         problems.append(f"这个库是从 {marked} 装的，不是本仓")
+    # ③ 库内不得残留开发件（tests/、缓存）：apply 会清，这里量盘上现状
+    for name in plan:
+        d = os.path.join(lib, name)
+        if not os.path.isdir(d):
+            continue
+        for base, dnames, fnames in os.walk(d):
+            for x in list(dnames):
+                if x in rules.get("exclude_dirs", ()):
+                    rel = os.path.relpath(os.path.join(base, x), d).replace(os.sep, "/")
+                    problems.append(f"{name}/{rel}：库内残留开发件")
+                    dnames.remove(x)
+            for f in fnames:
+                if f.endswith(tuple(rules.get("exclude_suffixes") or ())):
+                    rel = os.path.relpath(os.path.join(base, f), d).replace(os.sep, "/")
+                    problems.append(f"{name}/{rel}：库内残留开发件")
     if problems:
         head = "；".join(problems[:6])
         more = f"（共 {len(problems)} 处）" if len(problems) > 6 else ""
@@ -601,7 +619,7 @@ def chk_install_receipt(root: str, ms):
         want = hashes.get(name)
         if not want:
             bad.append(f"{name}：回执无哈希")
-        elif ms.tree_digest(d) != want:
+        elif ms.tree_digest(d, ms.payload_rules(root)) != want:
             bad.append(f"{name}：哈希不符")
     profile = marker.get("profile")
     if profile:
@@ -612,6 +630,186 @@ def chk_install_receipt(root: str, ms):
     if bad:
         return "fail", "；".join(bad[:6]) + (f"（共 {len(bad)} 处）" if len(bad) > 6 else "")
     return "ok", f"回执 {len(names)} 条技能、档位={profile or 'full'}；哈希与库一致"
+
+
+LAYOUT_REL = "manifests/package-layout.json"
+LAYOUT_SCHEMA = "kai-mode-package-layout/1"
+SCAFFOLD_HANDOFF_SOURCE_RE = re.compile(
+    r"^handoff/(?:README\.md|60-board/README\.md|templates/[^/]+\.md)$")
+
+
+def _safe_rel(value) -> bool:
+    """落点必须留在目标仓内：非空、相对、不含 ..。"""
+    if not isinstance(value, str) or not value.strip():
+        return False
+    norm = value.replace("\\", "/")
+    if norm.startswith("/") or re.match(r"^[A-Za-z]:", norm):
+        return False
+    return ".." not in norm.split("/")
+
+
+def chk_package_layout(root: str, ms):
+    """24 三层打包边界（ADR-0011）：本仓开发件不进宿主库，也不进项目骨架。
+    静态查清单与安装面；有 scripts/init-project.py 就实跑一次，生成文件集合必须与清单逐件相等。"""
+    path = os.path.join(root, *LAYOUT_REL.split("/"))
+    if not os.path.isfile(path):
+        return "skip", f"没有 {LAYOUT_REL}（旧仓不适用）"
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError) as exc:
+        return "fail", f"{LAYOUT_REL} 读不出：{exc}"
+    if not isinstance(data, dict) or data.get("schema") != LAYOUT_SCHEMA:
+        return "fail", f"{LAYOUT_REL} schema 不是 {LAYOUT_SCHEMA}"
+    problems = []
+    repo_only = data.get("repo_only")
+    if (not isinstance(repo_only, list) or not repo_only
+            or not all(isinstance(x, str) and x for x in repo_only)):
+        problems.append("repo_only 必须是非空字符串数组")
+    hp = data.get("host_payload") if isinstance(data.get("host_payload"), dict) else {}
+    if hp.get("source") != "registry.json#install:auto":
+        problems.append("host_payload.source 必须指向 registry.json#install:auto（名单不另抄一份）")
+    dirs = hp.get("exclude_dirs")
+    sufs = hp.get("exclude_suffixes")
+    need_dirs = {"tests", "__pycache__", ".pytest_cache"}
+    if not isinstance(dirs, list) or not need_dirs <= set(dirs):
+        problems.append("host_payload.exclude_dirs 必须含 " + "／".join(sorted(need_dirs)))
+    if not isinstance(sufs, list) or ".pyc" not in sufs:
+        problems.append("host_payload.exclude_suffixes 必须含 .pyc")
+    spec = data.get("project_scaffold") if isinstance(data.get("project_scaffold"), dict) else {}
+    if not spec:
+        problems.append("缺 project_scaffold")
+    # 安装面实量：payload 不得含被排除的开发件（防安装器与清单脱钩）
+    reg, reg_err = registry(root, ms) if ms is not None else (None, "magpie-sync 读不出来")
+    if reg is None:
+        problems.append(f"注册表不可用：{reg_err}")
+    else:
+        rules = ms.payload_rules(root)
+        dirs_ex = set(rules.get("exclude_dirs") or ())
+        suf_ex = tuple(rules.get("exclude_suffixes") or ())
+        for entry in reg.get("skills") or []:
+            if not isinstance(entry, dict) or entry.get("install") != "auto":
+                continue
+            rel = str(entry.get("path") or "")
+            src = os.path.join(root, *rel.split("/")) if rel else ""
+            if not src or not os.path.isdir(src):
+                continue
+            leaked = sorted(
+                p for p in ms.payload_files(src, rules)
+                if any(seg in dirs_ex for seg in p.split("/")[:-1]) or p.endswith(suf_ex)
+            )
+            if leaked:
+                problems.append(
+                    f"{entry.get('name')} 安装面混入开发件（清单排除没生效）：{'、'.join(leaked[:4])}")
+    # 骨架源与落点
+    cfg = spec.get("config") if isinstance(spec.get("config"), dict) else {}
+    gloss = spec.get("glossary") if isinstance(spec.get("glossary"), dict) else {}
+    hand = spec.get("handoff") if isinstance(spec.get("handoff"), dict) else {}
+    sources = []
+    for label, item in (("config", cfg), ("glossary", gloss)):
+        frm, to = item.get("from"), item.get("to")
+        if not isinstance(frm, str) or not frm or not _safe_rel(to):
+            problems.append(f"project_scaffold.{label} 的 from/to 不合法")
+            continue
+        sources.append(frm)
+        if not os.path.isfile(os.path.join(root, *frm.split("/"))):
+            problems.append(f"{label} 源件不存在：{frm}")
+    hand_files = hand.get("files") if isinstance(hand.get("files"), dict) else {}
+    if not hand_files:
+        problems.append("project_scaffold.handoff.files 必须是非空映射")
+    for frm, to in hand_files.items():
+        sources.append(frm)
+        if not SCAFFOLD_HANDOFF_SOURCE_RE.match(frm):
+            problems.append(f"交接骨架源越界（只许 README／看板 README／templates 模板）：{frm}")
+        if not isinstance(to, str) or not to.startswith("handoff/") or not _safe_rel(to):
+            problems.append(f"交接骨架落点必须留在 handoff/：{to!r}")
+        if not os.path.isfile(os.path.join(root, *frm.split("/"))):
+            problems.append(f"交接骨架源件不存在：{frm}")
+    for frm in sources:
+        if frm == "docs" or frm.startswith("docs/"):
+            problems.append(f"骨架源件来自 docs/（本仓正本，不许复制）：{frm}")
+    if not _safe_rel(spec.get("adr_dir")):
+        problems.append("project_scaffold.adr_dir 必须是仓内相对路径")
+    placeholder = spec.get("placeholder")
+    if not isinstance(placeholder, str) or not placeholder:
+        problems.append("project_scaffold.placeholder 必须是非空文件名")
+    slots = hand.get("slots") if isinstance(hand.get("slots"), list) else []
+    monthly = hand.get("monthly_slots") if isinstance(hand.get("monthly_slots"), list) else []
+    board_slot = hand.get("board_slot")
+    board_children = hand.get("board_children") if isinstance(hand.get("board_children"), list) else []
+    if not slots:
+        problems.append("handoff.slots 必须是非空数组")
+    if board_slot not in slots:
+        problems.append("handoff.board_slot 必须在 slots 里")
+    if not board_children:
+        problems.append("handoff.board_children 必须是非空数组")
+    if set(monthly) | {board_slot} != set(slots):
+        problems.append("handoff.monthly_slots ＋ board_slot 必须正好覆盖 slots")
+    if problems:
+        return "fail", "；".join(problems[:6]) + (f"（共 {len(problems)} 处）" if len(problems) > 6 else "")
+    # 实跑对账：生成面必须与清单逐件相等
+    init = os.path.join(root, "scripts", "init-project.py")
+    if not os.path.isfile(init):
+        return "ok", "清单与安装面通过（没有 scripts/init-project.py，未实跑骨架）"
+    with tempfile.TemporaryDirectory(prefix="kai-layout-") as tmp:
+        target = os.path.join(tmp, "proj")
+        os.makedirs(target)
+        answers = {
+            "project": "layout-probe", "ticket_source": "github", "repo_slug": "probe/probe",
+            "day_tables_dir": ".ai/tasks", "handoff_dir": "handoff", "ideas_dir": "ideas",
+            "adr_dir": spec["adr_dir"], "host": "qoder",
+            "preflight_gate": "scripts/captain-preflight.py",
+            "boom_summary_ticket": "", "agent_models": None,
+        }
+        apath = os.path.join(tmp, "answers.json")
+        with open(apath, "w", encoding="utf-8") as f:
+            json.dump(answers, f, ensure_ascii=False)
+        p = subprocess.run([sys.executable, init, "--repo", target, "--answers", apath],
+                           capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", cwd=root)
+        if p.returncode != 0:
+            tail = ((p.stdout or "") + (p.stderr or "")).strip().splitlines()[-2:]
+            return "fail", f"init-project 实跑失败 rc={p.returncode}：{' '.join(tail)[:240]}"
+        actual = set()
+        for base, _d, files in os.walk(target):
+            for fn in files:
+                actual.add(os.path.relpath(os.path.join(base, fn), target).replace(os.sep, "/"))
+        adr_src = os.path.join(root, "docs", "adr")
+        adr_names = sorted(fn for fn in os.listdir(adr_src)
+                           if fn.endswith(".md")) if os.path.isdir(adr_src) else []
+        leaked = []
+        if adr_names:
+            for rel in sorted(actual):
+                try:
+                    with open(os.path.join(target, *rel.split("/")), encoding="utf-8",
+                              errors="replace") as f:
+                        text = f.read()
+                except OSError:
+                    continue
+                hit = [n for n in adr_names if n in text]
+                if hit:
+                    leaked.append(f"{rel} ← {'、'.join(hit[:2])}")
+        if leaked:
+            return "fail", "骨架夹带本仓 ADR 文件名（开发记录混入）：" + "；".join(leaked[:4])
+        month = dt.date.today().strftime("%Y-%m")
+        expected = {cfg["to"], gloss["to"], f"{spec['adr_dir']}/{placeholder}"}
+        expected |= set(hand_files.values())
+        for slot in slots:
+            subs = board_children if slot == board_slot else [month]
+            for sub in subs:
+                expected.add(f"handoff/{slot}/{sub}/{placeholder}")
+        missing, extra = sorted(expected - actual), sorted(actual - expected)
+        if missing or extra:
+            bits = []
+            if missing:
+                bits.append("缺：" + "、".join(missing[:6]))
+            if extra:
+                bits.append("多：" + "、".join(extra[:6]))
+            return "fail", "骨架实跑与清单不一致（" + "；".join(bits) + "）"
+    n_auto = sum(1 for e in (reg.get("skills") or [])
+                 if isinstance(e, dict) and e.get("install") == "auto")
+    return "ok", (f"三层边界通过：安装面 {n_auto} 条无开发件；骨架 {len(slots)} 槽／"
+                  f"{len(expected)} 件与清单逐件一致")
 
 
 def _decouple_whitelisted(rel: str) -> bool:
@@ -1349,6 +1547,7 @@ CHECKS = (
     ("install-sync", "装机同步（库副本与来源）", chk_install_sync),
     ("install-profiles", "安装档位清单（core/full）", chk_install_profiles),
     ("install-receipt", "安装回执（档位/技能/哈希）", chk_install_receipt),
+    ("package-layout", "三层打包边界（开发件/安装件/骨架）", chk_package_layout),
     ("decoupling-gate", "解耦门（项目硬路径零残留）", chk_decoupling),
     ("host-neutral", "宿主专有 token 不进正本", chk_host_neutral),
     ("handoff-slots", "交接文档分类（槽位/命名/归位）", chk_handoff),

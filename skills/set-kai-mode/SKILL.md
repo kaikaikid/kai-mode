@@ -14,6 +14,8 @@ sources:
     note: "四岗位技能正本；本技能负责把它们装到宿主"
   - resource: "skills/set-kai-mode/scripts/magpie-sync.py"
     note: "技能正本 → Magpie 中央库 → 各家宿主链接的回写口"
+  - resource: "框架仓旧裁决"
+    note: "三层打包边界：安装面只装 install:auto 的运行件（排除 tests/缓存），项目骨架只从 manifests/package-layout.json 生成"
 description: >
   kai-mode 的初始化安装入口（不是日常施工）：**先看缺什么、列出推荐清单跟用户确认，再只装缺的**，
   避免重复安装。覆盖：注入方法论与技能、把四角色技能装到宿主（Magpie / Qoder 或其它宿主）、
@@ -22,7 +24,7 @@ description: >
   doctor、缺件如实登记。触发：新 agent 接手装配、换宿主、装/改定时器、修技能落点、
   给项目出技能骨架、迁旧配置实例、问「这套东西都住在哪」。
   不做日常施工。
-version: 4.5.0
+version: 4.6.0
 updated: 2026-10-24
 allowed-tools: Bash(*) Read Write Edit
 compatibility: Requires python3, git
@@ -160,6 +162,10 @@ python $S apply --profile core             # 正本 → 库 → 各家链接；�
 - **安装回执**：库根 `.kai-mode-source.json` 记来源根、HEAD、档位、技能清单与每技能哈希；
   `doctor` 的 `install-receipt` 项校验。写库前整包备份到 `<库根>/.backups/`（保留 5 份），失败自动还原。
 - 手动件（如 `harness-audit`）不进档位；需要时单独 `install:manual` 装。
+- **安装面与开发件分开**：只装技能运行件；`tests/`、`__pycache__`、`.pytest_cache`、`*.pyc` 不装，
+  `apply` 会在备份后清掉库里残留的这类文件。边界正本＝`manifests/package-layout.json`
+  （[框架仓旧裁决](../../框架仓旧裁决)），doctor 的 `package-layout`
+  会实跑初始化器对账；用户项目里的骨架只按该清单生成，不会带出本仓 ADR 或交接历史。
 - **旧角色一次性迁移**：角色改名后首次 apply 可加 `--retire-legacy`——旧中文目录移到 `<库根>/.retired/<时间>/`，
   宿主旧链摘掉；符号链接才摘，实体目录只报告不动；写前照样整包备份。
 - **两套定时器各管各的，别混**：本技能装的是**塔台唤醒定时器**（只唤醒塔台；走宿主定时口、每轮拉起 AI 会话，要 token，
@@ -175,7 +181,8 @@ python $S apply --profile core             # 正本 → 库 → 各家链接；�
   标记坏了／那个仓没了 ⇒ 退回老路（跳过库根，继续按脚本位置／cwd 反查），不硬失败。
 - 装完要**当场验装机同步**：`python 框架仓门禁` 的`install-sync` 项 比中央库副本与本仓是否逐字相同、
   库记住的来源是不是本仓（红了就跑一次 `apply --root <本仓> --library <库>` 修）。
-- 三条硬规矩：① 写库前**整包备份 ＋ SHA-256 基线**；② 脚本**只新增、只覆盖同路径，绝不删**库里多出来的东西；
+- 三条硬规矩：① 写库前**整包备份 ＋ SHA-256 基线**；② 脚本**只新增、只覆盖同路径，绝不删**库里多出来的东西
+  （唯一例外＝安装面排除的开发件 `tests/`、缓存，`apply` 会清）；
   ③ Magpie 进程在跑时可能用内存版覆盖回注册档 ⇒ `apply` 后隔 ≥90 s 再 `check` 一次。
 - 存证同批归零：`python scripts/skill-attest.py attest --by human:<批准人> && python scripts/skill-attest.py verify`（rc=0；脚本在项目仓）。
 - 其它宿主没有中央库时：按宿主的技能目录**拷贝同一份正本**，拷完逐文件比哈希；不做「只在聊天里贴一遍」。

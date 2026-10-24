@@ -8,7 +8,7 @@
 handoff/<槽>/<YYYY-MM>/YYYY-MM-DD-<票号|slug>-<类型>.md
 ```
 
-例：`handoff/20-plan/2026-10/2026-10-23-kai-mode-rebuild-plan.md`
+例：`handoff/20-plan/2026-10/2026-10-23-<主题>-plan.md`
 
 ## 2. 槽位表：类型词 → 槽
 
@@ -20,7 +20,7 @@ handoff/<槽>/<YYYY-MM>/YYYY-MM-DD-<票号|slug>-<类型>.md
 | `30-research` | `research` `analysis` `comparison` `census` `survey` |
 | `40-review` | `review` `audit` `triage` `postmortem` `acceptance` |
 | `50-comms` | `msg` `ask` `answer` `notice`（角色之间传话，见 §2.1） |
-| `60-board` | `task` `hotfix` `dispatch` `claim` `blocked`（看板**数据层**，见 [60-board/README.md](60-board/README.md)；人看的展示形态走 `skills/flight-info/`） |
+| `60-board` | `task` `hotfix` `dispatch` `claim` `blocked`（看板**数据层**，见 [60-board/README.md](60-board/README.md)；人读展示由看板技能提供） |
 | `90-archive` | 归档区，按 `YYYY-MM/` 分月 |
 
 判定顺序：文件名尾类型词 → 命中即落对应槽；看不出来进 `00-inbox/`，7 天内补齐类型词归位。
@@ -41,7 +41,7 @@ handoff/<槽>/<YYYY-MM>/YYYY-MM-DD-<票号|slug>-<类型>.md
 - 一个件**只谈一件事**；同一个话题的往返追加在同一个文件里，不新开
 - **不是聊天记录**：结论与下一步写清楚，过程不记
 - 与 `60-board` 分工：**要有人干活 → 看板（`task`/`hotfix`）；只是要让对方知道 → 这里**
-- 状态正本仍是 issue（[ADR-0003](../docs/adr/0003-airport-rebuild-four-roles.md) D3）；这里传的是**话**，不是票状态
+- 状态正本仍是票源（Issue）；这里传的是**话**，不是票状态
 
 ## 3. frontmatter（必填 —— AI 认用途读字段，不读正文猜）
 
@@ -59,7 +59,7 @@ handoff/<槽>/<YYYY-MM>/YYYY-MM-DD-<票号|slug>-<类型>.md
 ## 4. 路径纪律
 
 - 一律**相对仓根**（`skills/tower/SKILL.md`）；**禁写 `D:\` `C:\`** 机器绝对路径
-- 只放 `.md`；仓根 `.md` 只允许 `README`/`AGENTS`/`CHANGELOG` 三份
+- 只放 `.md`；仓根 `.md` 只放项目级说明（如 `README`/`AGENTS`/`CHANGELOG`/`GLOSSARY`），业务正文别散落
 
 ## 5. 寿命
 
@@ -67,16 +67,14 @@ handoff/<槽>/<YYYY-MM>/YYYY-MM-DD-<票号|slug>-<类型>.md
 - 三个月后还有人要看的内容 → 提炼进 `docs/`（ADR / spec）
 - handoff 与 docs **并列不合并**（短命纸条 vs 长期正本）
 
-## 6. 命令
+## 6. 命令（框架仓自用，不随项目安装）
 
-```bash
-python scripts/doctor.py                 # `handoff-slots` 项：本规范门禁（红即 rc=1）
-python scripts/handoff-board.py list     # 跨 agent 看板
-```
+框架仓里跑的是 `doctor` 的 `handoff-slots` 项与 `scripts/handoff-board.py`；用户项目没有 `doctor`，
+看板脚本用 `kai-handoff` 技能目录下的 `scripts/handoff-board.py`，或按 §2／§3 手写卡片。
 
-## 7. 门禁覆盖（doctor 的 `handoff-slots` 项）
+## 7. 门禁覆盖（框架仓 doctor 的 `handoff-slots` 项）
 
 八槽齐全 / 两级路径 / 命名与年月一致 / frontmatter `slot`·`type` 一致 / 类型词对槽 /
 inbox 7 天 / 仓根不散落 / 无机器绝对路径。
 
-**加新类型词须同步改两处**：本文件 §2 与 `scripts/doctor.py` 的 `HANDOFF_TYPE2SLOT`。
+**加新类型词须同步改两处**：本文件 §2 与门禁脚本的类型表（框架仓为 `scripts/doctor.py` 的 `HANDOFF_TYPE2SLOT`）。

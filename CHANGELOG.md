@@ -2,6 +2,21 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.16.0 — 2026-10-24
+
+- **三层打包边界**（[ADR-0011](docs/adr/0011-package-layout-three-layers.md)）：新增
+  `manifests/package-layout.json`，把本仓开发件、宿主安装件、项目生成件分开；安装面只装
+  `install:auto` 的运行件，项目骨架只从清单生成。
+- 技能安装面排除 `tests/`、`__pycache__`、`.pytest_cache`、`*.pyc`；`magpie-sync.py` 的复制／比对／
+  回执统一走 `payload_files()`，`apply` 备份后清掉库里残留的开发件。
+- `init-project.py` 改读清单（不再硬编码槽位与复制源）；新增 `templates/GLOSSARY.md`；空
+  `docs/adr/` 写 `.gitkeep`，结构能被 git 带进用户项目。
+- doctor 新增第 24 项 `package-layout`：静态校验 ＋ 临时目录实跑初始化器，生成集合必须与清单
+  逐件相等；`install-sync` 同时量库内残留开发件。
+- 回归测试：源仓有 `tests/` 允许、安装面含 `tests/` 才红；交接历史作骨架源即红；骨架源缺失即红。
+- 看板脚本移入 `kai-handoff/scripts/` 随技能安装（框架仓保留兼容入口）；交接骨架文档去掉本仓专名、
+  ADR 链接与框架仓命令，改为项目中立写法。`kai-handoff` 0.3.0。
+
 ## 0.15.0 — 2026-10-24
 
 - **角色唤醒围栏**（[ADR-0010](docs/adr/0010-role-wake-fence.md)）：`ground-crew`／`tower`／`pilot`／`copilot`／`kai-mode`
