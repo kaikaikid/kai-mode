@@ -22,7 +22,9 @@ codex --version          # 本机实测 0.163.0-alpha.10.2
 - **Researcher（检索/探索）**：`codex exec -s read-only`，只产出研究稿，不写实现。
 - **降级**：无 Task 类子代理字段 ⇒ 三个角色都用独立 `codex exec` 进程顶替，各带各的 sandbox；付费未授权 ⇒ 记 `paid-not-authorized`，不偷偷跑。
 
-## 起角色（可写）
+## 起角色（可写，仅人工执行）
+
+> 任何角色不得自动调用 `codex exec` 起另一个角色（[ADR-0010](../docs/adr/0010-role-wake-fence.md)）。
 
 ```bash
 codex exec -C <仓库根> -s workspace-write --json -o <回执文件> \

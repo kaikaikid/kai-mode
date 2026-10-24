@@ -17,7 +17,7 @@ description: >
   想法进 BOOM（全文进项目配置 paths.ideas_dir 目录 + 想法池汇总票简述），可执行需求进 Issue（挂里程碑、ready-for-agent、AC、允许/禁止修改、验证命令）。
   不写产品代码、不 push、不派施工。触发：`/地勤`、用户要规划 / 开票 / 记想法，
   或 `/kai-mode` 把需求交给地勤。
-version: 1.1.0
+version: 1.2.0
 updated: 2026-10-24
 allowed-tools: Bash(gh:*) Read Grep WebFetch
 compatibility: Requires git, gh CLI
@@ -48,7 +48,7 @@ dependencies:
 ## 激活方式
 
 - 口令：`/地勤`；技能名：`地勤`。
-- 也可由 `/kai-mode` 按需求分流拉起。
+- `/kai-mode` 只按需求分流并推荐命令；本角色不自动起会话，交人工唤醒。
 - 目前**人工拉起**；后期可定时（定时器与宿主适配由 `set-kai-mode` 装，本技能不写死宿主）。
 - 斜杠命令只是别名；没有斜杠命令的宿主，读到本文件即可按此执行。
 
@@ -124,6 +124,7 @@ dependencies:
 - push、合并 dev、关票、改他人 Issue 的状态评论。
 - 写日表（`paths.day_tables_dir`，日表只由塔台写）。
 - 派施工子代理或直接指挥机长。
+- 唤醒 / 拉起任何其他角色；需要谁动作写进 Issue 评论或播报，交人工唤醒（[框架仓旧裁决](../../框架仓旧裁决)）。
 - 给在飞票加需求：已进日表的票只补澄清评论；要改范围 → 先让塔台撤出日表，或另开新票。
 
 ## 失败、红线与停止条件

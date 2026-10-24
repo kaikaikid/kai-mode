@@ -253,6 +253,25 @@ def test_bad_install_enum_is_red(tmp_path):
     assert status_of(out, "registry-fields") == "fail"
 
 
+def test_canon_wake_fence_phrase_is_red(tmp_path):
+    root = make_repo(tmp_path)
+    (root / "docs" / "canon.json").write_text(json.dumps({
+        "retired_terms": [], "scan_roots": ["skills"], "exempt": [],
+        "canon_keys": [{
+            "key": "wake-fence",
+            "home": "docs/adr/0010-role-wake-fence.md",
+            "pattern": "拉起继任机长",
+            "forbidden": ["skills"],
+        }],
+    }, ensure_ascii=False), encoding="utf-8")
+    (root / "skills" / "alpha" / "notes.md").write_text(
+        "发现停摆就拉起继任机长。\n", encoding="utf-8")
+    rc, data = run_doctor(root)
+    assert rc == 1
+    assert status_of(data, "canon-dup") == "fail"
+    assert "wake-fence" in detail_of(data, "canon-dup")
+
+
 def test_install_profiles_bad_reference_is_red(tmp_path):
     root = make_repo(tmp_path)
     (root / "manifests").mkdir()

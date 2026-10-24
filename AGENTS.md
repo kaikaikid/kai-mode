@@ -37,6 +37,13 @@ On a red line: stop that ticket only, record why, ask the human. Never self-appr
 approval rule (or your own permissions) first. An approval must be traceable — it binds ticket +
 scope + risk, and goes stale when scope changes.
 
+## Wake fence
+
+Roles never create or wake each other's sessions. Only a human starts a role; the scheduler may
+wake **tower only**. `kai-mode` routes and prints the command but does not call session-creation
+tools. Subagents within a ticket are not role sessions. Source of truth:
+`docs/adr/0010-role-wake-fence.md`.
+
 ## Where each kind of rule lives (one kind, one home)
 
 | Kind | Only home | Elsewhere |
@@ -46,6 +53,7 @@ scope + risk, and goes stale when scope changes.
 | Out-of-ticket dispatch (when not to delegate, who may dispatch whom, concurrency, context budget) | `agents/dispatch.md` | pointer |
 | Method (how to explore / review / plan / implement) | `agents/<persona>.md` | pointer |
 | Host differences (launcher per role, how a persona becomes a native agent file, permissions, model) | `adapters/README.md` + `adapters/<host>.md` | pointer |
+| Role wake permissions (who may wake whom) | `docs/adr/0010-role-wake-fence.md` | pointer in role skills |
 | Runtime mechanics (retry, timeout, circuit breaker, budget, TTL) | **not in docs** — belongs to the host runtime | — |
 | Project instance values (thresholds, paths, ticket ids, **agent models** `models.agents.<persona>.model`) | project config instance | template only |
 

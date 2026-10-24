@@ -35,7 +35,7 @@ qoder_cron 任务（每 60 分钟，enabled）
 - 建完必回读：`list` 看 `enabled` / `nextRunAt`（换算成人话几点）；`pauseReason=manual` ＝ 有人手动停，别自动重开。
 - 旧的多枚定时任务先 `disable` → 确认 `runningAt` 为空 → 再 `remove`；**别对正在跑的直接 remove**；不得与 60 分钟唤醒定时器并存（[0003](../docs/adr/0003-airport-rebuild-four-roles.md) D5）。
 
-## 备用形状：按需子会话（拉起塔台之外的角色）
+## 备用形状：人工点火（起塔台之外的角色）
 
 ```text
 角色会话（无 qoder_cron）
@@ -46,8 +46,9 @@ qoder_cron 任务（每 60 分钟，enabled）
         └─ 写回执后结束
 ```
 
+- **仅人工执行**：这条链路由人手动触发；任何角色不得自动调用会话创建口（[ADR-0010](../docs/adr/0010-role-wake-fence.md)）。
 - 子会话是点火器不是执行体：只负责把目标拉起，不替角色干活、不替审查下结论。
-- 塔台停摆拉起继任机长走同一条路；缺会话口就把缺件写进 `/set-kai-mode` 的缺件登记。
+- 塔台停摆时，人工拉起继任机长走同一条路；缺会话口就把缺件写进 `/set-kai-mode` 的缺件登记。
 
 ## 边界
 

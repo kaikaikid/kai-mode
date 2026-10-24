@@ -28,6 +28,7 @@ opencode run --model <free-model> \
   "读取并执行 <仓库>/skills/<角色>/SKILL.md 全文；你的角色是 opencode-<角色>-<时间戳>；只做该文件写的动作。" &
 ```
 
+- **仅人工执行**：由人手动运行；任何角色不得自动调用 `opencode run` 起另一个角色（[ADR-0010](../docs/adr/0010-role-wake-fence.md)）。
 - 后台起，不阻塞；用项目本机配置记录 runner/model/版本。
 - 角色技能落点读项目配置实例 `registry.skills.project_skills_dir`（框架仓正本＝本仓 `skills/`），路径不写死（[0004](../docs/adr/0004-project-config-schema.md) D2/D6）。
 - 失败写 `launch-failed`；不重试到死，交人工。

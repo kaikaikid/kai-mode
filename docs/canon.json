@@ -25,6 +25,13 @@
       "pattern": "派生深度|嵌套深度|代际上限",
       "forbidden": ["skills", "loops", "adapters"],
       "why": "深度是人格层权限判据（宿主侧不给派生工具），协议、技能与宿主适配只许指过来"
+    },
+    {
+      "key": "wake-fence",
+      "home": "docs/adr/0010-role-wake-fence.md",
+      "pattern": "拉起继任机长|拉起继任副机长|自行判断拉起角色|自动拉起角色|自动唤醒继任",
+      "forbidden": ["skills", "agents", "README.md"],
+      "why": "角色之间不互相拉起/唤醒；只有人工与定时器（仅塔台）能唤醒角色（ADR-0010）"
     }
   ]
 }
