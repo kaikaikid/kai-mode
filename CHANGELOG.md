@@ -2,6 +2,19 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.17.0 — 2026-10-24
+
+- **解耦收口**：活跃技能 payload 里 77 处指向本仓 `docs/`／`loops/`／`agents/`／`adapters/`／
+  `handoff/`／`schemas/` 的相对链接改为 GitHub 绝对出处 URL；安装副本不再依赖本仓目录结构，
+  技能内部与兄弟技能相对链接保留。
+- doctor 新增第 25 项 `payload-refs`：安装面 Markdown 只能链自身、兄弟技能或 http(s)；
+  出现本仓开发件相对路径即红，附回归用例。
+- 修正 ADR-0003 活口：塔台表与部署步骤去掉「kai-mode 唤醒」；角色/唤醒器分离注记标明被 0010
+  收窄；中文看板目录补退役演进注。
+- `manifests/package-layout.json` 补 `.gitattributes`／`.gitignore` 与退役目录注记。
+- 相关技能补丁版本：copilot/pilot 2.5.1、ground-crew 1.2.1、kai-mode 2.5.1、loop 5.3.2、
+  principle-one-semantics-one-home 0.1.1、set-kai-mode 4.6.1、tower 1.4.1、flight-info 1.1.1。
+
 ## 0.16.0 — 2026-10-24
 
 - **三层打包边界**（[ADR-0011](docs/adr/0011-package-layout-three-layers.md)）：新增

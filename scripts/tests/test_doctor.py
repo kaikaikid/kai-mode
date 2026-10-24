@@ -457,3 +457,33 @@ def test_package_layout_missing_source_is_red(tmp_path):
     assert rc == 1
     assert status_of(data, "package-layout") == "fail"
     assert "源件不存在" in detail_of(data, "package-layout")
+
+
+# ── 25 payload-refs：安装面不得依赖本仓开发件 ────────────────────────────────
+def test_payload_refs_external_link_is_red(tmp_path):
+    root = make_repo(tmp_path)
+    (root / "skills" / "alpha" / "notes.md").write_text(
+        "[ADR](../../docs/adr/0001-x.md)\n", encoding="utf-8")
+    rc, data = run_doctor(root)
+    assert rc == 1
+    assert status_of(data, "payload-refs") == "fail"
+    assert "不随技能安装" in detail_of(data, "payload-refs")
+
+
+def test_payload_refs_absolute_url_is_green(tmp_path):
+    root = make_repo(tmp_path)
+    (root / "skills" / "alpha" / "notes.md").write_text(
+        "[ADR](https://github.com/kaikaikid/kai-mode/blob/main/docs/adr/0001-x.md)\n",
+        encoding="utf-8")
+    rc, data = run_doctor(root)
+    assert status_of(data, "payload-refs") == "ok"
+    assert rc == 0
+
+
+def test_payload_refs_sibling_skill_is_green(tmp_path):
+    root = make_repo(tmp_path, skills=("alpha", "beta"))
+    (root / "skills" / "alpha" / "notes.md").write_text(
+        "[beta](../beta/SKILL.md)\n", encoding="utf-8")
+    rc, data = run_doctor(root)
+    assert status_of(data, "payload-refs") == "ok"
+    assert rc == 0

@@ -42,10 +42,12 @@ accepted —— 2026-10-24 用户令：「把本项目开发的文件跟项目�
 
 ### D4 机械判据
 
-doctor 新增 `package-layout` 项（第 24 项）：
+doctor 新增两项：
 
-- 静态：清单 schema、安装面排除项、安装面文件不得含被排除路径、骨架源存在且不越界、落点安全、槽位覆盖完整。
-- 行为：在临时目录实跑 `init-project.py`，生成文件集合必须与清单**逐件相等**（多一件、少一件都红）。
+- `package-layout`（第 24 项）：静态查清单与安装面排除项、骨架源与落点；在临时目录实跑
+  `init-project.py`，生成文件集合必须与清单**逐件相等**，生成内容不得出现本仓 ADR 文件名。
+- `payload-refs`（第 25 项）：安装面 Markdown 只能链自身目录、已登记兄弟技能或 http(s)；
+  指向 `docs/`／`loops/` 等本仓开发件即红。框架文档引用一律用 GitHub 绝对出处 URL。
 - 已有库：`install-sync` 同时量「库内残留开发件」，避免只改代码、不改盘。
 
 新增骨架件的流程固定为：加模板 → 加清单一行 → doctor 与回归测试同批过。
@@ -60,6 +62,7 @@ doctor 新增 `package-layout` 项（第 24 项）：
 
 ## 验证
 
-- `python scripts/doctor.py --with-tests`：24 项全绿（`package-layout` 报安装面条数与骨架件数）。
+- `python scripts/doctor.py --with-tests`：25 项全绿（`package-layout` 报安装面条数与骨架件数，
+  `payload-refs` 报安装面 Markdown 份数）。
 - `python -m pytest scripts/tests -q`：含「源仓有 tests 允许／安装面含 tests 才红」「交接历史作源即红」「骨架源缺失即红」。
 - 手工：任取一个用户项目跑 `init-project.py`，文件集合与 `project_scaffold` 逐件一致；中央库对应技能目录下无 `tests/`。

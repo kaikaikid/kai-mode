@@ -17,7 +17,7 @@ sources:
 description: >
   机场体系的副机长：与机长同权限、同一套流程，独立日表 `-deputy.md`。
   触发：`/副机长`（人工唤醒）；塔台只写日表/播报，kai-mode 只推荐命令，不自动起角色。
-version: 2.5.0
+version: 2.5.1
 updated: 2026-10-24
 allowed-tools: Bash(git:*) Read Grep
 compatibility: Requires git
@@ -68,7 +68,7 @@ python <gates.captain_preflight> --lane deputy
 ## 等待与止损（硬）
 
 与机长同一套判据，只对自己的 `-deputy.md` 车道票执行。细则正本＝
-[`../../loops/loop-protocol.md`](../../loops/loop-protocol.md)「八、等待纪律」「九、增量提交」
+`../../loops/loop-protocol.md`「八、等待纪律」「九、增量提交」
 ；deputy 执行清单：
 
 - wait 超时 **60–120 秒**一轮；连续**两次空轮询** → 活性探测（子进程在不在、工作树文件动没动）。
@@ -81,5 +81,5 @@ python <gates.captain_preflight> --lane deputy
 
 - 不读、不写 `-main.md`；不碰机长的票、分支、工作树。
 - 机长停摆时不自动接管，等塔台改日表。
-- **不唤醒任何其他角色**（含塔台、继任机长；[0006 D3](../../框架仓旧裁决) + [0010](../../框架仓旧裁决)）：同机长围栏——需要塔台写进交付/播报，交人工或唤醒定时器处理。
+- **不唤醒任何其他角色**（含塔台、继任机长；0006 D3 + 0010）：同机长围栏——需要塔台写进交付/播报，交人工或唤醒定时器处理。
 - 其余围栏、自决、断点与机长完全相同。

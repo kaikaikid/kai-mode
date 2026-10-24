@@ -3,6 +3,8 @@
   "version": 1,
   "_note": "三层打包边界正本（ADR-0011）：repo_only=本仓开发件，永不进宿主库、也不进项目骨架；host_payload 的名单仍以 registry.json 的 install:auto 为唯一来源（本文件只补排除项）；project_scaffold 是 init-project.py 唯一可生成的面，源只许 templates/ 或 handoff.files 列出的规范件，docs/ 一律不得作生成源。",
   "repo_only": [
+    ".gitattributes",
+    ".gitignore",
     "AGENTS.md",
     "CHANGELOG.md",
     "VERSION",
@@ -20,6 +22,11 @@
     "manifests/"
   ],
   "_repo_only_note": "handoff/ 里只有 project_scaffold.handoff.files 列出的 4 件规范/模板可作生成源；其余（日期目录、评审件、归档）都是本仓开发记录。docs/ 任何内容都不得复制进用户项目。",
+  "legacy_pending_removal": [
+    "skills/航班信息",
+    "skills/set-航班信息"
+  ],
+  "_legacy_note": "v0.10.0 起被 flight-info 取代的中文看板目录：不在 registry、不随安装；目录被环境锁死，待人工移除，doctor 的 unregistered-skill 会点名。",
   "host_payload": {
     "_note": "装到宿主中央库的内容＝registry.json 里 install:auto 的技能目录，逐字复制；下列开发件即使住在技能目录里也不随装，apply 时还要从库里清掉。",
     "source": "registry.json#install:auto",

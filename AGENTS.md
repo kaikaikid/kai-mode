@@ -1,7 +1,7 @@
 # kai-mode
 
 Framework repo, independent of any project repo. Run `python scripts/doctor.py` before and after
-every change — 24 checks, red means `rc=1`.  
+every change — 25 checks, red means `rc=1`.  
 `vendor/` is tracked (clones must be able to restore it); `scripts/tests/` runs under
 `doctor.py --with-tests` (needs pytest) and is part of that gate.
 
@@ -95,7 +95,7 @@ Pick the slot from the type word in the filename. Full rules: `handoff/README.md
 ## Commands
 
 ```bash
-python scripts/doctor.py [--with-tests]          # 24 checks; --with-tests includes scripts/tests
+python scripts/doctor.py [--with-tests]          # 25 checks; --with-tests includes scripts/tests
 python scripts/new-skill.py <n> --summary "..."  # skill scaffold
 python scripts/vendor-sync.py [--check]          # vendored skills: pull from local mirror / detect drift
 python scripts/handoff-board.py list             # cross-agent board

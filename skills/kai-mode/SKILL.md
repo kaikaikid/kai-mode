@@ -15,7 +15,7 @@ description: >
   → 定稿（清账 → ADR → 拆票草案 → 规划表）→ 用户拍一次板 → 路由给地勤开票 / 机长执行 / 塔台排班发货，
   只推荐唤醒命令，不自动起角色（框架仓旧裁决）；剧本不限于四角色。要全景/看进度时路由到看板（数据层 60-board ＋ 展示层 航班信息）。不执行具体活。
   触发：新想法、要开工、kai 模式；熟活可直接喊角色口令（/地勤 /塔台 /机长 /副机长）。
-version: 2.5.0
+version: 2.5.1
 updated: 2026-10-24
 allowed-tools: Read Grep
 compatibility: Host-agnostic
@@ -29,7 +29,7 @@ dependencies:
 
 # Kai Mode —— 所有剧本的统一入口
 
-> 落地 [0002 单句入口/拷问/定稿](../../框架仓旧裁决) 与 [0003 四角色机场](../../框架仓旧裁决)。
+> 落地 0002 单句入口/拷问/定稿 与 0003 四角色机场。
 > **中立层**：规则住仓库里，任何 agent / 任何编辑器一进仓库即生效；斜杠命令只是可选别名。
 
 ## 这是什么
@@ -68,7 +68,7 @@ dependencies:
 | 副机长 | `/副机长` | 同一条 loop 的另一分支，读 `-deputy` 日表 | [`skills/copilot/SKILL.md`](../copilot/SKILL.md) |
 
 **权限硬线**：塔台独占 push 与关票；机长/副机长只管理不写码、不 push；地勤只开票不施工；kai-mode 只做入口。
-细则以 [0003](../../框架仓旧裁决) D1／D5 为准，本文不复述。
+细则以 0003 D1／D5 为准，本文不复述。
 
 ## 拷问规则 —— 流程位＋指针
 
@@ -97,12 +97,12 @@ dependencies:
 | 有票要执行 | 机长 / 副机长 | 按日表开工；每票 1 施工 + 1 审查 |
 | 要排班 / 发货 / 关票 | 塔台 | 日表、一次合并 push、关票回执 |
 | 不属于四角色 | 对应剧本 | 登记行收进项目配置实例 `registry.playbooks[]` |
-| 要全景 / 看进度 | **看板**（三层：数据 ＋ 展示 ＋ 触发） | 数据层 [`handoff/60-board/`](../../handoff/60-board/README.md) 卡片；展示层 [`flight-info`](../flight-info/SKILL.md)（口令 `/航班信息`）的 `board.json`（AI 读）与 `index.html`（人读） |
+| 要全景 / 看进度 | **看板**（三层：数据 ＋ 展示 ＋ 触发） | 数据层 `handoff/60-board/` 卡片；展示层 [`flight-info`](../flight-info/SKILL.md)（口令 `/航班信息`）的 `board.json`（AI 读）与 `index.html`（人读） |
 
 **kai-mode 只做路由与推荐**：打印/写出 `/塔台`、`/机长`、`/副机长`、`/地勤` 等命令，交人工执行；
-**不调用会话创建口，不自动起角色**（[框架仓旧裁决](../../框架仓旧裁决)）。宿主缺能力时写进
+**不调用会话创建口，不自动起角色**（框架仓旧裁决）。宿主缺能力时写进
 `/set-kai-mode` 的缺件登记，不猜路径、不硬起。
-**唤醒塔台的人名单（现阶段，[框架仓旧裁决](../../框架仓旧裁决) D3）**：人工口令、60 分钟唤醒定时器两路；
+**唤醒塔台的人名单（现阶段，框架仓旧裁决）**：人工口令、60 分钟唤醒定时器两路；
 kai-mode 只推荐命令，不在唤醒名单；**机长/副机长也不得唤醒塔台**（后续可评审放开）——
 它们需要塔台时写进交付/播报，由人工或定时器处理。
 
@@ -112,25 +112,25 @@ kai-mode 只推荐命令，不在唤醒名单；**机长/副机长也不得唤�
 
 | 要判什么 | 正本 |
 |---|---|
-| 四角色职责、谁 push 谁关票 | [框架仓旧裁决](../../框架仓旧裁决) |
-| 一张票从领到发、名额、审查门、回执、红线 | [loop-protocol](../../loops/loop-protocol.md) |
-| 派子代理：何时不派、谁能派谁、并发、上下文纪律 | [agents/dispatch.md](../../agents/dispatch.md) |
-| 子代理人格：权限（`access`）、6 个人格、加人格步骤 | [agents/README.md](../../agents/README.md) |
-| 开票与 Definition of Ready | 地勤技能 ＋ [issue-tracker](../../docs/agents/issue-tracker.md) |
-| 交接文档与跨 agent 看板 | [handoff/README.md](../../handoff/README.md) |
-| 技能目录与字段契约 | [skill-layout](../../docs/skill-layout.md) |
-| 宿主差异：怎么起岗位、人格怎么落成宿主 agent 文件、模型怎么指定 | [adapters/README.md](../../adapters/README.md) |
-| 事件、任务、验收的机器可读形状 | [schemas/](../../schemas/) |
+| 四角色职责、谁 push 谁关票 | 框架仓旧裁决 |
+| 一张票从领到发、名额、审查门、回执、红线 | loop-protocol |
+| 派子代理：何时不派、谁能派谁、并发、上下文纪律 | agents/dispatch.md |
+| 子代理人格：权限（`access`）、6 个人格、加人格步骤 | agents/README.md |
+| 开票与 Definition of Ready | 地勤技能 ＋ issue-tracker |
+| 交接文档与跨 agent 看板 | handoff/README.md |
+| 技能目录与字段契约 | skill-layout |
+| 宿主差异：怎么起岗位、人格怎么落成宿主 agent 文件、模型怎么指定 | adapters/README.md |
+| 事件、任务、验收的机器可读形状 | schemas/ |
 
 ## 分层与硬互斥线
 
 | 层 | 管什么 | 正本 |
 |---|---|---|
 | 入口层 | 判断、拷问、定稿、路由 | 本文件 |
-| 方法层 | 怎么干（四岗位技能 ＋ 子代理人格 ＋ 单票闭环） | [agents/](../../agents/) ＋ [loops/](../../loops/) ＋ 各岗位技能 |
-| 调度层 | 谁在飞、排班、并发、发货 | [0003](../../框架仓旧裁决) ＋ 塔台技能 ＋ 项目配置 `paths.day_tables_dir` 日表 |
+| 方法层 | 怎么干（四岗位技能 ＋ 子代理人格 ＋ 单票闭环） | agents/ ＋ loops/ ＋ 各岗位技能 |
+| 调度层 | 谁在飞、排班、并发、发货 | 0003 ＋ 塔台技能 ＋ 项目配置 `paths.day_tables_dir` 日表 |
 | 记录层 | 票状态与证据 | GitHub Issue（唯一事实源）＋ 日表 |
-| 展示层 | 人看的全景（不改状态） | 数据 [`handoff/60-board/`](../../handoff/60-board/README.md) ＋ 展示 [`flight-info`](../flight-info/SKILL.md) |
+| 展示层 | 人看的全景（不改状态） | 数据 `handoff/60-board/` ＋ 展示 [`flight-info`](../flight-info/SKILL.md) |
 
 - 入口**不复述**任何一层的判据；剧本**不写**谁在飞 / 并发 / 发货；调度**不改**剧本判据。
 - 一个语义只许一个家：判据见 [`principle-one-semantics-one-home`](../principle-one-semantics-one-home/SKILL.md)。
@@ -143,9 +143,9 @@ kai-mode 只推荐命令，不在唤醒名单；**机长/副机长也不得唤�
 - **传指针不传全文**：给子代理文件路径与票号，不粘正文；回收只收回执上限内的结论（见 `loops/loop-protocol.md` §五）。
 - **仪式随规模塌缩**：判据见 [`principle-ceremony-collapses-with-scale`](../principle-ceremony-collapses-with-scale/SKILL.md)。
 - **默认往前走**：判据见 [`principle-measure-dont-ask`](../principle-measure-dont-ask/SKILL.md)。
-- **不搬**并行舰队那套机器（与 [0003](../../框架仓旧裁决) 的单写手/隔离口径相反）。
+- **不搬**并行舰队那套机器（与 0003 的单写手/隔离口径相反）。
 
 ## 历史
 
-旧机场机器（2026-10-21 前那套）已退役，角色、并发、任务面与发货边界一律以 [0003](../../框架仓旧裁决) 为准；
+旧机场机器（2026-10-21 前那套）已退役，角色、并发、任务面与发货边界一律以 0003 为准；
 配置与安装走 [`/set-kai-mode`](../set-kai-mode/SKILL.md)。

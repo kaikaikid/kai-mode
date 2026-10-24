@@ -16,7 +16,7 @@ description: >
   模块化：db / stage / sources / collect / render / config 单向依赖，源按类型插件式增删。
   刷新靠 git 钩子打脏标记 ＋ 有脏才刷，零 token、跨 agent；任一源失败只降级点名，不整页崩。
   触发：/航班信息、刷新航班信息板、看现在在飞什么、给这个仓装一块板。
-version: 1.1.0
+version: 1.1.1
 updated: 2026-10-24
 allowed-tools: Bash(python:*) Bash(git:*) Read Write
 compatibility: Requires python3 (stdlib only), git

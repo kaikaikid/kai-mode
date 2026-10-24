@@ -4,7 +4,7 @@
 kai-mode 框架仓 doctor（单一校验入口）
 =====================================
 用法：
-    python scripts/doctor.py                # 逐项检查（24 项）
+    python scripts/doctor.py                # 逐项检查（25 项）
     python scripts/doctor.py --with-tests   # 追加跑各技能自己的 pytest
     python scripts/doctor.py --json         # 机器可读：{"ok":bool,"checks":[{id,status,detail}]}
 
@@ -812,6 +812,63 @@ def chk_package_layout(root: str, ms):
                   f"{len(expected)} 件与清单逐件一致")
 
 
+def chk_payload_refs(root: str, ms):
+    """25 安装面自足：技能 payload 里的 Markdown 链接不得指向本仓开发件。
+    允许：锚点、http(s)/mailto、技能自身目录、已登记的兄弟技能；
+    出现 ../../docs、../../loops 等装不走的路径 ⇒ 红（改绝对出处 URL 或项目内文本）。"""
+    if ms is None:
+        return "fail", "magpie-sync 读不出来"
+    data, err = registry(root, ms)
+    if data is None:
+        return "skip", f"注册表不可用（01 已报）：{err}"
+    rules = ms.payload_rules(root)
+    active = []
+    for entry in data.get("skills") or []:
+        if not isinstance(entry, dict) or entry.get("install") not in ("auto", "manual"):
+            continue
+        rel = str(entry.get("path") or "").strip("/")
+        if rel:
+            active.append((entry.get("name"), rel))
+    allowed = [rel for _name, rel in active]
+    scanned, bad = 0, []
+    for name, rel in active:
+        src = os.path.join(root, *rel.split("/"))
+        if not os.path.isdir(src):
+            continue
+        for path in ms.payload_files(src, rules).values():
+            if not path.endswith(".md"):
+                continue
+            scanned += 1
+            with open(path, encoding="utf-8", errors="replace") as f:
+                lines = f.read().splitlines()
+            fenced = False
+            for lineno, line in enumerate(lines, 1):
+                stripped = line.lstrip()
+                if stripped.startswith("```") or stripped.startswith("~~~"):
+                    fenced = not fenced
+                    continue
+                if fenced:
+                    continue
+                for m in LINK_RE.finditer(line):
+                    target = m.group(1).strip()
+                    if (not target or target.startswith(("#", "http://", "https://", "mailto:", "/"))
+                            or re.match(r"^[A-Za-z]:[\\/]", target)):
+                        continue
+                    target = target.split("#", 1)[0]
+                    if not target:
+                        continue
+                    resolved = os.path.normpath(os.path.join(os.path.dirname(path), *target.split("/")))
+                    relres = os.path.relpath(resolved, root).replace(os.sep, "/")
+                    where = f"{name}/{os.path.relpath(path, src)}:{lineno}"
+                    if relres == ".." or relres.startswith("../"):
+                        bad.append(f"{where} → {m.group(1)}（越出本仓）")
+                    elif not any(relres == d or relres.startswith(d + "/") for d in allowed):
+                        bad.append(f"{where} → {m.group(1)}（指向 {relres}，不随技能安装）")
+    if bad:
+        return "fail", "；".join(bad[:6]) + (f"（共 {len(bad)} 处）" if len(bad) > 6 else "")
+    return "ok", f"{scanned} 份安装面 Markdown：外部引用 0 处（仅自身/兄弟技能/http）"
+
+
 def _decouple_whitelisted(rel: str) -> bool:
     """解耦门白名单（仓内相对路径、正斜杠）：docs/adr（出处注记区）、_superseded/ 归档、
     缓存产物、本门自己的测试 fixture（scripts/tests/；当前扫描面不含 scripts/，这条防扫描面日后扩大）。"""
@@ -1548,6 +1605,7 @@ CHECKS = (
     ("install-profiles", "安装档位清单（core/full）", chk_install_profiles),
     ("install-receipt", "安装回执（档位/技能/哈希）", chk_install_receipt),
     ("package-layout", "三层打包边界（开发件/安装件/骨架）", chk_package_layout),
+    ("payload-refs", "安装面引用自足（不指本仓开发件）", chk_payload_refs),
     ("decoupling-gate", "解耦门（项目硬路径零残留）", chk_decoupling),
     ("host-neutral", "宿主专有 token 不进正本", chk_host_neutral),
     ("handoff-slots", "交接文档分类（槽位/命名/归位）", chk_handoff),
