@@ -43,10 +43,10 @@ accepted —— 2026-10-25 用户令：「再梳理一遍用户得到的配置�
 ### D5 零读者段本轮不删，登记为待拍项 → 已由 0015 执行
 
 `limits`／`wip`／`approval`／`acceptance`／`audit`／`execution`／`runtime.deps` 这批键是 0004 从 schema 2「沿用」来的。
-本轮（0.20.0）只做 D1–D4；键集终局见 [0015](0015-schema-4-keys-with-consumers.md)（schema 4，88→44 叶子键）。
+本轮（0.20.0）只做 D1–D4；键集终局见 [0015](0015-schema-4-keys-with-consumers.md)（schema 4；叶子键读数由 0015 D5 的量具生成）。
 
 ## Consequences
 
 - 新用户生成的实例里，每个非 null 值要么是他自己答的，要么是框架常量——不再有「照抄了别人项目的门名单」。
 - 代价：`gates` 全 null 后，机长/塔台跑到门步骤会如实报缺件（本来就该报），初始化输出的「下一棒」仍提示补门。
-- 配置面当时仍有约 60 个零读者键（D5）；下一步由 [0015](0015-schema-4-keys-with-consumers.md) 执行，88→44 叶子键。
+- 配置面当时仍有约 60 个零读者键（D5，该数按裸 token 量、已在上表更正）；下一步由 [0015](0015-schema-4-keys-with-consumers.md) 执行。

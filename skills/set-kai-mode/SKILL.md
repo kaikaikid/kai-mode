@@ -18,7 +18,7 @@ description: >
   doctor、缺件如实登记。触发：新 agent 接手装配、换宿主、装/改定时器、修技能落点、
   给项目出技能骨架、迁旧配置实例、问「这套东西都住在哪」。
   不做日常施工。
-version: 4.8.0
+version: 4.8.1
 updated: 2026-10-24
 allowed-tools: Bash(*) Read Write Edit
 compatibility: Requires python3, git
@@ -311,12 +311,13 @@ python scripts/framework-gate.py --selftest   # 推前框架门自证
      `registry.skills.project_skills_dir` / `loop_dir`；旧 runtime 三门 → `gates` 段
      （活契约只读 `captain_preflight`/`scope_check`/`close_gate` 三键，其余门按项目仓实情自己扩键）；
      旧 runtime 机器绝对路径 → 发现方式字段（机器值走 env `KAI_BACKEND_PYTHON` 与主树相对路径，**不入 tracked 实例**）。
-   - **沿用**：`project`/`repo_root`/`ship_mode`、`tower_cron.interval_min`、`runtime`（发现方式）。
+   - **沿用**：`project`/`ship_mode`、`tower_cron.interval_min`、`runtime`（发现方式）。
    - **删除**：`execution.host_tools`（宿主差异迁 `adapters/<宿主>.md`）；以及 schema 4 的零读者键——
      `execution`、`wip`、`limits`、`approval`、`acceptance`、`audit` 六段，`gates` 里除三键外的门名，
      `issue.ready_label`/`milestone_gating`，`tower_cron` 里除 `interval_min` 外的字段，`runtime.deps` 里除
-     `check_dir_rel` 外的字段。它们不是判据搬家，而是本来就没有读者：在飞名额、失败重试、审查独立、风险闸的家
-     ＝单票闭环协议与仓库红线，宿主工具契约的家＝`adapters/<宿主>.md`；实例里那份抄本没人读，删掉不丢任何约束。
+     `check_dir_rel` 外的字段，`runtime.main_tree` 段与顶层 `repo_root`（主树由 git worktree 公共目录反推、
+     仓根由调用方传入，两者都不需要实例里那份抄本）。它们不是判据搬家，而是本来就没有读者：在飞名额、失败重试、
+     审查独立、风险闸的家＝单票闭环协议与仓库红线，宿主工具契约的家＝`adapters/<宿主>.md`；实例里那份抄本没人读，删掉不丢任何约束。
    - **迁移完成的验收**：实例内没有 host_tools；键集与 schema 4 模板逐键相等（装机方实跑初始化器对账）；
      多出来的键是逐条列给用户、他点头才删，不静默丢字段。
    - **新增**（问答填实，占位不落盘）：`registry.playbooks[]`（原登记面收编）、`models.agents`

@@ -37,7 +37,7 @@ accepted —— 2026-10-23 开哥拍板，三项开放裁定随拍入档：①�
 > 表内「缺省值」口径已被 [0014](0014-config-instance-no-invented-values.md) D1 收紧：模板里没被十一问填到的键一律 `null`，
 > 本仓的门名／包管理命令／宿主偏好不得作为缺省写进用户实例；占位不落盘改由 `init-project.py` 机械保证。
 > 本表的「沿用 schema 2」那一行（`execution`／`wip`／`limits`／`approval`／`acceptance`／`audit`）与 `gates`／`issue` 的宽键集
-> **已由 [0015](0015-schema-4-keys-with-consumers.md) 作废**：schema 4 只保留活契约真按名读的 44 个叶子键。
+> **已由 [0015](0015-schema-4-keys-with-consumers.md) 作废**：schema 4 只保留活契约真按名读的叶子键（键集与量具读数见 0015 D1／D5）。
 
 
 **六档映射（词表只有 R/C/P/V/G/W，永不写模型 slug）**：

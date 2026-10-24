@@ -263,7 +263,8 @@ def gen_docs(repo: str, ans: dict, layout: dict) -> list:
     adr_dir = os.path.join(repo, *adr_rel.split("/"))
     os.makedirs(adr_dir, exist_ok=True)
     keep = os.path.join(adr_dir, spec["placeholder"])
-    if not os.path.exists(keep):
+    # 已有 ADR 的仓（编号不从 0001 起）不写占位：那句「从 0001 起编号」在该仓是假话
+    if not os.path.exists(keep) and not any(fn != spec["placeholder"] for fn in os.listdir(adr_dir)):
         with open(keep, "w", encoding="utf-8", newline="") as f:
             f.write("ADR 目录占位；从 0001 起编号。\n")
         done.append(f"{adr_rel}/{spec['placeholder']}")
@@ -325,10 +326,13 @@ def main() -> int:
         return 1
 
     out = os.path.join(repo, *spec["config"]["to"].split("/"))
+    adr_rel = ans.get("adr_dir") or spec["adr_dir"]
+    adr_dir = os.path.join(repo, *adr_rel.split("/"))
+    adr_state = "已存在，只补空目录占位" if os.path.isdir(adr_dir) and os.listdir(adr_dir) else "新建空目录 + 占位"
     print("== 将生成 ==")
     print(" ", os.path.relpath(out, repo))
     print(f"  handoff {len(spec['handoff']['slots'])} 槽（{spec['handoff']['board_slot']} 用子目录；其余按月）")
-    print(f"  {spec['adr_dir']}/（空目录 + {spec['placeholder']}）+ {spec['glossary']['to']}（已存在则不覆盖）")
+    print(f"  {adr_rel}/（{adr_state}）+ {spec['glossary']['to']}（已存在则不覆盖）")
     print("\n== 关键取值 ==")
     for k in ("project", "ship_mode"):
         print(f"  {k} = {cfg.get(k)}")
@@ -353,8 +357,10 @@ def main() -> int:
     print(f"\n已写 {os.path.relpath(out, repo)}（{len(files)} 个组件文件）")
     print("\n== 下一棒 ==")
     print("  1) 补门禁：gates 三键（captain_preflight/scope_check/close_gate）按本仓实情填，缺的留 null；项目要加别的门就扩键")
-    print("  2) 跑 python <kai-mode 仓>/scripts/doctor.py 确认本仓绿；在目标仓跑一轮角色自证")
-    print("  3) 日表目录下写今日 -main.md / -deputy.md，再由塔台排班")
+    print("     值可带子命令（读取端按 `python <值>` 直接插值），例：scripts/scope-check.py close-gate")
+    print("  2) 补记录面：paths.audit_dir / module_cards / dashboard 填本仓实有落点，没有的留 null（读取端如实报缺件，不猜路径）")
+    print("  3) 跑 python <kai-mode 仓>/scripts/doctor.py 确认本仓绿；在目标仓跑一轮角色自证")
+    print("  4) 日表目录下写今日 -main.md / -deputy.md，再由塔台排班")
     return 0
 
 

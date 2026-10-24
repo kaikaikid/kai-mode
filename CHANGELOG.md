@@ -2,10 +2,30 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.22.0 — 2026-10-25
+
+- **schema 4 复量再收三键**（[ADR-0015 D5](docs/adr/0015-schema-4-keys-with-consumers.md)）：删顶层 `repo_root` 与
+  `runtime.main_tree.{discover,env_fallback}`。读数：安装面 53 份（`skills/`＋`loops/`＋`agents/`＋`adapters/`）里
+  `main_tree`／`git_common_dir`／`KAI_MAIN_TREE`／`env_fallback` 命中 0 处；`repo_root` 只作 `skills/flight-info/flightinfo/*.py`
+  的形参与 `ctx["repo_root"]`（运行时上下文）出现，无人按配置键读。叶子键 44→**41**、顶层段 11→**10**。
+- **键数不再手写**：0.21.0 那条与 ADR-0015 首版一共写了三个数（88→44、段 19→12、Consequences 的 41），两个口径、互不一致。
+  ADR-0015 D5 记下可复跑量法（doctor `_cfg_leaves`：不计 `schema`／`_note_*`）与三版读数表 88／17 → 44／11 → **41／10**；
+  「段 19→12」量法没写明、复现不出，作废。README 与 0.21.0 那条同步更正。
+- **`registry.playbooks[]` 行形状有了按名读者**：入口技能剧本段写出「一行四格」（`name`／`trigger`／`route`／`notes`）。
+  此前四字段只活在模板示例里，逐键量具判为零读者（技能 2.5.2→2.5.3）。
+- **初始化器两处实测缺陷**（在首个真项目实跑时撞到）：① 计划打印写死清单默认 `docs/adr`，答的是别的目录也照印默认
+  ⇒ 改印答出来的目录，并注明是新建还是已存在；② ADR 目录已非空时仍写「从 0001 起编号」占位（在已有 137 号 ADR 的仓里是假话）
+  ⇒ 只在目录为空时写占位。
+- **初始化器「下一棒」补两条**：`gates` 值可带子命令（读取端按 `python <值>` 插值，例 `scripts/scope-check.py close-gate`）；
+  `paths.audit_dir`／`module_cards`／`dashboard` 按本仓实有落点补、没有的留 null。
+- **迁移段删除清单补全**（set-kai-mode 4.8.0→4.8.1）：schema 3→4 的「沿用」里去掉 `repo_root`，「删除」里补 `runtime.main_tree` 段与顶层 `repo_root`。
+- 首例真项目实例落地：`Kai-vass-Control/.ai/kai-mode.project.json`（41 键与模板逐键相等、零占位、零机器绝对路径；
+  14 个登记落点逐个 stat 通过；三门按该仓 AGENTS.md 实测值填；六人格模型全 null＝宿主默认）。
+
 ## 0.21.0 — 2026-10-25
 
 - **schema 4：配置实例只留有消费者的键**（[ADR-0015](docs/adr/0015-schema-4-keys-with-consumers.md)）：按 `段.键` 点号形对全部活契约
-  （16 个自动技能正文与脚本、`loops/`、`agents/`、`adapters/`、`scripts/`、`schemas/`、AGENTS、README）逐键取证，叶子键 88→44、段 19→12。
+  （16 个自动技能正文与脚本、`loops/`、`agents/`、`adapters/`、`scripts/`、`schemas/`、AGENTS、README）逐键取证，叶子键 88→44、顶层段 17→11（doctor `config-instance` 口径；发布时手写的「段 19→12」量法不明，0.22.0 作废）。
 - 删：`wip`／`limits`／`approval`／`acceptance`／`audit`／`execution` 六段（名额/重试/审查独立/风险闸的家＝单票闭环协议与仓库红线，
   宿主工具契约的家＝`adapters/<宿主>.md`，实例里那份抄本没人读）＋ `gates` 12→3 键、`issue` 去 `ready_label`/`milestone_gating`、
   `tower_cron` 只留 `interval_min`、`runtime.deps` 只留 `check_dir_rel`。
