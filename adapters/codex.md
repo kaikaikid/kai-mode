@@ -10,7 +10,7 @@
 
 ```bash
 Get-Command codex        # Windows 上常见 codex.cmd
-codex --version          # 本机实测 0.163.0-alpha.10.2
+codex --version          # 本机实测 0.164.0-alpha.11.1
 ```
 
 没有入口 ⇒ 本档不可用，缺件如实登记（`no-launcher`）。

@@ -9,7 +9,7 @@
 
 ```bash
 command -v opencode
-opencode --version          # 本机实测 1.19.3
+opencode --version          # 本机实测 2.1.4
 ```
 
 没有 shell 入口 ⇒ 本档不可用，缺件如实登记（`no-launcher`），不要写进流程正本。

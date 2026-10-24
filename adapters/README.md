@@ -1,7 +1,7 @@
 # adapters —— 宿主适配总则
 
 > 本目录回答两件事，别混：
-> **① 怎么在宿主上跑一个「岗位」**（地勤/塔台/机长/副机长）→ 各自 `<宿主>.md`；
+> **① 怎么在宿主上跑一个「岗位」**（地勤/塔台/机长/副机长）→ 各自 `<宿主>.md`（Claude Code 见 [claude.md](claude.md)）；
 > **② 怎么把「人格」落成宿主原生的子代理文件**（权限/模型/派生）→ 本文件。
 > 人格正本＝[`agents/`](../agents/README.md)，模型值正本＝项目实例 `models.agents.<人格>.model`。
 
@@ -30,7 +30,7 @@
 
 | 宿主 | 人格落点 | 只读怎么写 | 禁派生 | 模型 |
 |---|---|---|---|---|
-| Claude Code | `.claude/agents/<名>.md`（frontmatter `name`/`description`/`tools`/`model`） | `tools` 里只给读类工具 | 子代理本身不再给 Task | `model` 写实例值，缺省 `inherit` |
+| Claude Code | `.claude/agents/<名>.md`（frontmatter `name`/`description`/`tools`/`model`） | `tools` 里只给读类工具 | 子代理本身不再给 Task | `model` 写实例值，缺省 `inherit`；起岗位见 [claude.md](claude.md) |
 | OpenCode | `.opencode/agents/<名>.md`（`description`/`mode: subagent`/`permission`） | `permission: {edit: deny, bash: deny}` | `permission: {task: deny}` | `model` 字段 |
 | Codex | **无 per-agent 文件**；靠 `AGENTS.md` + 启动参数 | `-s read-only` | 单次 exec 无派生 | `-m <模型>` |
 | Qoder | 无 per-agent 文件；用子会话 + 提示词 | 只读 prompt（**软约束**，必须登记） | 不开 `create_chat_session` | 会话创建时指定 |
@@ -83,5 +83,6 @@ missing: <kind>
 
 - 不把人格正文复制进宿主文件后手改（两份会漂）。
 - 落点**必须项目级**（`.opencode/agents/`、`.claude/agents/` 等），**不装全局**：人格名是裸名，装了全局会和用户其它框架的同名 agent 打架。
+- **全局非项目数据**（CLI 配置/认证/会话/日志/缓存）统一按 [docs/agent-data-layout.md](../docs/agent-data-layout.md) 放 `KAI_AGENT_DATA_ROOT`；项目级 agent 文件仍由项目仓自管。
 - 宿主字段名不回写人格、不回写实例。
 - 加一个宿主＝加一个 `<宿主>.md`（起岗位）＋ 本文 §2 一行（落人格），不新增脚本。

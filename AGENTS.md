@@ -54,6 +54,7 @@ tools. Subagents within a ticket are not role sessions. Source of truth:
 | Method (how to explore / review / plan / implement) | `agents/<persona>.md` | pointer |
 | Host differences (launcher per role, how a persona becomes a native agent file, permissions, model) | `adapters/README.md` + `adapters/<host>.md` | pointer |
 | Artifact packaging (dev records vs host payload vs project scaffold) | `manifests/package-layout.json` + `docs/package-layout.md` | pointer |
+| Agent global data layout (non-project data root, per-agent override, project boundary) | `docs/agent-data-layout.md` | pointer in adapters |
 | Role wake permissions (who may wake whom) | `docs/adr/0010-role-wake-fence.md` | pointer in role skills |
 | Runtime mechanics (retry, timeout, circuit breaker, budget, TTL) | **not in docs** — belongs to the host runtime | — |
 | Project instance values (thresholds, paths, ticket ids, **agent models** `models.agents.<persona>.model`) | project config instance | template only |
@@ -100,4 +101,5 @@ python scripts/new-skill.py <n> --summary "..."  # skill scaffold
 python scripts/vendor-sync.py [--check]          # vendored skills: pull from local mirror / detect drift
 python scripts/handoff-board.py list             # cross-agent board
 python scripts/source-check.py                   # external source material drift
+powershell -File scripts/setup-agent-data.ps1 -Root "<本机数据根>"   # agent 全局数据根（dry-run；加 -Apply）
 ```

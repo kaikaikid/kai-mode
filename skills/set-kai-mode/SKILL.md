@@ -16,6 +16,8 @@ sources:
     note: "技能正本 → Magpie 中央库 → 各家宿主链接的回写口"
   - resource: "框架仓旧裁决"
     note: "三层打包边界：安装面只装 install:auto 的运行件（排除 tests/缓存），项目骨架只从 manifests/package-layout.json 生成"
+  - resource: "框架仓旧裁决"
+    note: "全局 agent 数据根：非项目数据进 KAI_AGENT_DATA_ROOT，项目数据仍项目自管"
 description: >
   kai-mode 的初始化安装入口（不是日常施工）：**先看缺什么、列出推荐清单跟用户确认，再只装缺的**，
   避免重复安装。覆盖：注入方法论与技能、把四角色技能装到宿主（Magpie / Qoder 或其它宿主）、
@@ -24,7 +26,7 @@ description: >
   doctor、缺件如实登记。触发：新 agent 接手装配、换宿主、装/改定时器、修技能落点、
   给项目出技能骨架、迁旧配置实例、问「这套东西都住在哪」。
   不做日常施工。
-version: 4.6.1
+version: 4.7.0
 updated: 2026-10-24
 allowed-tools: Bash(*) Read Write Edit
 compatibility: Requires python3, git
@@ -162,6 +164,9 @@ python $S apply --profile core             # 正本 → 库 → 各家链接；�
 - **安装回执**：库根 `.kai-mode-source.json` 记来源根、HEAD、档位、技能清单与每技能哈希；
   `doctor` 的 `install-receipt` 项校验。写库前整包备份到 `<库根>/.backups/`（保留 5 份），失败自动还原。
 - 手动件（如 `harness-audit`）不进档位；需要时单独 `install:manual` 装。
+- **全局数据根**：宿主的非项目数据统一按
+  agent-data-layout
+  放 `KAI_AGENT_DATA_ROOT`；各宿主专用变量住适配器文档，项目数据仍由项目仓自管。
 - **安装面与开发件分开**：只装技能运行件；`tests/`、`__pycache__`、`.pytest_cache`、`*.pyc` 不装，
   `apply` 会在备份后清掉库里残留的这类文件。边界正本＝`manifests/package-layout.json`
   （框架仓旧裁决），doctor 的 `package-layout`

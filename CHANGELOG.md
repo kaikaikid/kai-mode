@@ -2,6 +2,20 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.18.0 — 2026-10-24
+
+- **Claude Code 适配**：新增 `adapters/claude.md`（探测、起角色、项目级 `.claude/agents/` 人格、
+  只读权限、模型、付费边界）；`adapters/README.md` 补 Claude 起岗位指针。
+- **全局 agent 数据根**（[ADR-0012](docs/adr/0012-global-agent-data-root.md)）：`KAI_AGENT_DATA_ROOT`；
+  Claude 用 `CLAUDE_CONFIG_DIR`、Codex 用 `CODEX_HOME`、OpenCode 用仅进程生效的 XDG 启动包装；
+  项目数据仍由项目自管。
+- 新增 [`docs/agent-data-layout.md`](docs/agent-data-layout.md) 与 `scripts/setup-agent-data.ps1`
+  （dry-run／Apply／Migrate／OpenCodeLauncher；备份用户环境；复制不搬家；符号链接用 junction）。
+- 本机落地：Claude Code 2.1.310 全局安装；Claude／Codex／OpenCode 配置与认证已复制到新根；
+  OpenCode 大 DB 与 Codex 历史保留旧路径；Qoder 应用自管不改，已登记为例外。
+- `set-kai-mode` 4.7.0：装机时按 `docs/agent-data-layout.md` 核对全局数据根。
+- 适配器实测版本同步：Claude Code 2.1.310、Codex 0.164.0-alpha.11.1、OpenCode 2.1.4。
+
 ## 0.17.2 — 2026-10-24
 
 - **引用口径收尾**：`docs/package-layout.md` 注明仓库当前为私有，绝对出处链接需仓库访问权限；
