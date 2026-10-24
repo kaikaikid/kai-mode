@@ -35,6 +35,22 @@ Create a GitHub issue.
 
 Run `gh issue view <number> --comments`.
 
+## Loop ticket read (narrow)
+
+Long-running tickets collect comments; reading the full history buries the current state.
+Read the body plus the newest state only:
+
+```bash
+gh issue view <n> --json number,title,body,state,labels,comments \
+  --jq '{number,title,state,labels:[.labels[].name],body,
+         latest_verdict:([.comments[]|select(.body|startswith("verdict="))]|last|.body // ""),
+         recent:(.comments[-3:]|map(.body))}'
+```
+
+`body` holds AC, allowed paths and the verification commands. `latest_verdict` is the last
+comment opening with `verdict=`; `recent` is the newest three comments. Use `gh --jq`
+(built in) — a standalone `jq` binary is not guaranteed on every host.
+
 ## Wayfinding operations
 
 Used by `/wayfinder`. The **map** is a single issue with **child** issues as tickets.
