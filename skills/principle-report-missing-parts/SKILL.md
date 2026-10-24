@@ -10,7 +10,7 @@ description: >
   缺件原则：缺什么就按三格如实登记——缺什么/卡在哪/要谁拍；不许写成已实现，不许静默吞错，不许猜一个路径写下去。
   不管缺口怎么补（补法走 set-kai-mode 缺口清单流程），登记本身不算完事。
   触发：Apply when 探测发现缺文件、缺定时口、缺环境、缺配置实例、缺权限，或想报「装好了」之前。
-version: 0.1.0
+version: 0.1.1
 updated: 2026-10-23
 allowed-tools: Read Grep
 compatibility: Host-agnostic

@@ -10,7 +10,7 @@ description: >
   规模原则：仪式随规模塌缩——两行改动不配四页脚手架；每张工单带 TIMEBOX，到点交半成品并写明停在哪。
   不塌缩证据与红线（验收照逐条对证据、红线仍先问），不为省事跳过该有的审查。
   触发：Apply when 给小改动配流程、开票定 AC、或发现仪式开销超过活本身时。
-version: 0.1.0
+version: 0.1.1
 updated: 2026-10-23
 allowed-tools: Read Grep
 compatibility: Host-agnostic

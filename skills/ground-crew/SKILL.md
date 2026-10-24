@@ -15,7 +15,7 @@ description: >
   想法进 BOOM（全文进项目配置 paths.ideas_dir 目录 + 想法池汇总票简述），可执行需求进 Issue（挂里程碑、ready-for-agent、AC、允许/禁止修改、验证命令）。
   不写产品代码、不 push、不派施工。触发：`/地勤`、用户要规划 / 开票 / 记想法，
   或 `/kai-mode` 把需求交给地勤。
-version: 1.2.1
+version: 1.2.2
 updated: 2026-10-24
 allowed-tools: Bash(gh:*) Read Grep WebFetch
 compatibility: Requires git, gh CLI

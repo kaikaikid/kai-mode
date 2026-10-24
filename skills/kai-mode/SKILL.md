@@ -9,7 +9,7 @@ description: >
   → 定稿（清账 → ADR → 拆票草案 → 规划表）→ 用户拍一次板 → 路由给地勤开票 / 机长执行 / 塔台排班发货，
   只推荐唤醒命令，不自动起角色；剧本不限于四角色。要全景/看进度时路由到看板（数据层 60-board ＋ 展示层 航班信息）。不执行具体活。
   触发：新想法、要开工、kai 模式；熟活可直接喊角色口令（/地勤 /塔台 /机长 /副机长）。
-version: 2.5.1
+version: 2.5.2
 updated: 2026-10-24
 allowed-tools: Read Grep
 compatibility: Host-agnostic

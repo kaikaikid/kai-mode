@@ -10,7 +10,7 @@ description: >
   拷问原则：一次只问一个问题、逐个确认，每题带推荐默认值；规划表那格是唯一关键审批点，不吃快捷回话。
   不管审批边界与红线（归 principle-visible-and-redline-only），不执行具体活。
   触发：Apply when 要向用户提问、设计拷问题目、或想一口气甩出一串确认问题时。
-version: 0.1.0
+version: 0.1.1
 updated: 2026-10-23
 allowed-tools: Read Grep
 compatibility: Host-agnostic

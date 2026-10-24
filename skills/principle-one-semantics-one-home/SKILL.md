@@ -12,7 +12,7 @@ description: >
   正本原则：一个语义只许一个家；想写第二条同义判据前，先问「第一条住哪」，然后只留指针。
   不管改判据的审批流程本身（机制类改动仍走 ADR），不禁止指针、一行索引与流程位复述。
   触发：Apply when 写或改技能/文档/配置，发现同一判据出现第二处说法、或正要抄一份过来时。
-version: 0.1.1
+version: 0.1.2
 updated: 2026-10-23
 allowed-tools: Read Grep
 compatibility: Host-agnostic

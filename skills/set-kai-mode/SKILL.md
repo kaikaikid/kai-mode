@@ -18,7 +18,7 @@ description: >
   doctor、缺件如实登记。触发：新 agent 接手装配、换宿主、装/改定时器、修技能落点、
   给项目出技能骨架、迁旧配置实例、问「这套东西都住在哪」。
   不做日常施工。
-version: 4.7.0
+version: 4.7.1
 updated: 2026-10-24
 allowed-tools: Bash(*) Read Write Edit
 compatibility: Requires python3, git

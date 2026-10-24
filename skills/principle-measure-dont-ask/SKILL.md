@@ -10,7 +10,7 @@ description: >
   实证原则：能跑一下量出来的事实，自决、动手量、留下读数，不问人；只有实验解决不了的产品向与偏好判断才问她。
   不管问她的话术与节奏（归 principle-ask-one-question-at-a-time），不碰三条红线（归 principle-visible-and-redline-only）。
   触发：Apply when 想问「哪种更快/这样行不行/选哪个布局」，而答案其实跑一下就知道时。
-version: 0.1.0
+version: 0.1.1
 updated: 2026-10-23
 allowed-tools: Read Grep
 compatibility: Host-agnostic
