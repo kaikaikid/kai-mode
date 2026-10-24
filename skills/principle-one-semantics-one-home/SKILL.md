@@ -4,8 +4,6 @@ status: active
 approved_by: human:kaikaikid
 approved: 2026-10-23
 sources:
-  - resource: "框架仓旧裁决"
-    note: "D1「一个语义只许一个家」：判据住框架正本层，实例只装落点；D5 不得内嵌第二份默认值"
   - resource: "docs/skill-layout.md"
     note: "§4「一条判据只写一份，别处只留指针」原始出处之一；现为指针"
   - resource: "skills/set-kai-mode/SKILL.md"
@@ -22,7 +20,7 @@ compatibility: Host-agnostic
 
 # 一个语义一个家
 
-> 病征：0003 Context——旧体系的病就是同一件事有多份互相矛盾的正本。
+> 病征：旧体系的病就是同一件事有多份互相矛盾的正本。
 
 ## 何时进场
 
@@ -36,7 +34,7 @@ compatibility: Host-agnostic
 - **写第二条同义判据前，先问「第一条住哪」**：已有家 ⇒ 原处只留「流程位＋指针」；没家 ⇒ 先安家（ADR 或叶子），再放指针。
 - **指针可多处，判据只一处**：流程位、一行索引、frontmatter 触发词都不算第二本。
 - 改判据＝只改正本一处，改完跑正本声明的验证，读数进票面。
-- 项目配置实例不是判据的家：实例只装「这个项目里它们落在哪、跑在什么上」（0004 D1）。
+- 项目配置实例不是判据的家：实例只装「这个项目里它们落在哪、跑在什么上」。
 
 ## 反例
 
@@ -48,4 +46,3 @@ compatibility: Host-agnostic
 ## 验证
 
 - 任选判据关键词 grep 全仓：完整详述只命中正本一处，其余是指针。
-- `python 框架仓门禁 --with-tests` 全绿。

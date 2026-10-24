@@ -4,20 +4,12 @@ status: active
 approved_by: human:kaikaikid
 approved: 2026-10-21
 sources:
-  - resource: "框架仓旧裁决"
-    note: "唯一现行裁决：四角色（D1）、并发与隔离（D2）、任务面（D3）、60 分钟轮巡（D5）、清退与新增（D8）），已由本仓 0003 重述接管"
-  - resource: "框架仓旧裁决"
-    note: "项目差异层唯一事实源（schema 3）：D2 字段表与子代理模型段、D4 仓库根探测、D5 本技能分工（生成/校验/迁移/装机回执「模型核对」格）"
   - resource: "skills/kai-mode/SKILL.md"
     note: "入口本体；本技能只装它脚下的东西，不改它的流程"
   - resource: "skills/{ground-crew,tower,pilot,copilot}/SKILL.md"
     note: "四岗位技能正本；本技能负责把它们装到宿主"
   - resource: "skills/set-kai-mode/scripts/magpie-sync.py"
     note: "技能正本 → Magpie 中央库 → 各家宿主链接的回写口"
-  - resource: "框架仓旧裁决"
-    note: "三层打包边界：安装面只装 install:auto 的运行件（排除 tests/缓存），项目骨架只从 manifests/package-layout.json 生成"
-  - resource: "框架仓旧裁决"
-    note: "全局 agent 数据根：非项目数据进 KAI_AGENT_DATA_ROOT，项目数据仍项目自管"
 description: >
   kai-mode 的初始化安装入口（不是日常施工）：**先看缺什么、列出推荐清单跟用户确认，再只装缺的**，
   避免重复安装。覆盖：注入方法论与技能、把四角色技能装到宿主（Magpie / Qoder 或其它宿主）、
@@ -59,7 +51,7 @@ python scripts/init-project.py --repo <目标仓> --yes      # 全默认（先�
 python scripts/init-project.py --repo <目标仓> --answers a.json   # 机器填
 ```
 
-> 本命令在 **kai-mode 框架仓根**执行；技能装到项目仓后，用 `<框架仓根>/scripts/init-project.py`（框架仓根见中央库来源标记或安装回执），**不是**项目仓的 `scripts/`。`doctor.py` 同理。
+> 本命令在 **kai-mode 框架仓根**执行；技能装到项目仓后，用 `<框架仓根>/scripts/init-project.py`（框架仓根见中央库来源标记或安装回执），**不是**项目仓的 `scripts/`。维护者的门禁脚本同理只住框架仓，项目侧收工跑项目自己的门禁。
 
 **十一问（顺序固定，缺一不装）**：
 
@@ -112,9 +104,9 @@ python scripts/init-project.py --repo <目标仓> --answers a.json   # 机器填
 | 2 宿主同步 | `python skills/set-kai-mode/scripts/magpie-sync.py check`（按回执档位；无回执=full） | 漂移表三面全绿（内容/落点/注册） | 有漂移文件（列出具体哪些） |
 | 3 唤醒定时器 | 现测证据：项目配置 `paths.handoff_dir` 当日日报里 `cron-tower-*` 轮次 / 宿主 `list` 回读 `enabled` | 今日有真实运行轮次或 `enabled=true` | 无运行证据且宿主无定时口 |
 | 4 环境三项 | `test -x` 解释器/node、`test -d node_modules` | 三项都有明确读数 | 任一项缺（报绝对路径） |
-| 5 doctor | 项目仓 `ready.py` / `env-doctor --hooks` / 本仓 `python 框架仓门禁` | 全绿或只基线告警 | 有红（列出哪道门） |
+| 5 门禁 | 项目仓 `ready.py` / `env-doctor --hooks` | 全绿或只基线告警 | 有红（列出哪道门） |
 | 6 存证 | 项目仓 `python scripts/skill-attest.py verify`（项目仓有该脚本时） | rc=0 全过 | 有哈希不符（列出哪个文件） |
-| 7 项目配置实例 | 0004 D4 仓库根探测（只读）：`git rev-parse --show-toplevel` → 读 `<root>/.ai/kai-mode.project.json` 的 `schema` 字段 | schema 3 实例在位且过「模型核对」 | 无实例 → 按 D4 报缺件三格（怎么补＝本技能生成或手工按模板填）；schema 2 → 走「迁移腿」 |
+| 7 项目配置实例 | 仓库根探测（只读）：`git rev-parse --show-toplevel` → 读 `<root>/.ai/kai-mode.project.json` 的 `schema` 字段 | schema 3 实例在位且过「模型核对」 | 无实例 → 按 D4 报缺件三格（怎么补＝本技能生成或手工按模板填）；schema 2 → 走「迁移腿」 |
 | 8 宿主子代理产物 | 列宿主 agent 目录（具体落点见 `adapters/README.md` §2）与实例 `models.agents` 的键集 | 盘上人格每个都有对应产物，权限与模型按实例落住 | 缺产物或权限没落住（软约束要登记）→ 按 `adapters/README.md` 补 |
 
 **产出与动作**：
@@ -132,8 +124,8 @@ python scripts/init-project.py --repo <目标仓> --answers a.json   # 机器填
   - 四角色：`skills/{ground-crew,tower,pilot,copilot}/SKILL.md`
   - 单票闭环：`skills/loop/SKILL.md` ＋ `loops/loop-protocol.md`
   - 看板展示层：`skills/flight-info/SKILL.md`（SQLite 落库 ＋ 模块化采集/判据/渲染；装配与刷新都在它的 `scripts/`；板库根＝板配置 `output.root`，相对项目仓根）
-- 项目仓落点从项目配置实例读：项目技能目录 `registry.skills.project_skills_dir`、单票闭环目录 `registry.skills.loop_dir`（框架仓旧裁决）；
-  剧本登记行收进配置实例 `registry.playbooks[]`（框架仓旧裁决，项目仓 router.md 已退役）；
+- 项目仓落点从项目配置实例读：项目技能目录 `registry.skills.project_skills_dir`、单票闭环目录 `registry.skills.loop_dir`；
+  剧本登记行收进配置实例 `registry.playbooks[]`（项目仓 router.md 已退役）；
   新增剧本只加登记行，**不在本文件或入口里复制判据**。
 - 两种布局都认：项目仓 `registry.skills.project_skills_dir/<名>`（`loop` 在 `registry.skills.loop_dir`）与本仓 `skills/<名>`；
   `magpie-sync.py` 按这两种布局反查正本根。
@@ -169,7 +161,7 @@ python $S apply --profile core             # 正本 → 库 → 各家链接；�
   放 `KAI_AGENT_DATA_ROOT`；各宿主专用变量住适配器文档，项目数据仍由项目仓自管。
 - **安装面与开发件分开**：只装技能运行件；`tests/`、`__pycache__`、`.pytest_cache`、`*.pyc` 不装，
   `apply` 会在备份后清掉库里残留的这类文件。边界正本＝`manifests/package-layout.json`
-  （框架仓旧裁决），doctor 的 `package-layout`
+  ，doctor 的 `package-layout`
   会实跑初始化器对账；用户项目里的骨架只按该清单生成，不会带出本仓 ADR 或交接历史。
 - **旧角色一次性迁移**：角色改名后首次 apply 可加 `--retire-legacy`——旧中文目录移到 `<库根>/.retired/<时间>/`，
   宿主旧链摘掉；符号链接才摘，实体目录只报告不动；写前照样整包备份。
@@ -178,13 +170,13 @@ python $S apply --profile core             # 正本 → 库 → 各家链接；�
   `skills/flight-info/scripts/install_hook.py` 与 `refresh_if_dirty.py`（git 钩子 ＋ 有脏才刷，零 token、跨 agent）。
 - 加技能＝三步：① 放目录 `skills/<名>/`（`SKILL.md` ＋ 可选 `scripts/`、`templates/`）
   ② 仓根 `registry.json` 加一行（`install:auto` 才进中央库与宿主；`manual`／`none` 不装）
-  ③ `python 框架仓门禁` 过（注册表与盘面必须对上）。
+  ③ 装机集合与注册表逐条对上（名单不多不少、路径与 `SKILL.md` 都在）。
 - 库位**不写死机器路径**：沿既有链接反查；读不出用环境变量 `KAI_MAGPIE_LIBRARY` 指到 `<...>/library/skills`，
   仍读不出就 rc=2 如实报，不猜一个路径写下去。
 - **中央库记住装机来源**（`<库根>/.kai-mode-source.json`，`apply` 真跑完才写，`--dry-run` 不写）：
   从库里那份脚本跑，正本根也回到记录的那个仓，不会被 cwd 里的项目仓顶掉。
   标记坏了／那个仓没了 ⇒ 退回老路（跳过库根，继续按脚本位置／cwd 反查），不硬失败。
-- 装完要**当场验装机同步**：`python 框架仓门禁` 的`install-sync` 项 比中央库副本与本仓是否逐字相同、
+- 装完要**当场验装机同步**：比中央库副本与框架仓正本是否逐字相同、
   库记住的来源是不是本仓（红了就跑一次 `apply --root <本仓> --library <库>` 修）。
 - 三条硬规矩：① 写库前**整包备份 ＋ SHA-256 基线**；② 脚本**只新增、只覆盖同路径，绝不删**库里多出来的东西
   （唯一例外＝安装面排除的开发件 `tests/`、缓存，`apply` 会清）；
@@ -195,8 +187,8 @@ python $S apply --profile core             # 正本 → 库 → 各家链接；�
 ### 3. 装 60 分钟唤醒定时器
 
 **目标形状**：定时器每 60 分钟唤醒塔台一次；塔台是独立岗位，人工 `/塔台` / kai-mode 也能唤醒。每轮先发货、后补排班（排班放本轮最后）。
-**定时器唤醒的塔台实例同样走令牌**（框架仓旧裁决）：令牌防的是「多实例」——定时器、人工两路并发时靠它互斥，抢不到牌的一轮退位退出；kai-mode 只推荐命令，不唤醒。
-**手段按宿主选**（0003 D1／D5）：宿主能力探测与具体定时口见 `adapters/<宿主>.md`（Qoder 见 `adapters/qoder.md`）；其它宿主按同一契约装配。
+**定时器唤醒的塔台实例同样走令牌**：令牌防的是「多实例」——定时器、人工两路并发时靠它互斥，抢不到牌的一轮退位退出；kai-mode 只推荐命令，不唤醒。
+**手段按宿主选**（／D5）：宿主能力探测与具体定时口见 `adapters/<宿主>.md`（Qoder 见 `adapters/qoder.md`）；其它宿主按同一契约装配。
 
 **四步：探测 → 建 → 复读 → 缺件登记**
 
@@ -218,7 +210,7 @@ python $S apply --profile core             # 正本 → 库 → 各家链接；�
    - prompt 只放**薄壳**：`读取并执行 skills/tower/SKILL.md 全文；任务名 cron-tower-<日期>-<时分>`。
      长规则只住技能正本，任务配置里不存第二份。
    - Qoder 建任务时统一 `executionAuthorization=true`（Full Access，与既有定时任务同档）。
-   - 旧的四枚定时任务：**停用或删除**，不得与 60 分钟唤醒定时器并存（0003 D5）。
+   - 旧的四枚定时任务：**停用或删除**，不得与 60 分钟唤醒定时器并存。
      顺序：先 `disable` → 等 `runningAt` 为空或确认已停 → 再 `remove`；**别对正在跑的直接 remove**。
 
 3. **复读**（建完不算完，用之前再读一次）：
@@ -238,13 +230,13 @@ python $S apply --profile core             # 正本 → 库 → 各家链接；�
 | shell 启动 | 有 shell 启动入口（见 `adapters/opencode.md`、`adapters/codex.md`） | 定时任务只调 shell 唤醒塔台；其它角色人工（付费档须显式授权） |
 | 都没有 | — | 人工 `/塔台`，缺件如实登记 |
 
-按 框架仓旧裁决：角色之间不互相唤醒；塔台之外的角色只由人工喊口令启动。
+角色之间不互相唤醒；塔台之外的角色只由人工喊口令启动。
 宿主有会话创建口也不得由角色自动调用；kai-mode 只推荐命令。
 选完把档位写进本机配置并**做一次自证**（到点真的跑一轮、目标真的起来），未实测的 flag 不写进正本。
 
 ### 4. worktree 环境自检（三项，缺一报错不静默）
 
-工作树里**没有**主树运行时与依赖目录（检查目录由项目配置实例 `runtime` 段声明，见 框架仓旧裁决，均不入库）。所以每棵工作树开工前先量三项：
+工作树里**没有**主树运行时与依赖目录（检查目录由项目配置实例 `runtime` 段声明，均不入库）。所以每棵工作树开工前先量三项：
 
 | 项 | 标准 | 缺了怎么办 |
 |---|---|---|
@@ -300,7 +292,7 @@ python scripts/framework-gate.py --selftest   # 推前框架门自证
      **验证命令一个都不猜**——生成端只探技术栈，命令由项目自己填实。
    - **登记与判据**：骨架填实后由项目在实例 `registry.playbooks[]` 加登记行；生成端不替项目写判据与命令——
      判据正本仍在框架层与项目 ADR，骨架只留「去哪读」的指针。
-3. **生成完当场校验**（0004 D5 校验口径）：字段齐、路径字段指向存在的目录、
+3. **生成完当场校验**（校验口径）：字段齐、路径字段指向存在的目录、
    `models.agents` 只按人格配（键集＝`agents/`、值 null 或用户给的模型名）、`issue.platform` 在枚举内；红项按缺件三格登记，不静默。
 
 - **不真跑**：真机生成属双仓回归那刀的活；本段先落流程与模板。
@@ -313,23 +305,22 @@ python scripts/framework-gate.py --selftest   # 推前框架门自证
 
 1. **整包备份（迁移前）**：原实例整份拷到本地不入库的位置（文件名带日期），至少保留到迁移验收完；
    备份读不出就停下来报缺件，不许凭记忆重造。
-2. **逐字段映射**（去向四类：改写/沿用/删除/新增；全表＝0004 D2 字段表）：
+2. **逐字段映射**（去向四类：改写/沿用/删除/新增；全表＝ 字段表）：
    - **改写**：旧 `paths.day_tables` → `paths.day_tables_dir`（补 `day_table_pattern`/`lanes`，问答填实）；
      旧 `paths.daily_report` → `paths.handoff_dir`；旧 `paths.skills` / `paths.loop_protocol` →
      `registry.skills.project_skills_dir` / `loop_dir`；旧 runtime 三门 → `gates` 段
      （`close_gate`/`framework_gate`/`loop_gate`，其余门按项目仓盘点补齐）；
-     旧 runtime 机器绝对路径 → 发现方式字段（0004 D2.1：
-     机器值走 env `KAI_BACKEND_PYTHON` 与主树相对路径，**不入 tracked 实例**）。
+     旧 runtime 机器绝对路径 → 发现方式字段（机器值走 env `KAI_BACKEND_PYTHON` 与主树相对路径，**不入 tracked 实例**）。
    - **沿用**：`project`/`repo_root`/`ship_mode`、`execution`（除 host_tools）、`tower_cron`、`wip`、
      `limits`、`approval`、`acceptance`、`audit`。
-   - **删除**：仅 `execution.host_tools` 一种——宿主差异迁 `adapters/<宿主>.md`（0004 D6）；
+   - **删除**：仅 `execution.host_tools` 一种——宿主差异迁 `adapters/<宿主>.md`；
      迁移完成的验收之一＝**实例内没有 host_tools**。
    - **新增**（问答填实，占位不落盘）：`registry.playbooks[]`（原登记面收编）、`models.agents`
-     （逐人格，值为用户给的模型名或 null＝宿主默认；**旧 `tiers`/`default`/`roles` 一并删掉，不迁移**，见 框架仓旧裁决）、
+     （逐人格，值为用户给的模型名或 null＝宿主默认；**旧 `tiers`/`default`/`roles` 一并删掉，不迁移**）、
      `registry.adrs`/`registry.rules`、`issue` 票平台段、`paths` 新增记录面字段（本项目没有的写 null）。
 3. **逐字段 diff 留档**：schema 2 的每个字段在 diff 里都有明确去向，diff 写进交接日报（实例 `paths.handoff_dir`）；
    「零数据丢失」的口径就是这张 diff——字段级对不上号就停，不许静默丢字段。
-4. **迁后校验**：新实例过 D5 校验口径（字段齐、路径在、`models.agents` 键集＝盘上人格、`issue.platform` 在枚举内、host_tools 已不存在）；
+4. **迁后校验**：新实例过校验口径（字段齐、路径在、`models.agents` 键集＝盘上人格、`issue.platform` 在枚举内、host_tools 已不存在）；
    填不实的字段按缺件三格登记，不落占位。
 5. **不真跑**：真机迁移属双仓回归那刀的活；本段先落流程与判据。
 
@@ -337,20 +328,20 @@ python scripts/framework-gate.py --selftest   # 推前框架门自证
 
 | 可调项 | 正本住在哪 | 改完跑什么 |
 |---|---|---|
-| 四角色职责与权限 | 0003 **D1** | `grep -rn "地勤\|塔台" skills/` 逐处认，出现第二本定义即返工 |
-| 并发、名额与隔离 | 0003 **D2** ＋ 子代理无编制上限 | 机长/副机长技能里的「2 张 issue」与 ADR 一致；子代理数只受宿主容量约束，不得写死个数 |
-| 任务表格式与领取方式 | 0003 **D3** ＋ 项目配置 `paths.day_tables_dir` | 日表 5–10 行、只由塔台写 |
-| 一轮流程（排班→施工→审查→发货） | 0003 **D4** | 用一张真票走通全链路 |
-| 发货与 push 边界 | 0003 **D5** ＋ 塔台技能 | 塔台独占 push；机长/子代理不 push |
-| 失败恢复与断点 | 0003 **D6** | 断点三件套（日表＋Issue 评论＋分支提交）齐 |
+| 四角色职责与权限 | 四岗位技能正文 | `grep -rn "地勤\|塔台" skills/` 逐处认，出现第二本定义即返工 |
+| 并发、名额与隔离 | 机长/副机长技能正文 ＋ 子代理无编制上限 | 机长/副机长技能里的「2 张 issue」与技能正文一致；子代理数只受宿主容量约束，不得写死个数 |
+| 任务表格式与领取方式 | 塔台技能正文 ＋ 项目配置 `paths.day_tables_dir` | 日表 5–10 行、只由塔台写 |
+| 一轮流程（排班→施工→审查→发货） | 塔台与机长技能正文 | 用一张真票走通全链路 |
+| 发货与 push 边界 | 塔台技能正文 | 塔台独占 push；机长/子代理不 push |
+| 失败恢复与断点 | 塔台技能正文 | 断点三件套（日表＋Issue 评论＋分支提交）齐 |
 | 技能注入（正本 → 宿主） | 本技能「2. 装技能到宿主」＋ `magpie-sync.py` | `magpie-sync.py check` 三面全绿 ＋ `skill-attest verify` rc=0 |
 | 塔台唤醒定时器周期 | 本技能「3.」＋ 塔台技能 | `list` 回读周期与 `enabled`；人工 `/塔台` 也能跑 |
 | worktree 环境三项 | 本技能「4.」＋ 本机 `agents.local.md`（不入库） | 三项各有读数；缺件报错不静默 |
-| 剧本登记面 | 配置实例 `registry.playbooks[]`（框架仓旧裁决，router.md 退役） | 新增剧本只加登记行，入口与技能不复述 |
-| 项目配置实例（落点 / 读取 / 缺件） | 0004 **D3/D4**（实例＝`<项目仓根>/.ai/kai-mode.project.json`） | 读不到实例 → 按 D4 rc≠0 报缺件清单（缺什么/谁需要/怎么补），永不猜路径 |
+| 剧本登记面 | 配置实例 `registry.playbooks[]`（router.md 退役） | 新增剧本只加登记行，入口与技能不复述 |
+| 项目配置实例（落点 / 读取 / 缺件） | 配置实例 schema 正本（实例＝`<项目仓根>/.ai/kai-mode.project.json`） | 读不到实例 → 按 rc≠0 报缺件清单（缺什么/谁需要/怎么补），永不猜路径 |
 | 子代理模型（`models.agents`） | 列在 `agents/README.md`；取值由用户在初始化第 11 问决定 | 回执「模型核对」格全过：键集＝盘上人格、各有模型名或显式 null |
 | 生成式项目本地技能 | 本技能「按项目生成」段 ＋ [`templates/verification-skill/SKILL.md`](templates/verification-skill/SKILL.md) | 骨架落实例 `registry.skills.project_skills_dir` ＋ 项目在 `registry.playbooks[]` 登记一行 |
-| schema 2→3 迁移 | 本技能「迁移」段 ＋ 0004 **D2** 字段表 | 逐字段 diff 留档 ＋ host_tools 已不存在 ＋ 新实例过 D5 校验口径 |
+| schema 2→3 迁移 | 本技能「迁移」段的字段映射表 | 逐字段 diff 留档 ＋ host_tools 已不存在 ＋ 新实例过校验口径 |
 
 ## 改配置的四条规矩
 
@@ -375,8 +366,7 @@ python scripts/framework-gate.py --selftest   # 推前框架门自证
 | 怎么提需求、拷问、定稿、路由 | [`skills/kai-mode/SKILL.md`](../kai-mode/SKILL.md) |
 | 四岗位各自怎么干 | [`ground-crew`](../ground-crew/SKILL.md)／[`tower`](../tower/SKILL.md)／[`pilot`](../pilot/SKILL.md)／[`copilot`](../copilot/SKILL.md) |
 | 单票闭环怎么跑 | [`skills/loop/SKILL.md`](../loop/SKILL.md) ＋ `loops/loop-protocol.md` |
-| 为什么这么设计 | `框架仓旧裁决` |
 | 本机环境事实（解释器、node、坑） | 本机 `agents.local.md`（不入库，每台一份） |
 | 改了技能正本怎么让各家吃到 | 本技能「2. 装技能到宿主」＋ `magpie-sync.py` |
 | 给项目出验收/验证技能骨架（生成式腿） | 本技能「按项目生成」段 ＋ [`templates/verification-skill/SKILL.md`](templates/verification-skill/SKILL.md) |
-| 项目仓旧实例怎么升 schema 3 | 本技能「schema 2→3 实例迁移」段 ＋ 0004 D2 字段表 |
+| 项目仓旧实例怎么升 schema 3 | 本技能「schema 2→3 实例迁移」段 ＋ 该段字段映射表 |

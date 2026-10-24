@@ -4,8 +4,6 @@ status: active
 approved_by: human:kaikaikid
 approved: 2026-10-23
 sources:
-  - resource: "框架仓旧裁决"
-    note: "D2 拷问判据：≤5 问/≤2 轮、每题带推荐默认、「全按你说的」整轮收、只问 ADR 级分叉；现行入口口径在其上收紧为一次一问、逐个确认"
   - resource: "skills/kai-mode/SKILL.md"
     note: "「拷问规则」段原始出处；判据正本迁入本叶子后，原段收缩为流程位＋指针"
 description: >
@@ -45,4 +43,3 @@ compatibility: Host-agnostic
 
 - 拷问记录逐屏看：一屏一个问句、每题有推荐默认、≤5 问。
 - 规划表批准有一条她本人读过的确认，不是快捷回话。
-- `python 框架仓门禁 --with-tests` 全绿。

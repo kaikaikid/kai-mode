@@ -459,42 +459,56 @@ def test_package_layout_missing_source_is_red(tmp_path):
     assert "源件不存在" in detail_of(data, "package-layout")
 
 
-# ── 25 payload-refs：安装面不得依赖本仓开发件 ────────────────────────────────
+# ── 25 payload-refs：安装面零开发史引用（ADR-0013） ──────────────────────────
 def test_payload_refs_external_link_is_red(tmp_path):
     root = make_repo(tmp_path)
     (root / "skills" / "alpha" / "notes.md").write_text(
-        "[ADR](../../docs/adr/0001-x.md)\n", encoding="utf-8")
+        "[协议](../../loops/loop-protocol.md)\n", encoding="utf-8")
     rc, data = run_doctor(root)
     assert rc == 1
     assert status_of(data, "payload-refs") == "fail"
     assert "不随技能安装" in detail_of(data, "payload-refs")
 
 
-def test_payload_refs_absolute_url_is_green(tmp_path):
+def test_payload_refs_framework_url_is_red(tmp_path):
     root = make_repo(tmp_path)
     (root / "skills" / "alpha" / "notes.md").write_text(
-        "[README](https://github.com/kaikaikid/kai-mode/blob/main/README.md)\n",
-        encoding="utf-8")
-    rc, data = run_doctor(root)
-    assert status_of(data, "payload-refs") == "ok"
-    assert rc == 0
-
-
-def test_payload_refs_framework_url_missing_path_is_red(tmp_path):
-    root = make_repo(tmp_path)
-    (root / "skills" / "alpha" / "notes.md").write_text(
-        "[ADR](https://github.com/kaikaikid/kai-mode/blob/main/docs/nope.md)\n",
+        "详见 [README](https://github.com/kaikaikid/kai-mode/blob/main/README.md)\n",
         encoding="utf-8")
     rc, data = run_doctor(root)
     assert rc == 1
+    detail = detail_of(data, "payload-refs")
     assert status_of(data, "payload-refs") == "fail"
-    assert "本仓路径不存在" in detail_of(data, "payload-refs")
+    assert "框架仓 URL" in detail
+
+
+def test_payload_refs_adr_citation_is_red(tmp_path):
+    root = make_repo(tmp_path)
+    (root / "skills" / "alpha" / "notes.md").write_text(
+        "唤醒围栏的判据正本：ADR-0010。\n", encoding="utf-8")
+    rc, data = run_doctor(root)
+    assert rc == 1
+    assert "框架 ADR 编号" in detail_of(data, "payload-refs")
+
+
+def test_payload_refs_maintainer_gate_is_red(tmp_path):
+    root = make_repo(tmp_path)
+    (root / "skills" / "alpha" / "notes.md").write_text(
+        "- `python scripts/doctor.py --with-tests` 全绿。\n"
+        "- 项目仓 `python scripts/env-doctor.py --hooks` 全绿（这条合法）。\n",
+        encoding="utf-8")
+    rc, data = run_doctor(root)
+    assert rc == 1
+    detail = detail_of(data, "payload-refs")
+    assert "维护者门禁命令" in detail
+    assert "env-doctor" not in detail
 
 
 def test_payload_refs_sibling_skill_is_green(tmp_path):
     root = make_repo(tmp_path, skills=("alpha", "beta"))
     (root / "skills" / "alpha" / "notes.md").write_text(
-        "[beta](../beta/SKILL.md)\n", encoding="utf-8")
+        "[beta](../beta/SKILL.md)\n\n判据正本：框架仓 `loops/loop-protocol.md`（不随技能安装）。\n",
+        encoding="utf-8")
     rc, data = run_doctor(root)
     assert status_of(data, "payload-refs") == "ok"
     assert rc == 0

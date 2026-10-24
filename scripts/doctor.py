@@ -26,7 +26,6 @@ import re
 import subprocess
 import sys
 import tempfile
-import urllib.parse
 
 try:  # Windows 控制台下中文输出
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -664,7 +663,6 @@ def chk_install_receipt(root: str, ms):
 
 LAYOUT_REL = "manifests/package-layout.json"
 LAYOUT_SCHEMA = "kai-mode-package-layout/1"
-FRAMEWORK_GITHUB = "https://github.com/kaikaikid/kai-mode/"
 SCAFFOLD_HANDOFF_SOURCE_RE = re.compile(
     r"^handoff/(?:README\.md|60-board/README\.md|templates/[^/]+\.md)$")
 
@@ -843,10 +841,20 @@ def chk_package_layout(root: str, ms):
                   f"{len(expected)} 件与清单逐件一致")
 
 
+PAYLOAD_TEXT_SUFFIXES = (".md", ".py", ".json", ".ps1", ".sh", ".sql", ".yaml", ".yml", ".txt")
+PAYLOAD_FORBIDDEN = (
+    ("框架仓 URL", re.compile(r"github\.com/kaikaikid/kai-mode")),
+    ("框架 ADR 文件名", re.compile(r"docs/adr/0\d{3}")),
+    ("框架 ADR 编号", re.compile(r"ADR-?\s?0\d{3}")),
+    ("维护者门禁命令", re.compile(r"(?<!env-)doctor\.py")),
+    ("裸 ADR 编号", re.compile(r"(?<![\w/`.-])0\d{3}(?![\d.])")),
+)
+
+
 def chk_payload_refs(root: str, ms):
-    """25 安装面自足：技能 payload 里的 Markdown 链接不得指向本仓开发件。
-    允许：锚点、http(s)/mailto、技能自身目录、已登记的兄弟技能；
-    出现 ../../docs、../../loops 等装不走的路径 ⇒ 红（改绝对出处 URL 或项目内文本）。"""
+    """25 安装面零开发史（ADR-0013）：install:auto 的 payload 里不得出现框架仓 URL、
+    ADR 编号／文件名、维护者门禁命令，Markdown 相对链接也不得指向装不走的本仓开发件。
+    `install:manual` 是维护侧件，豁免。"""
     if ms is None:
         return "fail", "magpie-sync 读不出来"
     data, err = registry(root, ms)
@@ -855,7 +863,7 @@ def chk_payload_refs(root: str, ms):
     rules = ms.payload_rules(root)
     active = []
     for entry in data.get("skills") or []:
-        if not isinstance(entry, dict) or entry.get("install") not in ("auto", "manual"):
+        if not isinstance(entry, dict) or entry.get("install") != "auto":
             continue
         rel = str(entry.get("path") or "").strip("/")
         if rel:
@@ -867,9 +875,18 @@ def chk_payload_refs(root: str, ms):
         if not os.path.isdir(src):
             continue
         for path in ms.payload_files(src, rules).values():
-            if not path.endswith(".md"):
+            if not path.endswith(PAYLOAD_TEXT_SUFFIXES):
                 continue
             scanned += 1
+            with open(path, encoding="utf-8", errors="replace") as f:
+                lines = f.read().splitlines()
+            where = f"{name}/{os.path.relpath(path, src)}"
+            for label, rx in PAYLOAD_FORBIDDEN:
+                for lineno, line in enumerate(lines, 1):
+                    if rx.search(line):
+                        bad.append(f"{where}:{lineno} → {label}「{line.strip()[:40]}」")
+            if not path.endswith(".md"):
+                continue
             with open(path, encoding="utf-8", errors="replace") as f:
                 lines = f.read().splitlines()
             fenced = False
@@ -887,13 +904,6 @@ def chk_payload_refs(root: str, ms):
                         continue
                     where = f"{name}/{os.path.relpath(path, src)}:{lineno}"
                     if raw.startswith(("http://", "https://")):
-                        if raw.startswith(FRAMEWORK_GITHUB):
-                            rest = raw[len(FRAMEWORK_GITHUB):].split("#", 1)[0].split("?", 1)[0]
-                            mm = re.match(r"^(blob|tree)/main/(.+)$", rest)
-                            if mm:
-                                rel = urllib.parse.unquote(mm.group(2)).strip("/")
-                                if not os.path.exists(os.path.join(root, *rel.split("/"))):
-                                    bad.append(f"{where} → {raw}（本仓路径不存在：{rel}）")
                         continue
                     target = raw.split("#", 1)[0]
                     if not target:
@@ -906,7 +916,7 @@ def chk_payload_refs(root: str, ms):
                         bad.append(f"{where} → {m.group(1)}（指向 {relres}，不随技能安装）")
     if bad:
         return "fail", "；".join(bad[:6]) + (f"（共 {len(bad)} 处）" if len(bad) > 6 else "")
-    return "ok", f"{scanned} 份安装面 Markdown：外部引用 0 处；框架 URL 路径均存在"
+    return "ok", f"{scanned} 份安装面文本：框架仓 URL／ADR 编号与文件名／维护者门禁命令 0 处（manual 件豁免）"
 
 
 def _decouple_whitelisted(rel: str) -> bool:
@@ -1639,7 +1649,7 @@ CHECKS = (
     ("install-profiles", "安装档位清单（core/full）", chk_install_profiles),
     ("install-receipt", "安装回执（档位/技能/哈希）", chk_install_receipt),
     ("package-layout", "三层打包边界（开发件/安装件/骨架）", chk_package_layout),
-    ("payload-refs", "安装面引用自足（不指本仓开发件）", chk_payload_refs),
+    ("payload-refs", "安装面零开发史引用", chk_payload_refs),
     ("decoupling-gate", "解耦门（项目硬路径零残留）", chk_decoupling),
     ("host-neutral", "宿主专有 token 不进正本", chk_host_neutral),
     ("handoff-slots", "交接文档分类（槽位/命名/归位）", chk_handoff),

@@ -4,8 +4,6 @@ status: active
 approved_by: human:kaikaikid
 approved: 2026-10-23
 sources:
-  - resource: "框架仓旧裁决"
-    note: "D7 审批红线表（仍先问/已放行/新增安全锁）正本；D2 细节不问、按头部企业规范自决记代决清单"
   - resource: "skills/kai-mode/SKILL.md"
     note: "「审批边界」段原始出处；判据正本迁入本叶子后，原段收缩为流程位＋指针"
 description: >
@@ -47,4 +45,3 @@ compatibility: Host-agnostic
 
 - 交付报告带「AI 替你做的决定」表：每行一个选择＋一句依据。
 - 提问记录里无线以下细节问题；红线动作全部有她事前确认。
-- `python 框架仓门禁 --with-tests` 全绿。

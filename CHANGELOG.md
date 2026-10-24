@@ -2,6 +2,18 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.19.0 — 2026-10-24
+
+- **安装面零开发史**（[ADR-0013](docs/adr/0013-installed-payload-no-dev-history.md)）：新用户装完拿到的不再是我们仓的决策史。
+  实测 16 个 `install:auto` 技能的 37 件 payload 里混着 70 条框架仓链接（私有仓＝死链）、27 处 `ADR-NNNN`、
+  73 处 `docs/adr` 路径、18 处把维护者门禁 `scripts/doctor.py` 当用户验收步骤——现全部为 0。
+- 改法：出处链接去链留文、`## 正本` 列表与「落地 000X」引言删除、frontmatter `sources` 只留随装件（`kai-mode` 空成 `[]`）、
+  维护侧件改写成「框架仓 `loops/loop-protocol.md`（不随技能安装）」这种名称＋路径，判据留在技能正文。
+- doctor 的 `payload-refs` 从「框架 URL 路径存在性校验」换成五条禁列实量（URL／ADR 文件名／ADR 编号／维护者门禁／装不走的相对链接），
+  `install:manual` 件豁免；测试改成红绿各 4 条（含 `env-doctor.py` 合法反例）。项数仍 25。
+- 口径回写：`docs/skill-layout.md` 定引用正本，`docs/package-layout.md` 硬规矩 4 与「维护侧引用」节改判据，
+  删掉私有仓 404 访问说明；`docs/agents/domain.md` 现行裁决加 0013。
+
 ## 0.18.2 — 2026-10-24
 
 - **本仓开发流水出库**：外部用户 clone 到的应是干净的方法论＋安装包。`handoff/` 的 3 份日期目录件

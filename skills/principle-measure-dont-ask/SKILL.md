@@ -4,8 +4,6 @@ status: active
 approved_by: human:kaikaikid
 approved: 2026-10-23
 sources:
-  - resource: "框架仓旧裁决"
-    note: "D2：只问 ADR 级分叉，细节不问、按头部企业规范取默认记代决清单——能测不自问的 ADR 锚"
   - resource: "skills/kai-mode/SKILL.md"
     note: "「设计取舍」段「默认往前走」一条的原始出处；判据正本已迁入本叶子"
 description: >
@@ -46,4 +44,3 @@ compatibility: Host-agnostic
 
 - 交付报告里每个事实性选择带读数（命令＋数字）；「要你拍」段只剩产品向与偏好问题。
 - 抽一条自决：读数可复现。
-- `python 框架仓门禁 --with-tests` 全绿。

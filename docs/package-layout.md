@@ -17,11 +17,11 @@
 1. **开发件不进安装面。** 技能目录里的 `tests/`、`__pycache__`、`.pytest_cache`、`*.pyc` 不复制、不参与回执哈希；`apply` 会把库里已有的这类残留清掉（写前整包备份）。
 2. **骨架只从清单生成。** `project_scaffold` 之外不写；源只许 `templates/` 或 `handoff.files` 列出的四件规范／模板。`handoff/` 里的日期目录、评审件、归档都是本仓记录，任何一件都不能当源——也不入库。
 3. **`docs/` 永不复制。** 用户项目的 `docs/adr/` 是空目录加 `.gitkeep`，ADR 由用户自己从 0001 开始写。
-4. **安装面自足。** 技能 payload 里的框架文档引用一律用 GitHub 绝对出处 URL；技能内部与兄弟技能才用相对链接。安装副本不依赖本仓目录结构。
+4. **安装面自足。** 技能 payload 里不得出现框架仓 URL、`ADR-NNNN` 编号、`docs/adr/NNNN-…` 文件名、装不走的 `../../` 链接，也不得把维护者门禁（`doctor.py`）写成用户验收步骤——判据与实测见 [ADR-0013](adr/0013-installed-payload-no-dev-history.md)，可执行口径住 [`docs/skill-layout.md`](skill-layout.md)。
 
 ## 用户实际会得到什么
 
-- 宿主技能库里：运行所需技能，没有本仓测试与缓存。
+- 宿主技能库里：运行所需技能（实测 37 件），没有本仓测试与缓存，也没有本仓的 ADR 编号与死链。
 - 用户项目里：配置实例、交接骨架（含两份模板）、`GLOSSARY.md` 骨架、空 `docs/adr/`。
 - 不会得到：本仓的 ADR、交接／评审历史、看板卡片、开发脚本、测试。
 
@@ -36,16 +36,11 @@
 
 已入库的老流水按红线处理：`git rm --cached` 移出索引，盘上证据不删。
 
-## 关于技能里的框架文档引用
+## 技能里的维护侧引用怎么写
 
-技能正文引用本仓 ADR／协议时使用 **GitHub 绝对出处 URL**
-（`https://github.com/kaikaikid/kai-mode/blob/main/...`），不使用 `../../docs/...`。
-安装副本因此不依赖本仓目录结构；技能内部文件与兄弟技能仍用相对链接（它们在同一安装库里）。
-
-`sources` frontmatter 里的 `docs/adr/...` 是**出处元数据**，不是运行依赖；读取端不得据此按本地路径打开文件。
-
-仓库当前为**私有**：绝对链接对有仓库访问权限的人可打开；无权限用户会看到 404。技能运行不依赖这些链接，
-安装副本也不需要本仓文档。若以后公开仓库，链接自然全局可用。
+安装面里要指维护侧正本，写成**名称＋路径**（例：框架仓 `loops/loop-protocol.md`），不给 URL、不给 ADR 编号，
+并在使用处说明「不随技能安装」。技能内部与兄弟技能之间用相对链接（同在一个安装库里）。
+`sources` frontmatter 只指随装件；框架侧出处一律从安装面删除，出处留在本仓 ADR 与 CHANGELOG。
 
 ## 加一件新骨架件
 
@@ -60,5 +55,5 @@ python scripts/doctor.py --with-tests   # 25 项；package-layout 报安装面�
 ```
 
 `package-layout` 红通常只有三种：安装面混进被排除文件、骨架源越界／缺失、实跑生成集合与清单不一致。
-`payload-refs` 红有两种：安装面 Markdown 出现指向本仓开发件的相对链接；框架绝对 URL 指向的本仓路径不存在。
+`payload-refs` 红有三类：安装面出现框架仓 URL 或 `ADR-NNNN`／`docs/adr/NNNN-…` 引用；把维护者门禁 `doctor.py` 写成验收步骤；Markdown 相对链接指向装不走的本仓开发件。
 `tracked-cache` 红有两种：被跟踪的缓存／运行数据产物；被跟踪的本仓 `handoff/` 流水（规范与模板除外）。

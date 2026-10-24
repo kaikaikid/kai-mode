@@ -4,7 +4,7 @@ status: active
 approved_by: human:kaikaikid
 approved: 2026-10-24
 sources:
-  - resource: "handoff/README.md"
+  - resource: "references/source.md"
     note: "落盘规则正本：两级路径、槽位表、frontmatter 字段表"
   - resource: "handoff/60-board/README.md"
     note: "跨 agent 看板协议正本：结构化卡片与状态流转"
@@ -72,7 +72,7 @@ compatibility: Requires python3
 | 情况 | 处理 |
 |---|---|
 | 判不出槽（用途不清） | 落 `handoff/00-inbox/<YYYY-MM>/`，7 天内归位（框架仓的 `handoff-slots` 会催） |
-| 类型词不在槽位表 | 改用已登记类型词；确需新增，框架仓内两处同步：`handoff/README.md` §二 与 `框架仓门禁` 的 `HANDOFF_TYPE2SLOT` |
+| 类型词不在槽位表 | 改用已登记类型词；确需新增要先在框架仓登记两处（槽位表与门禁），否则按已登记类型词改 |
 | 框架仓 `handoff-slots` 红 | 照红字改命名／槽位／frontmatter；门禁绿才算写完 |
 | 内容寿命超过 15 天 | 提炼进 `docs/`（ADR／契约），handoff 原件留一行指针 |
 | 要交代的是票的完整状态 | 不抄正文，只给票号；状态正本是票源 |
@@ -82,5 +82,4 @@ compatibility: Requires python3
 ```bash
 # 用户项目：跑自己的收工门禁（实例 gates.*）
 python <本技能目录>/scripts/handoff-board.py list
-# 框架仓内另有：python 框架仓门禁（handoff-slots）
 ```

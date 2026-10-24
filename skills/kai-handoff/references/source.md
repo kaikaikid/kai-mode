@@ -21,7 +21,7 @@
 |---|---|
 | 存 OS 临时目录 | 存 `handoff/<槽>/<YYYY-MM>/` |
 | 格式自由 | 强制 frontmatter |
-| 无门禁 | `框架仓门禁` `handoff-slots` 项校验 |
+| 维护侧门禁 | 框架仓门禁的 `handoff-slots` 项校验 |
 
 继承：`suggested skills` 段、不复制其他产物、脱敏、按参数定制。
 

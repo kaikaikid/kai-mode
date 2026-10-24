@@ -4,8 +4,6 @@ status: active
 approved_by: human:kaikaikid
 approved: 2026-10-24
 sources:
-  - resource: "框架仓旧裁决"
-    note: "阶段链与断点物模型（四角色 / 日表 / 在飞证据）"
   - resource: "handoff/60-board/"
     note: "看板数据层：跨 agent 卡片；本技能是它的展示层，不持有状态"
   - resource: "GitHub Issues"
@@ -162,4 +160,3 @@ python scripts/refresh.py --repo-root <临时仓> --config <板配置> --no-netw
 | 阶段判据实现 | [`flightinfo/stage.py`](flightinfo/stage.py) |
 | 源清单 | [`flightinfo/sources/__init__.py`](flightinfo/sources/__init__.py) |
 | 看板卡片格式 | 项目内 `handoff/60-board/README.md` |
-| 阶段模型来源 | 框架仓 框架仓旧裁决（`框架仓旧裁决`，不随技能安装） |

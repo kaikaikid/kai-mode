@@ -55,8 +55,9 @@ updated: <YYYY-MM-DD>
 
 - 字段顺序：`name` → `status` → `approved_by` → `approved` → `sources` → `description` → `version` → `updated`；顺序错＝doctor 报红。
 - `name` ＝ 目录名 ＝ `registry.json` 里的 `name`，**三处必须一致**。
-- `sources` 引用仓外 ADR 写成「项目仓 `docs/artifacts/adrs/<文件>`」；引用仓内文件写仓内相对路径（如 `skills/<名>/scripts/xxx.py`）。
-- `sources` 是**出处元数据**：仓内相对路径只在框架仓可解析，安装副本不随附这些文件；正文引用框架文档用 GitHub 绝对出处 URL（见 [`package-layout.md`](package-layout.md)）。
+- `sources[].resource` 只许指**随技能安装的件**：本技能自己的文件，或兄弟技能 `skills/<名>/…`。框架仓的 ADR／`docs/`／`loops/` 不写进去——安装副本里没有这些文件，写了就是死指针；没有出处就写 `sources: []`（字段仍按八字段顺序存在）。
+- 正文的判据必须**自解释**：规则写全在本技能里，不靠「另见某 ADR 才懂」。要指维护侧正本，写成「框架仓 `loops/loop-protocol.md`」这种名称＋路径，**不给 URL、不给 ADR 编号**。判据与实测见 [ADR-0013](adr/0013-installed-payload-no-dev-history.md)。
+- doctor 的 `payload-refs` 按禁列实量，安装面出现即红：框架仓 URL、`ADR-NNNN` 编号、`docs/adr/NNNN-…` 文件名、指向装不走件的相对链接（`../../`）、把维护者门禁（`doctor.py`）当用户验收步骤。
 - `description` 用 `>` 折叠块：先说做什么，再说不做什么，最后写触发词。
 - `version` / `updated` 随改动更新；改动实质内容就升 `version`。
 

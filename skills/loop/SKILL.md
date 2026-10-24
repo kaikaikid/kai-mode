@@ -67,6 +67,5 @@ python <gates.captain_preflight> --lane main|deputy
 ## 验证命令
 
 ```bash
-python 框架仓门禁                        # 本仓门禁
 python <gates.captain_preflight> --lane main    # 项目仓收工门禁（在项目仓根跑）
 ```

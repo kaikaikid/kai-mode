@@ -4,10 +4,6 @@ status: active
 approved_by: human:kaikaikid
 approved: 2026-10-23
 sources:
-  - resource: "框架仓旧裁决"
-    note: "D1 读不到实例 ⇒ rc≠0 输出缺件清单，永不猜路径；D4 缺件清单三格：缺什么/谁需要/怎么补"
-  - resource: "框架仓旧裁决"
-    note: "D8 新增 worktree 环境自检：缺件报错不静默"
   - resource: "skills/set-kai-mode/SKILL.md"
     note: "第 0/3/6 步原始出处（缺口扫描、缺件如实登记、缺件登记与交接）；判据正本迁入本叶子后收缩为流程位＋指针"
 description: >
@@ -51,4 +47,3 @@ compatibility: Host-agnostic
 
 - 每条缺件记录三格齐全，且能在日报「要你拍」段找到。
 - 反向抽查：凡报「已实现」的项都有现测证据（回读 enabled、rc=0、哈希一致）。
-- `python 框架仓门禁 --with-tests` 全绿。

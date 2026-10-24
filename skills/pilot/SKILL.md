@@ -4,18 +4,12 @@ status: active
 approved_by: human:kaikaikid
 approved: 2026-10-21
 sources:
-  - resource: "框架仓旧裁决"
-    note: "角色、隔离、任务面与失败恢复的现行裁决），已由本仓 0003 重述接管"
   - resource: "loops/loop-protocol.md"
     note: "去掉子代理编制上限；只约束一机长同时 2 张 issue"
   - resource: "loops/loop-protocol.md"
     note: "单票闭环唯一详细源；本技能只写入口、围栏与自决"
-  - resource: "框架仓旧裁决"
-    note: "等待与止损三层机制（2026-10-23 定稿）判据出处"
   - resource: "loops/loop-protocol.md"
     note: "「八、等待纪律」「九、增量提交」细则正本；本技能「等待与止损」节只写执行清单与指针"
-  - resource: "框架仓旧裁决"
-    note: "唤醒权限收紧（D3）：机长现阶段不得唤醒任何其他角色；需要塔台/继任机长走交付/播报，由人工或唤醒定时器（仅塔台）处理；kai-mode 只推荐（框架仓旧裁决）"
 description: >
   机场体系的机长：读自己日表，最多 2 张在飞；每票至少 1 施工 + 1 审查，机动按需。
   只管理不写码、不 push。
@@ -35,8 +29,7 @@ dependencies:
 
 # 机长
 
-> 判据正本：0003 四角色机场（D1–D6）
-> ＋ 子代理口径「不设数量硬上限」。流程细节只看 `loops/loop-protocol.md`。
+> 判据正本：四岗位技能正文 ＋ 子代理口径「不设数量硬上限」。流程细节只看兄弟技能 `loop`。
 
 ## 启动
 
@@ -46,7 +39,7 @@ dependencies:
 python <gates.captain_preflight> --lane main
 ```
 
-`gates.captain_preflight` 为 `null` 或读不到配置实例 → **报缺件，不猜路径**（0004 D2）。
+`gates.captain_preflight` 为 `null` 或读不到配置实例 → **报缺件，不猜路径**。
 
 按 `decision` 走：
 
@@ -63,7 +56,7 @@ goal 模式：表里还有活就继续跑，不逐票问用户。
 
 - 不写产品代码 / 测试 / 配置。再小的修复也交施工子代理。
 - 不 push、不合并 `dev`、不关票。
-- **不唤醒任何其他角色**（含塔台、继任机长；0006 D3 + 0010）：需要塔台 → 写进交付/播报（Issue 评论「待发货」「卡点」），交人工或唤醒定时器处理；「表空等补」「待发货等收」都是等塔台下一轮，不是自己点火。
+- **不唤醒任何其他角色**（含塔台、继任机长； +）：需要塔台 → 写进交付/播报（Issue 评论「待发货」「卡点」），交人工或唤醒定时器处理；「表空等补」「待发货等收」都是等塔台下一轮，不是自己点火。
 - 不写日表（`paths.day_tables_dir`，日表只由塔台写）；不改票面 AC / 里程碑 / 标签；不改审查判词；不给 `fail` 出 pass。
 - 一张票同一时刻只有一个施工写手；同一文件域不并行。
 - 审查必须新上下文，施工者不得自审。
@@ -94,7 +87,7 @@ goal 模式：表里还有活就继续跑，不逐票问用户。
 
 - wait 超时 **60–120 秒**一轮；连续**两次空轮询** → 活性探测（子进程在不在、工作树文件动没动），不拿空返回猜生死。
 - 每轮 wait 之间干本地活（不开新票、不动在飞票的工作树）；同一票阻塞**累计超 10 分钟** → 主动向用户播报一次（停在哪、在等谁、下一步）。goal 模式免的是逐票请示，**不免播报**。
-- **20 分钟无新 commit** → interrupt 当次等待，向施工子代理要中间回执（仍按 loop-protocol §五上限）。
+- **20 分钟无新 commit** → interrupt 当次等待，向施工子代理要中间回执（仍按兄弟技能 `loop` 的等待上限）。
 - **超预算** → close_agent 固化断点，再派新针从断点续；先关再发，不违反「同目标不重发」。
 - **增量提交**：派工卡硬性写明（agents 交接契约第 8 项）；收回执核 `commits` 数，单笔 900 行级大提交按违反增量提交记教训。
 
@@ -118,7 +111,6 @@ python <gates.captain_preflight> --lane main
 ```bash
 python <gates.captain_preflight> --lane main                  # 收工门禁：decision=CONTINUE|REVIEW|STOP|BLOCKED
 python <gates.captain_preflight> --lane main --ack-review     # 判完确实没活，放行 REVIEW
-python <kai-mode 仓>/框架仓门禁                        # 本仓门禁（改技能或协议后跑）
 git worktree list                                             # 一票一 worktree 自查
 ```
 

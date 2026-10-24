@@ -5,7 +5,7 @@ approved_by: human:<批准人>
 approved: <YYYY-MM-DD>
 sources:
   - resource: "项目配置实例 <项目仓根>/.ai/kai-mode.project.json（schema 3）"
-    note: "门与验证注册的唯一正本：gates.* 从实例读，本文件不写死第二份路径；读不到实例按 0004 D4 报缺件三格"
+    note: "门与验证注册的唯一正本：gates.* 从实例读，本文件不写死第二份路径；读不到实例报缺件三格"
 description: >
   <项目名> 的验收/验证技能骨架：按项目配置实例 `gates.*` 跑门、逐项留读数、红项如实点名；
   不写产品代码、不改判据、不猜路径。

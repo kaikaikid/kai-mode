@@ -7,7 +7,7 @@
 `~/.<agent>/skills/<名>` 是指向库目录的符号链接。正本与库是**拷贝**关系 ⇒ 「改了正本」≠「家家生效」。
 本脚本把这一步变成一条命令，并让漂移可复查。
 正本根认两种布局：项目仓落点读项目配置实例 `<root>/.ai/kai-mode.project.json` 的
-`registry.skills.project_skills_dir`／`loop_dir`（框架仓旧裁决，无实例回落内置缺省）；框架仓 `skills/<名>`。
+`registry.skills.project_skills_dir`／`loop_dir`（无实例回落内置缺省）；框架仓 `skills/<名>`。
 装机清单的单一事实源＝仓根 `registry.json`：只有 `install:auto` 的条目被拷贝、链到各家宿主、写进注册档；
 没有 registry.json 的老根目录回落内置默认清单（照旧工作，不报错退出）。
 
@@ -45,7 +45,7 @@ except Exception:
 
 ANCHOR = "kai-mode"  # 库位与落点面都沿这条既有条目反查，不写死机器路径
 LIBRARY_ENV = "KAI_MAGPIE_LIBRARY"
-# 项目技能落点缺省（框架仓旧裁决 registry.skills 的模板缺省值）：只在项目配置实例
+# 项目技能落点缺省（registry.skills 的模板缺省值）：只在项目配置实例
 # 不在／没写 registry.skills 时回落用；实例给了就以实例为准（一个语义一个家）。
 PROJECT_CONFIG = os.path.join(".ai", "kai-mode.project.json")
 REGISTRY_SKILLS_DEFAULT = {
@@ -210,7 +210,7 @@ def has_anchor(root: str) -> bool:
 
 
 def read_project_config(root: str) -> tuple:
-    """读项目配置实例 `<root>/.ai/kai-mode.project.json`（框架仓旧裁决/D4）。
+    """读项目配置实例 `<root>/.ai/kai-mode.project.json`。
     没有 ⇒ (None, None)；有但读不出/不是对象 ⇒ (None, 错误说明)。"""
     path = os.path.join(root, PROJECT_CONFIG)
     if not os.path.isfile(path):
@@ -226,7 +226,7 @@ def read_project_config(root: str) -> tuple:
 
 
 def skills_dirs(root: str | None) -> dict:
-    """项目技能落点（框架仓旧裁决 registry.skills）：实例给了用实例的；
+    """项目技能落点（registry.skills）：实例给了用实例的；
     无实例/字段缺 ⇒ 回落 REGISTRY_SKILLS_DEFAULT（模板缺省，仅此一处）。"""
     cfg, _err = read_project_config(root) if root else (None, None)
     skills = ((cfg or {}).get("registry") or {}).get("skills") or {}
@@ -239,7 +239,7 @@ def skills_dirs(root: str | None) -> dict:
 
 
 def default_source(name: str, root: str | None = None) -> str:
-    """装机源缺省值：项目技能落点读配置实例 `registry.skills.*`（框架仓旧裁决）；
+    """装机源缺省值：项目技能落点读配置实例 `registry.skills.*`；
     无实例回落 REGISTRY_SKILLS_DEFAULT。loop 用 loop_dir，其余住 project_skills_dir。"""
     dirs = skills_dirs(root)
     if name == "loop":
@@ -994,7 +994,7 @@ def selftest() -> int:
             got = family_src(fw_root, name)
             if got != os.path.join(fw_root, "skills", name):
                 fails.append(f"{name} 框架仓布局没被 family_src 认出（读到 {got}）")
-        # 项目配置实例 registry.skills 自定义落点（框架仓旧裁决）：装机源缺省要认实例
+        # 项目配置实例 registry.skills 自定义落点：装机源缺省要认实例
         cfg_root = os.path.join(tmp, "cfgrepo")
         custom_dir = os.path.join(".ai", "skills", "custom")
         custom_loop = os.path.join(".ai", "skills", "custom-loop")

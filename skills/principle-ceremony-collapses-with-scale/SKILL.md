@@ -4,8 +4,6 @@ status: active
 approved_by: human:kaikaikid
 approved: 2026-10-23
 sources:
-  - resource: "框架仓旧裁决"
-    note: "D6 有界判据（日表 5–10 行、施工回执上限，承继自 0003）与 Context 治理资产膨胀病征——仪式有界在记录面的落实"
   - resource: "skills/kai-mode/SKILL.md"
     note: "「设计取舍」段「仪式随规模塌缩」一条的原始出处；判据正本已迁入本叶子"
 description: >
@@ -46,4 +44,3 @@ compatibility: Host-agnostic
 
 - 抽小票：仪式步数与改动规模成比例，TIMEBOX 在票面上。
 - 抽超时票：有半成品交付＋停在哪的说明。
-- `python 框架仓门禁 --with-tests` 全绿。
