@@ -197,13 +197,9 @@ def chk_unregistered(root, ms):
     on_disk = [n for n in sorted(os.listdir(skills_dir))
                 if os.path.isfile(os.path.join(skills_dir, n, "SKILL.md"))]
     unregistered = [n for n in on_disk if f"skills/{n}" not in registered]
-    # 已判退役但被环境锁死、改不动也删不掉的目录：只记跳过，不再计入未登记红
-    legacy = [n for n in unregistered if n in LEGACY_LOCKED]
-    unregistered = [n for n in unregistered if n not in LEGACY_LOCKED]
     if unregistered:
         return "fail", f"盘上有技能目录没登记：{'、'.join(unregistered)}（补 registry.json 一行）"
-    tail = f"；{len(legacy)} 个已退役目录被环境锁死（{'、'.join(legacy)}），待人工移除" if legacy else ""
-    return "ok", f"盘上 {len(on_disk)} 个技能目录都登记了{tail}"
+    return "ok", f"盘上 {len(on_disk)} 个技能目录都登记了"
 
 
 def chk_missing_path(root, ms):
@@ -393,14 +389,11 @@ def chk_version_readme(root, ms):
 def chk_skill_tests(root, ms):
     """12 --with-tests：跑各技能自带测试 + 仓级 `scripts/tests`。
     有 pytest 用 pytest；技能测试在没有 pytest 时退化到标准库 unittest；
-    仓级测试是 doctor 自己的回归网，pytest 不可用即如实报红，不静默跳过。
-    已退役（LEGACY_LOCKED）的目录不跑。"""
+    仓级测试是 doctor 自己的回归网，pytest 不可用即如实报红，不静默跳过。"""
     skills_dir = os.path.join(root, "skills")
     targets = []
     if os.path.isdir(skills_dir):
         for name in sorted(os.listdir(skills_dir)):
-            if name in LEGACY_LOCKED:
-                continue
             for sub in ("scripts/tests", "tests"):
                 d = os.path.join(skills_dir, name, *sub.split("/"))
                 if os.path.isdir(d):
@@ -1000,10 +993,6 @@ HANDOFF_NAME_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})-(.+)\.md$")
 HANDOFF_MONTH_RE = re.compile(r"^(\d{4})-(\d{2})$")
 ROOT_MD_ALLOWED = ("README.md", "AGENTS.md", "CHANGELOG.md", "GLOSSARY.md")
 INBOX_TTL_DAYS = 7
-# 已判退役、但被环境（安全层/占用）锁死、删不掉也改不动的技能目录：只记跳过，不给红。
-# 人工移除后请把这里的名字删掉。
-# 当前两个：已被 `flight-info` 取代（v0.10.0 重做，模块化 + SQLite）；目录被安全层锁死，待人工删除。
-LEGACY_LOCKED: tuple = ("航班信息", "set-航班信息")
 
 
 def _fm_fields(path):
@@ -1461,7 +1450,7 @@ YAML_RESERVED_START = ("@", "`")
 
 def chk_host_neutral(root: str, ms):
     """宿主专有 token 不许进 skills/ loops/ agents/：那些细节归 adapters/<宿主>.md。
-    退役目录（LEGACY_LOCKED）不扫；需要保留的说明行写 `canon:allow-host`。"""
+    需要保留的说明行写 `canon:allow-host`。"""
     hits, scanned = [], 0
     for d in HOST_NEUTRAL_DIRS:
         base = os.path.join(root, d)
@@ -1469,8 +1458,6 @@ def chk_host_neutral(root: str, ms):
             continue
         for b, dirs, files in os.walk(base):
             dirs[:] = [x for x in dirs if x not in ("__pycache__", ".pytest_cache")]
-            if os.path.basename(b) in LEGACY_LOCKED or any(x in LEGACY_LOCKED for x in b.split(os.sep)):
-                continue
             for fn in sorted(files):
                 if not fn.lower().endswith(TEXT_EXT):
                     continue

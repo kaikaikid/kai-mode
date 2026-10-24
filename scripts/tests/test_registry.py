@@ -54,11 +54,8 @@ def test_registry_covers_every_skill_dir_on_disk():
     with open(os.path.join(REPO, "registry.json"), encoding="utf-8") as f:
         data = json.load(f)
     skills_dir = os.path.join(REPO, "skills")
-    # 与 doctor 的 LEGACY_LOCKED 同口径：两个被环境锁死、已判退役的目录不参与“盘面==注册表”。
-    legacy_locked = {"航班信息", "set-航班信息"}
     on_disk = sorted(n for n in os.listdir(skills_dir)
-                     if os.path.isfile(os.path.join(skills_dir, n, "SKILL.md"))
-                     and n not in legacy_locked)
+                     if os.path.isfile(os.path.join(skills_dir, n, "SKILL.md")))
     registered = sorted(e["name"] for e in data["skills"])
     assert on_disk == registered
 

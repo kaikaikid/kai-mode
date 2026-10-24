@@ -2,6 +2,14 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.17.1 — 2026-10-24
+
+- **清理退役看板目录**：删除 `skills/航班信息`、`skills/set-航班信息`（v0.10.0 起由 `flight-info`
+  取代；删除前确认无未提交件，git 历史可恢复）。
+- doctor 移除 `LEGACY_LOCKED` 兼容分支：`unregistered-skill` 恢复严格「盘面==注册表」；
+  `skill-tests` / `host-neutral` 不再按目录名跳过。
+- `manifests/package-layout.json` 移除退役目录注记；ADR-0003 演进注改为「已从仓内移除」。
+
 ## 0.17.0 — 2026-10-24
 
 - **解耦收口**：活跃技能 payload 里 77 处指向本仓 `docs/`／`loops/`／`agents/`／`adapters/`／
