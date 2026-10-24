@@ -13,6 +13,9 @@
   `install:manual` 件豁免；测试改成红绿各 4 条（含 `env-doctor.py` 合法反例）。项数仍 25。
 - 口径回写：`docs/skill-layout.md` 定引用正本，`docs/package-layout.md` 硬规矩 4 与「维护侧引用」节改判据，
   删掉私有仓 404 访问说明；`docs/agents/domain.md` 现行裁决加 0013。
+- **历史净化（2026-10-25 执行）**：`git filter-branch` 逐提交抹掉 `skills/**` 历史件里的四类 token（豁免 manual 件）。
+  验收：提交数 60 不变、`main^{tree}` 前后同为 `a22d134`（现行内容面一字未动）、215 个历史 blob 版本 token 归零；
+  远端 `4104cea → ea3ce62`（`--force-with-lease`）。备份与别的机器要对齐的动作见 ADR-0013 执行记录。
 
 ## 0.18.2 — 2026-10-24
 

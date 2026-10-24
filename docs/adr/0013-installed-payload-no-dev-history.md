@@ -65,3 +65,20 @@ frontmatter `sources[].resource` 只写同技能文件或兄弟技能（安装�
 - 技能正文略长（该说的判据本来就该写全），维护侧决策史只长在我们仓里。
 - 门禁数不变（`payload-refs` 换判据不新增项），doctor 仍 25 项。
 - 已装到本机中央库的旧副本由 `magpie-sync apply` 覆盖刷新，写前整包备份。
+
+## 执行记录（2026-10-25 历史净化）
+
+用户令「继续把旧历史里的链接抹掉」。做法与读数：
+
+- 工具：`git filter-branch --tree-filter`，逐提交重写 `skills/**` 的件；**豁免 `install:manual` 的 `harness-audit`**——
+  它写的 `python scripts/doctor.py` 是维护者真命令，抹成占位文字就变成错指令（第一遍没豁免，`main^{tree}` 因此动了，作废重做）。
+- 抹掉的就是 D1 那四类 token；提交信息本身经实测不含框架仓 URL（0 处），故未改 message。
+- 三条验收（全绿才算完）：① 提交数 60 不变；② 改写前后 `main^{tree}` 都是 `a22d134769d4680a39e15d18f6e08643e9a95c48`
+  ＝ 现行内容面一字未动，只有历史旧版本被改写；③ `skills/**` 的 215 个历史 blob 版本里四类 token 归零。
+- 备份（仓外，可完整还原，均 `git bundle verify` 通过）：`<agent 数据根>/kai-mode-pre-rewrite-26ad2d6.bundle`
+  与 `...-4104cea.bundle`（后者＝推送前那一刻的远端头）。
+- 远端：`4104cea → ea3ce62`，用 `--force-with-lease` 推（期间有人插推就会失败，不会覆盖别人的头）。
+  遗留两处不可控：GitHub 侧旧对象要等服务端 GC 才彻底不可达；本机 reflog 里旧提交短期仍可见（不上传）。
+- **别的机器／会话要做的一次动作**：`git fetch --all` 后把本地 `main` 对齐 `origin/main`
+  （用 `git reset --keep`，别用 `--hard`，以免抹掉他人未提交件），或重新 clone。旧的本地头已不在远端。
+
