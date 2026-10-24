@@ -34,6 +34,10 @@ accepted —— 2026-10-23 开哥拍板，三项开放裁定随拍入档：①�
 | `issue` ⑤ | `platform`／`repo`／`ready_label`／`verdict_marker`／`milestone_gating`／`boom_summary_ticket` | 票平台类型与仓标识 | 隐性「GitHub＋ready-for-agent＋#票号」假设、BOOM 汇总票号（地勤） | **新增** |
 | `execution`／`tower_cron`／`wip`／`limits`／`approval`／`acceptance`／`audit` | — | 沿用 schema 2 | — | 沿用（`execution.host_tools` 见 D6） |
 
+> 表内「缺省值」口径已被 [0014](0014-config-instance-no-invented-values.md) D1 收紧：模板里没被十一问填到的键一律 `null`，
+> 本仓的门名／包管理命令／宿主偏好不得作为缺省写进用户实例；占位不落盘改由 `init-project.py` 机械保证。
+
+
 **六档映射（词表只有 R/C/P/V/G/W，永不写模型 slug）**：
 
 | 角色 | 档位 | 备注 |

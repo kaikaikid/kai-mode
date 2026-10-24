@@ -459,6 +459,64 @@ def test_package_layout_missing_source_is_red(tmp_path):
     assert "源件不存在" in detail_of(data, "package-layout")
 
 
+# ── 26 config-instance：实跑 init-project，实例里不许有虚构值 ────────────────
+def add_init(root, gates_extra=None):
+    """把真 init-project 装进假仓，并写一份最小 schema 模板；gates_extra 用来塞「没被问答的门」。"""
+    import shutil
+    (root / "scripts").mkdir(exist_ok=True)
+    shutil.copyfile(os.path.join(REPO, "scripts", "init-project.py"),
+                    str(root / "scripts" / "init-project.py"))
+    tpl = {
+        "schema": 3, "_note_0": "t", "project": "<project-name>", "repo_root": ".",
+        "ship_mode": "tower",
+        "host": {"_note": "n", "adapter": "<qoder|codex>"},
+        "registry": {"_note": "n", "adrs": {"dir": "<adr-dir>"},
+                     "skills": {"project_skills_dir": ".ai/skills/project-skills",
+                                "loop_dir": ".ai/skills/loop"}},
+        "paths": {"_note": "n", "day_tables_dir": "<day-tables-dir>",
+                  "day_table_pattern": "YYYY-MM-DD-{lane}.md", "lanes": ["main", "deputy"],
+                  "handoff_dir": "handoff", "ideas_dir": "ideas"},
+        "gates": dict({"_note": "n", "captain_preflight": ""}, **(gates_extra or {})),
+        "issue": {"_note": "n", "platform": "github", "repo": "<owner>/<repo>",
+                  "boom_summary_ticket": None},
+    }
+    (root / "templates" / "kai-mode.project.json").write_text(
+        json.dumps(tpl, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def test_config_instance_preset_gate_is_red(tmp_path):
+    root = make_repo(tmp_path)
+    add_layout(root)
+    add_init(root, {"ready": "scripts/ready.py", "env_doctor": "scripts/env-doctor.py"})
+    rc, data = run_doctor(root)
+    assert rc == 1
+    detail = detail_of(data, "config-instance")
+    assert status_of(data, "config-instance") == "fail"
+    assert "没被问答的门" in detail
+    assert "ready" in detail and "env_doctor" in detail
+
+
+def test_config_instance_machine_path_is_red(tmp_path):
+    root = make_repo(tmp_path)
+    add_layout(root)
+    add_init(root)
+    p = root / "templates" / "kai-mode.project.json"
+    tpl = json.loads(p.read_text(encoding="utf-8"))
+    tpl["paths"]["audit_dir"] = "C:" + chr(92) + "Users" + chr(92) + "kaikaikid" + chr(92) + "audit"
+    p.write_text(json.dumps(tpl, ensure_ascii=False, indent=2), encoding="utf-8")
+    rc, data = run_doctor(root)
+    assert rc == 1
+    assert "机器绝对路径进了实例" in detail_of(data, "config-instance")
+
+
+def test_config_instance_clean_is_green(tmp_path):
+    root = make_repo(tmp_path)
+    add_layout(root)
+    add_init(root)
+    rc, data = run_doctor(root)
+    assert status_of(data, "config-instance") == "ok", detail_of(data, "config-instance")
+
+
 # ── 25 payload-refs：安装面零开发史引用（ADR-0013） ──────────────────────────
 def test_payload_refs_external_link_is_red(tmp_path):
     root = make_repo(tmp_path)

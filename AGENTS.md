@@ -1,7 +1,7 @@
 # kai-mode
 
 Framework repo, independent of any project repo. Run `python scripts/doctor.py` before and after
-every change — 25 checks, red means `rc=1`.  
+every change — 26 checks, red means `rc=1`.  
 `vendor/` is tracked (clones must be able to restore it); `scripts/tests/` runs under
 `doctor.py --with-tests` (needs pytest) and is part of that gate.
 
@@ -60,6 +60,7 @@ tools. Subagents within a ticket are not role sessions. Source of truth:
 | Host differences (launcher per role, how a persona becomes a native agent file, permissions, model) | `adapters/README.md` + `adapters/<host>.md` | pointer |
 | Artifact packaging (dev records vs host payload vs project scaffold) | `manifests/package-layout.json` + `docs/package-layout.md` | pointer |
 | Agent global data layout (non-project data root, per-agent override, project boundary) | `docs/agent-data-layout.md` | pointer in adapters |
+| Project config instance values (key set, which defaults may be non-null) | `docs/adr/0014-config-instance-no-invented-values.md` + `templates/kai-mode.project.json` | pointer |
 | Role wake permissions (who may wake whom) | `docs/adr/0010-role-wake-fence.md` | pointer in role skills |
 | Runtime mechanics (retry, timeout, circuit breaker, budget, TTL) | **not in docs** — belongs to the host runtime | — |
 | Project instance values (thresholds, paths, ticket ids, **agent models** `models.agents.<persona>.model`) | project config instance | template only |
@@ -101,7 +102,7 @@ Pick the slot from the type word in the filename. Full rules: `handoff/README.md
 ## Commands
 
 ```bash
-python scripts/doctor.py [--with-tests]          # 25 checks; --with-tests includes scripts/tests
+python scripts/doctor.py [--with-tests]          # 26 checks; --with-tests includes scripts/tests
 python scripts/new-skill.py <n> --summary "..."  # skill scaffold
 python scripts/vendor-sync.py [--check]          # vendored skills: pull from local mirror / detect drift
 python scripts/handoff-board.py list             # cross-agent board

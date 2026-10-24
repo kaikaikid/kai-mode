@@ -25,6 +25,7 @@ import os
 import re
 import subprocess
 import sys
+import shutil
 import tempfile
 
 try:  # Windows 控制台下中文输出
@@ -841,6 +842,111 @@ def chk_package_layout(root: str, ms):
                   f"{len(expected)} 件与清单逐件一致")
 
 
+CFG_ASKED_GATES = ("captain_preflight",)
+MACHINE_PATH_RE = re.compile(r"^([A-Za-z]:[\\/]|[\\\\]{2})")
+
+
+def _cfg_leaves(node, prefix=""):
+    out = set()
+    if isinstance(node, dict):
+        for k, v in node.items():
+            if str(k).startswith("_") or k == "schema":
+                continue
+            p = f"{prefix}.{k}" if prefix else str(k)
+            if isinstance(v, dict) and v:
+                out |= _cfg_leaves(v, p)
+            elif isinstance(v, list) and v and isinstance(v[0], dict):
+                out |= {f"{p}.{kk}" for kk in v[0] if not str(kk).startswith("_")}
+            else:
+                out.add(p)
+    return out
+
+
+def _cfg_values(node, prefix=""):
+    out = []
+    if isinstance(node, dict):
+        for k, v in node.items():
+            if str(k).startswith("_"):
+                continue
+            p = f"{prefix}.{k}" if prefix else str(k)
+            if isinstance(v, (dict, list)):
+                out.extend(_cfg_values(v, p))
+            else:
+                out.append((p, v))
+    elif isinstance(node, list):
+        for i, v in enumerate(node):
+            p = f"{prefix}[{i}]"
+            if isinstance(v, (dict, list)):
+                out.extend(_cfg_values(v, p))
+            else:
+                out.append((p, v))
+    return out
+
+
+def chk_config_instance(root: str, ms):
+    """26 配置实例零虚构值：实跑一次 init-project，生成的实例必须
+    ①键集与模板一致 ②值里不留 <占位>（没问出来就 null）③不留机器绝对路径
+    ④gates 里非 null 的键只能是问答过的门。模板没问的字段预置本仓的值 ⇒ 红。"""
+    tpl_rel = os.path.join(root, *LAYOUT_REL.split("/"))
+    if not os.path.isfile(tpl_rel):
+        return "skip", f"没有 {LAYOUT_REL}（不适用）"
+    try:
+        with open(tpl_rel, encoding="utf-8") as f:
+            layout = json.load(f)
+        spec = layout["project_scaffold"]
+        cfg_from = os.path.join(root, *spec["config"]["from"].split("/"))
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        return "fail", f"{LAYOUT_REL} 读不出配置模板落点：{exc}"
+    init_py = os.path.join(root, "scripts", "init-project.py")
+    if not (os.path.isfile(cfg_from) and os.path.isfile(init_py)):
+        return "skip", "没有配置模板或初始化器（不适用）"
+    tmp = tempfile.mkdtemp(prefix="kai-doctor-cfg-")
+    try:
+        if subprocess.run(["git", "-C", tmp, "init", "-q"], capture_output=True).returncode != 0:
+            return "skip", "git 不可用（不适用）"
+        answers = {
+            "project": "doctor-probe", "ticket_source": "github", "repo_slug": "probe/proj",
+            "day_tables_dir": ".ai/tasks", "handoff_dir": "handoff", "ideas_dir": "ideas",
+            "adr_dir": "docs/adr", "host": "qoder", "preflight_gate": "",
+            "boom_summary_ticket": "", "agent_models": None,
+        }
+        ans_file = os.path.join(tmp, "answers.json")
+        with open(ans_file, "w", encoding="utf-8") as f:
+            json.dump(answers, f, ensure_ascii=False)
+        p = subprocess.run([sys.executable, init_py, "--repo", tmp, "--answers", ans_file],
+                           capture_output=True, text=True, encoding="utf-8", errors="replace")
+        inst = os.path.join(tmp, *spec["config"]["to"].split("/"))
+        if p.returncode != 0 or not os.path.isfile(inst):
+            return "fail", "实跑 init-project 没生成实例（rc=%s）：%s" % (
+                p.returncode, (p.stdout or p.stderr or "").strip()[:160])
+        with open(cfg_from, encoding="utf-8") as f:
+            tpl = json.load(f)
+        with open(inst, encoding="utf-8") as f:
+            got = json.load(f)
+        problems = []
+        tkeys, gkeys = _cfg_leaves(tpl), _cfg_leaves(got)
+        if tkeys != gkeys:
+            miss = sorted(tkeys - gkeys)
+            extra = sorted(gkeys - tkeys)
+            problems.append("键集不一致（模板缺 %s／实例多 %s）" % (miss[:4] or "无", extra[:4] or "无"))
+        for k, v in _cfg_values(got):
+            if isinstance(v, str) and "<" in v and ">" in v:
+                problems.append(f"占位没答就落盘：{k}")
+            elif isinstance(v, str) and MACHINE_PATH_RE.match(v):
+                problems.append(f"机器绝对路径进了实例：{k}")
+        fake = sorted(k.split(".")[-1] for k, v in _cfg_values(got.get("gates") or {})
+                      if v not in (None,) and k.split(".")[-1] not in CFG_ASKED_GATES)
+        if fake:
+            problems.append("模板预置了没被问答的门：" + "、".join(fake[:5]))
+        if problems:
+            return "fail", "；".join(problems[:5]) + (f"（共 {len(problems)} 处）"
+                                                    if len(problems) > 5 else "")
+        return "ok", ("实跑生成实例通过：%d 个叶子键与模板一致，零占位、零机器路径；"
+                      "gates %d 键里只有问答过的非 null" % (len(gkeys), len(got.get("gates") or {}) - 1))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 PAYLOAD_TEXT_SUFFIXES = (".md", ".py", ".json", ".ps1", ".sh", ".sql", ".yaml", ".yml", ".txt")
 PAYLOAD_FORBIDDEN = (
     ("框架仓 URL", re.compile(r"github\.com/kaikaikid/kai-mode")),
@@ -1649,6 +1755,7 @@ CHECKS = (
     ("install-profiles", "安装档位清单（core/full）", chk_install_profiles),
     ("install-receipt", "安装回执（档位/技能/哈希）", chk_install_receipt),
     ("package-layout", "三层打包边界（开发件/安装件/骨架）", chk_package_layout),
+    ("config-instance", "配置实例零虚构值（实跑 init-project）", chk_config_instance),
     ("payload-refs", "安装面零开发史引用", chk_payload_refs),
     ("decoupling-gate", "解耦门（项目硬路径零残留）", chk_decoupling),
     ("host-neutral", "宿主专有 token 不进正本", chk_host_neutral),

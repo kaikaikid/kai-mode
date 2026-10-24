@@ -2,6 +2,18 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.20.0 — 2026-10-25
+
+- **配置实例零虚构值**（[ADR-0014](docs/adr/0014-config-instance-no-invented-values.md)）：从干净 clone 实跑 `init-project` 对账，
+  量出 6 处漂移、本轮修 4 处硬矛盾——7 处 `<占位>` 落盘、`gates` 12 键全是本仓门名（用户项目里 0 个存在）、
+  宿主两处（`host.adapter` 与 `execution.preferred`／`fallbacks`）、包管理与前端目录等本仓布局被当缺省塞给用户。
+- 模板：没被十一问填到的键一律 `null`；`init-project.py` 加 `drop_placeholders()` 机械保证「占位不落盘」并打印被抹的键；
+  第 9 问缺省从 `scripts/captain-preflight.py` 改空（别仓的门名不再自动进用户实例）。
+- doctor 新增第 26 项 `config-instance`：实跑初始化器 → 断言叶子键集与模板逐键相等、零占位、零机器绝对路径、
+  `gates` 非 null 只能来自问答清单；红绿回归 3 条。25→26 项口径同步 AGENTS／package-layout／domain。
+- **没做的**：88 键里 60 个全仓零读者（`limits`／`runtime`／`execution`／`wip`／`approval`／`acceptance`／`audit`，
+  即 0004 从 schema 2「沿用」的那批）＝schema 4 破坏性删除，待拍板，登记在 ADR-0014 D5。
+
 ## 0.19.0 — 2026-10-24
 
 - **安装面零开发史**（[ADR-0013](docs/adr/0013-installed-payload-no-dev-history.md)）：新用户装完拿到的不再是我们仓的决策史。

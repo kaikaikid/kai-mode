@@ -106,8 +106,8 @@ def build_answers(repo: str, a, yes: bool) -> dict:
         "ideas_dir": ask("6/11 想法目录", "ideas", yes),
         "adr_dir": ask("7/11 ADR 目录", "docs/adr", yes),
         "host": ask("8/11 宿主（qoder / codex / opencode / claude / copilot / cursor）", "qoder", yes),
-        "preflight_gate": ask("9/11 收工门禁脚本（相对仓根，留空=null）",
-                             "scripts/captain-preflight.py", yes),
+        "preflight_gate": ask("9/11 收工门禁脚本（相对仓根；本项目没有就回车留 null，别抄别仓的门名）",
+                             "", yes),
         "boom_summary_ticket": ask("10/11 想法池汇总票号（可留空）", "", yes),
         "agent_models": ask_models(yes),
     }
@@ -170,6 +170,29 @@ def apply_models(cfg: dict, ans: dict) -> list:
     models["agents"] = {n: {"model": per[n]} for n in names}
     cfg["models"] = models
     return extra
+
+
+def drop_placeholders(node, path=""):
+    """占位不落盘：值里还带 <尖括号> 的字段（＝没问出答案）一律改 null，返回被抹的键路径。"""
+    wiped = []
+    if isinstance(node, dict):
+        for k, v in list(node.items()):
+            if str(k).startswith("_"):
+                continue
+            p = f"{path}.{k}" if path else str(k)
+            if isinstance(v, str) and "<" in v and ">" in v:
+                node[k] = None
+                wiped.append(p)
+            else:
+                wiped.extend(drop_placeholders(v, p))
+    elif isinstance(node, list):
+        for i, v in enumerate(node):
+            if isinstance(v, str) and "<" in v and ">" in v:
+                node[i] = None
+                wiped.append(f"{path}[{i}]")
+            else:
+                wiped.extend(drop_placeholders(v, f"{path}[{i}]"))
+    return wiped
 
 
 def apply(cfg: dict, ans: dict) -> dict:
@@ -286,6 +309,9 @@ def main() -> int:
     with open(cfg_src, encoding="utf-8") as f:
         cfg = json.load(f)
     cfg = apply(cfg, ans)
+    wiped = drop_placeholders(cfg)
+    if wiped:
+        print("占位没答上来，已按 null 落盘（读取端会如实报缺件，不猜路径）：" + "、".join(wiped))
 
     missing = []
     if not ans.get("project"):

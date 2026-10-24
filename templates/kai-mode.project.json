@@ -1,6 +1,6 @@
 {
   "schema": 3,
-  "_note_0": "kai-mode 项目差异层实例模板（schema 3）。落点：<项目仓根>/.ai/kai-mode.project.json（tracked）。唯一项目差异事实源：技能运行时读它拿路径/宿主/平台；读不到 rc!=0 报缺件，永不猜路径。占位一律 <尖括号>，装机由 set-kai-mode 填实（占位不落盘）；_note_* 键与 _comment 值为注释性说明，读取端忽略。字段语义写在对应段的 _note 里。",
+  "_note_0": "kai-mode 项目差异层实例模板（schema 3）。落点：<项目仓根>/.ai/kai-mode.project.json（tracked）。唯一项目差异事实源：技能运行时读它拿路径/宿主/平台；读不到 rc!=0 报缺件，永不猜路径。写者＝scripts/init-project.py（由 set-kai-mode 驱动十一问）；模板里的 <尖括号> 是待问字段，没问出答案的字段一律 null——生成的实例里既不许留占位，也不许留本仓没被问答过的值。_note_* 键与 _comment 值为注释性说明，读取端忽略；字段语义写在对应段的 _note 里。",
   "project": "<project-name>",
   "repo_root": ".",
   "ship_mode": "tower",
@@ -13,7 +13,7 @@
     "playbooks": [
       {
         "name": "tower",
-        "trigger": "/塔台 或 1 小时轮巡",
+        "trigger": "/塔台 或 唤醒定时器（周期看 tower_cron.interval_min）",
         "route": "tower",
         "notes": "先发货后补排班；push 与关票独占"
       },
@@ -34,12 +34,6 @@
         "trigger": "/地勤",
         "route": "ground-crew",
         "notes": "对话、规划、开票、收想法；开票权归它"
-      },
-      {
-        "name": "<剧本名>",
-        "trigger": "<触发口令或场景>",
-        "route": "<入口技能目录名，按 registry.skills 布局解析>",
-        "notes": "<一句话备注>"
       }
     ],
     "skills": {
@@ -111,26 +105,26 @@
     },
     "deps": {
       "policy": "worktree_offline_install",
-      "install_cmd": "pnpm install --offline",
-      "check_dir_rel": "<frontend-dir>/node_modules",
+      "install_cmd": null,
+      "check_dir_rel": null,
       "forbid_link_main_tree": true,
       "full_frontend_suite": "main_tree_after_merge"
     }
   },
   "gates": {
     "_note": "项目仓门/脚本注册（schema 2 runtime 三门泛化）：相对项目仓根。null=本项目无此门，消费方跑到时 rc!=0 报缺件，不许猜路径；长期红的门只走基线文件，不改判据。",
-    "captain_preflight": "scripts/captain-preflight.py",
-    "scope_check": "scripts/scope-check.py",
-    "docs_check": "scripts/docs-check.py",
-    "close_gate": "scripts/scope-check.py close-gate",
-    "framework_gate": "scripts/framework-gate.py",
-    "loop_gate": "scripts/loop-gate.py",
-    "ready": "scripts/ready.py",
-    "env_doctor": "scripts/env-doctor.py",
-    "worktree_teardown": "scripts/worktree-teardown.py",
-    "handoff_cleanup": "scripts/handoff-cleanup.py",
-    "skill_attest": "scripts/skill-attest.py",
-    "pre_push_hook": ".githooks/pre-push"
+    "captain_preflight": null,
+    "scope_check": null,
+    "docs_check": null,
+    "close_gate": null,
+    "framework_gate": null,
+    "loop_gate": null,
+    "ready": null,
+    "env_doctor": null,
+    "worktree_teardown": null,
+    "handoff_cleanup": null,
+    "skill_attest": null,
+    "pre_push_hook": null
   },
   "issue": {
     "_note": "⑤票平台：platform ∈ github | gitlab | jira | azure-boards | none；repo 为平台仓标识（github=owner/name）。ready_label=后备池门票标；verdict_marker=发货判词行首（塔台只认它）；milestone_gating=未挂开放里程碑不进后备池；boom_summary_ticket=BOOM 想法池汇总票号，没有则 null。",
@@ -142,12 +136,9 @@
     "boom_summary_ticket": null
   },
   "execution": {
-    "_note": "沿用 schema 2。宿主工具契约（builder/reviewer/researcher 在本宿主怎么探测、怎么降级）住宿主适配说明，实例不再承载 host_tools。",
-    "preferred": "qoder",
-    "fallbacks": [
-      "codex",
-      "opencode"
-    ],
+    "_note": "沿用 schema 2 的语义位。宿主选择的唯一家＝host.adapter；本段的 preferred/fallbacks 未经问答不得填值（null＝不猜）。宿主工具契约住宿主适配说明，实例不承载。",
+    "preferred": null,
+    "fallbacks": null,
     "subagent_roles": {
       "builder": "fresh-context (own worktree + branch)",
       "reviewer": "fresh-context-independent (read-only, never the builder)",
@@ -162,10 +153,10 @@
   "tower_cron": {
     "_note": "唤醒定时器配置：只负责每 interval_min 分钟唤醒塔台一轮；塔台是独立岗位，无定时器时人工/kai-mode 唤醒。字段名沿用 tower_cron，不代表塔台角色。",
     "interval_min": 60,
-    "prompt_shell": "读取并执行 tower 技能（按宿主技能目录解析）；任务名 cron-tower-<日期>-<时分>",
+    "prompt_shell": "读取并执行 tower 技能（按宿主技能目录解析）；任务名 cron-tower-日期-时分",
     "output_mode": "independent",
     "execution_authorization": true,
-    "job_ids_from": "<local-only config, not tracked>"
+    "job_ids_from": null
   },
   "wip": {
     "per_pilot": 2,
