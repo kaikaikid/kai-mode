@@ -250,3 +250,54 @@ def test_empty_sources_is_not_an_error(tmp_path, capsys):
     board = _board_dir(repo)
     assert (board / "render_航班.py").exists()
     assert (board / "index.html").exists()
+
+
+# ───────────────────────── 板型选择（board-types 模板集） ─────────────────────────
+
+GENERIC = (SKILL_ROOT.parent / "航班信息" / "templates" / "board-types"
+           / "通用占位" / "board.config.example.json")
+
+
+def test_board_type_selection_installs_generic_board(tmp_path, capsys):
+    """--board-type 通用占位 ⇒ 按该板型模板出板（清单看板；板名/库根都来自板型模板）。"""
+    mod = _load()
+    repo = _fake_repo(tmp_path)
+    rc = mod.main(["--repo-root", str(repo), "--board-type", "通用占位"])
+    out = capsys.readouterr().out
+    assert rc == 0, out
+    assert "板型：通用占位" in out, out
+    board = repo / ".design" / "看板" / "HTML" / "清单"
+    for fname in ("board.config.json", "render_清单.py", "refresh_清单.bat",
+                  "index.html", "board.json", "history.jsonl"):
+        assert (board / fname).exists(), "缺 %s" % fname
+    cfg = json.loads((board / "board.config.json").read_text(encoding="utf-8"))
+    assert cfg["name"] == "清单" and cfg["stages"][0]["label"] == "待办"
+    assert cfg["view"]["labels"]["col_item"] == "条目"
+    # 板型模板里的字段文案进了人读面（引擎同一份，文案跟板型走）。
+    html = (board / "index.html").read_text(encoding="utf-8")
+    assert "没有符合筛选的条目。" in html
+    assert "航班" not in html
+    # 回执点名板库索引也出了。
+    assert (repo / ".design" / "看板" / "HTML" / "index.html").exists()
+
+
+def test_unknown_board_type_exits_2_and_lists_available(tmp_path, capsys):
+    mod = _load()
+    repo = _fake_repo(tmp_path)
+    rc = mod.main(["--repo-root", str(repo), "--board-type", "不存在的板型"])
+    captured = capsys.readouterr()
+    assert rc == 2
+    assert "可用" in captured.err
+    assert "航班信息" in captured.err and "通用占位" in captured.err
+    assert not (repo / ".design").exists(), "选型不过却建了目录"
+
+
+def test_config_and_board_type_conflict_exits_2(tmp_path, capsys):
+    mod = _load()
+    repo = _fake_repo(tmp_path)
+    rc = mod.main(["--repo-root", str(repo), "--config", str(MINIMAL),
+                   "--board-type", "通用占位"])
+    captured = capsys.readouterr()
+    assert rc == 2
+    assert "只给一个" in captured.err
+    assert not (repo / ".design").exists(), "选型冲突却建了目录"

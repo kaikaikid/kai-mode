@@ -33,15 +33,16 @@ def test_whitelist_dirs_do_not_report(tmp_path):
     assert rc == 0
 
 
-def test_schema3_template_with_model_slug_is_red(tmp_path):
-    """③schema 3 配置模板六档夹带模型 slug ⇒ 红；tier 写出六档词表外同样红。"""
+def test_schema3_template_reviving_tiers_is_red(tmp_path):
+    """③a schema 3 模板把六档字段写回来 ⇒ 红，文案点名已退役（ADR-0008 D3）。"""
     root = make_repo(tmp_path)
     tpl = {
         "schema": 3,
         "models": {
+            "agents": {"worker": {"model": None}},
             "tiers": ["R", "C", "P", "V", "G", "W"],
             "default": "C",
-            "roles": {"code": {"tier": "C", "model": "group/tier-code-xhigh"}},
+            "roles": {"code": {"tier": "C"}},
         },
     }
     (root / "templates").mkdir()
@@ -51,14 +52,35 @@ def test_schema3_template_with_model_slug_is_red(tmp_path):
     assert rc == 1
     assert status_of(data, GATE) == "fail"
     detail = detail_of(data, GATE)
-    assert "group/" in detail and "slug" in detail
-    tpl["models"]["roles"]["code"] = {"tier": "claude"}  # tier 跑出词表
+    assert "models.tiers 已退役" in detail and "ADR-0008" in detail
+    assert "models.default 已退役" in detail and "models.roles 已退役" in detail
+
+
+def test_schema3_template_with_model_name_is_red(tmp_path):
+    """③b 模板把模型写死（非 null）⇒ 红：框架不写死模型，值归用户实例。"""
+    root = make_repo(tmp_path)
+    tpl = {"schema": 3, "models": {"agents": {"worker": {"model": "group/tier-code-xhigh"}}}}
+    (root / "templates").mkdir()
     (root / "templates" / "kai-mode.project.json").write_text(
         json.dumps(tpl, ensure_ascii=False), encoding="utf-8")
     rc, data = run_doctor(root)
     assert rc == 1
     assert status_of(data, GATE) == "fail"
-    assert "models.roles.code.tier='claude'" in detail_of(data, GATE)
+    detail = detail_of(data, GATE)
+    assert "只许 null" in detail and "group/" in detail
+
+
+def test_schema3_template_metadata_junk_key_is_red(tmp_path):
+    """③c agents.<人格> 里塞回 tier/spawn 之类 ⇒ 红（只许 model）。"""
+    root = make_repo(tmp_path)
+    tpl = {"schema": 3, "models": {"agents": {"worker": {"model": None, "tier": "C"}}}}
+    (root / "templates").mkdir()
+    (root / "templates" / "kai-mode.project.json").write_text(
+        json.dumps(tpl, ensure_ascii=False), encoding="utf-8")
+    rc, data = run_doctor(root)
+    assert rc == 1
+    assert status_of(data, GATE) == "fail"
+    assert "多余键 tier" in detail_of(data, GATE)
 
 
 def test_clean_repo_gate_is_green(tmp_path):
@@ -78,16 +100,15 @@ def test_template_config_path_values_are_not_flagged(tmp_path):
     (root / "templates" / "kai-mode.project.json").write_text(json.dumps({
         "schema": 3,
         "paths": {"audit_dir": ".ai/scope/audit"},
-        "models": {"tiers": ["R", "C", "P", "V", "G", "W"], "default": "C",
-                   "roles": {"watch": {"tier": "R"}}},
+        "models": {"agents": {"worker": {"model": None}}},
     }, ensure_ascii=False), encoding="utf-8")
     rc, data = run_doctor(root)
     assert status_of(data, GATE) == "ok"
     assert rc == 0
 
 
-def test_template_schema2_skips_tier_subcheck(tmp_path):
-    """schema 2 兼容期模板：六档子检查不适用（不红），其余五种模式照扫。"""
+def test_template_schema2_skips_models_subcheck(tmp_path):
+    """schema 2 兼容期模板：models 子检查不适用（不红），其余五种模式照扫。"""
     root = make_repo(tmp_path)
     (root / "templates").mkdir()
     (root / "templates" / "kai-mode.project.json").write_text(

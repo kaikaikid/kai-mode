@@ -1,7 +1,9 @@
 # opencode 适配器（免费档备胎）
 
+> 本文只讲**怎么在这个宿主上起岗位**。人格怎么落成 `.opencode/agents/<名>.md`（权限/模型/禁派生）见 [README.md](README.md)。
+
 > 适用：宿主没有会话创建口 / 定时口，或需要非 Qoder 执行体直接跑角色。
-> **它没有 `qoder_cron` 类定时口**；只能**直接跑角色技能**。要 30 分钟塔台定时，仍需宿主的定时口或人工 `/塔台`。
+> **它没有 `qoder_cron` 类定时口**；只能**直接跑角色技能**。要 60 分钟唤醒塔台，仍需宿主的定时口或人工 `/塔台`。
 
 ## 探测
 
@@ -30,7 +32,7 @@ opencode run --model <free-model> \
 - 角色技能落点读项目配置实例 `registry.skills.project_skills_dir`（框架仓正本＝本仓 `skills/`），路径不写死（[0004](../docs/adr/0004-project-config-schema.md) D2/D6）。
 - 失败写 `launch-failed`；不重试到死，交人工。
 
-## 执行三职（判据出处：项目仓 ADR-0136，历史；判据由 [skills/kai-mode/playbooks/execution-roles.md](../skills/kai-mode/playbooks/execution-roles.md) 承载：researcher / implementer / reviewer）
+## 执行三职
 
 - **Researcher**：`opencode run` 只读 prompt，产出 `research-<票>.md`；不写实现。
 - **Implementer**（＝施工子代理）：`opencode run`，必带派工卡（票号/AC/允许禁止修改/验证命令/环境口径）；独立 worktree 与分支；不 push、不合并。
@@ -42,4 +44,4 @@ opencode run --model <free-model> \
 - 免费档优先；不静默切付费档。
 - 不建/删其他宿主的定时任务。
 - 不替角色施工；只把角色技能跑起来。
-- 与按铃子会话一样，目标在岗不重复起。
+- 与按需子会话一样，目标在岗不重复起。

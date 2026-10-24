@@ -18,7 +18,7 @@ from pathlib import Path
 SKILL_ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = SKILL_ROOT / "scripts"
 SCRIPT = SCRIPTS / "new_board.py"
-EXAMPLE = SKILL_ROOT / "templates" / "board.config.example.json"
+EXAMPLE = SKILL_ROOT / "templates" / "board-types" / "航班信息" / "board.config.example.json"
 
 
 def _load():
@@ -108,6 +108,17 @@ def test_generated_bat_is_crlf_and_parameterized(tmp_path):
     assert "%~dp0render_airport.py" in text
     assert "py -3" in text
     assert "D:\\" not in text and "C:\\" not in text
+
+
+def test_generated_bat_comment_uses_board_title(tmp_path):
+    """bat 注释的文案用板标题，不带「航班信息板」硬编码（板型换了叫法跟着换）。"""
+    mod = _load()
+    cfg = _cfg(tmp_path, name="airport", title="清单看板")
+    assert mod.main(["--repo-root", str(tmp_path), "--config", str(cfg),
+                      "--out-root", str(tmp_path / "lib")]) == 0
+    text = (tmp_path / "lib" / "airport" / "refresh_airport.bat").read_text(encoding="utf-8")
+    assert "刷新看板「清单看板」" in text
+    assert "航班信息板" not in text
 
 
 def test_new_board_refuses_existing_without_force(tmp_path, capsys):

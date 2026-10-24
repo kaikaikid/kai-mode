@@ -14,11 +14,13 @@ description: >
   触发：Apply when 要向用户提问、设计拷问题目、或想一口气甩出一串确认问题时。
 version: 0.1.0
 updated: 2026-10-23
+allowed-tools: Read Grep
+compatibility: Host-agnostic
 ---
 
 # 拷问一次一问
 
-> 判据出处：[0002 D2](../../框架仓旧裁决)；流程位＝入口第②步（[kai-mode](../kai-mode/SKILL.md)）。
+> ）。
 
 ## 何时进场
 

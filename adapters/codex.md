@@ -1,5 +1,7 @@
 # Codex 适配器（付费档备胎）
 
+> 本文只讲**怎么在这个宿主上起岗位**。Codex 没有 per-agent 文件，人格怎么落见 [README.md](README.md) §2。
+
 > 适用：Qoder 子会话不可用、opencode 不可用，或编排层明确要求 Codex。
 > **付费档**：必须显式授权（如 `KAI_WATCHDOG_ALLOW_PAID=1`）；没有授权不许起。
 > 与 opencode 同：**没有 `qoder_cron` 类定时口**，只能直接跑角色技能。
@@ -34,7 +36,7 @@ codex exec -C <仓库根> -s read-only --json -o <回执文件> \
   "按票面 AC 评审 <票号>；只输出 verdict 与逐条证据路径。"
 ```
 
-## 执行三职（判据出处：项目仓 ADR-0136，历史；判据由 [skills/kai-mode/playbooks/execution-roles.md](../skills/kai-mode/playbooks/execution-roles.md) 承载：researcher / implementer / reviewer）
+## 执行三职
 
 - **Researcher**：`codex exec -s read-only`，产出 `research-<票>.md`；不写实现。
 - **Implementer**（＝施工子代理）：`codex exec -s workspace-write`；必带派工卡（票号/AC/允许禁止修改/验证命令/环境口径）；独立 worktree 与分支；不 push、不合并。

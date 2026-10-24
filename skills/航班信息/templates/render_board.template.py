@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""航班信息板适配脚本（单文件 · 只用标准库 · 配置已烘焙）。
+"""看板适配脚本（单文件 · 只用标准库 · 配置已烘焙）。
 
 由 skills/航班信息/scripts/new_board.py 从 templates/render_board.template.py 生成，
 板配置烘焙在下方 CONFIG 里；配置是数据，不是代码 —— 改配置即改板。
@@ -416,14 +416,14 @@ def source_base(spec: dict, instance_key: str) -> Path:
         raise _missing(
             "项目配置实例 %s（paths.%s 缺省落点无家可读）"
             % (PROJECT_CONFIG_REL.as_posix(), instance_key),
-            "航班信息板 %s 源落点" % (spec.get("type") or "?"),
+            "板 %s 源落点" % (spec.get("type") or "?"),
             "/set-kai-mode 生成实例，或按 templates/kai-mode.project.json 手填，"
             "或给板配置该源写显式 path")
     rel = str(instance_paths().get(instance_key) or "").strip()
     if not rel:
         raise _missing(
             "实例字段 paths.%s" % instance_key,
-            "航班信息板 %s 源缺省落点" % (spec.get("type") or "?"),
+            "板 %s 源缺省落点" % (spec.get("type") or "?"),
             "在 <项目仓根>/%s 的 paths 段补 %s，或给板配置该源写显式 path"
             % (PROJECT_CONFIG_REL.as_posix(), instance_key))
     return resolve_path(rel)
@@ -1471,7 +1471,7 @@ h2 .hint{flex:1 1 auto;min-width:0;font-size:var(--soft-font-size-footnote);
   font-size:var(--soft-font-size-footnote);background:var(--card);min-width:200px;color:var(--ink)}
 .search:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 
-/* 航班信息表（表头 sticky：圆角交给单元格，别用 overflow 裁，否则 sticky 失效） */
+/* 条目表（表头 sticky：圆角交给单元格，别用 overflow 裁，否则 sticky 失效） */
 .board{background:var(--card);border:1px solid var(--line-strong);
   border-radius:var(--soft-radius-card)}
 table{width:100%;border-collapse:collapse}
@@ -1780,7 +1780,7 @@ JS = r"""
       }catch(e){}
       toast(msg);
     };
-    if(curTs&&curTs!==from){done('航班信息板已刷新');return;}
+    if(curTs&&curTs!==from){done(__BOARD_LABEL__+'已刷新');return;}
     if(n>=6){done('刷新还没跑完，稍后再点一次');return;}
     try{sessionStorage.setItem('flight-info-refresh-tries',String(n+1));}catch(e){}
     var w=document.getElementById('refresh');
@@ -1806,7 +1806,7 @@ JS = r"""
   // 刚从刷新回来：给一条短提示。
   if(new URL(location.href).searchParams.get('t')){
     var t=document.getElementById('toast');
-    if(t){t.textContent='已重新读取磁盘上的航班信息板快照';t.classList.add('on');
+    if(t){t.textContent='已重新读取磁盘上的快照 · '+__BOARD_LABEL__;t.classList.add('on');
       setTimeout(function(){t.classList.remove('on');},2400);}
   }
 })();
@@ -1991,7 +1991,8 @@ def flight_row_html(f: dict, show_mile: bool) -> str:
 def board_table_html(flights: list[dict], miles: list[dict]) -> str:
     open_flights = [f for f in flights if f["state"] == "open"]
     if not open_flights:
-        return '<tr><td colspan="6" class="empty">没有未收尾的票。</td></tr>'
+        return ('<tr><td colspan="6" class="empty">%s</td></tr>'
+                % esc(_labels()["empty_open"]))
     by_mile: dict[str, list[dict]] = {}
     for f in open_flights:
         key = f["milestone"] or "未挂里程碑"
@@ -2145,16 +2146,21 @@ def section_flights(payload: dict) -> str:
                      % (esc(key), esc(STAGE_LABEL.get(key, key)), kpi.get(key, 0)))
     placeholder = esc(str(CONFIG.get("view", {}).get("search_placeholder")
                           or "搜票号 / 标题 / 掌机 / 备注"))
+    lab = _labels()
     return (
         '<div class="tools">%s\n'
         '<input class="search" id="q" type="search" placeholder="%s">\n'
         '</div>\n'
         '<div class="board">\n<table>\n'
-        '<thead><tr><th style="width:86px">航班</th><th>任务</th><th style="width:190px">阶段</th>\n'
-        '<th style="width:86px">掌机</th><th style="width:150px">下一步</th><th style="width:82px">更新</th></tr></thead>\n'
+        '<thead><tr><th style="width:86px">%s</th><th>%s</th><th style="width:190px">%s</th>\n'
+        '<th style="width:86px">%s</th><th style="width:150px">%s</th>'
+        '<th style="width:82px">%s</th></tr></thead>\n'
         '<tbody>%s</tbody>\n</table>\n'
-        '<div class="empty hidden" id="empty">没有符合筛选的航班。</div>\n</div>'
-        % ("".join(chips), placeholder, board_table_html(flights, miles))
+        '<div class="empty hidden" id="empty">%s</div>\n</div>'
+        % ("".join(chips), placeholder,
+           esc(lab["col_item"]), esc(lab["col_task"]), esc(lab["col_stage"]),
+           esc(lab["col_owner"]), esc(lab["col_next"]), esc(lab["col_updated"]),
+           board_table_html(flights, miles), esc(lab["empty_filtered"]))
     )
 
 
@@ -2217,6 +2223,28 @@ def _view_flag(name: str, default: bool) -> bool:
     if value is None:
         return default
     return bool(value)
+
+
+# 字段文案（表头 / 空态 / 页头读数 / 方向条标签）：缺省＝航班信息口径；
+# 板配置 view.labels 按槽位覆盖 —— 板型换主题时把机场词换掉（通用占位板型即用例）。
+_LABEL_DEFAULTS = {
+    "head_readout": "{open} 张未收尾 · {in_flight} 张在飞 · {to_ship} 张待发货",
+    "direction_label": "本轮方向",
+    "col_item": "航班",
+    "col_task": "任务",
+    "col_stage": "阶段",
+    "col_owner": "掌机",
+    "col_next": "下一步",
+    "col_updated": "更新",
+    "empty_filtered": "没有符合筛选的航班。",
+    "empty_open": "没有未收尾的票。",
+}
+
+
+def _labels() -> dict:
+    labels = dict(_LABEL_DEFAULTS)
+    labels.update((CONFIG.get("view") or {}).get("labels") or {})
+    return labels
 
 
 def _section_id(key: str) -> str:
@@ -2321,9 +2349,16 @@ def render_html(payload: dict) -> str:
     gen_ts = payload["generated_ts"]
     CONFIG["_schedules_date"] = payload.get("schedules", {}).get("date", "")
 
-    title = str(CONFIG.get("title") or "航班信息板")
+    title = str(CONFIG.get("title") or CONFIG.get("name") or "board")
     subtitle = str(CONFIG.get("subtitle") or "")
     name = str(CONFIG.get("name") or "board")
+    lab = _labels()
+    # head_readout 是配置给的原样片段（数字自动裹 <b>；文案在 view.labels 里改，不转义）。
+    head_readout = fmt_template(str(lab["head_readout"]), {
+        k: "<b>%d</b>" % kpi.get(k, 0) for k in
+        ("open", "in_flight", "to_ship", "queued", "ready", "flying",
+         "review", "hold", "planned", "closed_today")
+    })
     sections = []
     nav_items = []
     for sec in CONFIG.get("view", {}).get("sections", []):
@@ -2336,7 +2371,8 @@ def render_html(payload: dict) -> str:
 
     stage_names = {"all": "全部"}
     stage_names.update({k: v for k, v in STAGE_LABEL.items()})
-    js = JS.replace("__STAGE_NAMES__", json.dumps(stage_names, ensure_ascii=False))
+    js = (JS.replace("__STAGE_NAMES__", json.dumps(stage_names, ensure_ascii=False))
+            .replace("__BOARD_LABEL__", json.dumps(title, ensure_ascii=False)))
 
     artifacts = ["生成器 render_%s.py" % name,
                  "摘要 %s · 全量 %s" % (_out_file("board_json"), _out_file("full_json")),
@@ -2375,11 +2411,11 @@ def render_html(payload: dict) -> str:
 
       <header class="page-head">
         <h1>%s</h1>
-        <p class="page-head__readout"><b>%d</b> 张未收尾 · <b>%d</b> 张在飞 · <b>%d</b> 张待发货 ·
+        <p class="page-head__readout">%s ·
           <span id="generated" data-ts="%d">数据生成 %s · <span id="age">刚刚</span></span></p>
       </header>
 
-      <div class="direction"><span class="k">本轮方向</span><span class="v">%s</span></div>
+      <div class="direction"><span class="k">%s</span><span class="v">%s</span></div>
 
       <div class="kpis">%s</div>
 
@@ -2403,7 +2439,9 @@ def render_html(payload: dict) -> str:
         esc(subtitle or title),
         esc(name),
         esc(title),
-        kpi["open"], kpi["in_flight"], kpi["to_ship"], gen_ts, esc(gen_human),
+        head_readout,
+        gen_ts, esc(gen_human),
+        esc(lab["direction_label"]),
         esc(payload["direction"]),
         kpi_html(kpi),
         "\n".join(sections),
@@ -2631,7 +2669,7 @@ def write_outputs(payload: dict, snapshot: bool = False) -> dict:
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description="生成一块航班信息板")
+    ap = argparse.ArgumentParser(description="生成本板（配置已烘焙的单文件生成器）")
     ap.add_argument("--repo-root", default=None,
                     help="项目仓根；省略则从脚本所在目录向上自动探测")
     ap.add_argument("--out", default=None, help="输出目录；默认＝本脚本所在目录")

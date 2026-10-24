@@ -11,6 +11,10 @@
 - 技能分两种：
   - **框架技能**（`kind: framework`）：框架本身的一部分，各项目都该有，默认 `install: auto` 进中央库。
   - **个人技能**（`kind: personal`）：只给自己（或自己这台机器）用的，默认 `install: manual`，**不进中央库**。
+- **外部通用技能不进本仓**：TDD、代码审查、诊断法这类通用方法**按上游名引用**
+  （`dependencies.skills[].name` 写上游名如 `tdd`），不复制、不改名、不登记 registry、不加 `kai-` 前缀。
+  只有「判据由本仓设计 ＋ 有本仓接口 ＋ 不 fork 就没有家」三条全中，才特化入库并加前缀；
+  判据与逐源结论见 [`docs/skill-sources/workflow-skills.md`](skill-sources/workflow-skills.md) §2。
 
 ## 2. 目录契约
 
@@ -55,6 +59,23 @@ updated: <YYYY-MM-DD>
 - `description` 用 `>` 折叠块：先说做什么，再说不做什么，最后写触发词。
 - `version` / `updated` 随改动更新；改动实质内容就升 `version`。
 
+### 3.1 扩展字段（对齐 Agent Skills 规范 1.2）
+
+八字段之外允许补下列**可选**字段——写在 `updated:` 之后，**不影响八字段顺序校验**
+（doctor 只看八字段的相对顺序，未知顶层字段按规范忽略）。
+
+| 字段 | 用途 | 本仓口径 |
+|---|---|---|
+| `allowed-tools` | 预批准可用工具（空格分隔） | 按角色收紧；例 塔台 `Bash(git:*) Read Grep` |
+| `compatibility` | 环境要求（≤500 字符） | 需脚本的写 `Requires python3, git`；纯原则写 `Host-agnostic` |
+| `metadata` | 自由键值 | 中文技能写 `alias: <中文名>`，给机器留中文别名 |
+| `dependencies` | 依赖的其他技能（嵌套） | 例 机长 / 副机长 依赖 `loop` |
+| `license` | 许可证 | 对外分享时补 |
+
+**技能名一律 kebab-case 英文**（规范硬性：小写字母数字 + 连字符，等于目录名）；
+**中文激活词保留在两处**：`description` 的「触发」行 + `metadata.alias`。
+例：`name: tower` ＋ `alias: 塔台` ＋ 触发 `` `/塔台` ``——口令不变，目录合规。
+
 ## 4. 正文风格
 
 - terse 中文；结论先行、事实优先。
@@ -69,7 +90,7 @@ updated: <YYYY-MM-DD>
 | 字段 | 必需 | 取值 | 含义 |
 |---|---|---|---|
 | `name` | 是 | 字符串 | 技能名；＝目录名＝frontmatter `name` |
-| `path` | 是 | 仓内相对目录 | 如 `skills/航班信息` |
+| `path` | 是 | 仓内相对目录 | 如 `skills/flight-info` |
 | `kind` | 是 | `framework` \| `personal` | 框架件还是个人件 |
 | `scope` | 是 | `global` \| `owner` | 适用范围：全局通用 / 只归某个人 |
 | `install` | 是 | `auto` \| `manual` \| `none` | 装机行为；**只有 `auto` 进中央库/宿主** |
@@ -88,7 +109,7 @@ updated: <YYYY-MM-DD>
 
 漏第 2 步＝技能装了但没登记（红）；漏第 1 步＝没有正本（红）。
 
-装配类技能（给某个仓装东西的那类，如 `set-航班信息`）也按框架技能登记：`kind: framework` ＋ `install: auto`（它同样是框架件，要进中央库）；只有只给自己用的个人技能才 `kind: personal` ＋ `install: manual`，**不进中央库**。
+装配类技能（给某个仓装东西的那类，如 `set-kai-mode`）也按框架技能登记：`kind: framework` ＋ `install: auto`（它同样是框架件，要进中央库）；只有只给自己用的个人技能才 `kind: personal` ＋ `install: manual`，**不进中央库**。
 
 ## 7. 读契约
 
@@ -97,7 +118,7 @@ updated: <YYYY-MM-DD>
 - 人读面：给人看的那份（如自包含 HTML）。
 - 机读面：给 AI / 脚本读的那份（如 JSON 摘要层）。
 - **AI 只读机读层**：不 grep HTML、不正则解析页面、不从页面里抠数据。
-- 例：[`skills/航班信息/SKILL.md`](../skills/航班信息/SKILL.md) —— AI 读 `board.json`，人读 `index.html`。
+- 例：[`skills/flight-info/SKILL.md`](../skills/flight-info/SKILL.md) —— AI 读 `board.json`，人读 `index.html`。
 
 ## 8. 验证入口
 
@@ -105,17 +126,17 @@ updated: <YYYY-MM-DD>
 python scripts/doctor.py --with-tests
 ```
 
-一条命令验全仓：注册表 schema/字段/枚举、每个注册条目的目录与 `SKILL.md`、frontmatter 八字段与顺序、三处 name 一致、盘上有技能目录但没登记、机器绝对路径入正文、`SKILL.md` 相对链接断链、仓内行尾口径、`VERSION` 与 README 版本串一致。
+一条命令验全仓：注册表 schema/字段/枚举、每个注册条目的目录与 `SKILL.md`、frontmatter 八字段与顺序、三处 name 一致、盘上有技能目录但没登记、机器绝对路径入正文、`SKILL.md` 相对链接断链、仓内行尾口径、`VERSION` 与 README 版本串一致、辅助件（`vendor/`）跟踪与漂移；`--with-tests` 追加技能测试与仓级 `scripts/tests`。
 
-各技能自己的 pytest：见该技能 `SKILL.md` 的「验证命令」段（如 `python -m pytest skills/航班信息/scripts/tests/ -q`）。
+各技能自己的 pytest：见该技能 `SKILL.md` 的「验证命令」段（如 `python -m pytest skills/flight-info/tests/ -q`）。
 
 ## 9. agents 层（泛用子代理人格，不是技能）
 
-子代理人格不进 `skills/`、不进注册表，住仓根 [`agents/`](../agents/README.md)，与 `skills/` 平级。契约正本＝[`agents/README.md`](../agents/README.md)，要点：
+子代理人格不进 `skills/`、不进注册表，住仓根 [`agents/`](../agents/README.md)，与 `skills/` 平级。契约正本＝[`agents/README.md`](../agents/README.md)，决策＝[ADR-0007](adr/0007-agents-layer-generic-contract.md)／[ADR-0008](adr/0008-persona-model-config-and-host-adaptation.md)。
 
-- **一份泛用设定（单一真相源）**：kai-mode 只保留一份子代理人格设定，宿主中立；原 Codex 特化契约七件已退役归档 `_superseded/`，不再作依据。
-- **目录形状**：`agents/README.md`（层契约）＋ `agents/<名>.md`（人格文件，kebab-case，如 `kai-worker.md`）。人格文件＝frontmatter 三字段（`name`／`description`／`version`）＋人格与纪律＋输入／输出契约＋宿主适配点；spawn 时主代理**整读全文**放进派活 prompt，所以文件必须自足。
-- **宿主中立与装机自适配**：正文不写死工具名、子代理类型、模型 slug；装机时由 set-kai-mode 按 [`adapters/<宿主>.md`](../adapters/) 翻译（spawn 参数、只读／可写落法、并发与深度）；magpie 侧对接走 magpie 自己的角色管理。
-- **六档词表**：档位只写 R/C/P/V/G/W（正本＝[ADR-0004](adr/0004-project-config-schema.md) D2）；tier→具体模型解析住 adapters/<宿主>.md，其余任何文件出现模型 slug 即违例。
-- **互指不复制**：人格＝怎么干活的性格与纪律；四角色职责判据＝干什么，住 [ADR-0003](adr/0003-airport-rebuild-four-roles.md)；票内单票闭环住 [`loops/loop-protocol.md`](../loops/loop-protocol.md)。同一判据只写一份，人格件互指并指向这两处正本。
-- **校验**：doctor 不扫 `agents/`；改完按 `agents/README.md` 的「验收」段自查相对链接互指闭环与六档词表。
+- **规范对齐**：按 Agent Skills 开放标准落盘 —— 顶层只许 `name`／`description`／`version`／`license`／`compatibility`／`metadata`；`metadata` **只许一个键 `access`**（`readonly`／`write`）。多一个字段即违例。
+- **目录形状**：`agents/README.md`（层契约）＋ `agents/dispatch.md`（派发策略）＋ `agents/<名>.md`（人格，裸名不加前缀，正文 <500 行、零外链）。
+- **不写进 frontmatter 的三件事**：工具名（宿主概念）、模型（住项目实例 `models.agents.<人格>.model`）、派生与回执形状（住 `dispatch.md` 与正文）。
+- **宿主落法靠方法论，不靠投影脚本**：[`adapters/README.md`](../adapters/README.md) 给探测四步、六家落法对照、三级降级与缺件登记；装机时 agent 现场探测后自己落，框架仓不保存任何宿主产物、不发明模型 slug。
+- **单向依赖**：项目层可指人格层；`agents/<人格>.md` **不许**反指 `loops/`、`docs/`、`skills/`。
+- **校验**：doctor 的 `agents-contract` 项（字段／零外链／零 slug／README 表两向一致／handoff `persona` 有家）＋ `canon-dup` 项（退役词与平行正本）＋ `vendor-sync` 项（辅助件跟踪与漂移）。

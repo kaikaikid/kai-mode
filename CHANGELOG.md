@@ -2,6 +2,146 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.14.1 — 2026-10-24
+
+- **角色与唤醒器分离**：明确塔台是独立岗位，定时器只是唤醒方之一；60 分钟是默认唤醒间隔，不是塔台定义。
+  人工 `/塔台`、kai-mode 入口、定时器三路都只是“唤醒塔台”，无定时口时塔台照常可人工运行。
+- 术语收敛：`塔台定时器` → `唤醒定时器`、`塔台任务` → `唤醒任务`、`定时器拉起的塔台` → `定时器唤醒的塔台实例`；
+  同步 README、塔台/机长/副机长技能、set-kai-mode、ADR-0003/0004/0006、Qoder/opencode 适配器与配置模板 `tower_cron._note`。
+- ADR-0006 增“角色与唤醒器分离”横幅；ADR-0003 增演变注。判据归属不变。
+
+## 0.14.0 — 2026-10-24
+
+- **语义审计入场**：新增 manual 技能 `harness-audit`（盘点器 + Keep/Improve/Update/Retire/Merge 判词，落
+  `handoff/40-review/`），补 doctor 的“形状绿、语义盲”；不做硬门（[ADR-0009](docs/adr/0009-harness-audit-install-profiles-and-host-neutrality.md) D1）。
+- **安装档位/回执/备份**：`manifests/install-profiles.json` 定 `core`（8 条）/`full`（16 条）；`magpie-sync`
+  支持 `--profile`，库根回执记来源根/HEAD/档位/技能清单/哈希；写库前备份到 `<库根>/.backups/`（保留 5 份），
+  异常或回写后漂移自动还原（D2）。
+- **评审模式与收口**：`reviewer` 增 `silent-failure` 模式（空 catch/吞异常/危险 fallback/丢栈/缺 timeout）；
+  `agents/dispatch.md` §10 增委派完成契约（最终消息即交付物、谁派谁收、不许以等后台 agent 结束回合）（D3）。
+- **宿主中立与 YAML 形状**：doctor 增 `host-neutral`（宿主专有 token 只许住 `adapters/`）与 `frontmatter-yaml`
+  （未加引号 `': '`、`@`/反引号开头）；`set-kai-mode` 的 Qoder 细节改指 `adapters/qoder.md`（D4）。
+- **doctor 19 → 23 项**：新增 `frontmatter-yaml`、`install-profiles`、`install-receipt`、`host-neutral`；
+  `--with-tests` 现在同时跑技能测试与仓级 `scripts/tests`，测试红＝门红。
+- **P0 收敛**：模板 `interval_min` 30→60、playbooks route 改英文目录；`init-project` 写 `issue.platform`/
+  `issue.boom_summary_ticket`/`host.adapter`，不再写无消费方的 `tracker.source`/`registry.ideas_pool_issue`；
+  40 行回执统一为硬上限；ADR-0003 子代理上限、ADR-0006 过期阈值（125 分钟）对齐；README 与 `set-kai-mode`
+  的过期路径/“九个技能”/schema 2 说法清理；补 `GLOSSARY.md` 与 `templates/verification-skill/SKILL.md`。
+
+## 0.13.0 — 2026-10-24
+
+- **六人格去 `kai-` 前缀**（[ADR-0008](docs/adr/0008-persona-model-config-and-host-adaptation.md) D1）：`agents/explorer.md`、
+  `librarian.md`、`planner.md`、`worker.md`、`reviewer.md`、`visual-designer.md`，`name` 与文件名同名，正文互指改裸名。
+  前缀的动因（中央库同名覆盖、`magpie-sync apply`）只对 `skills/` 成立——人格不经中央库安装，故不存在冲突。
+- **术语归位（D2）**：四角色正式称**岗位**（会话身份，管权责），人格＝委派契约；删 `metadata.role`（与六人格 1:1、零信息）。
+  `handoff` 的 `owner_role`／`persona` 两字段照旧承载，措辞统一。
+- **六档词表退役，模型归用户（D3）**：删 `models.tiers`／`default`／`roles`；改 `models.agents.<人格>.model`（`null`＝宿主默认）。
+  `scripts/init-project.py` 由十问扩到**十一问**（回车全默认／填一个模型名六个共用／`n` 逐个填；`--answers` 键 `agent_models`）。
+- **人格 frontmatter 只留 `access`（D4）**：`role`／`tier`／`spawn`／`output` 全删（前三个无消费者，第四个与正文重复）；
+  正文上限从自造的 35 行改回规范的 500 行，四小节降为建议。
+- **宿主落法改为方法论（D5）**：删投影脚本与 per-host json、删无校验器的 `agents.schema.json`；
+  新增 [`adapters/README.md`](adapters/README.md)——探测四步／六家落法对照／三级降级／缺件登记／装完自证／边界。
+- **`vendor/` 纳入 git 跟踪 ＋ doctor 第 19 项 `vendor-sync`（D6）**：此前 `git ls-files vendor` 为 0，克隆出来缺 6 个技能；
+  现在未跟踪即红、本机无镜像则 skip、有镜像比漂移。
+- **入库 `security-audit`（D7）**：`vendor/skills/security-audit`（上游 `cloudflare/security-audit-skill`，MIT，`LICENSE` 随件，
+  原样不改名不登记）。它是**父级编排**型六阶段漏洞猎取，接在 `reviewer` 的 `security` 模式上，不为它新增人格；
+  需要 node 与 OS 沙箱，无沙箱时结论最高 `needs_validation`。
+- **doctor 项数 18 → 19**；`agents-contract` 收窄到规范派生规则（顶层键／name==文件名／`metadata` 只许 `access`／正文 <500／
+  零外链／零 slug／README 两向一致／`persona` 有家）。
+
+## 0.12.0 — 2026-10-24
+
+- **子代理人格层按行业规范重建**（[ADR-0007](docs/adr/0007-agents-layer-generic-contract.md)）：人格 frontmatter 只留规范顶层字段
+  （`name`/`description`/`version`/`license`/`compatibility`/`metadata`），自有语义 `role`/`access`/`tier`/`spawn`/`output`
+  全部进 `metadata` —— Agent Skills 规定的唯一合法扩展位。正文固定四小节（我是谁／范围与权限／输出契约／交棒）、≤35 行、零外链。
+- **人格收成 6 个**：撤销 `kai-archivist`，能力降为 `kai-explorer` 的 `large-source` 模式（依赖多数宿主没有的 1M 宽窗）；
+  确立「模式先于人格」——新增能力先加 `mode`，不加文件。
+- **一源多投影**：新增 `adapters/opencode.json`（`tier_models`／`access`→`permission`／`spawn_deny`／`emit_to`）＋
+  `scripts/agent-emit.py`（`--host` 生成、`--check` 报漂移）。人格不再写工具名与模型 slug，六家六种权限写法由投影表吸收。
+- **doctor 加两项门禁（16 → 18）**：`agents-contract`（顶层键白名单／name==文件名／metadata 枚举／四小节／零外链／
+  README 表两向一致／handoff `persona` 有家）、`canon-dup`（退役词黑名单 ＋ 判据键唯一家，`docs/canon.json` 为正本）。
+- **清退平行正本**：`skills/kai-mode/playbooks/` 七件按归位表逐节归位后删除（判据进 `loops/loop-protocol.md` §七、
+  派发策略进 `agents/dispatch.md`、审批红线进 `AGENTS.md`），`skills/kai-mode/SKILL.md` 的「七件剧本」改为「正本地图」一张表。
+- **根因治理**：`AGENTS.md` 增「一类判据一个家」归属表与 Red lines 表；退役词（租约／班次／按铃／Coordinator／合同哈希／
+  五角色／Group-A）在 adapters、tower、set-kai-mode 里清零。
+- **修两处断句**：`agents/kai-*.md` 与 `loops/loop-protocol.md` 里批量替换留下的 `> ），…` 残句全仓清零。
+
+## 0.11.0 — 2026-10-24
+
+- **看板人读面按 Diagram Design 的 editorial 皮肤重做**（`flightinfo/render.py` 的 `CSS` 常量）：
+  纸／墨／次字／赭四色 tokens、标题衬线＋正文无衬线＋票号等宽、发丝线代替阴影、圆角 ≤8px、间距 4 的倍数；
+  跟 `prefers-color-scheme` 出整套暗色。**赭色只留两处**（方向句红线、阶段轨焦点数字），
+  源失败时才多一个赭点——同一个语义：有活要干。
+- **版式改结构**：页头（`RUN <run_id>` 小标 ＋ 衬线大标 ＋ 生成时刻）→ 方向句 → **阶段轨**
+  （一条带子＋发丝分隔，链外阶段挂虚线右侧）→ 次级读数 → 航班表 → 排班表 → 源状态。
+  原「五张等宽 KPI 卡」取消（等宽卡片是反模式），`view.kpis` 退役，改 `view.focal_stage` /
+  `view.font_source` / `view.metrics` / `view.labels` / `view.eyebrow`。
+- **字体缺省走本地栈，零网络**（国内 `fonts.googleapis.com` 不可达会拖首屏）；要正版字体设 `view.font_source: "web"`。
+- **修三处真 bug**：①链外阶段（可领／挡住）名字掉成「未定」——`collect` 的阶段名表只收了 `stages`；
+  ②航班行按 `stage` 字母序排（closed→flying→hold…）——`build_summary` 改按阶段链顺序，同阶段新的在前；
+  ③`next_label` 与阶段名相同时界面重复一遍——相等即不显示。
+- **KPI 加 `by_stage`**（`{阶段key: 张数}`），自定义阶段也认；`closed` 单独成项。
+- **测试** 21 → 24 项（链序、链外阶段名、下一步去重）。
+
+## 0.10.0 — 2026-10-24
+
+- **看板展示层重做为 `flight-info`**（原 `航班信息` 退役，目录被环境锁死待人工删）：
+  - **数据落 SQLite**：`schema/001-init.sql` 定义 `flight` / `evidence` / `schedule_row` / `source_run` / `board_run`
+    ＋ `v_flight` 视图；一板一库（`board.db`）。只用标准库 `sqlite3`。
+  - **模块化解耦**：`db`（唯一碰库）← `stage`（纯判据）← `sources/*`（一源一文件，不连库）← `collect`（编排合并）
+    ← `render`（只读库出两个产物）、`config`（加载校验定位）。加源＝加一个模块 ＋ REGISTRY 一行。
+  - **渲染不再烘焙进板**：板目录只留 `board.config.json` ＋ `board.db` ＋ 产物；改渲染逻辑一处全生效。
+  - **装配合并**：不再单独设装配技能，用 `scripts/init_board.py`。
+- **触发层改成「钩子只打标记 ＋ 有脏才刷」**：`install_hook.py` 写 `.git/flight-info-dirty`（退出码恒 0，绝不阻塞 commit），
+  `refresh_if_dirty.py` 有脏才刷、刷完清标记。避免 commit 等几十秒联网。
+- **中文只作唤醒词**：`name: flight-info`（Flight Information），`metadata.alias: 航班信息`，口令 `/航班信息` 照旧。
+- **doctor 两处改进**：`skill-tests` 无 pytest 时退化到标准库 `unittest`、跳过 `LEGACY_LOCKED`；
+  `install-sync` 遇源件拦读记 `skip` 并点名。**16 项全绿（0 红 0 跳过）**。
+- **测试**：`tests/test_flightinfo.py` 21 项（判据优先级、frontmatter 解析、跨源合并、库幂等、视图只认最新轮、
+  配置校验、KPI、摘要裁剪、端到端）。全绿。
+
+## 0.9.1 — 2026-10-24
+
+- **看板确立三层**：数据层 `handoff/60-board/`（卡片，AI 读写）＋ 展示层 `航班信息`（人读 HTML ／机读 `board.json`）
+  ＋ 触发层（git 钩子 `post-commit`/`post-merge` ＋ 系统闹钟）。层间**只靠触发层连，不共享文件**；展示层单向只读。
+- **`航班信息`／`set-航班信息` 恢复为正式件**：重新登记 registry（`kind: framework`、`install: auto`），
+  `LEGACY_LOCKED` 清空。它们不是旧项目遗留，是航空体系看板的展示形态。
+- **去「板工坊」旧称**：两份 SKILL.md 一律改称「看板展示形态／装配面」，与 `docs/` 用词对齐。
+- **清具体项目痕迹**：板配置样例 `.design/航班信息/HTML` → `boards`；删 `~/.codex/ysk/notes.jsonl` 源与对应视图段；
+  去掉 `判据出处：项目仓 ADR-xxxx` 注记；`set-kai-mode` 里写死的 `.design/` 落点改为「板库根＝板配置 `output.root`」。
+- **修死引用**：`set-kai-mode` 装机清单里的四角色目录仍是改名前的 `{地勤,塔台,机长,副机长}`，改为 `{ground-crew,tower,pilot,copilot}`。
+
+## 0.9.0 — 2026-10-24
+
+- **只留 kai-mode 自己的东西**：旧项目设计吸收稿、Codex 退役契约（`subagents/`）、迁移档（`MIGRATION.md`）、
+  旧项目 ADR 注记与「重述自项目仓」段落、pstack 署名 —— 全部出仓，
+  备份在仓外隔离区（未硬删）。技能 17 → 15。
+- **塔台轮巡 30 分钟 → 1 小时**：`0003`／`0006`／`tower`／`set-kai-mode`（cron `0 * * * *`）／项目配置模板／`loop-protocol` 同步。
+- **通用方法改原样拉取**：`vendor/skills/`（tdd／code-review／diagnosing-bugs／domain-modeling／to-tickets／writing-for-agents）
+  ＋ `scripts/vendor-sync.py`（`--check` 校源与副本一致）＋ `vendor/manifest.json` 逐文件 sha256。
+  **不改内容、不改名、不登记 registry**，`skills/` 只留本仓设计件。
+- **`handoff/` 增 `50-comms`**：角色之间传话（`msg`／`ask`／`answer`／`notice`），配 `templates/COMMS-template.md`；
+  与 `60-board`（派活）分工固定：要人干活走看板，只让人知道走这里。
+- **新装项目走 QA**：`scripts/init-project.py` 十问 → 生成 `.ai/kai-mode.project.json` 实例，
+  并把 `handoff/`（八槽＋规范＋模板）与 `docs/`（`adr/` ＋ `GLOSSARY.md`）作为**组件**一起铺，已存在不覆盖。
+- **doctor**：`PermissionError` 记 `skip` 而非红（红要能修）；`handoff-slots` 认 `50-comms` 与四个沟通类型词。
+
+## 0.8.0 — 2026-10-24
+
+- **新增一个技能**：`kai-boom-idea-log`（想法入库）——地勤「分流」步的方法与模板正本。
+  这是本批唯一满足特化判据的一份：落点与发布动作由本仓角色分工决定，上游那份写死了单项目票号与目录。
+- **确立 fork 判据（写进契约）**：只有「判据由本仓设计 ＋ 有本仓接口 ＋ 不 fork 就没有家」三条全中才特化入库并加 `kai-` 前缀；
+  **通用方法一律按上游名引用，不 fork、不改名、不登记**。落在 `docs/skill-sources/workflow-skills.md` §2 与 `docs/skill-layout.md` §1。
+- **六个按上游名引用**：`tdd`（施工）、`code-review`（审查）、`diagnosing-bugs`（诊断）、`domain-modeling`（定稿·术语）、
+  `to-tickets`（定稿·拆票）、`writing-for-agents`（写文档）。方法住上游，流程仍住 `loops/loop-protocol.md` 与角色技能；
+  `loop`／`kai-mode` 的 `dependencies` 改为写上游名。
+- **素材库**：`docs/skill-sources/workflow-skills.md`（打包摘要 ＋ 逐源结论 ＋ 对账四步），`sources.json` 13 条：
+  2 `adopted`、6 `referenced`、2 `watching`（`prototype`／`pr`）、3 `dropped`（`research`／`implement`／`grilling`）。
+- **技能总数 16 → 17。**
+- **收工门禁回归单一正本**：门禁脚本归项目仓（配置实例 `gates.captain_preflight`），框架不再自带副本；
+  `pilot`／`copilot`／`loop` 三处命令改为读配置门，`null` 即报缺件。同步修正车道口径为 `main|deputy`。
+- **补两处闭环缺口**：`tower` 增「验证命令」（发货前核提交、关票门、收尾门各一条）；`kai-handoff` 增「失败降级」（判不出槽、类型词未登记、门禁红、超寿命、票状态五类）。
+
 ## 0.7.0 — 2026-10-23
 
 - **提示词真正瘦身**：`机长` 7253→约 3.2k 字节、`副机长` 7170→约 1.4k 字节、

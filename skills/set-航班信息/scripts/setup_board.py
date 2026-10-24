@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""set-航班信息 装配脚本：给任意项目仓装一块航班信息板（装完即能用）。
+"""set-航班信息 装配脚本：给任意项目仓装一块看板（板型可选；装完即能用）。
+
+板型＝板型模板集（skills/航班信息/templates/board-types/）里的一份配置模板：
+航班信息是首个板型实例，通用占位是任意主题清单看板的最小示例；
+用户也可以完全自带 board.config（--config）。工艺与判据全部复用板工坊，本脚本不掺和。
 
 用法：
-  python setup_board.py --repo-root <项目仓根> [--config <板配置.json>] [--name <板名>]
-                        [--force] [--install] [--no-build] [--quiet]
+  python setup_board.py --repo-root <项目仓根> [--config <板配置.json>] [--board-type <板型>]
+                        [--name <板名>] [--force] [--install] [--no-build] [--quiet]
 
 九步，每步单独有读数：
   ① 探测项目仓（仓根 / 是否 git 仓 / 找到哪些源目录）
-  ② 取配置（--config 缺省＝本技能内的通用最小配置 board.config.minimal.json）
+  ② 取配置（优先级：--config 自带配置 > --board-type 板型模板 > 本技能内的通用最小配置；
+     板型＝skills/航班信息/templates/board-types/<名>/board.config.example.json）
   ③ 校验（**复用板工坊 new_board.py 的校验口径**，不复制判据）
   ④ 建板（**复用 new_board.py 的建板动作**）
   ⑤ 补目标仓 .gitignore 两条规则（幂等；已有行一字不改）
@@ -42,6 +47,10 @@ NEW_BOARD = FLIGHT_SCRIPTS / "new_board.py"
 BUILD_INDEX = FLIGHT_SCRIPTS / "build_index.py"
 MAGPIE_SYNC = FRAMEWORK_ROOT / "skills" / "set-kai-mode" / "scripts" / "magpie-sync.py"
 MINIMAL_CONFIG = SKILL_ROOT / "templates" / "board.config.minimal.json"
+# 板型模板集：skills/航班信息/templates/board-types/<板型名>/board.config.example.json。
+# 航班信息是首个板型实例；通用占位是任意主题清单看板的最小示例。行为纯配置驱动，本脚本不掺和板型内容。
+BOARD_TYPES_DIR = FRAMEWORK_ROOT / "skills" / "航班信息" / "templates" / "board-types"
+BOARD_TYPE_CONFIG_NAME = "board.config.example.json"
 # 板库根＝板配置 output.root（相对项目仓根），本脚本不带第二份缺省值（框架仓旧裁决）。
 PROJECT_CONFIG_REL = Path(".ai") / "kai-mode.project.json"
 
@@ -255,9 +264,27 @@ def probe_repo(repo_root: Path) -> dict:
     }
 
 
-def load_config(config_path: Path | None, name: str | None):
-    """② 取配置：--config 优先，缺省用本技能内的通用最小配置；--name 覆盖板名。"""
-    path = Path(config_path).expanduser() if config_path else MINIMAL_CONFIG
+def board_type_names() -> list[str]:
+    """可用板型＝board-types/ 下带配置模板的目录名（字母序）。"""
+    if not BOARD_TYPES_DIR.is_dir():
+        return []
+    return sorted(d.name for d in BOARD_TYPES_DIR.iterdir()
+                  if d.is_dir() and (d / BOARD_TYPE_CONFIG_NAME).is_file())
+
+
+def load_config(config_path: Path | None, name: str | None,
+                board_type: str | None = None):
+    """② 取配置：--config > --board-type > 本技能内的通用最小配置；--name 覆盖板名。"""
+    if config_path and board_type:
+        raise ValueError("--config 与 --board-type 只给一个（自带配置已经代替板型选型）")
+    if board_type:
+        path = BOARD_TYPES_DIR / board_type / BOARD_TYPE_CONFIG_NAME
+        if not path.is_file():
+            raise ValueError("板型 %r 不在（可用：%s；板型目录：%s）"
+                             % (board_type, "、".join(board_type_names()) or "（无）",
+                                BOARD_TYPES_DIR))
+    else:
+        path = Path(config_path).expanduser() if config_path else MINIMAL_CONFIG
     if not path.is_file():
         raise FileNotFoundError("读不到板配置：%s" % path)
     try:
@@ -317,7 +344,8 @@ def build_board(new_board, repo_root: Path, cfg: dict, name: str, force: bool,
             json.dumps(cfg, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         (board_dir / ("render_%s.py" % name)).write_text(script_text, encoding="utf-8")
         (board_dir / ("refresh_%s.bat" % name)).write_text(
-            new_board.bat_for(name), encoding="utf-8", newline="")
+            new_board.bat_for(name, str(cfg.get("title") or "") or None),
+            encoding="utf-8", newline="")
     except OSError as exc:
         return 3, "", "写不出：%s" % exc
     return 0, "已建板「%s」：%s\n  · %s\n  · %s\n  · %s\n" % (
@@ -399,10 +427,13 @@ def install_skills(magpie, root: Path):
 
 # ───────────────────────────── 主流程 ─────────────────────────────
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description="给任意项目仓装一块航班信息板")
+    ap = argparse.ArgumentParser(description="给任意项目仓装一块板（板型可选，默认＝通用最小配置）")
     ap.add_argument("--repo-root", required=True, help="项目仓根")
     ap.add_argument("--config", default=None,
-                    help="板配置 JSON（缺省＝本技能内的通用最小配置）")
+                    help="板配置 JSON（与 --board-type 二选一；都不给＝通用最小配置）")
+    ap.add_argument("--board-type", default=None,
+                    help="板型（skills/航班信息/templates/board-types/ 下的目录名；"
+                         "给错会列出可用板型）")
     ap.add_argument("--name", default=None, help="覆盖配置里的板名")
     ap.add_argument("--force", action="store_true", help="板目录已存在时也覆盖")
     ap.add_argument("--install", action="store_true", help="顺带装进中央库（默认不装）")
@@ -433,11 +464,14 @@ def main(argv: list[str] | None = None) -> int:
 
     # ② 取配置
     try:
-        cfg_path, cfg = load_config(args.config, args.name)
+        cfg_path, cfg = load_config(args.config, args.name, args.board_type)
     except (FileNotFoundError, ValueError) as exc:
         err("配置读不出：%s" % exc)
         return 2
     out.step("② 取配置")
+    out.line("   板型：%s" % (args.board_type or "（没选：用通用最小配置；"
+                              "可用板型看下一行，自带配置用 --config）"))
+    out.line("   可用板型：%s" % ("、".join(board_type_names()) or "（无）"))
     out.line("   配置：%s%s" % (cfg_path, "（--name 覆盖了板名）" if args.name else ""))
 
     # 板名当目录名 ⇒ 必须合法（复用板工坊的板名校验）
@@ -547,6 +581,7 @@ def main(argv: list[str] | None = None) -> int:
     degraded = {k: v for k, v in (sources or {}).items() if v != "ok"}
     out.receipt("── 回执")
     out.receipt("   板名：%s" % name)
+    out.receipt("   板型：%s" % (args.board_type or "（通用最小配置）"))
     out.receipt("   配置：%s（合并通用缺省后留档在 %s）" % (cfg_path, board_dir / "board.config.json"))
     out.receipt("   板目录：%s" % board_dir)
     out.receipt("   人读面：%s" % (board_dir / "index.html"))

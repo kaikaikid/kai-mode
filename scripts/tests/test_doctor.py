@@ -46,6 +46,15 @@ def make_repo(tmp_path, skills=("alpha",)):
     (root / "VERSION").write_text("9.9.9\n", encoding="utf-8")
     (root / "README.md").write_text("# 假仓\n\n状态：9.9.9\n", encoding="utf-8")
     (root / ".gitattributes").write_text("* text=auto\n*.bat text eol=crlf\n", encoding="utf-8")
+    # 15 handoff-slots / 18 canon-dup 的必需件：假仓也要齐，否则 clean_repo 不是绿的
+    for slot in ("00-inbox", "10-session", "20-plan", "30-research",
+                 "40-review", "50-comms", "60-board", "90-archive"):
+        (root / "handoff" / slot).mkdir(parents=True, exist_ok=True)
+    (root / "handoff" / "README.md").write_text("# handoff\n\n假仓规范。\n", encoding="utf-8")
+    (root / "docs").mkdir()
+    (root / "docs" / "canon.json").write_text(json.dumps({
+        "retired_terms": [], "scan_roots": ["skills"], "exempt": [], "canon_keys": [],
+    }, ensure_ascii=False), encoding="utf-8")
     return root
 
 
@@ -132,6 +141,57 @@ def test_frontmatter_name_mismatch_is_red(tmp_path):
     assert "三处不一致" in detail_of(data, "skill-frontmatter")
 
 
+def test_unquoted_colon_in_frontmatter_is_red(tmp_path):
+    root = make_repo(tmp_path)
+    md = root / "skills" / "alpha" / "SKILL.md"
+    md.write_text(SKILL_MD.format(name="alpha").replace(
+        "description: >\n  alpha 的说明。", "description: alpha: 冒号"), encoding="utf-8")
+    rc, data = run_doctor(root)
+    assert rc == 1
+    assert status_of(data, "frontmatter-yaml") == "fail"
+    assert ": " in detail_of(data, "frontmatter-yaml")
+
+
+def test_quoted_colon_in_frontmatter_is_green(tmp_path):
+    root = make_repo(tmp_path)
+    md = root / "skills" / "alpha" / "SKILL.md"
+    md.write_text(SKILL_MD.format(name="alpha").replace(
+        "description: >\n  alpha 的说明。", 'description: "alpha: 冒号"'), encoding="utf-8")
+    rc, data = run_doctor(root)
+    assert status_of(data, "frontmatter-yaml") == "ok"
+    assert rc == 0
+
+
+def test_reserved_char_frontmatter_is_red(tmp_path):
+    root = make_repo(tmp_path)
+    md = root / "skills" / "alpha" / "SKILL.md"
+    md.write_text(SKILL_MD.format(name="alpha").replace(
+        "description: >\n  alpha 的说明。", "description: @reserved"), encoding="utf-8")
+    rc, data = run_doctor(root)
+    assert rc == 1
+    assert status_of(data, "frontmatter-yaml") == "fail"
+    assert "保留字符" in detail_of(data, "frontmatter-yaml")
+
+
+def test_host_token_in_skill_is_red(tmp_path):
+    root = make_repo(tmp_path)
+    (root / "skills" / "alpha" / "notes.md").write_text(
+        "起会话用 create_chat_session。\n", encoding="utf-8")
+    rc, data = run_doctor(root)
+    assert rc == 1
+    assert status_of(data, "host-neutral") == "fail"
+    assert "create_chat_session" in detail_of(data, "host-neutral")
+
+
+def test_host_token_in_adapters_is_allowed(tmp_path):
+    root = make_repo(tmp_path)
+    (root / "adapters").mkdir()
+    (root / "adapters" / "qoder.md").write_text("qoder_cron list\n", encoding="utf-8")
+    rc, data = run_doctor(root)
+    assert status_of(data, "host-neutral") == "ok"
+    assert rc == 0
+
+
 def test_broken_relative_link_is_red(tmp_path):
     root = make_repo(tmp_path)
     md = root / "skills" / "alpha" / "SKILL.md"
@@ -191,6 +251,22 @@ def test_bad_install_enum_is_red(tmp_path):
     rc, out = run_doctor(root)
     assert rc == 1
     assert status_of(out, "registry-fields") == "fail"
+
+
+def test_install_profiles_bad_reference_is_red(tmp_path):
+    root = make_repo(tmp_path)
+    (root / "manifests").mkdir()
+    (root / "manifests" / "install-profiles.json").write_text(json.dumps({
+        "schema": "kai-mode-install-profiles/1", "version": 1,
+        "profiles": {
+            "core": {"skills": ["alpha"]},
+            "full": {"skills": ["alpha", "ghost"]},
+        },
+    }, ensure_ascii=False), encoding="utf-8")
+    rc, data = run_doctor(root)
+    assert rc == 1
+    assert status_of(data, "install-profiles") == "fail"
+    assert "ghost" in detail_of(data, "install-profiles")
 
 
 def test_install_set_must_match_registry(tmp_path):
@@ -275,4 +351,4 @@ def test_install_sync_present_in_json_output(tmp_path):
     rc, data = run_doctor(root)
     ids = [c["id"] for c in data["checks"]]
     assert "install-sync" in ids
-    assert len(ids) == 14  # 第 14 项 decoupling-gate（解耦门）入列
+    assert len(ids) >= 19  # 项数随门增长；这里只锁 install-sync 在列，不锁死总数

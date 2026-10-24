@@ -2,7 +2,7 @@
 
 ## Status
 
-accepted —— 2026-10-23 kaikaikid 定稿拍板。**判据来源：kaikaikid 2026-10-23 定稿方案原文**，本文照落不改方向。本文只记裁决；执行细则正本＝[loops/loop-protocol.md](../../loops/loop-protocol.md)「八、等待纪律」「九、增量提交」，角色执行清单＝[机长](../../skills/机长/SKILL.md)／[副机长](../../skills/副机长/SKILL.md)「等待与止损」节，派工卡第 8 项＝[agents/README.md](../../agents/README.md) §8。与 [0003](0003-airport-rebuild-four-roles.md)（断点三件套）、[0002](0002-single-entry-and-dual-lane.md) D6（TIMEBOX／有界）互补不冲突。
+accepted —— 2026-10-23 kaikaikid 定稿拍板。**判据来源：kaikaikid 2026-10-23 定稿方案原文**，本文照落不改方向。本文只记裁决；执行细则正本＝[loops/loop-protocol.md](../../loops/loop-protocol.md)「八、等待纪律」「九、增量提交」，角色执行清单＝[机长](../../skills/pilot/SKILL.md)／[副机长](../../skills/copilot/SKILL.md)「等待与止损」节，派工卡第 8 项＝[agents/README.md](../../agents/README.md) §8。与 [0003](0003-airport-rebuild-four-roles.md)（断点三件套）、[0002](0002-single-entry-and-dual-lane.md) D6（TIMEBOX／有界）互补不冲突。
 
 ## Context
 
@@ -46,5 +46,11 @@ accepted —— 2026-10-23 kaikaikid 定稿拍板。**判据来源：kaikaikid 2
 
 ## 验证（判据级）
 
-- `python scripts/doctor.py --with-tests` 14 项全绿。
+- `python scripts/doctor.py --with-tests` 23 项全绿。
 - 指针链可走：0005 → loop-protocol §八/§九 → 机长／副机长「等待与止损」→ agents/README §8 第 8 项；每条判据在链上有一个住址，无两处完整重复。
+
+## 演变注
+
+- 2026-10-24：四角色技能目录改用英文名（`塔台`→`tower`、`机长`→`pilot`、`副机长`→`copilot`、`地勤`→`ground-crew`），
+  中文口令（`/塔台` 等）保持不变，仅目录与 frontmatter `name` 字段改英文，以对齐 Agent Skills 规范 1.2。
+  本文中的技能路径已同步更新；**判据本身未变**。

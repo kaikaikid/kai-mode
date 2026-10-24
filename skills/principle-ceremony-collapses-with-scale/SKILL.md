@@ -5,20 +5,22 @@ approved_by: human:kaikaikid
 approved: 2026-10-23
 sources:
   - resource: "框架仓旧裁决"
-    note: "D6 有界判据（日表 5–10 行、施工回执 ≤40 行，承继自 0003）与 Context 治理资产膨胀病征——仪式有界在记录面的落实"
+    note: "D6 有界判据（日表 5–10 行、施工回执上限，承继自 0003）与 Context 治理资产膨胀病征——仪式有界在记录面的落实"
   - resource: "skills/kai-mode/SKILL.md"
-    note: "「借用自 pstack」段「仪式随规模塌缩」一条的原始出处；判据正本迁入本叶子后收缩为一行指针"
+    note: "「设计取舍」段「仪式随规模塌缩」一条的原始出处；判据正本已迁入本叶子"
 description: >
   规模原则：仪式随规模塌缩——两行改动不配四页脚手架；每张工单带 TIMEBOX，到点交半成品并写明停在哪。
   不塌缩证据与红线（验收照逐条对证据、红线仍先问），不为省事跳过该有的审查。
   触发：Apply when 给小改动配流程、开票定 AC、或发现仪式开销超过活本身时。
 version: 0.1.0
 updated: 2026-10-23
+allowed-tools: Read Grep
+compatibility: Host-agnostic
 ---
 
 # 仪式随规模塌缩
 
-> 手法源自 pstack；判据出处：[0002 D6](../../框架仓旧裁决)（记录面有界）；原始出处＝[kai-mode](../kai-mode/SKILL.md)「借用自 pstack」段。
+> 原始出处＝[kai-mode](../kai-mode/SKILL.md)「设计取舍」段。
 
 ## 何时进场
 
@@ -31,7 +33,7 @@ updated: 2026-10-23
 - **仪式按规模配**：两行改动不配四页脚手架——不开票、口头一句说清就是合法姿势；跨角色、动契约、踩边界才升级全套流程。
 - **每张工单带 TIMEBOX**：开票写明时间盒；到点未完 ⇒ **交半成品**，写明**停在哪、差什么、下一步**——不无限期拖，也不硬塞半吊子结论。
 - **塌缩的是仪式，不是证据**：AC 逐条对证据、红线先问（[`principle-visible-and-redline-only`](../principle-visible-and-redline-only/SKILL.md)），任何规模不打折。
-- **记录面同样有界**：日表 5–10 行、施工回执 ≤40 行；长叙事进 issue 评论，不进表。
+- **记录面同样有界**：日表 5–10 行、施工回执按 `loops/loop-protocol.md` §五上限；长叙事进 issue 评论，不进表。
 
 ## 反例
 

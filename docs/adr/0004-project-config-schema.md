@@ -6,9 +6,9 @@ accepted —— 2026-10-23 开哥拍板，三项开放裁定随拍入档：①�
 
 ## Context
 
-解耦三层模型（重造方案已定）：框架正本层（判据/流程，零项目痕迹）／项目差异层（唯一事实源=项目配置文件）／宿主适配层（adapters/）。现状缺口在中间层：schema 2 实例只承载了部分差异，其余仍以硬路径散落在技能正文——实测 `grep -rn "kai-vass\|.ai/router\|.ai/tasks\|docs/artifacts/adrs\|runtimes" skills/ loops/ playbooks/ adapters/ templates/` 命中 **16 个源文件**（重造方案 P2 记 15，另含模板本体；2 个 .pyc 不计）。拿到别的项目跑不动，违反 0001 独立裁决。
+解耦三层模型：框架正本层（判据/流程，零项目痕迹）／项目差异层（唯一事实源=项目配置文件）／宿主适配层（adapters/）。现状缺口在中间层：schema 2 实例只承载了部分差异，其余仍以硬路径散落在技能正文——按 doctor 解耦门的模式集（具体项目名／旧路由／任务目录／ADR 目录／运行时节）扫描 `skills/ loops/ playbooks/ adapters/ templates/`，命中 **16 个源文件**（P2 盘点记 15，另含模板本体；2 个 .pyc 不计）。拿到别的项目跑不动，违反 0001 独立裁决。
 
-参照 pstack 的 setup-pstack／poteto-mode 模式（不抄内容）：配置外置成文件、技能运行时读配置、正本不写死任何模型/路径、漏配兜底有默认值。本 ADR 把 kai-mode 的项目差异层补成同一形状。
+原则：配置外置成文件、技能运行时读配置、正本不写死任何模型/路径、漏配兜底有默认值。本 ADR 把 kai-mode 的项目差异层补成同一形状。
 
 ## Decision
 
@@ -25,10 +25,11 @@ accepted —— 2026-10-23 开哥拍板，三项开放裁定随拍入档：①�
 | `registry` ① | `playbooks[]`（登记行数组：`name`／`trigger`／`route`／`notes`） | 剧本登记面（原 router.md 的登记行全量收编，**router.md 退役**） | `.ai/router.md`（skills/kai-mode ×3、set-kai-mode ×2） | **新增** |
 | `registry` | `skills.project_skills_dir`／`loop_dir` | 项目技能落点布局 | `.ai/skills/{project-skills/,loop}`（set-kai-mode） | **新增** |
 | `registry` | `adrs.dir`／`rules.dir` | 项目判据落点 | `docs/artifacts/adrs`（skills/kai-mode、templates/skill）；`.ai/rules/`（loop-protocol） | **新增** |
-| `paths` ② | `day_tables_dir`／`day_table_pattern`／`lanes` | 日表落点与命名 | `.ai/tasks/`（loop-protocol、地勤、塔台、机长、副机长、kai-mode、set-kai-mode、航班信息×5、set-航班信息×2、模板本体） | **改写**（原 `day_tables`） |
+| `paths` ② | `day_tables_dir`／`day_table_pattern`／`lanes` | 日表落点与命名 | `.ai/tasks/`（loop-protocol、四角色、kai-mode、set-kai-mode、模板本体） | **改写**（原 `day_tables`） |
 | `paths` | `handoff_dir`／`ideas_dir`／`audit_dir`／`module_cards`／`dashboard`／`state_dir` | 记录面落点 | `handoff/`、`ideas/`、`.ai/scope/audit`、`docs/_module-cards/`、`docs/_dashboard.md`（地勤/塔台/loop-protocol） | 扩展 |
-| `models` ③ | `tiers`／`default`／`roles{code, judgment, review_panel, verification, watch, orchestration}` | 六档映射（R/C/P/V/G/W，见下表） | 角色→模型组写死在技能/契约（subagents/codex 侧） | **新增** |
-| `runtime` ④ | `main_tree`／`backend_python`／`node`／`deps` | 环境三项**发现方式**（不写绝对路径，见 D2.1） | `kai-vass-v2` 主树绝对路径（set-kai-mode ×3）、`runtimes/`（loop-protocol、set-kai-mode、模板） | **改写**（原绝对路径段） |
+| `host` | `adapter` | 宿主选择器（qoder／codex／opencode／claude／copilot／cursor） | 只决定读哪份 `adapters/<宿主>.md`；宿主字段名与模型值仍住 adapters/（D6） | **新增** |
+| `models` ③ | `tiers`／`default`／`roles{code, judgment, review_panel, verification, watch, orchestration}` | 六档映射（R/C/P/V/G/W，见下表） | 角色→模型组写死在技能里 | **新增** |
+| `runtime` ④ | `main_tree`／`backend_python`／`node`／`deps` | 环境三项**发现方式**（不写绝对路径，见 D2.1） | 某项目主树绝对路径（set-kai-mode ×3）、`runtimes/`（loop-protocol、set-kai-mode、模板） | **改写**（原绝对路径段） |
 | `gates` | `captain_preflight`／`scope_check`／`docs_check`／`close_gate`／`framework_gate`／`loop_gate`／`ready`／`env_doctor`／`worktree_teardown`／`handoff_cleanup`／`skill_attest`／`pre_push_hook` | 项目仓门/脚本注册 | `scripts/*.py`、`.githooks/pre-push`（机长、塔台、loop-protocol、set-kai-mode、模板） | **新增**（schema 2 `runtime` 三门泛化） |
 | `issue` ⑤ | `platform`／`repo`／`ready_label`／`verdict_marker`／`milestone_gating`／`boom_summary_ticket` | 票平台类型与仓标识 | 隐性「GitHub＋ready-for-agent＋#票号」假设、BOOM 汇总票号（地勤） | **新增** |
 | `execution`／`tower_cron`／`wip`／`limits`／`approval`／`acceptance`／`audit` | — | 沿用 schema 2 | — | 沿用（`execution.host_tools` 见 D6） |
@@ -58,7 +59,7 @@ tier→具体模型的解析住 adapters/<宿主>.md（codex＝`group/tier-*`）
 
 - **单一机制：仓库根探测。** ① `git rev-parse --show-toplevel` → 读 `<root>/.ai/kai-mode.project.json`；② 非 git 目录 → cwd 沿父目录向上找 `.ai/kai-mode.project.json`；③ 都无 → **rc≠0**，输出缺件清单。
 - 缺件清单三格：**缺什么**（实例或字段名）/ **谁需要它**（消费技能＋字段）/ **怎么补**（`/set-kai-mode` 生成，或手工按模板填）。
-- 一句话理由：kai-mode 全部角色本就跑在项目仓 cwd 内（塔台定时器 cwd=主树、机长在仓根、子代理在 worktree 且 `.ai/` 是 tracked 内容），cwd 派生的探测零装机步骤、worktree 天然成立；环境变量只用于定位**值**（`KAI_BACKEND_PYTHON` 等，见 D2.1），不用来定位**配置文件**——少一个要维护的全局态，也不会出现「变量指错仓」。
+- 一句话理由：kai-mode 全部角色本就跑在项目仓 cwd 内（塔台唤醒定时器 cwd=主树、机长在仓根、子代理在 worktree 且 `.ai/` 是 tracked 内容），cwd 派生的探测零装机步骤、worktree 天然成立；环境变量只用于定位**值**（`KAI_BACKEND_PYTHON` 等，见 D2.1），不用来定位**配置文件**——少一个要维护的全局态，也不会出现「变量指错仓」。
 - 兼容读：`schema==3` 走新读法；`schema==2` 仅迁移期可读（旧式路径段按字面解析，doctor 记 warn），读到不支持的字段一律按缺件报，不猜。
 
 ### D5 与 set-kai-mode 的分工
@@ -69,24 +70,35 @@ tier→具体模型的解析住 adapters/<宿主>.md（codex＝`group/tier-*`）
 ### D6 与 adapters/ 的边界
 
 - 分界口诀：**换个项目要变的 → 配置实例；换个宿主要变的 → adapters/<宿主>.md；怎么换都不变的 → 框架正本（skills/＋本仓 ADR）。**
-- adapters 装宿主差异：工具名（Task/子代理字段/定时口）、技能目录、转录路径、tier→模型 slug 解析。pstack Harness 段规格（见 poteto-mode §Harness）。
+- adapters 装宿主差异：工具名（Task/子代理字段/定时口）、技能目录、转录路径、tier→模型 slug 解析。
 - schema 2 的 `execution.host_tools` 属宿主差异：**本轮随刀二迁 adapters/<宿主>.md，实例内 host_tools 即刻清空**（拍板 2026-10-23）；迁移完成的验收之一是实例内 host_tools 不存在。
 
 ## 代价与迁移
 
-- **改造面＝16 文件**（grep 实测，.pyc 不计）：四角色＋kai-mode＋set-kai-mode＋loop-protocol（7）＋航班信息系 5 件＋set-航班信息系 3 件＋templates 两件（skill 骨架、项目配置模板）。adapters/ 与 playbooks/ 零命中，本轮不动。scope 外同类残留：docs/skill-layout.md（出处注记类）、subagents/codex 2 件（宿主本机配置与模型组名，归平台私有清单，不进项目配置）。
-- **分两刀**：刀一＝判据与流程件（7 件，改读配置）；刀二＝板工坊件（8 件，board 源路径改读 `paths.day_tables_dir`，脚本默认值收进配置）。
-- **兼容期**：读取端同时认 schema 2/3（D4 兼容读）；doctor 新增**解耦门**——grep `kai-vass\|.ai/router\|docs/artifacts/adrs` 于 skills/ loops/ templates/ 命中＝0（白名单：docs/adr 出处注记与设计稿本身），`.ai/tasks` 同门；**两轮双仓回归（Kai-vass＋一干净仓）后即废 schema 2 读法**（拍板 2026-10-23），不留只读降级。
-- **验收**：① 解耦门全绿；② 空项目（无实例）跑任一角色 → rc≠0 且缺件清单三格齐全；③ Kai-vass 真机按实例跑通一轮排班→发货。
+- **改造面**：四角色＋kai-mode＋set-kai-mode＋loop-protocol＋templates 两件（skill 骨架、项目配置模板）。adapters/ 与 playbooks/ 零命中，不动。
+- **分两刀**：刀一＝判据与流程件（7 件，改读配置）；刀二＝看板展示层件（8 件，board 源路径改读 `paths.day_tables_dir`，脚本默认值收进配置）。
+- **兼容期**：读取端同时认 schema 2/3（D4 兼容读）；doctor 新增**解耦门**——按 `scripts/doctor.py` 的 `DECOUPLE_PATTERNS`（模式集正本，此处不复制）扫描 `skills/ loops/ templates/` 命中＝0（白名单：`docs/adr` 出处注记与设计稿本身）；**一轮双仓回归（一真仓＋一干净仓）后即废 schema 2 读法**（拍板 2026-10-23），不留只读降级。
+- **验收**：① 解耦门全绿；② 空项目（无实例）跑任一角色 → rc≠0 且缺件清单三格齐全；③ 真仓按实例跑通一轮排班→发货。
 
 ## 明确不做
 
 - 不把机器绝对路径写进 tracked 实例；不用环境变量定位配置文件；不给技能正文留第二份默认值。
 - 六档不写模型 slug；G/W 档不强行派活。
-- 不在本轮动 Kai-vass 项目仓与 subagents/codex 本机配置（各自走该仓/该宿主流程）。
+- 不动目标项目仓与该宿主本机配置（各自走该仓/该宿主流程）。
 
 ## 验证（判据级）
 
 - doctor 解耦门转绿（含 schema 字段合法性子检查）。
 - 空项目配置下四角色技能自检报缺件清单（rc≠0），不静默。
 - schema 2→3 迁移脚本对既有实例零数据丢失（逐字段 diff 留档）。
+
+## 演变注
+
+- 2026-10-24：**D2 的六档映射段整体退役**（`models.tiers`／`default`／`roles` 与「tier→具体模型解析住
+  `adapters/<宿主>.md`」），「不做」里的「六档不写模型 slug；G/W 档不强行派活」随之失效。
+  模型改为**只按人格配**：项目实例 `models.agents.<人格>.model`（`null`＝宿主默认），由初始化第 11 问逐个人格问用户。
+  理由：档位是按角色名机械分配模型，且解析从未实现（唯一消费方读的是空表）；参考指南也写「按任务难度与失败代价分配」。
+  **其余字段与 D1／D3／D4／D6 未变**。正本见 [0008](0008-persona-model-config-and-host-adaptation.md) D3。
+
+- 2026-10-24：**新增 `host.adapter` 选择器**。它只回答「读哪份 `adapters/<宿主>.md`」，不承载宿主字段名、
+  权限写法或模型值（那些仍住 adapters/，D6 不变）；初始化第 8 问写此字段，set-kai-mode 按它选适配器。

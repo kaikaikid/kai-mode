@@ -1,0 +1,85 @@
+---
+name: kai-handoff
+status: active
+approved_by: human:kaikaikid
+approved: 2026-10-24
+sources:
+  - resource: "handoff/README.md"
+    note: "落盘规则正本：两级路径、槽位表、frontmatter 字段表"
+  - resource: "handoff/60-board/README.md"
+    note: "跨 agent 看板协议正本：结构化卡片与状态流转"
+  - resource: "skills/kai-handoff/references/source.md"
+    note: "源技能（mattpocock/skills 的 handoff）指针与对账方法；源件不入库"
+description: >
+  把当前会话压缩成一份交接文档落 `handoff/`，供下一个 agent 续接；跨 agent 派活走 60-board 看板脚本。
+  不做：不复制 issue/ADR/spec/diff 内容（只给路径）、不写机器绝对路径、不当长期账本（建议 15 天内归档）。
+  触发：「写交接」「handoff」「交接文档」「下一棒」「派活」「认领」。
+version: 0.2.1
+updated: 2026-10-24
+allowed-tools: Read Write Edit
+compatibility: Requires python3
+---
+
+# kai-handoff
+
+与源技能（`handoff`，mattpocock/skills）的**三处实质差异**，其余约定继承：
+
+| 源件 | 本仓特化 |
+|---|---|
+| 存 OS 临时目录 | **存 `handoff/<槽>/<YYYY-MM>/`**（项目内、git 可追、两级） |
+| 格式自由 | **强制 frontmatter**（AI 认用途读字段，不读正文猜） |
+| 无门禁 | **`框架仓门禁` `handoff-slots` 项校验，红即 rc=1** |
+
+## 流程（三步）
+
+1. **判类型** — 查 [`handoff/README.md`](../../handoff/README.md) §2 槽位表，定 `<槽>` 与类型词
+2. **写文件** — 落 `handoff/<槽>/<YYYY-MM>/YYYY-MM-DD-<票号|slug>-<类型>.md`；
+   文件头写 frontmatter 六字段（`slot`/`type`/`ticket`/`date`/`owner_role`/`persona`）；
+   正文照 [`templates/HANDOFF-template.md`](../../handoff/templates/HANDOFF-template.md)
+   （看板件正文 ≤3 行）
+3. **过门禁** — `python 框架仓门禁`，`handoff-slots` 项 红了就改到绿
+
+## 硬约束（六条）
+
+- 路径一律**相对仓根**；**禁写盘符开头的机器绝对路径**（换台电脑就失效）
+- **不复制** issue / ADR / spec / commit / diff 的内容，只给路径或 URL
+- **必写「下一棒开工清单」**，没有它等于没接住
+- **必带 `suggested skills` 段**（源件要求，保留）
+- **脱敏**：密钥、用户名、内部 URL 不进文档
+- **建议 15 天内归档**：三个月后还有人要看的内容提炼进 `docs/`，不许靠 handoff 续命；`00-inbox` 的 7 天是硬判据
+
+## 跨 agent 派活（看板）
+
+不写文档，**走脚本**：`python scripts/handoff-board.py new|list|show|claim|close|archive`。
+无票热修 / 杂活写 `ticket: "-"`，靠 `id` 追踪。
+**看板不是任务状态正本**（正本＝issue，框架仓旧裁决）。
+
+## 角色沟通（50-comms）
+
+**只是要让某个角色知道**（不派活）→ 落 `handoff/50-comms/<YYYY-MM>/`，类型词 `msg`／`ask`／`answer`／`notice`，
+照 [`templates/COMMS-template.md`](../../handoff/templates/COMMS-template.md)；frontmatter 六字段 ＋ `to_role`。
+
+判据（[handoff/README.md](../../handoff/README.md) §2.1）：一个件只谈一件事、同一话题往返追加不新开、
+**要有人干活就走看板**、状态正本仍是 issue。
+
+## 对账上游
+
+源件更新后按 [`references/source.md`](references/source.md) 的步骤 diff，新约定并入本件并升 `version`。
+**源件本身不入库**（不登记 registry、不进中央库）。
+
+## 失败降级
+
+| 情况 | 处理 |
+|---|---|
+| 判不出槽（用途不清） | 落 `handoff/00-inbox/<YYYY-MM>/`，7 天内归位（`handoff-slots` 会催） |
+| 类型词不在槽位表 | 改用已登记类型词；确需新增，`handoff/README.md` §二 与 `doctor.py` 的 `HANDOFF_TYPE2SLOT` **两处同步** |
+| `handoff-slots` 红 | 照红字改命名／槽位／frontmatter；门禁绿才算写完 |
+| 内容寿命超过 15 天 | 提炼进 `docs/`（ADR／契约），handoff 原件留一行指针 |
+| 要交代的是票的完整状态 | 不抄正文，只给票号；状态正本是 issue |
+
+## 验证命令
+
+```bash
+python 框架仓门禁
+python scripts/handoff-board.py list
+```

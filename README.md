@@ -1,9 +1,9 @@
 # kai-mode —— 机场体系的技能与通用剧本仓库
 
-> **状态：0.7.0（2026-10-23 机长 / 副机长 / loop 三份提示词压到 1.5k 字符级，围栏与负担分层；先版同步机场体系判据（判据出处：项目仓 ADR-0137/0140/0141，历史）、加技能注册表 / doctor / 板装配面与板定时刷新）。** 技能与协议已对齐本仓现行机场体系
-> （[0003：四角色＋30 分钟塔台轮巡](docs/adr/0003-airport-rebuild-four-roles.md)）；**本仓已于 2026-10-22 成为宿主装机正本**（`magpie-sync apply --root <本仓>`，
-> 8 个宿主装齐 8 个技能），项目仓那份技能副本自此只作镜像。
-> 旧五角色（Tower/Ground/Coordinator/Group-A/B）、租约、班次、handoff 按铃那套已随机场体系重做退役（本仓 [0003](docs/adr/0003-airport-rebuild-four-roles.md)；判据出处：项目仓 ADR-0137，历史）
+> **状态：0.14.1（2026-10-24 角色/唤醒器分离：塔台是独立岗位，定时器只是唤醒方之一，60 分钟是默认唤醒间隔、不是角色定义）。此前 0.14.0（2026-10-24 评估与安装治理：新增 semantic `harness-audit`、`core/full` 安装档位与安装回执/备份、reviewer `silent-failure` 模式、宿主中立与 frontmatter YAML 门；doctor 19→23，`--with-tests` 纳入 `scripts/tests`；见 ADR-0009）。此前 0.13.0（2026-10-24 人格层收口：六人格改裸名（`kai-` 前缀只用于 `skills/`，防中央库覆盖）、四角色改称「岗位」且人格 `metadata` 只留 `access`、六档词表退役（模型改由初始化第 11 问逐人格问用户，存项目实例 `models.agents.<人格>.model`，null＝宿主默认）、宿主落法从投影脚本改 `adapters/README.md` 方法论、`vendor/` 纳入 git 跟踪并新增 doctor 的 `vendor-sync` 项、入库 `security-audit` 作 reviewer 的 `security` 模式（见 ADR-0008）。此前 0.12.0 子代理人格层按行业规范重建：6 人格 ＋ Agent Skills 对齐的 8 字段机读契约、doctor 新增 `agents-contract` 与 `canon-dup` 两项门禁、清退 `skills/kai-mode/playbooks/` 七件平行正本（判据归位后删除，见 ADR-0007）。此前 0.11.0 看板人读面按 Diagram Design 的 editorial 皮肤重做：四色 tokens、衬线大标、发丝线、暗色整套、赭色只留两处；版式从「五张等宽 KPI 卡」改为页头 ＋ 方向句 ＋ 阶段轨 ＋ 两张表；`view.kpis` 退役，改 `focal_stage`／`font_source`／`metrics`／`labels`／`eyebrow`；字体缺省本地栈零网络。修链外阶段名、行链序、下一步重复三处 bug。此前 0.10.0 看板展示层重做为 `flight-info`（SQLite ＋ 模块化解耦 ＋ 钩子只打标记）；0.9.1 确立看板三层；0.9.0 砍掉非 kai-mode 内容、塔台轮巡改 **1 小时**、通用方法技能改 `vendor/skills/` 原样拉取、`handoff/` 增 `50-comms`、新装项目走 `scripts/init-project.py` 十问）。** 技能与协议已对齐本仓现行机场体系
+> （[0003：四角色＋1 小时唤醒塔台](docs/adr/0003-airport-rebuild-four-roles.md)）；**本仓是宿主装机正本**（`magpie-sync apply --root <本仓>`，
+> 8 个宿主按注册表 `install:auto` 装齐，当前 16 条），项目仓那份技能副本只作镜像。
+> 旧五角色（Tower/Ground/Coordinator/Group-A/B）、租约、班次、handoff 按铃那套已随机场体系重做退役（本仓 [0003](docs/adr/0003-airport-rebuild-four-roles.md)）<!-- canon:allow-retired -->
 > （git 历史可捞）。
 
 ## 这是什么
@@ -16,9 +16,9 @@ kai-mode 是「一句话需求 → 票 → 排班 → 施工 → 审查 → 发�
   - **框架技能**（`kind: framework`）：框架本身的一部分，各项目都该有，默认 `install: auto` 进中央库；
   - **个人技能**（`kind: personal`）：只给自己用的，默认 `install: manual`，**不进中央库**。
 - 协议正本：`loops/loop-protocol.md`（v5）
-- 通用剧本：任务合同、执行三职、可靠性、审批、审计、上下文、验收
+- 通用方法：按上游名引用 `tdd`／`code-review`／`diagnosing-bugs` 等（`vendor/skills/` 原样副本，本仓不 fork）
 - 可执行契约：`task` / `acceptance` / `event` schema
-- 宿主适配器：Qoder（30 分钟塔台定时＋按铃子会话）、opencode/codex 备胎
+- 宿主适配器：Qoder（60 分钟唤醒定时器＋按需子会话）、opencode/codex 备胎
 - 项目配置模板：`templates/kai-mode.project.json`
 
 项目自己的 ADR、票、日报、门禁脚本与项目专用剧本留在项目仓。
@@ -30,7 +30,7 @@ kai-mode 是「一句话需求 → 票 → 排班 → 施工 → 审查 → 发�
 | kai-mode 入口 | `/kai-mode` | 一句话需求 → 判断 → 拷问 → 定稿 → 拍板 → 路由 | 执行 |
 | set-kai-mode 装配 | `/set-kai-mode` | 安装、探测、装定时器、doctor、缺件登记 | 日常施工 |
 | 地勤 | `/地勤` | 对话、规划、开票（六件套＋`ready-for-agent`）、收想法 | 写码、push、派施工 |
-| 塔台 | `/塔台` | 30 分钟轮巡：先发货（合并/push/关票）、后补排班（日表 5–10 行，放本轮最后） | 写码、替审查下结论 |
+| 塔台 | `/塔台` | 独立岗位；默认每 60 分钟由定时器唤醒，也可人工 / kai-mode 唤醒；先发货、后补排班（日表 5–10 行，放本轮最后） | 写码、替审查下结论 |
 | 机长 / 副机长 | `/机长` `/副机长` | goal 模式各管 2 张票；每票 1 施工＋1 审查（新上下文），子代理按需展开 | 写码、push、合并 |
 
 **权限硬线（[0003](docs/adr/0003-airport-rebuild-four-roles.md)）**：塔台**独占** push 与关票；机长/副机长只管理不写码；地勤只开票；记录面三分——日表只由塔台写、状态只写 Issue 评论、代码只进分支。
@@ -62,10 +62,10 @@ kai-mode 是「一句话需求 → 票 → 排班 → 施工 → 审查 → 发�
 ## 交接与断点（省叙述，不省证据）
 
 - 票进入日表即完成领取；状态只由机长写 Issue 评论（开工/施工完成/审查完成/待发货/卡点）。
-- 施工回执 ≤40 行：`ticket/role/verdict/files/commits/checks/summary/evidence/risks/next`；禁止贴 diff 全文与原始日志。
+- 施工回执字段固定为 `ticket/role/verdict/files/commits/checks/summary/evidence/risks/next`，行数上限与字段语义见 [loop-protocol §五](loops/loop-protocol.md)；禁止贴 diff 全文与原始日志。
 - 塔台发货**只认审查子代理的判词**（`verdict=pass` 且逐条 AC 有证据），不认机长口头总结。
 
-## 可靠性（`skills/kai-mode/playbooks/reliability.md`）
+## 可靠性（[loop-protocol §七](loops/loop-protocol.md)）
 
 - 单票失败 **1 次重试**；再失败 → 卡点停票；同错连发触发熔断。
 - 上限全部进项目配置 `limits`；到限写 `blocked`/`failed` 留读数，不许「再试一次看看」。
@@ -75,17 +75,17 @@ kai-mode 是「一句话需求 → 票 → 排班 → 施工 → 审查 → 发�
 
 ```text
 skills/           技能目录：一个技能一目录，必含 SKILL.md（清单见 registry.json）
-skills/kai-mode/playbooks/  七件治理剧本：task-contract / execution-roles / reliability / approval / audit / context / acceptance（入口索引见 skills/kai-mode/SKILL.md）
-skills/航班信息/   板工坊：SKILL.md ＋ templates/（生成器模板＋板配置样例）＋ scripts/（脚手架/索引页/刷新）
-skills/set-航班信息/  装配面：给项目仓装一块板
+skills/kai-mode/  入口与路由：正本地图（判据不住这里，只给路径）
+agents/           子代理人格层：6 个人格（裸名）＋ dispatch.md（派发策略）
+skills/flight-info/   看板展示层：SKILL.md ＋ flightinfo/（db·stage·sources·collect·render）＋ schema/*.sql ＋ scripts/（建板/刷新/钩子）
 registry.json     技能注册表：技能清单的单一事实源（装机清单从它派生）
 scripts/          仓级工具：doctor.py（校验入口，一条命令验全仓）
 loops/            loop-protocol.md（v5 单票闭环正本）
 schemas/          task / acceptance / event
-adapters/         qoder（30 分钟塔台定时＋按铃子会话）、opencode、codex
-templates/        kai-mode.project.json（schema 2：日表/轮巡/名额/限额/审批/审计）
+adapters/         README（宿主落法总则：探测/六家对照/降级/自证）＋ qoder、opencode、codex（起岗位）
+templates/        kai-mode.project.json（schema 3：宿主选择器/日表/轮巡/名额/限额/审批/审计）
 templates/skill/  技能骨架模板（SKILL.md）：加新技能从这里复制
-docs/             设计基线吸收记录（V1.0 对照与偏离，沿革）
+docs/             ADR（0001–0009）、技能契约、外部素材对账
 docs/skill-layout.md  技能目录契约（目录 / frontmatter / 注册表字段 / 加技能三步 / 读契约）
 CHANGELOG.md      版本变更记录
 .gitattributes    行尾口径（仓内存 LF；.bat/.cmd 落 CRLF，防 cmd 崩）
@@ -93,21 +93,12 @@ CHANGELOG.md      版本变更记录
 
 ## 接入一个新项目
 
-1. 项目根写 `.ai/kai-mode.project.json`（从 `templates/` 复制），填主树解释器/node 绝对路径与门禁命令。
+1. 项目根写 `.ai/kai-mode.project.json`（从 `templates/` 复制），填运行时**发现方式**（主树反推、env、相对路径）与门禁命令；机器绝对路径不入库。
 2. 把本仓 `skills/` 与 `loops/loop-protocol.md` 落到项目仓 `.ai/skills/` 与 `loops/`（或由 `set-kai-mode` 按宿主装配）。
-3. `/set-kai-mode` 探测宿主能力（定时口 / 会话创建口 / shell 启动器），按四档装配 30 分钟塔台定时器；缺件如实登记。
-4. 项目 ADR 记角色与权限裁决（先例：本仓 [0003](docs/adr/0003-airport-rebuild-four-roles.md)；判据出处：项目仓 ADR-0137，历史）；开票走地勤六件套；用一张真票走通「排班→施工→审查→发货」全链路做自证。
+3. `/set-kai-mode` 探测宿主能力（定时口 / 会话创建口 / shell 启动器），按四档可选装配 60 分钟唤醒定时器（只唤醒塔台，不是塔台本体）；装机按 `core`／`full` 档位（`manifests/install-profiles.json`），缺件如实登记。
+4. 项目 ADR 记角色与权限裁决（先例：本仓 [0003](docs/adr/0003-airport-rebuild-four-roles.md)）；开票走地勤六件套；用一张真票走通「排班→施工→审查→发货」全链路做自证。
 5. 项目专用路径、票号、job id 只进项目配置与本机文件，不进本仓技能正文。
 
-## 给别的仓装一块航班信息板
-
-1. 入口：`/set-航班信息`（拷问 ≤3 问：装哪个仓／板叫什么／读哪些源；答不上按默认走）——或直接跑
-   `python skills/set-航班信息/scripts/setup_board.py --repo-root <仓根>`。
-2. 一条命令装完并出第一版板：板目录 ＋ 配置留档 ＋ 自包含脚本 ＋ 刷新入口 ＋ 板库索引 ＋ 目标仓 `.gitignore` 两条规则。
-3. 日常刷新：板目录里的 `refresh_<板名>.bat`；出索引 `python skills/航班信息/scripts/build_index.py --repo-root <仓根>`。
-4. 板库落在**目标仓内**：`<仓根>\.design\航班信息\HTML\<板名>\`。人读面 `<板名>\index.html`，机读面 `<板名>\board.json`。
-5. 入库口径：人读面与配置留档（连同适配脚本、刷新 bat、历史、板库索引）入库；**全量层 `full.json` 与快照不入库**（`.gitignore` 已补那两条）。
-6. 默认不动中央库；要顺手把 `set-航班信息` 装进中央库才加 `--install`。
 
 ## 加一个技能（三步）
 
@@ -125,9 +116,9 @@ CHANGELOG.md      版本变更记录
 python scripts/doctor.py --with-tests
 ```
 
-覆盖：注册表 schema / 字段 / 枚举、每个技能的目录与 `SKILL.md`、frontmatter 八字段与顺序、三处 name 一致、盘上有技能目录但没登记、`SKILL.md` 相对链接断链、机器绝对路径入正文、仓内行尾口径、`VERSION` 与本文件版本串一致、中央库副本与本仓是否逐字相同＋库记住的装机来源是不是本仓（第 13 项 `install-sync`；中央库定位不到时跳过），以及各技能自己的 pytest。
+覆盖：注册表 schema / 字段 / 枚举、每个技能的目录与 `SKILL.md`、frontmatter 八字段与顺序、三处 name 一致、盘上有技能目录但没登记、`SKILL.md` 相对链接断链与宿主中立、机器绝对路径入正文、仓内行尾口径、`VERSION` 与本文件版本串一致、解耦门、交接文档分类、Agent Skills 1.2 对齐、人格层契约、判据归属、`vendor/` 跟踪与漂移、中央库副本与本仓是否逐字相同＋库记住的装机来源是不是本仓（`install-sync` 项；中央库定位不到时跳过），以及各技能自己的 pytest。
 
-单独跑某个技能的测试：见该技能 `SKILL.md` 的「验证命令」段（如 `python -m pytest skills/航班信息/scripts/tests/ -q`）。
+单独跑某个技能的测试：见该技能 `SKILL.md` 的「验证命令」段（如 `python -m pytest skills/flight-info/tests/ -q`）。
 
 ## 当前不做
 
@@ -135,13 +126,14 @@ python scripts/doctor.py --with-tests
 - 不把项目专用路径、票号、job id 写进技能正文。
 - 项目专用件（ADR、票、日报、门禁脚本、项目专用剧本）不进本仓。
 - 个人技能默认 `install: manual`，不进中央库。
-- 装机正本＝本仓（`registry.json` 的 `install:auto` 条目）；项目仓 `.ai/skills/` 只作镜像，不再是装机源（见 `MIGRATION.md`）。中央库记住装机来源（`<库根>/.kai-mode-source.json`）：从库里那份脚本跑，正本根也回到本仓，不会被 cwd 里的项目仓顶掉。⚠ 项目仓那份**旧** `magpie-sync.py` 若被再跑（它没有标记逻辑），仍会把中央库刷回项目仓版本 ⇒ 须与本仓对齐或停用。
+- 装机正本＝本仓（`registry.json` 的 `install:auto` 条目）；项目仓 `.ai/skills/` 只是镜像，不是装机源。中央库记住装机来源（`<库根>/.kai-mode-source.json`），从库里那份脚本跑，正本根也回到本仓。
 
 ## 判据正本
 
-- 机场体系唯一现行裁决：本仓 [`docs/adr/0003-airport-rebuild-four-roles.md`](docs/adr/0003-airport-rebuild-four-roles.md)（判据出处：项目仓 ADR-0137，历史；收编并部分取代项目仓 ADR-0131/0132/0133/0135/0136 的对应裁决，取代明细见 0003 §退役与保留）
-- 单句入口与拍板：本仓 [`docs/adr/0002-single-entry-and-dual-lane.md`](docs/adr/0002-single-entry-and-dual-lane.md)（判据出处：项目仓 ADR-0130，历史）
+- 机场体系唯一现行裁决：本仓 [`docs/adr/0003-airport-rebuild-four-roles.md`](docs/adr/0003-airport-rebuild-four-roles.md)
+- 单句入口与拍板：本仓 [`docs/adr/0002-single-entry-and-dual-lane.md`](docs/adr/0002-single-entry-and-dual-lane.md)
+- 评估与安装治理：本仓 [`docs/adr/0009-harness-audit-install-profiles-and-host-neutrality.md`](docs/adr/0009-harness-audit-install-profiles-and-host-neutrality.md)
 - 单票闭环协议：本仓 `loops/loop-protocol.md`（v5）
 - **技能清单与装机清单**：仓根 [`registry.json`](registry.json)（装机清单＝其中 `install: auto` 的条目）
 - **技能目录契约**：[`docs/skill-layout.md`](docs/skill-layout.md)（目录结构 / frontmatter 八字段与顺序 / 注册表字段 / 读契约）
-- 设计吸收沿革：`docs/design-v1-absorption.md`
+- 版本与设计沿革：`CHANGELOG.md`（逐版变更）＋ `docs/adr/`（裁决）

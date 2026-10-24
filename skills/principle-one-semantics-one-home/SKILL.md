@@ -16,6 +16,8 @@ description: >
   触发：Apply when 写或改技能/文档/配置，发现同一判据出现第二处说法、或正要抄一份过来时。
 version: 0.1.0
 updated: 2026-10-23
+allowed-tools: Read Grep
+compatibility: Host-agnostic
 ---
 
 # 一个语义一个家

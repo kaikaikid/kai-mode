@@ -203,11 +203,11 @@ def bake_config(template_text: str, cfg: dict) -> str:
     return template_text[:begin] + block + template_text[end + len(CONFIG_END):]
 
 
-def bat_for(name: str) -> str:
-    """该板的刷新入口（CRLF；参数化；不写死机器路径）。"""
+def bat_for(name: str, title: str | None = None) -> str:
+    """该板的刷新入口（CRLF；参数化；不写死机器路径）。文案用板标题（没有就板名）。"""
     return (
         "@echo off\r\n"
-        "REM 刷新航班信息板「%s」。\r\n"
+        "REM 刷新看板「%s」。\r\n"
         "REM 用法：refresh_%s.bat [项目仓根]；省略参数时用当前目录。\r\n"
         "REM 调同目录的适配脚本；不写死任何机器路径。\r\n"
         "REM 退出码＝生成器退出码；退出码 0 只表示「板已生成」，数据好坏看 board.json 的 sources 字段。\r\n"
@@ -221,7 +221,7 @@ def bat_for(name: str) -> str:
         ":use_py\r\n"
         "py -3 \"%%~dp0render_%s.py\" --repo-root \"%%REPO_ROOT%%\" --quiet\r\n"
         ":done\r\n"
-        "exit /b %%ERRORLEVEL%%\r\n" % (name, name, name, name)
+        "exit /b %%ERRORLEVEL%%\r\n" % (title or name, name, name, name)
     )
 
 
@@ -296,8 +296,8 @@ def main(argv: list[str] | None = None) -> int:
         (board_dir / "board.config.json").write_text(
             json.dumps(cfg, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         (board_dir / ("render_%s.py" % name)).write_text(script_text, encoding="utf-8")
-        (board_dir / ("refresh_%s.bat" % name)).write_text(bat_for(name), encoding="utf-8",
-                                                            newline="")
+        (board_dir / ("refresh_%s.bat" % name)).write_text(
+            bat_for(name, str(cfg.get("title") or "") or None), encoding="utf-8", newline="")
     except OSError as exc:
         print("写不出：%s" % exc, file=sys.stderr)
         return 3

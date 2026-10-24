@@ -139,13 +139,13 @@ def render_index(rows: list[dict], lib_root: Path, generated_at: str) -> str:
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>航班信息板库</title>
+<title>看板板库</title>
 <style>%s</style>
 </head>
 <body>
 <div class="wrap">
 <div class="top">
-  <div class="eyebrow">航班信息板库</div>
+  <div class="eyebrow">看板板库</div>
   <h1>板索引</h1>
   <div class="meta">共 %d 块板 · 生成于 %s · 板库根 <code>%s</code></div>
 </div>

@@ -5,11 +5,11 @@ approved_by: human:kaikaikid
 approved: 2026-10-22
 sources:
   - resource: "skills/航班信息/SKILL.md"
-    note: "板工坊正本：造板 / 刷新 / 归档 / 索引；本技能只做装配面（给别的仓装一块板）"
+    note: "看板展示层正本：造板 / 刷新 / 归档 / 索引；本技能只做装配面（给别的仓装一块板）"
   - resource: "skills/航班信息/scripts/new_board.py"
     note: "建板与配置校验的正本；装配面 import 复用它，不复制判据"
-  - resource: "skills/航班信息/templates/board.config.example.json"
-    note: "完整板配置样例；最小配置只写 name ＋ sources，其余吃通用缺省"
+  - resource: "skills/航班信息/templates/board-types/"
+    note: "板型模板目录（`航班信息` 机场板 / `通用占位` 任意清单板）；完整样例在板型目录里"
   - resource: "skills/set-kai-mode/scripts/magpie-sync.py"
     note: "装机正本（正本 → 中央库 → 各家宿主链接）；只有 --install 才动它"
 description: >
@@ -18,24 +18,24 @@ description: >
   拷问 ≤3 问（装哪个仓 / 板叫什么 / 读哪些源），答不上就按默认走。
   不造板工艺、不改判据、不动票面与日表；默认不装中央库。
   触发：给这个仓装一块航班信息板、我要个航班信息板、这个项目也要那块板。
-version: 0.1.0
-updated: 2026-10-22
+version: 0.2.0
+updated: 2026-10-24
 ---
 
 # set-航班信息 —— 给任意项目仓装一块航班信息板
 
-> 板工坊（造板/刷新/归档/索引）的正本在 [`../航班信息/SKILL.md`](../航班信息/SKILL.md)；**本技能只管装配**。
+> 看板展示层的正本在 [`../航班信息/SKILL.md`](../航班信息/SKILL.md)；**本技能只管装配**。
 > 装配正本：脚本 [`scripts/setup_board.py`](scripts/setup_board.py)；骨架配置 [`templates/board.config.minimal.json`](templates/board.config.minimal.json)。
 
 ## 角色定位
 
 **装配面**：别的仓、别的 agent 想用那块板时，一条路装好并能用 —— 不再手抄配置、手敲脚手架。
 
-| | 板工坊 | 本技能（装配面） |
+| | 展示层（`航班信息`） | 本技能（装配面） |
 |---|---|---|
 | 干什么 | 造板 / 刷新 / 归档 / 索引 | 给一个仓**装**一块板并跑通第一版 |
 | 谁调 | 已经装了板的仓 | 第一次要在某个仓用板的人 |
-| 判据在哪 | 板工坊的 SKILL.md 与脚本 | 本技能；**判据不重写**，脚本 import 复用板工坊的 |
+| 判据在哪 | `航班信息` 的 SKILL.md 与脚本 | 本技能；**判据不重写**，脚本 import 复用展示层的 |
 
 **边界**：只写目标仓的板库根（板配置 `output.root`，相对项目仓根）与目标仓的 `.gitignore`；不改目标仓源码、票面、日表；不动中央库（除非显式 `--install`）；不改别的仓已有的板（`--force` 要先确认）。
 
@@ -95,7 +95,7 @@ updated: 2026-10-22
 - 改目标仓的源码、票面、Issue、日表、日报 —— 那些归项目仓与各角色。
 - 动别的仓已有的板：同名板存在时不覆盖（要 `--force` 才覆盖，且先跟人确认）。
 - 动中央库 / 各家宿主目录 —— 只有显式 `--install` 才动，且只装框架仓注册表里 `install:auto` 的条目。
-- 改板工坊的脚本与判据 —— 本技能只 import 复用，不改。
+- 改展示层（`航班信息`）的脚本与判据 —— 本技能只 import 复用，不改。
 - 在本仓写死任何项目名、项目路径、票号。
 
 ## 失败与降级
@@ -130,9 +130,9 @@ python 框架仓门禁 --with-tests
 
 ## 正本
 
-- 板工坊正本：[`skills/航班信息/SKILL.md`](../航班信息/SKILL.md) —— 造板/刷新/归档/索引。
-- 装配脚本：[`skills/set-航班信息/scripts/setup_board.py`](scripts/setup_board.py) —— 九步装配；校验与建板 **import 复用**板工坊的 `new_board.py`（`build_index.py` 同理）。
+- 展示层正本：[`skills/航班信息/SKILL.md`](../航班信息/SKILL.md) —— 造板/刷新/归档/索引。
+- 装配脚本：[`skills/set-航班信息/scripts/setup_board.py`](scripts/setup_board.py) —— 九步装配；校验与建板 **import 复用**展示层的 `new_board.py`（`build_index.py` 同理）。
 - 最小配置：[`skills/set-航班信息/templates/board.config.minimal.json`](templates/board.config.minimal.json) —— 通用件；`_note` 那个键板会忽略。
-- 完整配置样例：[`skills/航班信息/templates/board.config.example.json`](../航班信息/templates/board.config.example.json)。
+- 板型模板：[`skills/航班信息/templates/board-types/`](../航班信息/templates/board-types/) —— `航班信息`（机场板，含完整样例）与 `通用占位`（任意清单板）。
 - 装机正本：[`skills/set-kai-mode/SKILL.md`](../set-kai-mode/SKILL.md) ＋ `magpie-sync.py` —— 框架件怎么进中央库。
 - 单票闭环协议：[`loops/loop-protocol.md`](../../loops/loop-protocol.md)。

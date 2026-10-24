@@ -33,6 +33,7 @@ import hashlib
 import json
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 from datetime import datetime, timezone
@@ -78,6 +79,20 @@ REQUIRED_ENTRY_FIELDS = ("name", "path", "kind", "scope", "install", "summary")
 # 装机来源标记：中央库记住「自己是从哪个仓装来的」——谁跑装机器都回那个仓，不被 cwd 里的项目仓顶掉。
 SOURCE_MARKER_NAME = ".kai-mode-source.json"
 SOURCE_SCHEMA = "kai-mode-source/1"
+PROFILES_REL = os.path.join("manifests", "install-profiles.json")
+PROFILES_SCHEMA = "kai-mode-install-profiles/1"
+BACKUP_DIR = ".backups"
+BACKUP_KEEP = 5
+RETIRED_DIR = ".retired"
+# 角色改名的一次性迁移：旧中文目录 → 新英文目录。只在显式 --retire-legacy 时移动/摘链。
+LEGACY_ALIASES = {
+    "塔台": "tower",
+    "机长": "pilot",
+    "副机长": "copilot",
+    "地勤": "ground-crew",
+    "航班信息": "flight-info",
+    "set-航班信息": "flight-info",
+}
 
 
 def library_root(library: str) -> str:
@@ -90,19 +105,25 @@ def source_marker_path(library: str) -> str:
     return os.path.join(library_root(library), SOURCE_MARKER_NAME)
 
 
-def write_source_marker(library: str, root: str, skills: int) -> str:
-    """apply 真跑完 ⇒ 记下「这个库是从哪个仓装来的」：原子写（临时档 + os.replace，同 patch_registry 一路数）。"""
+def write_source_marker(library: str, root: str, skills: int, profile: str | None = None,
+                        skill_names=None, hashes=None, source_commit: str | None = None) -> str:
+    """apply 真跑完 ⇒ 记下来源、档位、技能清单与哈希：原子写（临时档 + os.replace）。
+    旧字段 `skills` 仍是计数（向后兼容）；新增字段是安装回执。"""
     path = source_marker_path(library)
     data = {
         "schema": SOURCE_SCHEMA,
         "root": os.path.abspath(root),
         "applied_at": datetime.now(timezone.utc).isoformat(),
         "skills": skills,
+        "profile": profile,
+        "skill_names": list(skill_names or []),
+        "hashes": dict(hashes or {}),
+        "source_commit": source_commit,
     }
     fd, tmp = tempfile.mkstemp(prefix=".kai-mode-source.", suffix=".tmp", dir=os.path.dirname(path))
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+            json.dump(data, f, ensure_ascii=False, indent=2, sort_keys=True)
             f.write("\n")
         os.replace(tmp, path)
     except OSError as exc:
@@ -110,6 +131,58 @@ def write_source_marker(library: str, root: str, skills: int) -> str:
             os.remove(tmp)
         raise SystemExit(f"装机来源标记写入失败：{exc}")
     return path
+
+
+def read_source_marker(library: str) -> dict | None:
+    """读库根安装回执；缺失/损坏/schema 不认识 ⇒ None。"""
+    path = source_marker_path(library)
+    if not os.path.isfile(path):
+        return None
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return None
+    if not isinstance(data, dict) or data.get("schema") != SOURCE_SCHEMA:
+        return None
+    return data
+
+
+def marked_profile(library: str) -> str | None:
+    data = read_source_marker(library) or {}
+    profile = data.get("profile")
+    return profile if isinstance(profile, str) and profile else None
+
+
+def read_profiles(root: str) -> dict | None:
+    """读 `manifests/install-profiles.json`；缺失 ⇒ None（旧根照旧全装）。"""
+    path = os.path.join(root, PROFILES_REL)
+    if not os.path.isfile(path):
+        return None
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError) as exc:
+        raise SystemExit(f"安装档位读不出：{path}（{exc}）")
+    if not isinstance(data, dict) or data.get("schema") != PROFILES_SCHEMA:
+        raise SystemExit(f"安装档位 schema 不认识：{path}")
+    profiles = data.get("profiles")
+    if not isinstance(profiles, dict) or not profiles:
+        raise SystemExit(f"安装档位为空：{path}")
+    return profiles
+
+
+def profile_skill_names(root: str, profile: str) -> list:
+    profiles = read_profiles(root)
+    if profiles is None:
+        raise SystemExit(f"指定了 --profile {profile}，但 {PROFILES_REL} 不存在")
+    item = profiles.get(profile)
+    if not isinstance(item, dict):
+        raise SystemExit(f"未知安装档位：{profile}（可选：{'、'.join(sorted(profiles))}）")
+    names = item.get("skills")
+    if not isinstance(names, list) or not names or not all(isinstance(x, str) and x for x in names):
+        raise SystemExit(f"安装档位 {profile} 的 skills 必须是非空字符串数组")
+    return names
 
 
 def marked_root(lib_root: str) -> str | None:
@@ -214,33 +287,41 @@ def registry_entry_problems(data: dict) -> list:
     return problems
 
 
-def install_plan(root: str) -> dict:
+def install_plan(root: str, profile: str | None = None) -> dict:
     """装机清单（name -> {"source", "path"}）：取注册表 `install == "auto"` 的条目；
-    没有 registry.json（老根目录）⇒ 回落内置 FAMILIES，照旧工作，不报错退出。"""
+    没有 registry.json（老根目录）⇒ 回落内置 FAMILIES，照旧工作，不报错退出。
+    profile 给了就按 `manifests/install-profiles.json` 过滤；档位只能引用 auto 条目。"""
     data, err = read_skill_registry(root)
     if err:
         raise SystemExit(err)
     if data is None:
-        return {name: {"source": default_source(name, root),
+        plan = {name: {"source": default_source(name, root),
                        "path": os.path.join("skills", name)}
                 for name in FAMILIES}
-    plan = {}
-    for entry in data.get("skills") or []:
-        if not isinstance(entry, dict) or entry.get("install") != "auto":
-            continue
-        name = entry.get("name")
-        if not name:
-            continue
-        plan[name] = {
-            "source": entry.get("source") or default_source(name, root),
-            "path": entry.get("path") or os.path.join("skills", name),
-        }
-    return plan
+    else:
+        plan = {}
+        for entry in data.get("skills") or []:
+            if not isinstance(entry, dict) or entry.get("install") != "auto":
+                continue
+            name = entry.get("name")
+            if not name:
+                continue
+            plan[name] = {
+                "source": entry.get("source") or default_source(name, root),
+                "path": entry.get("path") or os.path.join("skills", name),
+            }
+    if not profile:
+        return plan
+    names = profile_skill_names(root, profile)
+    unknown = sorted(set(names) - set(plan))
+    if unknown:
+        raise SystemExit(f"安装档位 {profile} 引用了非 install:auto 条目：{'、'.join(unknown)}")
+    return {name: plan[name] for name in plan if name in set(names)}
 
 
 def family_candidates(name: str, plan: dict | None = None, root: str | None = None) -> list:
     """某技能的候选源目录（相对正本根）：① 装机源（注册表 source，缺省读配置实例
-    registry.skills）② 注册表 path（框架仓布局，如 `skills/航班信息`）③ `skills/<名>`；
+    registry.skills）② 注册表 path（框架仓布局，如 `skills/flight-info`）③ `skills/<名>`；
     去重保序（去重按归一化后的路径算：`skills/x` 与 `skills\\x` 是同一个目录）。"""
     info = (plan or {}).get(name) or {}
     out, seen = [], set()
@@ -362,6 +443,174 @@ def tree_files(root: str) -> dict:
     return out
 
 
+def tree_digest(root: str) -> str:
+    """整棵技能目录的稳定摘要：相对路径 + 每文件 SHA-256，用于回执比对。"""
+    h = hashlib.sha256()
+    for rel, p in sorted(tree_files(root).items()):
+        h.update(rel.encode("utf-8"))
+        h.update(b"\0")
+        h.update(bytes.fromhex(sha256(p)))
+        h.update(b"\0")
+    return h.hexdigest()
+
+
+def source_commit(root: str) -> str | None:
+    """正本仓当前 HEAD；读不出（非 git／权限）⇒ None，不阻断安装。"""
+    try:
+        p = subprocess.run(["git", "-C", root, "rev-parse", "HEAD"], capture_output=True,
+                           text=True, encoding="utf-8", errors="replace", timeout=10)
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        return None
+    return p.stdout.strip() if p.returncode == 0 and p.stdout.strip() else None
+
+
+def _backup_root(library: str) -> str:
+    return os.path.join(library_root(library), BACKUP_DIR)
+
+
+def backup_library(library: str) -> str | None:
+    """写库前整包快照：技能副本 ＋ library.json ＋ 来源标记 ＋ 哈希基线。
+    返回备份目录；库不存在则返回 None。"""
+    if not os.path.isdir(library):
+        return None
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%f")
+    backup = os.path.join(_backup_root(library), stamp)
+    os.makedirs(backup, exist_ok=True)
+    shutil.copytree(library, os.path.join(backup, "skills"),
+                    ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache"))
+    reg = registry_path(library)
+    if os.path.isfile(reg):
+        shutil.copy2(reg, os.path.join(backup, "library.json"))
+    marker = source_marker_path(library)
+    if os.path.isfile(marker):
+        shutil.copy2(marker, os.path.join(backup, SOURCE_MARKER_NAME))
+    baseline = {"created_at": datetime.now(timezone.utc).isoformat(),
+                "library": os.path.abspath(library),
+                "skills": {name: tree_digest(os.path.join(library, name))
+                           for name in sorted(os.listdir(library))
+                           if os.path.isdir(os.path.join(library, name))}}
+    with open(os.path.join(backup, "backup.json"), "w", encoding="utf-8") as f:
+        json.dump(baseline, f, ensure_ascii=False, indent=2, sort_keys=True)
+        f.write("\n")
+    _prune_backups(library)
+    return backup
+
+
+def _prune_backups(library: str) -> None:
+    root = _backup_root(library)
+    if not os.path.isdir(root):
+        return
+    items = sorted(x for x in os.listdir(root) if os.path.isdir(os.path.join(root, x)))
+    for old in items[:-BACKUP_KEEP]:
+        shutil.rmtree(os.path.join(root, old), ignore_errors=True)
+
+
+def restore_library(library: str, backup: str | None) -> bool:
+    """从 backup_library 的快照还原技能、注册档与来源标记。"""
+    if not backup or not os.path.isdir(backup):
+        return False
+    src = os.path.join(backup, "skills")
+    if os.path.isdir(src):
+        if os.path.isdir(library):
+            shutil.rmtree(library)
+        shutil.copytree(src, library)
+    reg = os.path.join(backup, "library.json")
+    if os.path.isfile(reg):
+        shutil.copy2(reg, registry_path(library))
+    marker = os.path.join(backup, SOURCE_MARKER_NAME)
+    if os.path.isfile(marker):
+        shutil.copy2(marker, source_marker_path(library))
+    elif os.path.isfile(source_marker_path(library)):
+        os.remove(source_marker_path(library))
+    return True
+
+
+def retire_registry_entries(library: str, names, dry: bool = False) -> list:
+    """从中央库注册档删掉指定旧技能：只动 `skills[]` 与 `applied[*].skills`，
+    其余任何字段变化都中止（宁可不动也不猜）。返回被删的条目名。"""
+    path = registry_path(library)
+    before, err = read_registry(library)
+    if err:
+        raise SystemExit(err)
+    names = set(names)
+    removed = sorted(s.get("name") for s in before.get("skills", [])
+                     if isinstance(s, dict) and s.get("name") in names)
+    if not removed:
+        return []
+    after = json.loads(json.dumps(before))
+    after["skills"] = [s for s in after.get("skills", [])
+                       if not (isinstance(s, dict) and s.get("name") in names)]
+    for val in (after.get("applied") or {}).values():
+        if isinstance(val, dict) and isinstance(val.get("skills"), list):
+            val["skills"] = [x for x in val["skills"] if x not in names]
+    # 自证只做了这两类删除：其余顶层字段与各 applied 的非 skills 字段必须原样
+    for key in before:
+        if key not in ("skills", "applied") and before[key] != after.get(key):
+            raise SystemExit(f"退役注册档超出白名单：顶层 {key} 被改动，已中止")
+    for plat, old in (before.get("applied") or {}).items():
+        new = (after.get("applied") or {}).get(plat)
+        if not isinstance(old, dict) or not isinstance(new, dict):
+            raise SystemExit(f"退役注册档超出白名单：applied.{plat} 形状变了，已中止")
+        if set(old) != set(new):
+            raise SystemExit(f"退役注册档超出白名单：applied.{plat} 键集合变了，已中止")
+        for key in old:
+            if key != "skills" and old[key] != new[key]:
+                raise SystemExit(f"退役注册档超出白名单：applied.{plat}.{key} 被改动，已中止")
+    if dry:
+        return removed
+    fd, tmp = tempfile.mkstemp(prefix="library.json.", suffix=".tmp", dir=os.path.dirname(path))
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(after, f, ensure_ascii=False, indent=2)
+            f.write("\n")
+        os.replace(tmp, path)
+    except OSError as exc:
+        if os.path.exists(tmp):
+            os.remove(tmp)
+        raise SystemExit(f"退役注册档写入失败：{exc}")
+    return removed
+
+
+def retire_legacy(library: str, home: str | None = None, dry: bool = False) -> tuple:
+    """显式迁移：把旧中文技能目录移到 `<库根>/.retired/<时间>/`，并摘掉各宿主指向旧目录的链接。
+    只处理符号链接；遇到实体目录只报告、不动。返回 (moved, unlinked, skipped)。"""
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%f")
+    retired_root = os.path.join(library_root(library), RETIRED_DIR, stamp)
+    moved, unlinked, skipped = [], [], []
+    faces = find_faces(library, home)
+    for old, new in LEGACY_ALIASES.items():
+        old_dir = os.path.join(library, old)
+        old_real = os.path.realpath(old_dir)
+        if os.path.isdir(old_dir):
+            dest = os.path.join(retired_root, old)
+            if dry:
+                moved.append(f"{old} → {dest}")
+            else:
+                os.makedirs(os.path.dirname(dest), exist_ok=True)
+                shutil.move(old_dir, dest)
+                moved.append(f"{old} → {dest}")
+        for face in faces:
+            link = os.path.join(face, old)
+            if not os.path.lexists(link):
+                continue
+            if os.path.islink(link) and os.path.realpath(link) == old_real:
+                if dry:
+                    unlinked.append(link)
+                else:
+                    os.remove(link)
+                    unlinked.append(link)
+            elif os.path.isdir(link) and not os.path.islink(link):
+                skipped.append(f"{link}（实体目录，不删）")
+    if not dry and (moved or unlinked or skipped):
+        os.makedirs(retired_root, exist_ok=True)
+        with open(os.path.join(retired_root, "retired.json"), "w", encoding="utf-8") as f:
+            json.dump({"at": datetime.now(timezone.utc).isoformat(), "aliases": LEGACY_ALIASES,
+                       "moved": moved, "unlinked": unlinked, "skipped": skipped},
+                      f, ensure_ascii=False, indent=2)
+            f.write("\n")
+    return moved, unlinked, skipped
+
+
 def find_library(home: str | None = None) -> str | None:
     home = home or os.path.expanduser("~")
     env = os.environ.get(LIBRARY_ENV)
@@ -379,6 +628,8 @@ def find_library(home: str | None = None) -> str | None:
 def find_faces(library: str, home: str | None = None) -> list:
     """落点面＝凡把 anchor 链到本库的那些 `<家>/skills` 目录。"""
     home = home or os.path.expanduser("~")
+    if not os.path.isdir(home):
+        return []
     lib_anchor = os.path.realpath(os.path.join(library, ANCHOR))
     faces = []
     for entry in sorted(os.listdir(home)):
@@ -565,21 +816,39 @@ def link_faces(library: str, names, home: str | None = None, dry: bool = False):
     return made, failed
 
 
-def apply(root: str, library: str, dry: bool, home: str | None = None) -> int:
-    plan = install_plan(root)
+def apply(root: str, library: str, dry: bool, home: str | None = None,
+          plan: dict | None = None, profile: str | None = None, retire: bool = False) -> int:
+    plan = plan if plan is not None else install_plan(root, profile)
     rows, drifted, nfaces = check(root, library, home, plan)
-    print(f"正本根={root}  库={library}  落点面={nfaces} 家  写前漂移={'有' if drifted else '无'}")
-    written = []
-    for name in plan:
-        written += copy_family(root, library, name, dry, plan)
-    added = [] if dry else patch_registry(library, list(plan))
-    if dry:
-        try:
-            added = patch_registry(library, list(plan), dry=True)
-        except SystemExit as exc:
-            print(f"  注册档预演被自证挡下：{exc}")
-    made, failed = link_faces(library, list(plan), home, dry)
-    marker = None if dry else write_source_marker(library, root, len(plan))
+    print(f"正本根={root}  库={library}  档位={profile or 'full'}  落点面={nfaces} 家  "
+          f"写前漂移={'有' if drifted else '无'}")
+    had_library = os.path.isdir(library)
+    backup = None if dry else backup_library(library)
+    if backup:
+        print(f"  写前备份 {backup}")
+    written, added, made, failed, marker = [], [], [], [], None
+    try:
+        for name in plan:
+            written += copy_family(root, library, name, dry, plan)
+        if dry:
+            try:
+                added = patch_registry(library, list(plan), dry=True)
+            except SystemExit as exc:
+                print(f"  注册档预演被自证挡下：{exc}")
+        else:
+            added = patch_registry(library, list(plan))
+        made, failed = link_faces(library, list(plan), home, dry)
+        if not dry:
+            hashes = {name: tree_digest(family_src(root, name, plan)) for name in plan}
+            marker = write_source_marker(
+                library, root, len(plan), profile=profile or marked_profile(library),
+                skill_names=list(plan), hashes=hashes, source_commit=source_commit(root))
+    except BaseException as exc:
+        if backup and restore_library(library, backup):
+            print(f"  apply 失败，已从备份还原：{backup}")
+        elif not dry and not had_library and os.path.isdir(library):
+            shutil.rmtree(library, ignore_errors=True)
+        raise SystemExit(f"apply 失败：{exc}")
     for p in written:
         print(f"  {'将写' if dry else '写入'} {p}")
     for a in added:
@@ -589,13 +858,45 @@ def apply(root: str, library: str, dry: bool, home: str | None = None) -> int:
     for f in failed:
         print(f"  落点失败 {f}")
     if marker:
-        print(f"  装机来源标记 {marker}（记住这个库是从哪个仓装来的）")
+        print(f"  安装回执 {marker}（来源根／档位／技能哈希）")
     if dry:
+        if retire:
+            removed = retire_registry_entries(library, LEGACY_ALIASES, dry=True)
+            moved, unlinked, skipped = retire_legacy(library, home, dry=True)
+            for x in removed:
+                print(f"  将退役注册条目 {x}")
+            for x in moved:
+                print(f"  将退役目录 {x}")
+            for x in unlinked:
+                print(f"  将摘链 {x}")
+            for x in skipped:
+                print(f"  退役跳过 {x}")
         print("（dry-run：盘上未改动）")
         return 0
-    _rows, drifted2, _n = check(root, library, home)
-    print("回写后复量：", "仍有漂移" if drifted2 else "三面全绿")
-    return 1 if drifted2 else 0
+    _rows, drifted2, _n = check(root, library, home, plan)
+    if drifted2:
+        if backup and restore_library(library, backup):
+            print(f"回写后复量仍有漂移，已从备份还原：{backup}")
+        else:
+            print("回写后复量仍有漂移（无备份可还原）")
+        return 1
+    print("回写后复量：三面全绿")
+    if retire:
+        try:
+            removed = retire_registry_entries(library, LEGACY_ALIASES)
+            moved, unlinked, skipped = retire_legacy(library, home, dry=False)
+        except (OSError, SystemExit) as exc:
+            print(f"  旧角色退役失败：{exc}")
+            return 1
+        for x in removed:
+            print(f"  退役注册条目 {x}")
+        for x in moved:
+            print(f"  退役目录 {x}")
+        for x in unlinked:
+            print(f"  摘旧链 {x}")
+        for x in skipped:
+            print(f"  退役跳过 {x}")
+    return 0
 
 
 def selftest() -> int:
@@ -832,6 +1133,9 @@ def main() -> int:
     ap.add_argument("mode", nargs="?", default="check", choices=["check", "apply"])
     ap.add_argument("--root", default=None, help="仓库根（默认按脚本位置或 cwd 反查）")
     ap.add_argument("--library", default=None, help=f"中央库 skills 目录（默认沿 {ANCHOR} 链接反查）")
+    ap.add_argument("--profile", default=None, help="安装档位（core/full；缺省读回执，无回执=full）")
+    ap.add_argument("--retire-legacy", action="store_true",
+                    help="一次性迁移：旧中文角色目录移到 .retired 并摘掉宿主旧链")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--selftest", action="store_true")
     a = ap.parse_args()
@@ -846,14 +1150,21 @@ def main() -> int:
     if not library or not os.path.isdir(library):
         print(f"LIBRARY=读不出（env {LIBRARY_ENV} 未设，且 ~/*/skills/{ANCHOR} 没有指向库的链接）")
         return 2
+    profile = a.profile or marked_profile(library)
+    try:
+        plan = install_plan(root, profile)
+    except SystemExit as exc:
+        print(f"PROFILE={exc}")
+        return 2
     if a.mode == "check":
-        rows, drifted, nfaces = check(root, library)
-        print(f"正本根={root}  库={library}  落点面={nfaces} 家")
+        rows, drifted, nfaces = check(root, library, plan=plan)
+        print(f"正本根={root}  库={library}  档位={profile or 'full'}  落点面={nfaces} 家")
         for r in rows:
             print("  ", " | ".join(str(c) for c in r).rstrip(" |"))
         print("CHECK", "漂移" if drifted else "全绿")
         return 1 if drifted else 0
-    return apply(root, library, a.dry_run)
+    return apply(root, library, a.dry_run, plan=plan, profile=profile,
+                 retire=a.retire_legacy)
 
 
 if __name__ == "__main__":

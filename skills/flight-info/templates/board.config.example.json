@@ -1,0 +1,77 @@
+{
+  "_note": "板配置样例。name 会成为目录名；output.root 是板库根（相对项目仓根，必填，无缺省）。stage_rules 按顺序取第一条命中，最后必须是 else。源路径不写 path 时读项目配置实例 paths.day_tables_dir / paths.handoff_dir。view.focal_stage＝哪一段着赭色（只标一个，0 张时不亮）；view.font_source＝system（默认，零网络）/ web（走 Google Fonts）；view.metrics 可选，不写就读 航班总数 / 今日收尾 / 今日排班。",
+  "schema": "flight-info-board/1",
+  "name": "flight",
+  "title": "航班信息",
+  "subtitle": "当日在飞全景",
+  "repo": "",
+  "output": {
+    "root": "boards"
+  },
+  "sources": [
+    { "id": "cards", "type": "board-cards" },
+    { "id": "tasks", "type": "tasks-table", "include": ["*-main.md", "*-copilot.md"] },
+    { "id": "worktrees", "type": "git-worktrees", "branch_prefix": "exec/" },
+    { "id": "issues", "type": "github-issues", "state": "open", "limit": 200 }
+  ],
+  "stages": [
+    { "key": "queued", "label": "排队" },
+    { "key": "flying", "label": "在飞" },
+    { "key": "review", "label": "审查" },
+    { "key": "to_ship", "label": "待发货" },
+    { "key": "closed", "label": "已收尾" }
+  ],
+  "off_chain_stages": [
+    { "key": "ready", "label": "可领" },
+    { "key": "hold", "label": "挡住" }
+  ],
+  "stage_rules": [
+    { "when": "state_closed", "stage": "closed" },
+    { "when": "label_equals", "value": "hold", "stage": "hold", "why": "标签：hold" },
+    { "when": "label_equals", "value": "blocked", "stage": "hold", "why": "卡片：blocked" },
+    { "when": "comment_contains", "value": "待发货", "stage": "to_ship", "why": "评论：待发货" },
+    { "when": "comment_contains", "value": "审查(通过|完成)|施工完成", "stage": "review", "why": "评论：审查/施工完成" },
+    { "when": "comment_contains", "value": "卡点|退票|阻塞|blocked by", "stage": "hold", "why": "评论：卡点", "ignore_case": true },
+    { "when": "branch_exists", "stage": "flying", "why": "分支 {branch}" },
+    { "when": "table_note_contains", "value": "在制|在飞|施工中", "stage": "flying", "why": "日表：{note}" },
+    { "when": "label_equals", "value": "ready-for-agent", "stage": "ready", "why": "标签：可领" },
+    { "when": "assignee_exists", "stage": "flying", "why": "已指派 {assignee}" },
+    { "when": "else", "stage": "queued", "why": "" }
+  ],
+  "next_text": {
+    "queued": "等排班",
+    "ready": "可领 · 等认领",
+    "flying": "等审查判词",
+    "review": "等审查判词",
+    "to_ship": "等下一轮发货",
+    "hold": "等解卡点",
+    "closed": "已收尾"
+  },
+  "role_labels": {
+    "main": "主机长",
+    "copilot": "副机长",
+    "tower": "塔台"
+  },
+  "direction": {
+    "template": "下一轮：先发货 {to_ship} 张，再给日表补位。",
+    "variants": [
+      { "when": "to_ship", "template": "下一轮：先发货 {to_ship} 张待发货票，再给日表补位。" },
+      { "when": "no_to_ship", "template": "当前没有待发货；在飞 {in_flight} 张，按审查判词推进。" }
+    ]
+  },
+  "summary": {
+    "max_flights": 20,
+    "max_bytes": 25600,
+    "flight_stages": ["to_ship", "flying", "review", "hold", "ready"],
+    "flight_fields": ["ticket", "title", "stage", "stage_label", "next_label", "owner", "why", "updated_at", "milestone"],
+    "max_schedule_rows": 20
+  },
+  "view": {
+    "focal_stage": "to_ship",
+    "font_source": "system",
+    "labels": {
+      "tickets": "TICKETS",
+      "roster": "ROSTER"
+    }
+  }
+}

@@ -11,6 +11,10 @@ description: >
   触发：<触发口令或自然语言关键词>。
 version: 0.1.0
 updated: <YYYY-MM-DD>
+allowed-tools: Read Grep
+compatibility: Host-agnostic
+metadata:
+  alias: <中文别名，没有就删掉这三行>
 ---
 
 # <技能名> —— <一句话定位>

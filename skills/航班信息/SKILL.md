@@ -9,32 +9,47 @@ sources:
   - resource: "skills/航班信息/templates/board.config.example.json"
     note: "板配置样例（机场那块板的真实配置）；照着改即得新板"
   - resource: "框架仓旧裁决"
-    note: "模型来源：四角色与断点物（任务表 / 票评论 / 分支），阶段链由这三种证据合判；判据出处：项目仓 框架仓旧裁决（历史），已由本仓 0003 重述接管"
+    note: "模型来源：四角色与断点物（任务表 / 票评论 / 分支），阶段链由这三种证据合判"
+  - resource: "handoff/60-board/"
+    note: "看板数据层：跨 agent 卡片（结构化 frontmatter）；本技能是它的展示形态之一，不持有状态"
   - resource: "项目配置实例 paths.day_tables_dir"
     note: "日表目录（塔台写）：day_table_pattern 如 YYYY-MM-DD-main.md / -deputy.md，5–10 行；读不到实例 ⇒ rc≠0 报缺件"
   - resource: "GitHub Issues（票面与评论）"
     note: "唯一事实源；阶段判词与断点都在评论里"
 description: >
-  板工坊：一块板 = 一份板配置 + 一份自包含适配脚本 + 一份归档。
+  看板展示形态：一块板 = 一份板配置 + 一份自包含渲染脚本 + 一份归档。
   把当日任务表、Issue 阶段链、里程碑进度、交接日报按配置汇成一块板；
   AI 只读每块板的 board.json 摘要层（≤ 25 KB），人读 HTML。
   任一数据源失败只降级并点名，不整页崩。
-  板是静态页、页面里不取数：要更新必须跑生成器；可装系统闹钟（install_refresh_timer.py）
-  零 token 定时刷新，跨 agent、不依赖宿主定时口。
-  触发：要看机场现在在飞什么、刷新航班信息板、排班后刷新板、给板装定时刷新、要新开一块板。
-version: 2.1.0
-updated: 2026-10-22
+  板是静态页、页面里不取数：要更新必须跑生成器；可装系统闹钟或 git 钩子（install_refresh_timer.py）
+  零 token 定时/事件驱动刷新，跨 agent、不依赖宿主定时口。
+  触发：要看现在在飞什么、刷新航班信息板、排班后刷新板、给板装定时刷新或钩子、要新开一块板。
+version: 2.2.0
+updated: 2026-10-24
 ---
 
-# 航班信息 —— 板工坊（配置 → 脚本 → 归档）
+# 航班信息 —— 看板展示形态（配置 → 脚本 → 归档）
 
-> 落地 [0003 四角色机场](../../框架仓旧裁决) 的断点物模型（判据出处：项目仓 框架仓旧裁决，历史）。
+> 落地 [0003 四角色机场](../../框架仓旧裁决) 的断点物模型。
 > 实现正本：[`templates/render_board.template.py`](templates/render_board.template.py)；脚手架 [`scripts/new_board.py`](scripts/new_board.py)。
 > 本技能**只读项目仓、只写板库**；不改票面、不排班、不发货。
 
+## 看板三层
+
+「看板」在本仓是一个三件套，本技能只占**展示层**：
+
+| 层 | 落点 | 谁写 | 形态 |
+|---|---|---|---|
+| **数据层** | `handoff/60-board/`（`open/`→`claimed/`→`done/`→`archive/`） | agent 之间传话 | 结构化卡片，AI 读写，人不看 |
+| **展示层**（本技能） | 板库 `<output.root>/<板名>/` | 渲染脚本按配置生成 | `index.html` 人读面 ＋ `board.json` 机读摘要 |
+| **触发层** | git 钩子（`post-commit`/`post-merge`）＋ 系统闹钟 | `install_refresh_timer.py` | 零 token，跨 agent |
+
+关联方式：**层与层之间只靠触发层连，不共享文件**。数据层变了 → 钩子叫醒渲染 → 展示层重出一版。
+展示层**不写回**数据层，也不改票面；它是一面镜子。
+
 ## 角色定位
 
-**板工坊**：不是一块写死的板，是一条能反复造板的流水线。
+**展示形态**：不是一块写死的板，是一条能反复造板的流水线。
 
 一块板 = 三件物：
 
@@ -46,7 +61,7 @@ updated: 2026-10-22
 
 一句话：**板是镜子，不是手。**它只读、只写板库；判断与动作归塔台 / 机长 / 地勤。
 
-**分工**：板工坊（本技能）＝造板 / 刷新 / 归档 / 索引；**装配**＝「给某个仓装一块板」走
+**分工**：本技能＝造板 / 刷新 / 归档 / 索引；**装配**＝「给某个仓装一块板」走
 [`../set-航班信息/SKILL.md`](../set-航班信息/SKILL.md)（一条命令装完并出第一版板）。装配面只 import 复用本技能的脚本，不另写判据。
 
 两个面，读者不同：
@@ -58,12 +73,14 @@ updated: 2026-10-22
 
 ## 激活方式
 
-- 人工：`/航班信息`，或用户说「刷新航班信息板」「机场现在在飞什么」「排班后刷新板」「再开一块板」。
+- 人工：`/航班信息`，或用户说「刷新航班信息板」「现在在飞什么」「排班后刷新板」「再开一块板」。
 - 定时：**本技能自己装** —— `scripts/install_refresh_timer.py` 走**操作系统闹钟**（Windows 任务计划 / POSIX crontab），
   到点直接调该板的刷新壳（纯 Python、确定性）⇒ **零 token、跨 agent**：不依赖宿主的定时口，
-  换哪家的 agent 跑、甚至没有任何 agent 在跑，板照样刷。周期可调（默认 30 分钟）。
+  换哪家的 agent 跑、甚至没有任何 agent 在跑，板照样刷。周期可调（默认见「周期怎么选」）。
+- 事件：git 钩子（`post-commit` / `post-merge`）—— 数据一变就刷，见「比定时更快」。
 - 上游：塔台排完班后刷新一次；[`kai-mode`](../kai-mode/SKILL.md) 要全景时拉起本技能。
-  （塔台的 30 分钟定时器**不刷板**——它走宿主定时口、每轮要拉起 AI 会话；刷板这活归上面那条系统闹钟。）
+  （塔台的轮巡定时器**不刷板**——它走宿主定时口、每轮要拉起 AI 会话；刷板这活归上面的系统闹钟与 git 钩子。
+  两者周期语义不同：塔台轮巡 1 小时一轮，板刷新按需 5–10 分钟，别混。）
 
 ## 怎么用（速查）
 
@@ -71,7 +88,7 @@ updated: 2026-10-22
 |---|---|
 | 给某个仓装一块板 | `/set-航班信息`，或直接跑 `python skills/set-航班信息/scripts/setup_board.py --repo-root <仓根>`（装完即出第一版板） |
 | 日常刷新 | 板目录里的 `refresh_<板名>.bat`（板库根＝板配置 `output.root`，如 `<板库根>\<板名>\`） |
-| 装定时刷新（零 token） | `python skills/航班信息/scripts/install_refresh_timer.py --repo-root <仓根> --lib-root <板库根> --all --every 30 --apply` |
+| 装定时刷新（零 token） | `python skills/航班信息/scripts/install_refresh_timer.py --repo-root <仓根> --lib-root <板库根> --all --every 10 --apply` |
 | 查 / 停定时 | 同上加 `--list` 查状态；加 `--remove --apply` 停并删 |
 | 让页面「刷新」按钮真能刷新 | `install_refresh_timer.py --repo-root <仓根> --lib-root <板库根> --all --register-protocol --apply`（解绑 `--unregister-protocol --apply`） |
 | 出索引 | `python skills/航班信息/scripts/build_index.py --repo-root <仓根> --lib-root <板库根>` |
@@ -339,7 +356,7 @@ python skills/航班信息/scripts/build_index.py --repo-root <项目仓根> --l
 - 写日表（塔台唯一写者）；不排班、不发货、不关票。
 - 改项目仓任何源码；不引第三方依赖（生成器只用标准库）。
 - 把 HTML 当数据源；把退出码当数据质量判据。
-- 改 `skills/set-kai-mode/**`、框架仓 README / MIGRATION（另有归属）。
+- 改 `skills/set-kai-mode/**`、框架仓 README（另有归属）。
 
 ## 失败与降级
 
@@ -378,7 +395,8 @@ python skills/航班信息/scripts/build_index.py --repo-root <项目仓根> --l
 - 模板：[`skills/航班信息/templates/render_board.template.py`](templates/render_board.template.py) —— 实现正本。
 - 板配置样例：[`skills/航班信息/templates/board.config.example.json`](templates/board.config.example.json)。
 - 脚手架：[`skills/航班信息/scripts/new_board.py`](scripts/new_board.py)；索引：[`skills/航班信息/scripts/build_index.py`](scripts/build_index.py)。
-- [0003 四角色机场](../../框架仓旧裁决) —— 模型来源（判据出处：项目仓 框架仓旧裁决，历史）。
+- [0003 四角色机场](../../框架仓旧裁决) —— 模型来源。
+- 看板数据层：[`handoff/60-board/`](../../handoff/60-board/README.md) —— 卡片正本；本技能只展示，不改它。
 - 日表：项目配置实例 `paths.day_tables_dir` ＋ `day_table_pattern`（如 `YYYY-MM-DD-main.md` / `-deputy.md`；塔台写，本技能只读；读不到实例 ⇒ rc≠0 报缺件）。
 - GitHub Issue 正文与评论（唯一事实源）。
 - [`skills/kai-mode/SKILL.md`](../kai-mode/SKILL.md) · [`skills/set-kai-mode/SKILL.md`](../set-kai-mode/SKILL.md) · [`loops/loop-protocol.md`](../../loops/loop-protocol.md)

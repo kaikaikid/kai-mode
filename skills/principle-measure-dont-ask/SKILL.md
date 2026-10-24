@@ -7,18 +7,20 @@ sources:
   - resource: "框架仓旧裁决"
     note: "D2：只问 ADR 级分叉，细节不问、按头部企业规范取默认记代决清单——能测不自问的 ADR 锚"
   - resource: "skills/kai-mode/SKILL.md"
-    note: "「借用自 pstack」段「默认往前走」一条的原始出处；判据正本迁入本叶子后收缩为一行指针"
+    note: "「设计取舍」段「默认往前走」一条的原始出处；判据正本已迁入本叶子"
 description: >
   实证原则：能跑一下量出来的事实，自决、动手量、留下读数，不问人；只有实验解决不了的产品向与偏好判断才问她。
   不管问她的话术与节奏（归 principle-ask-one-question-at-a-time），不碰三条红线（归 principle-visible-and-redline-only）。
   触发：Apply when 想问「哪种更快/这样行不行/选哪个布局」，而答案其实跑一下就知道时。
 version: 0.1.0
 updated: 2026-10-23
+allowed-tools: Read Grep
+compatibility: Host-agnostic
 ---
 
 # 能量出来就别问
 
-> 手法源自 pstack（提问前先分类：可观察的事实不是她的题）；判据出处：[0002 D2](../../框架仓旧裁决)；原始出处＝[kai-mode](../kai-mode/SKILL.md)「借用自 pstack」段。
+> 手法：提问前先分类——可观察的事实不是她的题。原始出处＝[kai-mode](../kai-mode/SKILL.md)「设计取舍」段。
 
 ## 何时进场
 

@@ -14,11 +14,13 @@ description: >
   触发：Apply when 判断一件事要不要问她、设计审批点、或判断某动作是否踩红线时。
 version: 0.1.0
 updated: 2026-10-23
+allowed-tools: Read Grep
+compatibility: Host-agnostic
 ---
 
 # 只问肉眼可见与红线
 
-> 判据出处：[0002 D7](../../框架仓旧裁决)（审批红线表正本）；流程位＝入口「审批边界」（[kai-mode](../kai-mode/SKILL.md)），四角色与各剧本同吃。
+> ）；流程位＝入口「审批边界」（[kai-mode](../kai-mode/SKILL.md)），四角色与各剧本同吃。
 
 ## 何时进场
 

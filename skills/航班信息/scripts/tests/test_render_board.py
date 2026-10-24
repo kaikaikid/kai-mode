@@ -25,7 +25,7 @@ import pytest
 
 SKILL_ROOT = Path(__file__).resolve().parents[2]
 TEMPLATE = SKILL_ROOT / "templates" / "render_board.template.py"
-EXAMPLE = SKILL_ROOT / "templates" / "board.config.example.json"
+EXAMPLE = SKILL_ROOT / "templates" / "board-types" / "航班信息" / "board.config.example.json"
 
 
 def _load():
@@ -338,6 +338,34 @@ def test_sidebar_and_collapsible_switches_work():
     html = render(collapsible=True, collapsible_default="closed")
     assert html.count('<details class="sect">') == 5
     assert '<details class="sect" open>' not in html
+
+
+def test_view_labels_override_field_text():
+    """字段文案（表头 / 空态 / 页头读数 / 方向条标签）＝ view.labels 槽位可覆盖；
+    不给 labels 就吃缺省（航班信息口径），两套板型模板共用一个引擎。"""
+    mod = _load()
+    html = mod.render_html(_payload(mod))
+    assert "<b>1</b> 张未收尾 · <b>1</b> 张在飞 · <b>0</b> 张待发货" in html
+    assert '<th style="width:86px">航班</th>' in html
+    assert "没有符合筛选的航班。" in html
+    assert '<span class="k">本轮方向</span>' in html
+
+    base = json.loads(json.dumps(mod.CONFIG))
+    base["view"]["labels"] = {
+        "head_readout": "{open} 项未完 · {in_flight} 项进行中",
+        "direction_label": "方向",
+        "col_item": "条目", "col_task": "内容", "col_owner": "经办",
+        "empty_filtered": "没有符合筛选的条目。", "empty_open": "没有未完成的条目。",
+    }
+    mod.apply_config(base)
+    html = mod.render_html(_payload(mod))
+    assert "<b>1</b> 项未完 · <b>1</b> 项进行中" in html
+    assert '<th style="width:86px">条目</th>' in html
+    assert ">内容</th>" in html and ">经办</th>" in html
+    assert "没有符合筛选的条目。" in html and "没有未完成的条目。" in html
+    assert '<span class="k">方向</span>' in html
+    # 未覆盖的槽位（阶段 / 下一步 / 更新）照旧吃缺省。
+    assert ">阶段</th>" in html and ">下一步</th>" in html and ">更新</th>" in html
 
 
 def test_summary_layer_is_trimmed_and_bounded():

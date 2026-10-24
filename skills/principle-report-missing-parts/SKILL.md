@@ -16,11 +16,13 @@ description: >
   触发：Apply when 探测发现缺文件、缺定时口、缺环境、缺配置实例、缺权限，或想报「装好了」之前。
 version: 0.1.0
 updated: 2026-10-23
+allowed-tools: Read Grep
+compatibility: Host-agnostic
 ---
 
 # 缺件如实登记
 
-> 判据出处：[0004 D1/D4](../../框架仓旧裁决)（读不到就 rc≠0 报缺件，永不猜）；流程位＝[set-kai-mode](../set-kai-mode/SKILL.md) 第 0/3/6 步。
+> ）；流程位＝[set-kai-mode](../set-kai-mode/SKILL.md) 第 0/3/6 步。
 
 ## 何时进场
 
