@@ -14,6 +14,7 @@
 - `manifests/package-layout.json` 补 `.gitattributes`／`.gitignore` 与退役目录注记。
 - 相关技能补丁版本：copilot/pilot 2.5.1、ground-crew 1.2.1、kai-mode 2.5.1、loop 5.3.2、
   principle-one-semantics-one-home 0.1.1、set-kai-mode 4.6.1、tower 1.4.1、flight-info 1.1.1。
+- 验证：doctor --with-tests 25 项全绿；仓级 `scripts/tests` 66 条 ＋ 技能测试目录 29 条。
 
 ## 0.16.0 — 2026-10-24
 
