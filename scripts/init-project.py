@@ -195,6 +195,71 @@ def drop_placeholders(node, path=""):
     return wiped
 
 
+GUESS_PATHS = (  # 模板缺省＝框架猜测，不是问答答案：盘上没有就 null，别把猜测写成项目事实
+    ("registry.rules.dir", "repo"),
+    ("registry.skills.project_skills_dir", "repo"),
+    ("registry.skills.loop_dir", "repo"),
+    ("runtime.deps.check_dir_rel", "repo"),
+    ("runtime.backend_python.fallback.rel", "main_tree"),
+    ("runtime.node.rel", "main_tree"),
+)
+ON_DEMAND_PATHS = (  # 问答答案或框架自有命名空间：现在没有是正常的，按需生成，不抹成 null
+    "paths.day_tables_dir", "paths.handoff_dir", "paths.ideas_dir", "paths.state_dir",
+)
+
+
+def _getpath(node, dotted):
+    for part in dotted.split("."):
+        if not isinstance(node, dict) or part not in node:
+            return None
+        node = node[part]
+    return node
+
+
+def _setpath(node, dotted, value):
+    parts = dotted.split(".")
+    for part in parts[:-1]:
+        node = node.setdefault(part, {})
+    node[parts[-1]] = value
+
+
+def main_tree_of(repo: str):
+    try:
+        out = subprocess.run(["git", "-C", repo, "rev-parse", "--git-common-dir"],
+                             capture_output=True, text=True, timeout=15)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if out.returncode != 0 or not out.stdout.strip():
+        return None
+    common = out.stdout.strip()
+    common = common if os.path.isabs(common) else os.path.join(repo, common)
+    return os.path.abspath(os.path.join(common, ".."))
+
+
+def resolve_guesses(cfg: dict, repo: str):
+    """模板猜测型落点按盘上实情核实：不存在 ⇒ null。返回 (转 null 的, 按需生成还没建的)。"""
+    tree = main_tree_of(repo)
+    nulled, pending = [], []
+    for dotted, kind in GUESS_PATHS:
+        value = _getpath(cfg, dotted)
+        if not isinstance(value, str) or not value.strip():
+            continue
+        base = tree if kind == "main_tree" else repo
+        if not base:
+            _setpath(cfg, dotted, None)
+            nulled.append(f"{dotted}（解析不出主树）")
+            continue
+        if not os.path.exists(os.path.join(base, *value.split("/"))):
+            _setpath(cfg, dotted, None)
+            nulled.append(f"{dotted}={value}")
+    for dotted in ON_DEMAND_PATHS:
+        value = _getpath(cfg, dotted)
+        if isinstance(value, str) and value.strip():
+            if not os.path.exists(os.path.join(repo, *value.split("/"))):
+                pending.append(f"{dotted}={value}")
+    return nulled, pending
+
+
 def apply(cfg: dict, ans: dict) -> dict:
     cfg["project"] = ans.get("project") or cfg.get("project")
     cfg["ship_mode"] = "tower"
@@ -332,6 +397,11 @@ def main() -> int:
     wiped = drop_placeholders(cfg)
     if wiped:
         print("占位没答上来，已按 null 落盘（读取端会如实报缺件，不猜路径）：" + "、".join(wiped))
+    nulled, pending = resolve_guesses(cfg, repo)
+    if nulled:
+        print("盘上没有的模板缺省已按 null 落盘（框架猜测不冒充项目事实，读取端会如实报缺件）：" + "、".join(nulled))
+    if pending:
+        print("问答答案型落点尚未创建（按需生成，保留原值）：" + "、".join(pending))
 
     missing = []
     if not ans.get("project"):

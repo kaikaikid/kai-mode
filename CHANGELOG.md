@@ -2,6 +2,25 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.23.0 — 2026-10-25
+
+收敛设计（[ADR-0016](docs/adr/0016-convergence-design-and-byte-budget.md)）批 1：把四处「只有正文、没有尺」的漏洞堵上。
+
+- **F1 塔台令牌有了实现件**：新增 `skills/tower/scripts/tower-token.py`（`acquire`／`heartbeat`／`release`／`who`）——
+  落点读实例 `paths.state_dir`、原子写、过期阈值＝`tower_cron.interval_min × 2 + 5`、缺件三格不猜路径；
+  退出码三态：0 成／1 退位（他人在飞或不是持牌人）／2 缺件。`tower/SKILL.md` 的令牌正文压成四行命令＋指针，
+  文件字节 **−104B**（机制住脚本，正文只留怎么用）。此前 16 处正文、0 个脚本，靠 agent 手工建删 JSON。
+- **F2 既有实例有了校验口**：新增 `scripts/check-instance.py --repo <项目仓>`，五条断言（叶子键集与模板逐键相等、
+  零占位、零机器绝对路径、登记落点逐个 stat（门值按「脚本＋子命令」解析）、日表 pattern 对得上盘上文件）；
+  键口径**直接 import doctor**，不写第二把尺。刚装完还没建的落点只提示不判红。
+- **F3 框架猜测不再冒充项目事实**：初始化器落盘前把路径型缺省逐个 stat，不存在 ⇒ `null` 并打印
+  （`registry.rules.dir`／`registry.skills.*`／`runtime.*.rel`／`runtime.deps.check_dir_rel`）；
+  问答答案型落点（日表／交接／想法／state_dir）保留原值、只提示按需生成。
+- **F4 反膨胀有了尺**：doctor 新增第 27 项 `payload-budget`——按层卡字节（`AGENTS.md` ≤12KB／协议正本 ≤40KB／
+  适配说明 ≤16KB／安装面 `SKILL.md` ≤40KB／技能内其它 md ≤64KB，与项目仓体量上限同尺），**绿也打印每层最大件与余量**。
+  当前：`set-kai-mode/SKILL.md` 31.0KB 最紧（77%），合计 151KB。
+- 迁移验收改调 `check-instance`（set-kai-mode 4.8.1→4.9.0），不再让人手工对账键集。
+
 ## 0.22.1 — 2026-10-25
 
 - **交接骨架不再无条件铺八槽**：项目 `handoff/README.md` 已在、且没有「槽位表」⇒ 初始化器跳过八槽并打印分歧

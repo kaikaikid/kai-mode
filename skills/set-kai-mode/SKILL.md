@@ -18,7 +18,7 @@ description: >
   doctor、缺件如实登记。触发：新 agent 接手装配、换宿主、装/改定时器、修技能落点、
   给项目出技能骨架、迁旧配置实例、问「这套东西都住在哪」。
   不做日常施工。
-version: 4.8.1
+version: 4.9.0
 updated: 2026-10-24
 allowed-tools: Bash(*) Read Write Edit
 compatibility: Requires python3, git
@@ -318,7 +318,8 @@ python scripts/framework-gate.py --selftest   # 推前框架门自证
      `check_dir_rel` 外的字段，`runtime.main_tree` 段与顶层 `repo_root`（主树由 git worktree 公共目录反推、
      仓根由调用方传入，两者都不需要实例里那份抄本）。它们不是判据搬家，而是本来就没有读者：在飞名额、失败重试、
      审查独立、风险闸的家＝单票闭环协议与仓库红线，宿主工具契约的家＝`adapters/<宿主>.md`；实例里那份抄本没人读，删掉不丢任何约束。
-   - **迁移完成的验收**：实例内没有 host_tools；键集与 schema 4 模板逐键相等（装机方实跑初始化器对账）；
+   - **迁移完成的验收**：实例内没有 host_tools；跑框架仓的 `scripts/check-instance.py --repo <目标仓>` 五条断言全绿
+     （键集与模板逐键相等／零占位／零机器路径／落点逐个 stat／日表 pattern 对得上盘上文件）；
      多出来的键是逐条列给用户、他点头才删，不静默丢字段。
    - **新增**（问答填实，占位不落盘）：`registry.playbooks[]`（原登记面收编）、`models.agents`
      （逐人格，值为用户给的模型名或 null＝宿主默认；**旧 `tiers`/`default`/`roles` 一并删掉，不迁移**）、

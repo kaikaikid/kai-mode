@@ -1737,6 +1737,44 @@ def chk_vendor(root, ms):
     return "ok", out.split("。")[0][:200] if out else "vendor 与源一致"
 
 
+BUDGETS = (  # 层 → (glob 列表, 上限字节)。与项目仓治理体量的上限同尺，项目可更严、不可更松
+    ("AGENTS.md", ("AGENTS.md",), 12 * 1024),
+    ("协议正本", ("loops/*.md",), 40 * 1024),
+    ("适配说明", ("adapters/*.md",), 16 * 1024),
+    ("安装面 SKILL.md", ("skills/*/SKILL.md",), 40 * 1024),
+    ("技能内其它 md", ("skills/**/*.md",), 64 * 1024),
+)
+
+
+def chk_payload_budget(root: str, ms=None):
+    """反膨胀的尺：按层卡字节，绿也打印每层最大件与余量（半盲的 ✅ 不算尺）。"""
+    import glob as _glob
+
+    lines, over, total = [], [], 0
+    for label, patterns, cap in BUDGETS:
+        files = []
+        for pat in patterns:
+            files.extend(_glob.glob(os.path.join(root, pat), recursive=True))
+        files = [f for f in files if "__pycache__" not in f.split(os.sep)]
+        if label == "技能内其它 md":
+            files = [f for f in files if os.path.basename(f) != "SKILL.md"]
+        if not files:
+            continue
+        sizes = {f: os.path.getsize(f) for f in files}
+        total += sum(sizes.values())
+        top = max(sizes, key=sizes.get)
+        size = sizes[top]
+        rel = os.path.relpath(top, root).replace(os.sep, "/")
+        lines.append(f"{label} ≤{cap // 1024}KB：最大 {rel} {size / 1024:.1f}KB（{size * 100 // cap}%）")
+        if size > cap:
+            over.append(f"{rel} {size / 1024:.1f}KB > {cap // 1024}KB")
+    if not lines:
+        return "fail", "五层一层都没量到——量具覆盖为空＝这把尺是瞎的"
+    if over:
+        return "fail", "；".join(over[:4]) + f"（共 {len(over)} 层超限；量了 {len(lines)} 层 / 合计 {total / 1024:.0f}KB）"
+    return "ok", "；".join(lines) + f"（合计 {total / 1024:.0f}KB）"
+
+
 CHECKS = (
     ("registry-file", "注册表文件", chk_registry_file),
     ("registry-fields", "注册表字段", chk_registry_fields),
@@ -1764,6 +1802,7 @@ CHECKS = (
     ("agents-contract", "子代理人格层契约", chk_agents),
     ("canon-dup", "判据一个家（退役词/平行正本）", chk_canon),
     ("vendor-sync", "辅助技能原样副本（跟踪/漂移）", chk_vendor),
+    ("payload-budget", "安装面字节预算（分层反膨胀）", chk_payload_budget),
 )
 
 
