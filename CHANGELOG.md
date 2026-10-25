@@ -2,6 +2,13 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.24.5 — 2026-10-25
+
+- **批 4 收尾·AGENTS 机场体系七条 bullet → 三行索引**（[ADR-0016 D11](docs/adr/0016-convergence-design-and-byte-budget.md)）：
+  2,143B → 846B，`AGENTS.md` 11,639 → **10,363B**（距 12KB 上限余 1,925B，⚠️ 转 ✅）。
+  删前逐条做「事实→家」对照，查出「两条车道各自复查、互不替对方判空」原本只活在 AGENTS、别处无家，
+  已先补进 `RULES.md` §3「车道互不代判」。无框架侧代码改动。
+
 ## 0.24.4 — 2026-10-25
 
 - **批 4 下半·KVC 的红线收成一个家**（[ADR-0016 D10](docs/adr/0016-convergence-design-and-byte-budget.md)）：新建 `annex-redlines.md`
