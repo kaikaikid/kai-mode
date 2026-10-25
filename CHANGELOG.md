@@ -2,6 +2,12 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.24.4 — 2026-10-25
+
+- **批 4 下半·KVC 的红线收成一个家**（[ADR-0016 D10](docs/adr/0016-convergence-design-and-byte-budget.md)）：新建 `annex-redlines.md`
+  （定义／处置／Git 面／与审批边界关系），RULES §6／§4／Git 约定第 4 条与 AGENTS 三处复述全部改指针；
+  完整复述点 5→0。`AGENTS.md` 11,778→11,639B（五件清单留在入口，只能省 139B）、`RULES.md` 29,095→28,579B。无框架侧代码改动。
+
 ## 0.24.3 — 2026-10-25
 
 - **批 4 上半·KVC 的 RULES 体量治理**（[ADR-0016 D9](docs/adr/0016-convergence-design-and-byte-budget.md)）：五块「查表才看」的正文
