@@ -25,6 +25,21 @@ def _gh(args: list[str], cwd: str, timeout: int = 60) -> tuple[int, str, str]:
         return 1, "", f"gh 起不来：{e}"
 
 
+def queries_for(state: str, limit: int, include_closed: bool,
+                closed_limit: int | None = None) -> list[tuple[str, int]]:
+    """→ [(--state 取值, 条数)]。include_closed ⇒ 顺带拉已关票。
+
+    为什么需要：残留的 `exec/<票号>-*` 分支是「在飞」的硬证据，只有票已关这一条
+    能把它压回「已收尾」；只拉 open 时，几十条历史分支会把板子说成「在飞 N 张」。
+    """
+    if state == "none":
+        return []
+    q = [(state, limit)]
+    if state == "open" and include_closed:
+        q.append(("closed", closed_limit or limit))
+    return q
+
+
 def collect(cfg: dict, ctx: dict) -> dict:
     if ctx.get("no_network"):
         return {"flights": [], "schedules": [], "status": "skipped",
@@ -35,26 +50,27 @@ def collect(cfg: dict, ctx: dict) -> dict:
                 "detail": "没有 repo slug（板配置 repo 或目标仓 git remote 解析不出）"}
     state = cfg.get("state") or "open"
     limit = int(cfg.get("limit") or 200)
-
-    args = ["issue", "list", "--repo", repo, "--limit", str(limit),
-            "--json", FIELDS]
-    if state == "open":
-        args += ["--state", "open"]
-    elif state == "closed":
-        args += ["--state", "closed"]
-    elif state == "none":
+    queries = queries_for(state, limit, bool(cfg.get("include_closed")),
+                          int(cfg["closed_limit"]) if cfg.get("closed_limit") else None)
+    if not queries:
         return {"flights": [], "schedules": [], "status": "skipped",
                 "detail": "state=none，本板不读票面"}
 
-    rc, out, err = _gh(args, ctx["repo_root"])
-    if rc != 0:
-        return {"flights": [], "schedules": [], "status": "fail",
-                "detail": f"gh issue list 失败（rc={rc}）：{(err or out).strip()[:160]}"}
-    try:
-        rows = json.loads(out or "[]")
-    except json.JSONDecodeError as e:
-        return {"flights": [], "schedules": [], "status": "fail",
-                "detail": f"gh 输出不是 JSON：{e}"}
+    picked: dict[int, dict] = {}
+    for st, lim in queries:
+        args = ["issue", "list", "--repo", repo, "--limit", str(lim),
+                "--state", st, "--json", FIELDS]
+        rc, out, err = _gh(args, ctx["repo_root"])
+        if rc != 0:
+            return {"flights": [], "schedules": [], "status": "fail",
+                    "detail": f"gh issue list --state {st} 失败（rc={rc}）：{(err or out).strip()[:160]}"}
+        try:
+            for it in json.loads(out or "[]"):
+                picked.setdefault(it["number"], it)
+        except (json.JSONDecodeError, KeyError) as e:
+            return {"flights": [], "schedules": [], "status": "fail",
+                    "detail": f"gh 输出不是 JSON：{e}"}
+    rows = list(picked.values())
 
     flights = []
     for it in rows:

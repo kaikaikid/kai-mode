@@ -14,7 +14,7 @@ if SKILL_ROOT not in sys.path:
     sys.path.insert(0, SKILL_ROOT)
 
 from flightinfo import collect, config, db, render, stage  # noqa: E402
-from flightinfo.sources import board_cards, tasks  # noqa: E402
+from flightinfo.sources import board_cards, issues, tasks  # noqa: E402
 
 RULES = [
     {"when": "state_closed", "stage": "closed"},
@@ -96,6 +96,50 @@ class TestTasks(unittest.TestCase):
         with tempfile.TemporaryDirectory() as repo:
             res = tasks.collect({}, {"repo_root": repo, "paths": {}})
             self.assertEqual(res["status"], "absent")
+
+    def test_pipe_table_rows(self):
+        """五列表格日表（塔台写法）必须读出票，不能只读出排班。"""
+        with tempfile.TemporaryDirectory() as repo:
+            d = os.path.join(repo, "tasks")
+            os.makedirs(d)
+            with open(os.path.join(d, "2026-10-25-main.md"), "w", encoding="utf-8") as f:
+                f.write("# 任务表 · 主机长\n\n"
+                        "| 序 | 票号 | 里程碑 | 一句话 | 塔台备注 |\n"
+                        "|---|---|---|---|---|\n"
+                        "| 1 | #1711 | ② 记忆网络 | 云模型通道接线 | **在制**：别关 |\n"
+                        "| 2 | #1890 | 横切治理 | 假阳收口 | 新派·可开工 |\n")
+            res = tasks.collect({"include": ["*-main.md"], "lanes": ["main"]},
+                                {"repo_root": repo, "paths": {"day_tables_dir": "tasks"}})
+            self.assertEqual(res["detail"], "2 行排班 / 2 张票")
+            first = res["flights"][0]
+            self.assertEqual((first["ticket"], first["title"], first["milestone"], first["owner"]),
+                             ("#1711", "云模型通道接线", "② 记忆网络", "main"))
+            self.assertEqual(res["schedules"][0]["note"], "**在制**：别关")
+
+    def test_list_line_still_works(self):
+        """老写法不许因为加了表格支持而退化。"""
+        with tempfile.TemporaryDirectory() as repo:
+            d = os.path.join(repo, "tasks")
+            os.makedirs(d)
+            with open(os.path.join(d, "2026-10-25-copilot.md"), "w", encoding="utf-8") as f:
+                f.write("- [ ] #12 修断链 | 施工中\n")
+            res = tasks.collect({"include": ["*-copilot.md"], "lanes": ["copilot"]},
+                                {"repo_root": repo, "paths": {"day_tables_dir": "tasks"}})
+            self.assertEqual(res["detail"], "1 行排班 / 1 张票")
+            self.assertEqual(res["schedules"][0]["ticket"], "#12")
+
+
+class TestIssues(unittest.TestCase):
+    def test_queries_default_open_only(self):
+        self.assertEqual(issues.queries_for("open", 200, False), [("open", 200)])
+
+    def test_queries_include_closed(self):
+        self.assertEqual(issues.queries_for("open", 200, True, 400),
+                         [("open", 200), ("closed", 400)])
+        self.assertEqual(issues.queries_for("open", 200, True)[1], ("closed", 200))
+
+    def test_queries_none_is_empty(self):
+        self.assertEqual(issues.queries_for("none", 200, True), [])
 
 
 class TestMerge(unittest.TestCase):
