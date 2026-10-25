@@ -195,6 +195,25 @@ RULES 与 AGENTS 全部改成指针；AGENTS 保留一行「五件清单」不�
 `RULES.md` 28,579 → 28,784B（补了车道那条）。该仓 `governance-health` warn 6→5，红仍 3（历史日表）。
 剩余体量欠账：`annex-audit-scripts.md` 70.2KB 超 64KB（warn）。
 
+### D12 批 4 收口：KVC 的审计脚本总表按域拆三份（2026-10-25，用户令「拆到 64KB 以内」）
+
+`annex-audit-scripts.md` 71,856B（38 个脚本，每行一段长描述，单节无子标题）⇒ 按**域**切三份，
+原文件改为「脚本 → 分册」总索引（保留 `scripts/agents.md` 要求的登记面）：
+
+| 分册 | 行数 | 体量 | 收什么 |
+|---|---|---|---|
+| `annex-audit-scripts-governance.md` | 24 | 40.6KB | 范围声明/门禁/交接/看板/车道/血缘/预检 |
+| `annex-audit-scripts-backend.md` | 9 | 22.3KB | 依赖方向/向量与嵌入/凭据/OAPI/图库 |
+| `annex-audit-scripts-frontend.md` | 5 | 9.8KB | 视觉证据/设计指针/壳层/语言档/误差墨色 |
+| `annex-audit-scripts.md`（索引） | 38 | 3.9KB | 脚本 → 分册，一行一个 |
+
+取证：38 行**逐行集合相等**（原表 vs 三分册，sorted 比对）且无重复；索引 38 行、每条脚本都能在所指分册里找到；
+三份分册均 <64KB；三份表头各 ~410B（数据行字节守恒：71,449 + 3×表头 ≈ 72,684）。
+登记义务同步改口：`scripts/agents.md` 第 1 条与 `.ai/README.md` 的目录注均改为「索引登记一行 + 描述写进对应分册」。
+
+读数：该仓 `governance-health` **warn 5→4**（annex 全部回到 64KB 内）、红仍 3（历史日表）；
+`annex-*` 现最大件 40.6KB。至此批 4 的体量欠账清零。
+
 ## Consequences
 
 - 批 1 之后，令牌从「正文约定」变成「有脚本、可回读、可审计」的岗位互斥锁：这也让 KVC 的 ADR-0137

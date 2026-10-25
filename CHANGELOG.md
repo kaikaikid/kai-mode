@@ -2,6 +2,13 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.24.6 — 2026-10-25
+
+- **批 4 收口·KVC 审计脚本总表按域拆三份**（[ADR-0016 D12](docs/adr/0016-convergence-design-and-byte-budget.md)）：
+  `annex-audit-scripts.md` 71,856B → governance 40.6KB／backend 22.3KB／frontend 9.8KB ＋ 3.9KB 总索引；
+  38 行逐行集合相等、无重复，索引每条都能落到分册。该仓 `governance-health` warn 5→4，`annex-*` 全部回到 64KB 内。
+  无框架侧代码改动。
+
 ## 0.24.5 — 2026-10-25
 
 - **批 4 收尾·AGENTS 机场体系七条 bullet → 三行索引**（[ADR-0016 D11](docs/adr/0016-convergence-design-and-byte-budget.md)）：
