@@ -2,6 +2,21 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.24.0 — 2026-10-25
+
+收敛设计（[ADR-0016](docs/adr/0016-convergence-design-and-byte-budget.md)）批 2：把「数值判据多处复述」与「sources 死指针」两条收掉。
+
+- **F5 两处可调数值收成单点**（家＝`loops/loop-protocol.md`）：在飞名额（§一）与日表行数区间（§零）的 **10 处复述**
+  全部改成指针（kai-mode 路由表、pilot 描述与 CONTINUE 行、tower 描述/来源注/排班步、ceremony 原则、set-kai-mode 迁移表、README 两处）。
+  `docs/canon.json` 增 `pilot-wip`／`day-table-rows` 两条判据键，`canon-dup` 扩面到安装面技能；
+  **接口字面（如 `verdict=pass`）不登记**——它是审查与适配之间的字面契约，不是可调数值（ADR-0016 F5 的边界）。
+  首跑当场咬住我漏改的半句（`tower/SKILL.md` 排班步里的「5–10 行照排」）。
+- **F7 `sources[].resource` 有了机械检查**：`broken-link` 扩面——路径型 resource 必须指向随装件
+  （本技能自己的文件或 `skills/<名>/…`，支持花括号展开）；含空白的条目视为自然语言出处不判；`install: manual` 豁免。
+  首跑量到 **4 处指向框架仓文档的死指针**（`kai-boom-idea-log`、`principle-one-semantics-one-home` ×1、
+  `kai-handoff`、`flight-info`），已改成非路径表述；`kai-handoff` 两条指向同一文件的资源合并成一条。
+  现读数：17 份 SKILL.md 相对链接全在、**sources 随装件路径 20 条全在**。
+
 ## 0.23.0 — 2026-10-25
 
 收敛设计（[ADR-0016](docs/adr/0016-convergence-design-and-byte-budget.md)）批 1：把四处「只有正文、没有尺」的漏洞堵上。

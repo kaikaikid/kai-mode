@@ -1,37 +1,105 @@
 {
-  "_note": "判据归属正本（ADR-0007 D2／ADR-0008 D6）。doctor 的 canon-dup 项消费：退役词命中 scan_roots 即红；canon_keys 的 pattern 出现在自己 forbidden 目录即红（平行正本）。docs/adr 与 handoff 是历史记录，豁免。四岗位技能与 README 对协议数值的复述暂未纳入 forbidden（属后续收口项），新平行正本一律先登记此处。",
-  "retired_terms": ["租约", "班次", "按铃", "Coordinator", "合同哈希", "五角色", "Group-A",
-                    "tier_models", "agent-emit", "档位核对"],
-  "scan_roots": ["skills", "agents", "adapters", "loops", "templates", "docs", "README.md", "AGENTS.md"],
-  "exempt": ["docs/adr", "docs/canon.json", "handoff"],
+  "_note": "判据归属正本（ADR-0007 D2／ADR-0008 D6／ADR-0016 F5）。doctor 的 canon-dup 项消费：退役词命中 scan_roots 即红；canon_keys 的 pattern 出现在自己 forbidden 目录即红（平行正本）。docs/adr 与 handoff 是历史记录，豁免。可调数值判据（在飞名额、日表行数区间）已登记；接口字面（如 verdict=pass）不登记——它是审查与适配之间的字面契约，不是可调数值。新平行正本一律先登记此处。",
+  "retired_terms": [
+    "租约",
+    "班次",
+    "按铃",
+    "Coordinator",
+    "合同哈希",
+    "五角色",
+    "Group-A",
+    "tier_models",
+    "agent-emit",
+    "档位核对"
+  ],
+  "scan_roots": [
+    "skills",
+    "agents",
+    "adapters",
+    "loops",
+    "templates",
+    "docs",
+    "README.md",
+    "AGENTS.md"
+  ],
+  "exempt": [
+    "docs/adr",
+    "docs/canon.json",
+    "handoff"
+  ],
   "canon_keys": [
     {
       "key": "receipt-max-lines",
       "home": "loops/loop-protocol.md",
       "pattern": "回执\\s*[≤<]\\s*\\d+\\s*行",
-      "forbidden": ["skills/kai-mode", "skills/loop", "skills/pilot", "skills/copilot", "skills/principle-ceremony-collapses-with-scale", "agents", "README.md"],
+      "forbidden": [
+        "skills/kai-mode",
+        "skills/loop",
+        "skills/pilot",
+        "skills/copilot",
+        "skills/principle-ceremony-collapses-with-scale",
+        "agents",
+        "README.md"
+      ],
       "why": "2026-10 曾出现 25 行 / 40 行两套口径并存"
     },
     {
       "key": "fail-retry-times",
       "home": "loops/loop-protocol.md",
       "pattern": "(失败|重试)[^。\\n]{0,6}\\d+\\s*次",
-      "forbidden": ["skills/kai-mode", "agents"],
+      "forbidden": [
+        "skills/kai-mode",
+        "agents"
+      ],
       "why": "曾出现 1 次 / 2 次 / 3 次 / 最多 3 轮四套口径"
     },
     {
       "key": "subagent-depth",
       "home": "agents/dispatch.md",
       "pattern": "派生深度|嵌套深度|代际上限",
-      "forbidden": ["skills", "loops", "adapters"],
+      "forbidden": [
+        "skills",
+        "loops",
+        "adapters"
+      ],
       "why": "深度是人格层权限判据（宿主侧不给派生工具），协议、技能与宿主适配只许指过来"
     },
     {
       "key": "wake-fence",
       "home": "docs/adr/0010-role-wake-fence.md",
       "pattern": "拉起继任机长|拉起继任副机长|自行判断拉起角色|自动拉起角色|自动唤醒继任",
-      "forbidden": ["skills", "agents", "README.md"],
+      "forbidden": [
+        "skills",
+        "agents",
+        "README.md"
+      ],
       "why": "角色之间不互相拉起/唤醒；只有人工与定时器（仅塔台）能唤醒角色（ADR-0010）"
+    },
+    {
+      "key": "pilot-wip",
+      "home": "loops/loop-protocol.md",
+      "pattern": "(最多|各|只能)\\s*2\\s*张|2\\s*张在飞|各\\s*2\\s*张|合计\\s*4\\s*张",
+      "forbidden": [
+        "skills",
+        "agents",
+        "adapters",
+        "README.md",
+        "AGENTS.md"
+      ],
+      "why": "在飞名额是协议数值（§一 角色、名额与隔离）；技能、人格与说明只许指过来"
+    },
+    {
+      "key": "day-table-rows",
+      "home": "loops/loop-protocol.md",
+      "pattern": "5\\s*[–—\\-~～]\\s*10\\s*(行|条)",
+      "forbidden": [
+        "skills",
+        "agents",
+        "adapters",
+        "README.md",
+        "AGENTS.md"
+      ],
+      "why": "日表行数区间是协议数值（§零 记录面）；塔台按指针补表，不抄第二份"
     }
   ]
 }

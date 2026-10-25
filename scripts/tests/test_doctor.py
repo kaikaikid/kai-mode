@@ -272,6 +272,63 @@ def test_canon_wake_fence_phrase_is_red(tmp_path):
     assert "wake-fence" in detail_of(data, "canon-dup")
 
 
+def test_canon_value_restatement_is_red(tmp_path):
+    """可调数值（在飞名额）只许住 home：技能里出现同义复述即红。"""
+    root = make_repo(tmp_path)
+    (root / "loops").mkdir()
+    (root / "loops" / "loop-protocol.md").write_text("名额：各同时最多 2 张 issue。\n", encoding="utf-8")
+    (root / "docs" / "canon.json").write_text(json.dumps({
+        "retired_terms": [], "scan_roots": ["skills"], "exempt": [],
+        "canon_keys": [{
+            "key": "pilot-wip",
+            "home": "loops/loop-protocol.md",
+            "pattern": "(最多|各|只能)\\s*2\\s*张|2\\s*张在飞",
+            "forbidden": ["skills"],
+        }],
+    }, ensure_ascii=False), encoding="utf-8")
+    (root / "skills" / "alpha" / "notes.md").write_text("机长最多 2 张在飞。\n", encoding="utf-8")
+    rc, data = run_doctor(root)
+    assert rc == 1
+    assert status_of(data, "canon-dup") == "fail"
+    assert "pilot-wip" in detail_of(data, "canon-dup")
+
+
+def test_sources_dead_path_is_red(tmp_path):
+    """sources 里的路径必须指向随装件；自然语言条目（含空白）不判路径。"""
+    root = make_repo(tmp_path)
+    md = root / "skills" / "alpha" / "SKILL.md"
+    text = md.read_text(encoding="utf-8").replace(
+                'sources:\n  - resource: "x"\n    note: "y"\n',
+        'sources:\n'
+        '  - resource: "references/nope.md"\n'
+        '    note: "死指针"\n'
+        '  - resource: "上游 mattpocock/skills 的某件（未入库）"\n'
+        '    note: "自然语言出处，不该被判路径"\n')
+    md.write_text(text, encoding="utf-8")
+    rc, data = run_doctor(root)
+    assert rc == 1
+    detail = detail_of(data, "broken-link")
+    assert "references/nope.md" in detail
+    assert "mattpocock" not in detail
+
+
+def test_sources_shipped_path_is_green(tmp_path):
+    """sources 指向本技能内真实文件（含花括号展开）时不许假红。"""
+    root = make_repo(tmp_path, skills=("alpha", "beta"))
+    (root / "skills" / "alpha" / "references").mkdir()
+    (root / "skills" / "alpha" / "references" / "source.md").write_text("x\n", encoding="utf-8")
+    md = root / "skills" / "alpha" / "SKILL.md"
+    md.write_text(md.read_text(encoding="utf-8").replace(
+                'sources:\n  - resource: "x"\n    note: "y"\n',
+        'sources:\n'
+        '  - resource: "references/source.md"\n'
+        '    note: "本技能文件"\n'
+        '  - resource: "skills/{alpha,beta}/SKILL.md"\n'
+        '    note: "花括号展开两条都真"\n'), encoding="utf-8")
+    rc, data = run_doctor(root)
+    assert status_of(data, "broken-link") == "ok", detail_of(data, "broken-link")
+
+
 def test_install_profiles_bad_reference_is_red(tmp_path):
     root = make_repo(tmp_path)
     (root / "manifests").mkdir()

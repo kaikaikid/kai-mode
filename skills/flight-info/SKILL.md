@@ -4,7 +4,7 @@ status: active
 approved_by: human:kaikaikid
 approved: 2026-10-24
 sources:
-  - resource: "handoff/60-board/"
+  - resource: "项目配置 paths.handoff_dir 下的 60-board 目录"
     note: "看板数据层：跨 agent 卡片；本技能是它的展示层，不持有状态"
   - resource: "GitHub Issues"
     note: "票状态正本；本技能只读，不写"
@@ -14,8 +14,8 @@ description: >
   模块化：db / stage / sources / collect / render / config 单向依赖，源按类型插件式增删。
   刷新靠 git 钩子打脏标记 ＋ 有脏才刷，零 token、跨 agent；任一源失败只降级点名，不整页崩。
   触发：/航班信息、刷新航班信息板、看现在在飞什么、给这个仓装一块板。
-version: 1.1.2
-updated: 2026-10-24
+version: 1.1.3
+updated: 2026-10-25
 allowed-tools: Bash(python:*) Bash(git:*) Read Write
 compatibility: Requires python3 (stdlib only), git
 metadata:

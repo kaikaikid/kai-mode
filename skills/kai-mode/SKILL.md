@@ -9,8 +9,8 @@ description: >
   → 定稿（清账 → ADR → 拆票草案 → 规划表）→ 用户拍一次板 → 路由给地勤开票 / 机长执行 / 塔台排班发货，
   只推荐唤醒命令，不自动起角色；剧本不限于四角色。要全景/看进度时路由到看板（数据层 60-board ＋ 展示层 航班信息）。不执行具体活。
   触发：新想法、要开工、kai 模式；熟活可直接喊角色口令（/地勤 /塔台 /机长 /副机长）。
-version: 2.5.3
-updated: 2026-10-24
+version: 2.5.4
+updated: 2026-10-25
 allowed-tools: Read Grep
 compatibility: Host-agnostic
 dependencies:
@@ -58,7 +58,7 @@ dependencies:
 |---|---|---|---|
 | 地勤 | `/地勤` | 跟用户对话、规划、开票、收 BOOM 想法 | [`skills/ground-crew/SKILL.md`](../ground-crew/SKILL.md) |
 | 塔台 | `/塔台` | 独立岗位；默认每 60 分钟被唤醒，也可人工唤醒；kai-mode 只推荐命令；先发货、后补排班（排班放最后）；合并、push、关票 | [`skills/tower/SKILL.md`](../tower/SKILL.md) |
-| 机长 | `/机长` | goal 模式读 `-main` 日表，同时最多 2 张 | [`skills/pilot/SKILL.md`](../pilot/SKILL.md) |
+| 机长 | `/机长` | goal 模式读 `-main` 日表，在飞名额按协议正本 | [`skills/pilot/SKILL.md`](../pilot/SKILL.md) |
 | 副机长 | `/副机长` | 同一条 loop 的另一分支，读 `-deputy` 日表 | [`skills/copilot/SKILL.md`](../copilot/SKILL.md) |
 
 **权限硬线**：塔台独占 push 与关票；机长/副机长只管理不写码、不 push；地勤只开票不施工；kai-mode 只做入口。

@@ -6,14 +6,14 @@ approved: 2026-10-24
 sources:
   - resource: "skills/ground-crew/SKILL.md"
     note: "想法分流的角色口径：全文进项目配置 paths.ideas_dir，想法池汇总票只留简述"
-  - resource: "docs/skill-sources/workflow-skills.md#boom-idea-log"
-    note: "源件指针：上游 mattpocock/skills `boom-idea-log`（项目专用版，未入库）；本文件去掉了写死的票号与目录名"
+  - resource: "上游 mattpocock/skills 的 boom-idea-log（项目专用版，未入库）"
+    note: "源件指针；本文件去掉了写死的票号与目录名"
 description: >
   收想法：全文落项目配置 paths.ideas_dir 下的一天一份文件，想法池汇总票只贴简述（不回堆长文）。
   只收不开票、不改代码；分发是整理会话的事。
   触发：`/地勤` 分流到想法；用户说「记个想法／丢进想法池」。
-version: 0.1.1
-updated: 2026-10-24
+version: 0.1.2
+updated: 2026-10-25
 allowed-tools: Bash(gh:*) Read Grep Write
 compatibility: Requires git, gh CLI
 metadata:

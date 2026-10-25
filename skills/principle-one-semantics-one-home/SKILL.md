@@ -4,16 +4,16 @@ status: active
 approved_by: human:kaikaikid
 approved: 2026-10-23
 sources:
-  - resource: "docs/skill-layout.md"
-    note: "§4「一条判据只写一份，别处只留指针」原始出处之一；现为指针"
+  - resource: "框架仓技能布局规范的「一条判据只写一份」那一节"
+    note: "原始出处之一；现为指针"
   - resource: "skills/set-kai-mode/SKILL.md"
     note: "「改配置的四条规矩」第 2 条原始出处之一；现为指针"
 description: >
   正本原则：一个语义只许一个家；想写第二条同义判据前，先问「第一条住哪」，然后只留指针。
   不管改判据的审批流程本身（机制类改动仍走 ADR），不禁止指针、一行索引与流程位复述。
   触发：Apply when 写或改技能/文档/配置，发现同一判据出现第二处说法、或正要抄一份过来时。
-version: 0.1.2
-updated: 2026-10-23
+version: 0.1.3
+updated: 2026-10-25
 allowed-tools: Read Grep
 compatibility: Host-agnostic
 ---

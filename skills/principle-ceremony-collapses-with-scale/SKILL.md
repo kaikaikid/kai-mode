@@ -10,8 +10,8 @@ description: >
   规模原则：仪式随规模塌缩——两行改动不配四页脚手架；每张工单带 TIMEBOX，到点交半成品并写明停在哪。
   不塌缩证据与红线（验收照逐条对证据、红线仍先问），不为省事跳过该有的审查。
   触发：Apply when 给小改动配流程、开票定 AC、或发现仪式开销超过活本身时。
-version: 0.1.1
-updated: 2026-10-23
+version: 0.1.2
+updated: 2026-10-25
 allowed-tools: Read Grep
 compatibility: Host-agnostic
 ---
@@ -31,7 +31,7 @@ compatibility: Host-agnostic
 - **仪式按规模配**：两行改动不配四页脚手架——不开票、口头一句说清就是合法姿势；跨角色、动契约、踩边界才升级全套流程。
 - **每张工单带 TIMEBOX**：开票写明时间盒；到点未完 ⇒ **交半成品**，写明**停在哪、差什么、下一步**——不无限期拖，也不硬塞半吊子结论。
 - **塌缩的是仪式，不是证据**：AC 逐条对证据、红线先问（[`principle-visible-and-redline-only`](../principle-visible-and-redline-only/SKILL.md)），任何规模不打折。
-- **记录面同样有界**：日表 5–10 行、施工回执按协议正本 §五上限；长叙事进 issue 评论，不进表。
+- **记录面同样有界**：日表行数、施工回执上限都按协议正本；长叙事进 issue 评论，不进表。
 
 ## 反例
 

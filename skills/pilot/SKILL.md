@@ -7,11 +7,11 @@ sources:
   - resource: "skills/loop/SKILL.md"
     note: "单票闭环、等待与止损的随装入口；本技能只写机长执行清单"
 description: >
-  机场体系的机长：读自己日表，最多 2 张在飞；每票至少 1 施工 + 1 审查，机动按需。
+  机场体系的机长：读自己日表，在飞名额按协议正本；每票至少 1 施工 + 1 审查，机动按需。
   只管理不写码、不 push。
   触发：`/机长`（人工唤醒）；塔台只写日表/播报，kai-mode 只推荐命令，不自动起角色。
-version: 2.5.2
-updated: 2026-10-24
+version: 2.5.3
+updated: 2026-10-25
 allowed-tools: Bash(git:*) Read Grep
 compatibility: Requires git
 metadata:
@@ -41,7 +41,7 @@ python <gates.captain_preflight> --lane main
 
 | decision | 动作 |
 |---|---|
-| `CONTINUE` | 按 `actionable[]` 取票，最多 2 张在飞 |
+| `CONTINUE` | 按 `actionable[]` 取票，在飞数不超协议名额 |
 | `REVIEW` | 读 `review[]` 的日表备注，判断是否还有活；判完确实没活 → 加 `--ack-review` 再停 |
 | `STOP` | 停 |
 | `BLOCKED` | 写卡点等人；**不得当空表处理** |

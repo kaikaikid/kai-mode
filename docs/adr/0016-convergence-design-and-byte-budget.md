@@ -99,6 +99,14 @@ ADR-0131 D5 单令牌与 ADR-0132 D4 两层令牌**已退役**、ADR-0137 明文
 | F6 | 并入 check-instance 第 ⑤ 条：`day_table_pattern`＋`lanes` 去盘上找文件 | KVC：匹配 10 个、今天 2 张；空仓：目录未建＝提示不判红 |
 | 口径 | `AGENTS.md`／`docs/package-layout.md` 的 26 项改 27；迁移验收改调 `check-instance` | doctor 自报 27 项 |
 
+### D6 批 2 执行记录（2026-10-25，0.24.0）
+
+| # | 落成什么 | 出口读数 |
+|---|---|---|
+| F5 | `canon.json` 增 `pilot-wip`（`(最多|各|只能)\s*2\s*张|2\s*张在飞|…`）与 `day-table-rows`（`5\s*[–—-~～]\s*10\s*(行|条)`），home 都是 `loops/loop-protocol.md`；10 处复述改指针 | 复述点 0；`canon-dup` 6 判据键单点住家；首跑即咬住 tower 排班步里漏改的「5–10 行照排」 |
+| F7 | `broken-link` 扩面校验 `sources[].resource`：路径型必须是随装件，花括号展开，含空白视为自然语言，manual 豁免 | 首跑量到 4 处死指针（2 支技能指向框架仓 `docs/`）；改完后 20 条随装件路径全在 |
+| 边界 | `verdict=pass` **不**进单点表：它是审查与适配之间的字面接口，不是可调数值；登记进 canon 会逼适配层写指针，反而降低可操作性 | 记在 `canon.json` 的 `_note` 里 |
+
 ## Consequences
 
 - 批 1 之后，令牌从「正文约定」变成「有脚本、可回读、可审计」的岗位互斥锁：这也让 KVC 的 ADR-0137

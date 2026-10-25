@@ -283,12 +283,46 @@ def chk_machine_path(root, ms):
     return "ok", f"没有机器绝对路径{tail}"
 
 
+RESOURCE_RE = re.compile(r'^\s*-\s*resource:\s*["\']?([^"\'\n]+?)["\']?\s*$', re.M)
+BRACE_RE = re.compile(r"\{([^{}]+)\}")
+
+
+def _expand_braces(value: str) -> list:
+    m = BRACE_RE.search(value)
+    if not m:
+        return [value]
+    out = []
+    for alt in m.group(1).split(","):
+        out.extend(_expand_braces(value[:m.start()] + alt.strip() + value[m.end():]))
+    return out
+
+
+def _dead_sources(root: str, rel: str, skill_dir: str, text: str) -> tuple:
+    """sources[].resource 里的路径必须指向随装件（本技能自己的文件或 skills/<名>/…）。
+    不含 "/" 或含空白的条目是自然语言引用（项目配置字段、票源、上游出处），不判路径。
+    只校 install:auto 的技能：manual 件本来就不随装，它的 sources 指向框架仓文档是设计内。"""
+    bad, checked = [], 0
+    for m in RESOURCE_RE.finditer(text):
+        res = m.group(1).strip()
+        if "/" not in res or any(ch.isspace() for ch in res):
+            continue  # 自然语言引用（项目配置字段、票源、上游出处）不判路径；路径项不含空白
+        for variant in _expand_braces(res.split("#", 1)[0]):
+            checked += 1
+            if variant.startswith("skills/"):
+                p = os.path.join(root, *variant.split("/"))
+            else:
+                p = os.path.join(skill_dir, *variant.split("/"))
+            if not os.path.exists(p):
+                bad.append(f"{rel}/SKILL.md sources → {variant}")
+    return bad, checked
+
+
 def chk_broken_link(root, ms):
-    """07 SKILL.md 里的相对 markdown 链接指向的文件不存在 ⇒ 红。"""
+    """07 SKILL.md 里的相对 markdown 链接 + sources 随装件路径，指向的东西不存在 ⇒ 红。"""
     data, err = registry(root, ms)
     if data is None:
         return "skip", f"注册表不可用（01 已报）：{err}"
-    broken, scanned = [], 0
+    broken, scanned, res_checked = [], 0, 0
     for entry in data.get("skills") or []:
         if not isinstance(entry, dict):
             continue
@@ -313,9 +347,13 @@ def chk_broken_link(root, ms):
             resolved = os.path.normpath(os.path.join(os.path.dirname(md), *target.split("/")))
             if not os.path.exists(resolved):
                 broken.append(f"{rel}/SKILL.md → {target}")
+        if str(entry.get("install") or "") == "auto":
+            dead, n = _dead_sources(root, rel, os.path.join(root, *rel.split("/")), text)
+            broken.extend(dead)
+            res_checked += n
     if broken:
         return "fail", "；".join(broken[:6]) + (f"（共 {len(broken)} 处）" if len(broken) > 6 else "")
-    return "ok", f"{scanned} 份 SKILL.md 的相对链接都在"
+    return "ok", f"{scanned} 份 SKILL.md 的相对链接都在；sources 随装件路径 {res_checked} 条都在"
 
 
 TRACKED_DATA_SUFFIXES = (".pyc", ".pyo", ".db", ".db-wal", ".db-shm", ".db-journal",

@@ -5,17 +5,15 @@ approved_by: human:kaikaikid
 approved: 2026-10-24
 sources:
   - resource: "references/source.md"
-    note: "落盘规则正本：两级路径、槽位表、frontmatter 字段表"
-  - resource: "handoff/60-board/README.md"
+    note: "落盘规则正本（两级路径、槽位表、frontmatter 字段表）＋源技能 mattpocock/skills 的 handoff 指针与对账方法；源件不入库"
+  - resource: "项目 handoff 目录里 60-board 的 README"
     note: "跨 agent 看板协议正本：结构化卡片与状态流转"
-  - resource: "skills/kai-handoff/references/source.md"
-    note: "源技能（mattpocock/skills 的 handoff）指针与对账方法；源件不入库"
 description: >
   把当前会话压缩成一份交接文档落 `handoff/`，供下一个 agent 续接；跨 agent 派活走 60-board 看板脚本。
   不做：不复制 issue/ADR/spec/diff 内容（只给路径）、不写机器绝对路径、不当长期账本（建议 15 天内归档）。
   触发：「写交接」「handoff」「交接文档」「下一棒」「派活」「认领」。
-version: 0.3.2
-updated: 2026-10-24
+version: 0.3.3
+updated: 2026-10-25
 allowed-tools: Read Write Edit
 compatibility: Requires python3
 ---

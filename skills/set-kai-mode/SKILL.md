@@ -18,8 +18,8 @@ description: >
   doctor、缺件如实登记。触发：新 agent 接手装配、换宿主、装/改定时器、修技能落点、
   给项目出技能骨架、迁旧配置实例、问「这套东西都住在哪」。
   不做日常施工。
-version: 4.9.0
-updated: 2026-10-24
+version: 4.9.1
+updated: 2026-10-25
 allowed-tools: Bash(*) Read Write Edit
 compatibility: Requires python3, git
 ---
@@ -336,7 +336,7 @@ python scripts/framework-gate.py --selftest   # 推前框架门自证
 |---|---|---|
 | 四角色职责与权限 | 四岗位技能正文 | `grep -rn "地勤\|塔台" skills/` 逐处认，出现第二本定义即返工 |
 | 并发、名额与隔离 | 机长/副机长技能正文 ＋ 子代理无编制上限 | 机长/副机长技能里的「2 张 issue」与技能正文一致；子代理数只受宿主容量约束，不得写死个数 |
-| 任务表格式与领取方式 | 塔台技能正文 ＋ 项目配置 `paths.day_tables_dir` | 日表 5–10 行、只由塔台写 |
+| 任务表格式与领取方式 | 塔台技能正文 ＋ 项目配置 `paths.day_tables_dir` | 日表行数见协议正本、只由塔台写 |
 | 一轮流程（排班→施工→审查→发货） | 塔台与机长技能正文 | 用一张真票走通全链路 |
 | 发货与 push 边界 | 塔台技能正文 | 塔台独占 push；机长/子代理不 push |
 | 失败恢复与断点 | 塔台技能正文 | 断点三件套（日表＋Issue 评论＋分支提交）齐 |
