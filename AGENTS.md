@@ -45,9 +45,8 @@ scope + risk, and goes stale when scope changes.
 ## Wake fence
 
 Roles never create or wake each other's sessions. Only a human starts a role; the scheduler may
-wake **tower** by default. A timer for another role needs explicit user instruction and a project
-record (2026-10-25: KVC 副机长班车). `kai-mode` routes and prints the command but does not call
-session-creation tools. Subagents within a ticket are not role sessions. Source of truth:
+wake **tower only**. `kai-mode` routes and prints the command but does not call session-creation
+tools. Subagents within a ticket are not role sessions. Source of truth:
 `docs/adr/0010-role-wake-fence.md`.
 
 ## Where each kind of rule lives (one kind, one home)

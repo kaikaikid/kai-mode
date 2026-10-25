@@ -10,9 +10,8 @@ sources:
     note: "单票闭环、等待与止损的随装入口；本文件只写车道差异与副机长措辞"
 description: >
   机场体系的副机长：与机长同权限、同一套流程，独立日表 `-deputy.md`。
-  触发：`/副机长`（人工唤醒）或用户明确授权的定时班车（2026-10-25 起，项目侧登记）；
-  塔台只写日表/播报，kai-mode 只推荐命令，不自动起角色。
-version: 2.5.3
+  触发：`/副机长`（人工唤醒）；塔台只写日表/播报，kai-mode 只推荐命令，不自动起角色。
+version: 2.5.4
 updated: 2026-10-25
 allowed-tools: Bash(git:*) Read Grep
 compatibility: Requires git
