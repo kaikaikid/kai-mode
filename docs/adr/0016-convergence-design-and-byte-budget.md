@@ -240,6 +240,37 @@ RULES 与 AGENTS 全部改成指针；AGENTS 保留一行「五件清单」不�
 
 **结论**：handoff 是唯一结构不一致的面（三轴：布局／格式／命名），其余要么已对齐、要么是 L1/L2 分工（人格层、多出来的门、ADR 落点）。布局要不要统一待用户拍。
 
+### D14 批 5：KVC 的 handoff 迁八槽（2026-10-25，用户拍板「迁移到八槽，然后重新校准其他内容的指针」）
+
+**迁移**：190 件平铺交接件按「文件名词元判槽 + 文件名日期判月」移入四槽（`10-session` 126／`20-plan` 51／
+`30-research` 3／`40-review` 10）；`README.md` 与 `templates/` 留根。tracked 件走 `git mv`，未跟踪件走 rename。
+**一次自纠**：首轮脚本把 `handoff/README.md` 也当交接件搬进了 `10-session/2026-10/`，并连带把全仓 6 处
+`handoff/README.md` 指针改成了槽内路径 ⇒ 当场 `git mv` 归位、6 处逐一回正。教训：批量迁移的 glob 必须先排除
+「契约/模板」类文件，并在迁移后立刻断言「根下只应剩 README + templates」。
+
+**结构对齐**：
+- `handoff/README.md` 新增 `## 槽位表`（八槽 + 类型词 + 判定顺序 + 月份规则）——这是框架交接技能识别「本项目有槽位表」
+  的判据，此前没有它，技能会走「按项目约定平铺」的降级腿；
+- 目录树、命名规范的位置条、归档规则、清理说明、边界节全部改写（「不采用八槽」→「已采用」）；
+- 模板 `templates/HANDOFF-template.md` 补**六字段 frontmatter**（`slot/type/ticket/date/owner_role/persona`），
+  与框架格式对齐；历史件不回溯补。
+
+**规则**：`annex-rules-details` H1 改写（落 `<槽>/<YYYY-MM>/`、原「平铺根、禁子目录」拍板同时撤销并留痕）、
+H5 归档改 `handoff/90-archive/YYYY-MM/`；`RULES` §7 纸条层与审计附册口径同步。
+
+**脚本**（三个都改，否则门会瞎）：
+| 脚本 | 改动 |
+|---|---|
+| `handoff-naming-check.py` | 「禁子目录」→「槽位＋月份＋命名」三查；根下未归位只 `[warn]`（过渡期）；并行索引在主档改为在 `10-session/*/` 里找 |
+| `handoff-cleanup.py` | `iterdir` → 递归扫槽；归档目标 `docs/archive/handoffs/` → `handoff/90-archive/<YYYY-MM>/` |
+| `governance-health-check.py` | 纸条层 glob `handoff/*.md` → `handoff/**/*.md`（排除 templates）；改前它已对新结构**结构性失明**（根下无文件即全绿） |
+
+**指针**：全仓 `handoff/<旧名>` → 新槽路径，治理面定向复查**残留 0**。
+
+**读数**：`governance-health` 红 3（历史日表）／warn 4（4 个 >64KB 老件：130.6／105／83.1／66.1KB，迁移前就有）；
+`check-adr-index` 干净；`handoff-naming --all` rc=1（4 处 `plan-*.md` 缺日期前缀，是 peer 未跟踪的存量件，迁移前就红）。
+未做：历史件不回填 frontmatter；4 个超大件待拆；4 个命名违规待其作者处置。
+
 ## Consequences
 
 - 批 1 之后，令牌从「正文约定」变成「有脚本、可回读、可审计」的岗位互斥锁：这也让 KVC 的 ADR-0137

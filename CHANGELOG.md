@@ -2,6 +2,14 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.24.8 — 2026-10-25
+
+- **批 5·kai-vass 的 handoff 迁八槽**（[ADR-0016 D14](docs/adr/0016-convergence-design-and-byte-budget.md)）：
+  190 件平铺件按词元分槽、按日期分月移入 `10-session`／`20-plan`／`30-research`／`40-review`；README 与 templates 留根；
+  新增 `## 槽位表`（框架技能据此走「有槽位表」路径）、模板补六字段 frontmatter、H1/H5/§7 与三个门脚本同步改
+  （naming 三查、cleanup 递归归档 90-archive、governance-health 纸条层递归）。全仓旧指针残留 0。
+  迁移中一次自纠：README 被误搬入槽并带偏 6 处指针，当场归位回正。无框架侧代码改动。
+
 ## 0.24.7 — 2026-10-25
 
 - **结构对齐审计（两仓逐面对照）＋修 L1 两处失配**（[ADR-0016 D13](docs/adr/0016-convergence-design-and-byte-budget.md)）：
