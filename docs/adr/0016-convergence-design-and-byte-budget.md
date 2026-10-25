@@ -139,6 +139,24 @@ ADR-0131 D5 单令牌与 ADR-0132 D4 两层令牌**已退役**、ADR-0137 明文
 复量：`AGENTS.md` 11,778B（上限 12,288）／`RULES.md` 40,488B（上限 40,960，余 472B）／`handoff/README.md` 12,355B；
 该仓 `governance-health` 红 3（全是历史日表）、`check-adr-index` 干净、命名门禁子目录违规 0。
 
+### D9 批 4 上半：KVC 的 RULES 体量治理（2026-10-25，用户令「优先把附录迁出压缩」）
+
+该仓 `RULES.md` 在批 3 后只剩 472B 余量（40,488/40,960）。按它自己的处置顺序「先迁 → 再拆 → 最后才议抬限」，
+把五块「查表才看」的正文迁附录、RULES 只留「标题＋指针」（**节号保留作锚**，外部 `§N` 引用不断），
+正文**一字未改**（逐块从备份切出、断言在目标附录里逐字存在，5/5 通过）：
+
+| 原位置 | 体量 | 新家 |
+|---|---|---|
+| `### backend 结构落点表` | 4,519B | 新 `.ai/rules/annex-backend-structure.md` |
+| `### 9. 验收取数与两型死判据` | 1,596B | `annex-rules-details.md` 追加节 |
+| `### 11. 规则↔执行者对照` | 2,312B | `annex-rules-details.md` 追加节 |
+| `### 10. D10 中立门禁` | 1,903B | 新 `.ai/rules/annex-host-neutral.md` |
+| `### 治理产物落点` | 1,744B | `annex-artifact-locations.md` 置顶节（优先于该文件旧行） |
+
+读数：`RULES.md` 40,488 → **29,095B**（腾出 11,393B，距 40KB 上限余 **11,865B**）；该仓 `governance-health`
+`RULES.md` 由 ⚠️ 转 ✅，warn 7→6；红仍 3（全是历史日表）。四份附录都远低于 64KB 上限（最大 `annex-rules-details` 15.9KB）。
+剩余体量欠账：`annex-audit-scripts.md` 70.2KB 超 64KB（warn），下一步按域拆分。
+
 ## Consequences
 
 - 批 1 之后，令牌从「正文约定」变成「有脚本、可回读、可审计」的岗位互斥锁：这也让 KVC 的 ADR-0137

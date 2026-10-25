@@ -2,6 +2,13 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.24.3 — 2026-10-25
+
+- **批 4 上半·KVC 的 RULES 体量治理**（[ADR-0016 D9](docs/adr/0016-convergence-design-and-byte-budget.md)）：五块「查表才看」的正文
+  （backend 落点表／§9 验收取数／§10 中立门禁／§11 规则↔执行者／治理产物落点，合计 12,074B）迁附录，
+  RULES 只留「标题＋指针」、节号保留作锚；正文一字未改（5/5 逐字校验）。
+  `RULES.md` 40,488 → **29,095B**（余量 472B → 11,865B），该仓 `governance-health` 对 RULES 由 ⚠️ 转 ✅。无框架侧代码改动。
+
 ## 0.24.2 — 2026-10-25
 
 - **批 3 补记三处冲突的处置**（[ADR-0016 D8](docs/adr/0016-convergence-design-and-byte-budget.md)）：ADR-0142 的「塔台拉继任」停用
