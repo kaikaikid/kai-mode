@@ -6,13 +6,13 @@ approved: 2026-10-24
 sources:
   - resource: "references/source.md"
     note: "落盘规则正本（两级路径、槽位表、frontmatter 字段表）＋源技能 mattpocock/skills 的 handoff 指针与对账方法；源件不入库"
-  - resource: "项目 handoff 目录里 60-board 的 README"
-    note: "跨 agent 看板协议正本：结构化卡片与状态流转"
+  - resource: "项目 handoff 目录里 60-board 的 README（若有）"
+    note: "跨 agent 看板协议正本：结构化卡片与状态流转；项目没有 60-board 时本条不适用"
 description: >
-  把当前会话压缩成一份交接文档落 `handoff/`，供下一个 agent 续接；跨 agent 派活走 60-board 看板脚本。
+  把当前会话压缩成一份交接文档落 `handoff/`，供下一个 agent 续接；跨 agent 派活走项目自己的派活面（有 60-board 就走卡片脚本，没有就用该仓的 Issue／lane 文件）。
   不做：不复制 issue/ADR/spec/diff 内容（只给路径）、不写机器绝对路径、不当长期账本（建议 15 天内归档）。
   触发：「写交接」「handoff」「交接文档」「下一棒」「派活」「认领」。
-version: 0.3.3
+version: 0.3.4
 updated: 2026-10-25
 allowed-tools: Read Write Edit
 compatibility: Requires python3
@@ -33,7 +33,8 @@ compatibility: Requires python3
 1. **判类型** — 查项目内 `handoff/README.md` §2 槽位表，定 `<槽>` 与类型词；
    **该 README 没有槽位表 ⇒ 这个仓有自己的交接约定**，照它的存放地／命名／TTL／门禁写，不造子目录（见失败降级表）
 2. **写文件** — 落 `handoff/<槽>/<YYYY-MM>/YYYY-MM-DD-<票号|slug>-<类型>.md`；
-   文件头写 frontmatter 六字段（`slot`/`type`/`ticket`/`date`/`owner_role`/`persona`）；
+   文件头写 frontmatter 六字段（`slot`/`type`/`ticket`/`date`/`owner_role`/`persona`）——**这些是「项目有槽位表」时的形状**；
+   项目无槽位表则按它自己的模板写（该仓模板没有 frontmatter 就不强插，只守它的命名与字段要求）；
    正文照项目内 `handoff/templates/HANDOFF-template.md`（看板件正文 ≤3 行）
 3. **过门禁** — 跑本项目收工门禁（配置 `gates.*`）；框架仓内另有 `handoff-slots` 项，红了就改到绿
 

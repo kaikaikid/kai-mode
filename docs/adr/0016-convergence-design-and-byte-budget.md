@@ -214,6 +214,32 @@ RULES 与 AGENTS 全部改成指针；AGENTS 保留一行「五件清单」不�
 读数：该仓 `governance-health` **warn 5→4**（annex 全部回到 64KB 内）、红仍 3（历史日表）；
 `annex-*` 现最大件 40.6KB。至此批 4 的体量欠账清零。
 
+### D13 结构对齐审计：两仓逐面对照（2026-10-25，用户问「handoff 这种结构是否对齐？其他的呢」）
+
+逐面量了两仓的实际形态（L1＝框架仓，L2＝Kai-vass-Control）：
+
+| 面 | L1 框架仓 | L2 项目仓 | 判定 |
+|---|---|---|---|
+| handoff 布局 | `handoff/<槽>/<YYYY-MM>/` 八槽 | 平铺根、**禁子目录**（H1，2026-10-16 用户拍板） | **不一致（有意）** |
+| handoff 文件格式 | frontmatter 六字段（`slot`/`type`/`ticket`/`date`/`owner_role`/`persona`） | 无 frontmatter（标题＋章节，自带模板） | **不一致** |
+| handoff 命名 | `YYYY-MM-DD-<票号|slug>-<类型>.md` | `HANDOFF-YYYYMMDD[-slug].md`（177/191 合规，门硬拦） | **不一致** |
+| handoff 生命周期 | TTL 15 天、归档到 `90-archive/<YYYY-MM>/` | TTL 15 天、归档到 `docs/archive/handoffs/<YYYY-MM>/`（脚本按文件名日期） | 语义一致、落点不同 |
+| 跨 agent 看板 | `handoff/60-board/` 卡片＋脚本＋README | 无；看板整族随 ADR-0137 退役，派活走 `.ai/scope/lane-*.md` | **不一致** |
+| 日表 | `YYYY-MM-DD-{lane}.md`，lanes `main`/`deputy` | 同 | ✅ |
+| 配置实例 | schema 4，41 键 | 同（实例落 `.ai/kai-mode.project.json`） | ✅ |
+| ADR 落点 | `docs/adr/` | `docs/artifacts/adrs/`，由实例 `registry.adrs.dir` 指过去 | 位置不同、契约一致 |
+| 想法池 | skill＋`paths.ideas_dir`＋`issue.boom_summary_ticket` | `ideas/`＋#792 | ✅ |
+| 门禁 | 活契约三键 | 五门，注册三键（另两门是 L2 自有） | 契约一致、L2 多门 |
+| 角色 | 四岗位＋六人格 | 四角色（ADR-0137），无人格文件 | 角色一致；人格层 L1-only |
+| 协议正本 | `loops/loop-protocol.md` | 镜像（2026-10-25 已刷新） | ✅ |
+
+**本批已修的 L1 失配**（技能在承诺项目没有的东西）：
+① `kai-handoff` 描述与源资源仍写「跨 agent 派活走 60-board 看板脚本」⇒ 改成「有 60-board 走卡片脚本，没有就用该仓的 Issue／lane 面」；
+② 第 2 步无条件要求 frontmatter 六字段 ⇒ 补「这些是『项目有槽位表』时的形状；项目无槽位表则按其模板写，该仓模板没有 frontmatter 就不强插」。
+版本 `kai-handoff` 0.3.3→0.3.4。
+
+**结论**：handoff 是唯一结构不一致的面（三轴：布局／格式／命名），其余要么已对齐、要么是 L1/L2 分工（人格层、多出来的门、ADR 落点）。布局要不要统一待用户拍。
+
 ## Consequences
 
 - 批 1 之后，令牌从「正文约定」变成「有脚本、可回读、可审计」的岗位互斥锁：这也让 KVC 的 ADR-0137

@@ -2,6 +2,13 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.24.7 — 2026-10-25
+
+- **结构对齐审计（两仓逐面对照）＋修 L1 两处失配**（[ADR-0016 D13](docs/adr/0016-convergence-design-and-byte-budget.md)）：
+  `kai-handoff` 不再无条件承诺 60-board（项目没有就走它的 Issue／lane 面）、不再无条件要求 frontmatter 六字段
+  （无槽位表的仓按其模板写）；版本 0.3.3→0.3.4。审计结论：handoff 是唯一结构不一致的面（布局／格式／命名），
+  其余已对齐或属 L1/L2 分工。布局是否统一待用户拍。
+
 ## 0.24.6 — 2026-10-25
 
 - **批 4 收口·KVC 审计脚本总表按域拆三份**（[ADR-0016 D12](docs/adr/0016-convergence-design-and-byte-budget.md)）：
