@@ -19,18 +19,18 @@
 
 - **撤销 0.24.9 的副机长班车例外**（用户 2026-10-25 复述「副机长默认不应该走定时模式」）：
   ADR-0010 D2 恢复「定时器只唤醒塔台」；AGENTS 同步；`copilot` 2.5.4 触发恢复「人工唤醒」。
-  KVC 侧的副机长定时任务已移除；塔台班车保留（标准唤醒方）。
+  项目侧的副机长定时任务已移除；塔台班车保留（标准唤醒方）。
 
 ## 0.24.9 — 2026-10-25
 
 - **唤醒围栏放开一条用户明示的口子**（[ADR-0010 D2](docs/adr/0010-role-wake-fence.md) 演变注）：
-  定时器默认仍只唤醒塔台；其它角色要开班车须**用户明确指令**并在项目侧登记。首个例外＝Kai-vass-Control
-  的副机长班车（每时 :30，与塔台 :00 错开），用于塔台停摆期间继续推进副表。角色之间仍互不唤醒。
+  定时器默认仍只唤醒塔台；其它角色要开班车须**用户明确指令**并在项目侧登记。首个例外＝某项目的
+  副机长班车（每时 :30，与塔台 :00 错开），用于塔台停摆期间继续推进副表。角色之间仍互不唤醒。
 - `copilot` 2.5.3：描述里的触发补「用户明确授权的定时班车」；中央库已回写（`install-receipt` 绿）。
 
 ## 0.24.8 — 2026-10-25
 
-- **批 5·kai-vass 的 handoff 迁八槽**（[ADR-0016 D14](docs/adr/0016-convergence-design-and-byte-budget.md)）：
+- **批 5·项目侧的 handoff 迁八槽**（[ADR-0016 D14](docs/adr/0016-convergence-design-and-byte-budget.md)）：
   190 件平铺件按词元分槽、按日期分月移入 `10-session`／`20-plan`／`30-research`／`40-review`；README 与 templates 留根；
   新增 `## 槽位表`（框架技能据此走「有槽位表」路径）、模板补六字段 frontmatter、H1/H5/§7 与三个门脚本同步改
   （naming 三查、cleanup 递归归档 90-archive、governance-health 纸条层递归）。全仓旧指针残留 0。
@@ -45,7 +45,7 @@
 
 ## 0.24.6 — 2026-10-25
 
-- **批 4 收口·KVC 审计脚本总表按域拆三份**（[ADR-0016 D12](docs/adr/0016-convergence-design-and-byte-budget.md)）：
+- **批 4 收口·项目侧审计脚本总表按域拆三份**（[ADR-0016 D12](docs/adr/0016-convergence-design-and-byte-budget.md)）：
   `annex-audit-scripts.md` 71,856B → governance 40.6KB／backend 22.3KB／frontend 9.8KB ＋ 3.9KB 总索引；
   38 行逐行集合相等、无重复，索引每条都能落到分册。该仓 `governance-health` warn 5→4，`annex-*` 全部回到 64KB 内。
   无框架侧代码改动。
@@ -59,13 +59,13 @@
 
 ## 0.24.4 — 2026-10-25
 
-- **批 4 下半·KVC 的红线收成一个家**（[ADR-0016 D10](docs/adr/0016-convergence-design-and-byte-budget.md)）：新建 `annex-redlines.md`
+- **批 4 下半·项目侧的红线收成一个家**（[ADR-0016 D10](docs/adr/0016-convergence-design-and-byte-budget.md)）：新建 `annex-redlines.md`
   （定义／处置／Git 面／与审批边界关系），RULES §6／§4／Git 约定第 4 条与 AGENTS 三处复述全部改指针；
   完整复述点 5→0。`AGENTS.md` 11,778→11,639B（五件清单留在入口，只能省 139B）、`RULES.md` 29,095→28,579B。无框架侧代码改动。
 
 ## 0.24.3 — 2026-10-25
 
-- **批 4 上半·KVC 的 RULES 体量治理**（[ADR-0016 D9](docs/adr/0016-convergence-design-and-byte-budget.md)）：五块「查表才看」的正文
+- **批 4 上半·项目侧的 RULES 体量治理**（[ADR-0016 D9](docs/adr/0016-convergence-design-and-byte-budget.md)）：五块「查表才看」的正文
   （backend 落点表／§9 验收取数／§10 中立门禁／§11 规则↔执行者／治理产物落点，合计 12,074B）迁附录，
   RULES 只留「标题＋指针」、节号保留作锚；正文一字未改（5/5 逐字校验）。
   `RULES.md` 40,488 → **29,095B**（余量 472B → 11,865B），该仓 `governance-health` 对 RULES 由 ⚠️ 转 ✅。无框架侧代码改动。
@@ -78,7 +78,7 @@
 
 ## 0.24.1 — 2026-10-25
 
-- **收敛批 3 记账**（[ADR-0016 D7](docs/adr/0016-convergence-design-and-byte-budget.md)）：kai-vass 侧 4 件活口治理文档对齐 L1
+- **收敛批 3 记账**（[ADR-0016 D7](docs/adr/0016-convergence-design-and-byte-budget.md)）：项目侧 4 件活口治理文档对齐 L1
   （角色表压成正本指针、10 处数字改指针、ADR-0137 令牌条加用户批准修订注）；该仓 `governance-health` 红 4→3
   （剩余 3 条是历史日表超限，存量证据不动）。本版只记读数与三处未动冲突，无框架侧代码改动。
 
@@ -144,7 +144,7 @@
 - **初始化器「下一棒」补两条**：`gates` 值可带子命令（读取端按 `python <值>` 插值，例 `scripts/scope-check.py close-gate`）；
   `paths.audit_dir`／`module_cards`／`dashboard` 按本仓实有落点补、没有的留 null。
 - **迁移段删除清单补全**（set-kai-mode 4.8.0→4.8.1）：schema 3→4 的「沿用」里去掉 `repo_root`，「删除」里补 `runtime.main_tree` 段与顶层 `repo_root`。
-- 首例真项目实例落地：`Kai-vass-Control/.ai/kai-mode.project.json`（41 键与模板逐键相等、零占位、零机器绝对路径；
+- 首例真项目实例落地：`某项目/.ai/kai-mode.project.json`（41 键与模板逐键相等、零占位、零机器绝对路径；
   14 个登记落点逐个 stat 通过；三门按该仓 AGENTS.md 实测值填；六人格模型全 null＝宿主默认）。
 
 ## 0.21.0 — 2026-10-25
