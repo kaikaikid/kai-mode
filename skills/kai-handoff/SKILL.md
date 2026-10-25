@@ -14,7 +14,7 @@ description: >
   把当前会话压缩成一份交接文档落 `handoff/`，供下一个 agent 续接；跨 agent 派活走 60-board 看板脚本。
   不做：不复制 issue/ADR/spec/diff 内容（只给路径）、不写机器绝对路径、不当长期账本（建议 15 天内归档）。
   触发：「写交接」「handoff」「交接文档」「下一棒」「派活」「认领」。
-version: 0.3.1
+version: 0.3.2
 updated: 2026-10-24
 allowed-tools: Read Write Edit
 compatibility: Requires python3
@@ -32,7 +32,8 @@ compatibility: Requires python3
 
 ## 流程（三步）
 
-1. **判类型** — 查项目内 `handoff/README.md` §2 槽位表，定 `<槽>` 与类型词
+1. **判类型** — 查项目内 `handoff/README.md` §2 槽位表，定 `<槽>` 与类型词；
+   **该 README 没有槽位表 ⇒ 这个仓有自己的交接约定**，照它的存放地／命名／TTL／门禁写，不造子目录（见失败降级表）
 2. **写文件** — 落 `handoff/<槽>/<YYYY-MM>/YYYY-MM-DD-<票号|slug>-<类型>.md`；
    文件头写 frontmatter 六字段（`slot`/`type`/`ticket`/`date`/`owner_role`/`persona`）；
    正文照项目内 `handoff/templates/HANDOFF-template.md`（看板件正文 ≤3 行）
@@ -71,6 +72,7 @@ compatibility: Requires python3
 
 | 情况 | 处理 |
 |---|---|
+| 项目 `handoff/README.md` 没有槽位表 | 该仓自成一套交接约定（存放地／命名／TTL／自己的门）⇒ **照它写，不铺八槽、不造子目录**；框架的槽位与 frontmatter 六字段只在有槽位表的仓生效。硬铺会与该仓的存放规矩打架，还可能被它自己的提交门硬拦 |
 | 判不出槽（用途不清） | 落 `handoff/00-inbox/<YYYY-MM>/`，7 天内归位（框架仓的 `handoff-slots` 会催） |
 | 类型词不在槽位表 | 改用已登记类型词；确需新增要先在框架仓登记两处（槽位表与门禁），否则按已登记类型词改 |
 | 框架仓 `handoff-slots` 红 | 照红字改命名／槽位／frontmatter；门禁绿才算写完 |

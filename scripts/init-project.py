@@ -223,6 +223,20 @@ def apply(cfg: dict, ans: dict) -> dict:
     return cfg
 
 
+def project_has_own_handoff(base: str) -> bool:
+    """项目已有自己的交接约定 ⇒ True：`<handoff>/README.md` 在、且没有「槽位表」。
+    这种仓里铺框架八槽＝两套存放约定并存，还会撞它自己的提交门（实测：某仓把非 `templates`
+    的子目录判为 problem 并硬拦）。判据只用一个词「槽位表」，与交接技能读的是同一张表。"""
+    own = os.path.join(base, "README.md")
+    if not os.path.isfile(own):
+        return False
+    try:
+        with open(own, encoding="utf-8", errors="replace") as f:
+            return "槽位表" not in f.read()
+    except OSError:
+        return False
+
+
 def gen_handoff(repo: str, ans: dict, layout: dict) -> list:
     """铺交接组件：按清单的八槽 + 规范 + 模板；只复制列名件，历史记录一概不碰。"""
     import datetime as _dt
@@ -231,6 +245,11 @@ def gen_handoff(repo: str, ans: dict, layout: dict) -> list:
     spec = layout["project_scaffold"]["handoff"]
     base_rel = ans.get("handoff_dir") or "handoff"
     base = os.path.join(repo, base_rel)
+    if project_has_own_handoff(base):
+        print(f"[跳过交接骨架] {base_rel}/README.md 已在且没有槽位表 ⇒ 该仓有自己的交接约定，"
+              f"不铺框架八槽（两套存放约定会打架，还可能被该仓自己的提交门硬拦）。"
+              f"要用八槽：先在该 README 补 §2 槽位表，再重跑本初始化器。此处按缺件登记，不静默。")
+        return []
     board_slot = spec["board_slot"]
     for slot in spec["slots"]:
         subs = spec["board_children"] if slot == board_slot else [month]
@@ -328,10 +347,18 @@ def main() -> int:
     out = os.path.join(repo, *spec["config"]["to"].split("/"))
     adr_rel = ans.get("adr_dir") or spec["adr_dir"]
     adr_dir = os.path.join(repo, *adr_rel.split("/"))
-    adr_state = "已存在，只补空目录占位" if os.path.isdir(adr_dir) and os.listdir(adr_dir) else "新建空目录 + 占位"
+    if not os.path.isdir(adr_dir) or not os.listdir(adr_dir):
+        adr_state = "新建空目录 + 占位"
+    else:
+        adr_state = "已有 ADR，不动（不写「从 0001 起编号」占位）"
     print("== 将生成 ==")
     print(" ", os.path.relpath(out, repo))
-    print(f"  handoff {len(spec['handoff']['slots'])} 槽（{spec['handoff']['board_slot']} 用子目录；其余按月）")
+    h_spec = spec["handoff"]
+    own_handoff = project_has_own_handoff(os.path.join(repo, ans.get("handoff_dir") or "handoff"))
+    if own_handoff:
+        print("  handoff 跳过——该仓有自己的交接约定（README 在、无槽位表），不铺八槽")
+    else:
+        print(f"  handoff {len(h_spec['slots'])} 槽（{h_spec['board_slot']} 用子目录；其余按月）")
     print(f"  {adr_rel}/（{adr_state}）+ {spec['glossary']['to']}（已存在则不覆盖）")
     print("\n== 关键取值 ==")
     for k in ("project", "ship_mode"):
