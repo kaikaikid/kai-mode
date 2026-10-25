@@ -2,6 +2,12 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.24.1 — 2026-10-25
+
+- **收敛批 3 记账**（[ADR-0016 D7](docs/adr/0016-convergence-design-and-byte-budget.md)）：kai-vass 侧 4 件活口治理文档对齐 L1
+  （角色表压成正本指针、10 处数字改指针、ADR-0137 令牌条加用户批准修订注）；该仓 `governance-health` 红 4→3
+  （剩余 3 条是历史日表超限，存量证据不动）。本版只记读数与三处未动冲突，无框架侧代码改动。
+
 ## 0.24.0 — 2026-10-25
 
 收敛设计（[ADR-0016](docs/adr/0016-convergence-design-and-byte-budget.md)）批 2：把「数值判据多处复述」与「sources 死指针」两条收掉。
