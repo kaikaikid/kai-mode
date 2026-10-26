@@ -560,7 +560,11 @@ padding:var(--soft-space-sm) var(--soft-space-md);border-radius:var(--soft-radiu
 .sect-body{overflow-x:auto;scrollbar-width:none}
 .sect-body::-webkit-scrollbar{display:none}table{min-width:520px}
 .page-head h1{font-size:20px}}
-@media print{.side,.tools,.statusbar,.ov{display:none}.shell{display:block;padding:0}
+.pstamp{display:none}
+@media print{.side,.tools,.statusbar,.ov{display:none}
+.pstamp{display:block;margin:0 0 12px;font-size:12px;color:var(--soft-text-secondary)}
+.pstamp b{color:var(--soft-text-primary)}
+.shell{display:block;padding:0}
 .main{background:transparent}.sect{box-shadow:none}
 tr.det{display:table-row}}
 """
@@ -973,6 +977,8 @@ def render_html(payload: dict, cfg: dict) -> str:
 <div class="shell">
 {_sidebar(cfg, payload, kpi)}
 <main class="main"><div class="inner">
+  <p class="pstamp">打印件 · 快照 <b>{_esc(gen)}</b> · run {_esc(run)} ·
+    未收尾 {kpi['open']} 张（屏上可交互，纸上是死数）</p>
   <header class="page-head">
     <h1>{_esc(payload['title'])}</h1>
     <span class="read" id="stamp">快照 <b>{_esc(gen)}</b> ·
