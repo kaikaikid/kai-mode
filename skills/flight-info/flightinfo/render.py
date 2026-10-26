@@ -123,6 +123,17 @@ def build_summary(conn, cfg: dict) -> dict:
                 row[k] = f.get(k)
         shown.append(row)
 
+    # 卡点 / 里程碑：从 *全量* flights 算（shown 截断到 max_flights，会漏掉 hold 票）。
+    blocked = [{"ticket": f.get("ticket"), "title": f.get("title"),
+                "owner": f.get("owner") or "", "why": f.get("why") or ""}
+               for f in flights if (f.get("stage") or "") == "hold"][:8]
+    ms_groups: dict[str, list] = {}
+    for f in flights:
+        ms_groups.setdefault(f.get("milestone") or "（无里程碑）", []).append(f)
+    milestones = [{"name": ms, "total": len(fs),
+                   "done": sum(1 for f in fs if (f.get("stage") or "") == "closed")}
+                  for ms, fs in sorted(ms_groups.items(), key=lambda kv: -len(kv[1]))]
+
     return {
         "schema": BOARD_SCHEMA,
         "kind": "summary",
@@ -140,6 +151,8 @@ def build_summary(conn, cfg: dict) -> dict:
              "note": s["note"]} for s in schedules
         ][: int(summary_cfg.get("max_schedule_rows") or 20)],
         "sources": sources,
+        "blocked": blocked,
+        "milestones": milestones,
         "counts": {"flights_total": len(flights), "flights_included": len(shown),
                    "flights_truncated": len(flights) > len(shown)},
     }
@@ -421,14 +434,13 @@ def _src_items(sources: dict) -> str:
     return "".join(out)
 
 
-def _blocked_section(flights: list[dict], role_labels: dict) -> str:
-    """置顶的「卡点 / 挡住」区：阶段=hold 的票，标出掌机与卡点原因。"""
-    blocked = [f for f in flights if (f.get("stage") or "") == "hold"]
+def _blocked_section(blocked: list[dict], role_labels: dict) -> str:
+    """置顶的「卡点 / 挡住」区：阶段=hold 的票，标出掌机与卡点原因（来自全量聚合）。"""
     if not blocked:
         return '<section class="blocked"><h3>卡点 / 挡住</h3>' \
                '<p class="note">当前没有挡住的票。</p></section>'
     items = []
-    for f in blocked[:8]:
+    for f in blocked:
         who = f.get("owner") or ""
         lane = role_labels.get(who, who)
         items.append(
@@ -438,32 +450,28 @@ def _blocked_section(flights: list[dict], role_labels: dict) -> str:
             f'<div class="n">{_esc(lane or "—")}'
             + (f' · {_esc(f.get("why") or "")}' if f.get("why") else "") + "</div>"
             "</li>")
-    more = f'<p class="note">仅列前 8 张；余下见 board.json。</p>' if len(blocked) > 8 else ""
+    more = '<p class="note">仅列前 8 张；余下见 board.json。</p>' if len(blocked) > 8 else ""
     return ('<section class="blocked"><h3>卡点 / 挡住 · '
             f'{len(blocked)}</h3><ul>{"".join(items)}</ul>{more}</section>')
 
 
-def _milestone_section(flights: list[dict]) -> str:
-    """里程碑进度：按里程碑分组，算 已关/总，画一条进度条。"""
-    groups: dict[str, list[dict]] = {}
-    for f in flights:
-        ms = f.get("milestone") or "（无里程碑）"
-        groups.setdefault(ms, []).append(f)
-    if len(groups) <= 1:
+def _milestone_section(milestones: list[dict]) -> str:
+    """里程碑进度：按里程碑分组，算 已关/总，画一条进度条（来自全量聚合）。"""
+    if len(milestones) <= 1:
         return ""
     rows = []
-    for ms, fs in sorted(groups.items(), key=lambda kv: -len(kv[1])):
-        total = len(fs)
-        done = sum(1 for f in fs if (f.get("stage") or "") == "closed")
+    for ms in milestones:
+        total = ms.get("total", 0)
+        done = ms.get("done", 0)
         pct = int(round(100 * done / total)) if total else 0
         rows.append(
             '<div class="ms-row">'
-            f'<div class="ms-name">{_esc(ms)}</div>'
+            f'<div class="ms-name">{_esc(ms.get("name") or "")}</div>'
             f'<div class="ms-bar"><i style="width:{pct}%"></i></div>'
             f'<div class="ms-n">{done}/{total}</div>'
             "</div>")
     return ('<section class="sec ms"><div class="sec-hd"><h2>里程碑进度</h2>'
-            f'<span class="sec-n">{len(groups)} 条线</span></div>'
+            f'<span class="sec-n">{len(milestones)} 条线</span></div>'
             f'{"".join(rows)}</section>')
 
 
@@ -523,7 +531,7 @@ def render_html(payload: dict, cfg: dict) -> str:
     top_band = (
         f'<section class="tops">'
         f'<div class="blocked-wrap">{_schedule_block(srows, lb, role_labels, len(payload["schedules"]))}</div>'
-        f'{_blocked_section(payload["flights"], role_labels)}'
+        f'{_blocked_section(payload.get("blocked") or [], role_labels)}'
         f'</section>')
 
     return f"""<!doctype html>
@@ -568,7 +576,7 @@ def render_html(payload: dict, cfg: dict) -> str:
   {trunc}
 </section>
 
-{_milestone_section(payload["flights"])}
+{_milestone_section(payload.get("milestones") or [])}
 
 <footer class="foot">
   <span class="eyebrow">SOURCE</span>
