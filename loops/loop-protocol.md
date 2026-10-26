@@ -4,9 +4,10 @@
 > （`/机长`、`/副机长`、`/塔台`、`/地勤`）。
 > **正本身份**：本文件＝跨项目**设计正本**；各项目仓的 `loops/loop-protocol.md` 是**同哈希镜像**。
 > 禁止两处各改一份、禁止只在其中一份上留下改动（本仓曾在 v5 与框架 v6 分叉一整天，0019 E1／D4）。
-> **降级腿**（按 `.ai/rules/annex-host-neutral.md` D10 三件齐备）：① 探测＝`test -f <机器上的框架路径>/loops/loop-protocol.md`
-> （框架路径不在项目配置里，属本机私有；换机／他人 clone 时**默认读不到**）；② 读不到 → **本仓那份即刻是可读正本**，
-> 照常执行，改动同批写两份并把「未能回写框架」记进票面／日报（不假装回写过）；③ 两边都读不到 → 按缺件三格登记，不猜路径。
+> **降级腿**（按 `.ai/rules/annex-host-neutral.md` D10 三件齐备）：① 探测＝`test -f <框架仓路径>/loops/loop-protocol.md`
+> （框架仓＝独立仓 `github.com/kaikaikid/kai-mode`，**不在项目仓内**，clone 项目仓的机器默认没有它）；
+> ② 读不到 → **本仓那份即刻是可读正本**，照常执行，改动同批写两份并把「未能回写框架」记进票面／日报（不假装回写过）；
+> ③ 两边都读不到 → 按缺件三格登记，不猜路径。
 > 项目侧的镜像同步口：`cp <框架>/loops/loop-protocol.md <项目>/loops/loop-protocol.md` ＋ `sha1sum` 两份必须一致（parity 机检未实装＝0019 D4 欠账）。
 > **2026-10-21 按机场体系重做裁决重写**（现行正本＝[0003 四角色机场](../docs/adr/0003-airport-rebuild-four-roles.md)）；旧机场机器已退役，见 0003。
 > **2026-10-26 v6**：滚动消费与发货解耦＝[0017](../docs/adr/0017-captain-drains-day-table.md)；跃迁窗口内的取舍走裁决子代理＝[0018](../docs/adr/0018-in-run-adjudication.md)。
