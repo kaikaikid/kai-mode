@@ -49,7 +49,9 @@ metadata:
 | `flightinfo/config.py` | 板配置加载 / 校验 / 定位落点 | 不许写盘 |
 | `schema/*.sql` | 表结构正本（可重复执行） | — |
 
-加一个源＝在 `sources/` 放一个实现 `collect(cfg, ctx)` 的模块 ＋ 在 `sources/__init__.py` 的 `REGISTRY` 加一行。**其他文件一个字都不用改。**
+加一个**航班形态**的源（产出 `flights`/`schedules`）＝在 `sources/` 放一个实现 `collect(cfg, ctx)` 的模块 ＋ 在 `sources/__init__.py` 的 `REGISTRY` 加一行。**其他文件一个字都不用改。**
+
+加一个**非航班形态**的源（如 `handoff-index`，产出 `handoffs` 这类自定义键）要四件事：源模块返回该键 → `collect.run_sources` 汇总该键并调 `db.replace_*` 落库 → `db.py` 加读函数 ＋ `schema/00X-*.sql` 建表 → `render.py` 加段落。`run_sources` 是显式按键名取的（不是自动透传），所以键名要和落库/渲染函数对齐。
 
 ## 3. 板配置字段
 
@@ -82,6 +84,7 @@ metadata:
 | `tasks-table` | `path`（缺省 `paths.day_tables_dir`）/ `include` / `lanes` | 日表 markdown：列表行 `- [ ] #12 事 \| 备注`，或表格 `\| 序 \| 票号 \| 里程碑 \| 一句话 \| 备注 \|`（两种都认，可混用） |
 | `git-worktrees` | `branch_prefix`（默认 `exec/`） | 本地 worktree/分支 → 在飞证据 |
 | `github-issues` | `repo` / `state`（`open`\|`closed`\|`none`）/ `limit` / `include_closed`＋`closed_limit` | 票面（`gh` 不可用则降级）。`include_closed: true` 顺带拉已关票——残留 `exec/` 分支只有靠「已关」才能归到已收尾 |
+| `handoff-index` | `path`（缺省 `paths.handoff_dir`）/ `slots` / `limit`（默认 8） | 交接日报索引：只读 `handoff/<槽>/<YYYY-MM>/*.md` 的文件名＋首行标题，**不搬正文**；渲染成可点相对链接的「交接日报索引」区 |
 
 **`stage_rules.when` 取值**：`state_closed` `label_equals` `comment_contains` `branch_exists` `table_note_contains` `assignee_exists` `else`。
 `why` 可带占位 `{branch}` `{note}` `{assignee}` `{label}`。
@@ -172,7 +175,7 @@ python scripts/refresh_if_dirty.py --repo-root <仓根> --config <板配置> [--
 ## 8. 验证命令
 
 ```bash
-python -m unittest discover -s tests -v          # 29 项单元测试（含端到端）
+python -m unittest discover -s tests -v          # 33 项单元测试（含端到端）
 python scripts/init_board.py --repo-root <临时仓>  # 自证：装完能用
 python scripts/refresh.py --repo-root <临时仓> --config <板配置> --no-network
 ```

@@ -149,6 +149,19 @@ def record_board_run(conn, run_id, kpi: dict, sources: dict,
     )
 
 
+def replace_handoffs(conn, run_id: str, rows: list[dict]) -> int:
+    """一轮采集的交接索引整体替换（幂等，不累加）。"""
+    conn.execute("DELETE FROM handoff_doc WHERE run_id = ?", (run_id,))
+    for i, r in enumerate(rows):
+        conn.execute(
+            "INSERT OR REPLACE INTO handoff_doc"
+            "(run_id, slot, rel_path, title, doc_date, ord) VALUES (?,?,?,?,?,?)",
+            (run_id, r.get("slot"), r.get("rel_path"), r.get("title"),
+             r.get("doc_date"), r.get("ord", i)),
+        )
+    return len(rows)
+
+
 # ── 读取（渲染层只用这些）─────────────────────────────────────────
 
 def latest_run(conn) -> str | None:
@@ -168,7 +181,14 @@ def fetch_flights(conn, includes: list[str] | None = None) -> list[dict]:
 
 def fetch_schedules(conn, run_id: str) -> list[dict]:
     return [dict(r) for r in conn.execute(
-        "SELECT * FROM schedule_row WHERE run_id = ? ORDER BY lane, line_no", (run_id,)
+        "SELECT * FROM schedule_row WHERE run_id = ? "
+        "ORDER BY table_date DESC, lane, line_no", (run_id,)
+    )]
+
+
+def fetch_handoffs(conn, run_id: str) -> list[dict]:
+    return [dict(r) for r in conn.execute(
+        "SELECT * FROM handoff_doc WHERE run_id = ? ORDER BY ord", (run_id,)
     )]
 
 

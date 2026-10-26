@@ -91,7 +91,7 @@ def build_summary(conn, cfg: dict) -> dict:
     includes = summary_cfg.get("flight_stages")
     flights = db.fetch_flights(conn, includes or None)
     schedules = db.fetch_schedules(conn, run) if run else []
-    # 排班只出「最新那一天」：日表目录里留着历史表，混着出会把几天前的班次
+    # 排班只出「最新那一天」：日表目录里留着历史表，混着出会把几天前的排班行
     # 当成今天的（Kai-vass 实测：20 行里前 3 行都是 10-23 的副表）。
     if schedules:
         latest_day = max((s.get("table_date") or "") for s in schedules)
@@ -153,6 +153,7 @@ def build_summary(conn, cfg: dict) -> dict:
         "sources": sources,
         "blocked": blocked,
         "milestones": milestones,
+        "handoffs": db.fetch_handoffs(conn, run) if run else [],
         "counts": {"flights_total": len(flights), "flights_included": len(shown),
                    "flights_truncated": len(flights) > len(shown)},
     }
@@ -278,6 +279,17 @@ display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center}
 .src em{color:var(--soft);font-style:normal}
 .fresh{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--soft)}
 .fresh b{color:var(--muted);font-weight:500}
+
+/* 交接日报索引 */
+.ho{margin-top:28px}
+.ho ul{margin:0;padding:0;list-style:none}
+.ho li{display:flex;align-items:baseline;gap:12px;padding:8px 0;border-bottom:1px solid var(--rule)}
+.ho li:last-child{border-bottom:0}
+.ho .dt{flex:0 0 76px;font-family:var(--mono);font-size:11px;color:var(--soft);
+font-variant-numeric:tabular-nums}
+.ho .sl{flex:0 0 88px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.ho .ti{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+.ho .ti i{font-style:normal;color:var(--soft)}
 
 /* 区块 */
 .sec{margin-top:28px}
@@ -475,6 +487,31 @@ def _milestone_section(milestones: list[dict]) -> str:
             f'{"".join(rows)}</section>')
 
 
+def _handoff_section(handoffs: list[dict], link_prefix: str = "") -> str:
+    """交接日报索引：最近的纸条层入口（槽位 / 标题 / 日期，可点开原文件）。"""
+    if not handoffs:
+        return ""
+    items = []
+    for h in handoffs:
+        tp = h.get("rel_path") or ""
+        title = h.get("title") or os.path.basename(tp)
+        href = _esc(link_prefix + tp) if tp else ""
+        ti = (f'<a href="{href}" title="{_esc(tp)}">{_esc(title)}</a>'
+              if href else _esc(title))
+        items.append(
+            "<li>"
+            f'<span class="dt">{_esc(h.get("doc_date") or "")}</span>'
+            f'<span class="sl">{_esc(h.get("slot") or "")}</span>'
+            f'<span class="ti">{ti}</span>'
+            "</li>")
+    return ('<section class="sec ho"><div class="sec-hd"><h2>交接日报索引</h2>'
+            f'<span class="eyebrow">HANDOFF</span>'
+            f'<span class="sec-n">{len(handoffs)}</span></div>'
+            f'<ul>{"".join(items)}</ul>'
+            '<p class="note">只列索引，正文在文件里；点开是相对路径，file:// 下可直接跳。</p>'
+            '</section>')
+
+
 def render_html(payload: dict, cfg: dict) -> str:
     kpi = payload["kpi"]
     view = cfg.get("view") or {}
@@ -528,6 +565,10 @@ def render_html(payload: dict, cfg: dict) -> str:
     eyebrow = view.get("eyebrow") or ""
     head_eyebrow = f"{eyebrow} · RUN {run}" if eyebrow else f"RUN {run}"
     closed_today = kpi.get("closed_today", 0)
+    # 交接索引用相对链接：index.html 在 <output.root>/<name>/ 下，往上一层层回到仓根。
+    out_root = ((cfg.get("output") or {}).get("root") or ".").strip("/")
+    depth = (len([p for p in out_root.split("/") if p]) if out_root else 0) + 1
+    link_prefix = "../" * depth
     top_band = (
         f'<section class="tops">'
         f'<div class="blocked-wrap">{_schedule_block(srows, lb, role_labels, len(payload["schedules"]))}</div>'
@@ -577,6 +618,7 @@ def render_html(payload: dict, cfg: dict) -> str:
 </section>
 
 {_milestone_section(payload.get("milestones") or [])}
+{_handoff_section(payload.get("handoffs") or [], link_prefix)}
 
 <footer class="foot">
   <span class="eyebrow">SOURCE</span>

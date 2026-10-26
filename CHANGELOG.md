@@ -2,6 +2,19 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.25.1 — 2026-10-26
+
+- `flight-info`：补**交接日报索引**源（`handoff-index`）——板子接上纸条层，看得到最近
+  `handoff/<槽>/<YYYY-MM>/*.md` 在哪、标题是什么，点开是相对链接直接跳原文件（`file://` 下可跳）。
+  只读文件名＋首行标题，**不搬正文**（正文正本在文件里，板只做入口）。
+  - 第一个**非航班形态**的源：产出 `handoffs` 键而非 `flights`／`schedules`。
+  - 配套四处最小改动：`schema/002-handoff.sql` 建 `handoff_doc` 表、`db.replace_handoffs`／
+    `fetch_handoffs`、`collect.run_sources` 汇总并落库（`handoffs` 计入源行数与源健康）、
+    `render._handoff_section` 出「交接日报索引」段。
+  - `SKILL.md` 的模块地图补上这条口径：航班形态源仍是一文件＋REGISTRY 一行、其他不动；
+    非航班形态源要显式按键名汇总（`run_sources` 不自动透传自定义键）。
+  - 测例 29→33（缺目录降级、排序与 limit、槽位白名单跳过 `templates/`、落库回读＋链接渲染）。
+
 ## 0.25.0 — 2026-10-26
 
 - **机长滚动消费日表，发货与机长节奏解耦**（[0017](docs/adr/0017-captain-drains-day-table.md)，用户令 #6）：

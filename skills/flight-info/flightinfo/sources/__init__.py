@@ -6,13 +6,14 @@
 """
 from __future__ import annotations
 
-from . import board_cards, issues, tasks, worktrees
+from . import board_cards, handoff, issues, tasks, worktrees
 
 REGISTRY = {
     "board-cards": board_cards,
     "tasks-table": tasks,
     "git-worktrees": worktrees,
     "github-issues": issues,
+    "handoff-index": handoff,
 }
 
 TYPES = tuple(REGISTRY)

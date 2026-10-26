@@ -58,8 +58,9 @@ def _evidence_kinds(rec: dict) -> list[tuple[str, str]]:
 
 
 def run_sources(config: dict, ctx: dict, conn, run_id: str) -> dict:
-    """跑全部源，返回 {"sources": {...}, "flights": n, "schedules": n}。"""
-    all_records, all_schedules, report = [], [], {}
+    """跑全部源，返回 {"sources": {...}, "flights": n, "schedules": n,
+    "handoffs": n}。源除 flights/schedules 外可带 handoffs（非航班形态的记录）。"""
+    all_records, all_schedules, all_handoffs, report = [], [], [], {}
 
     for sc in config.get("sources") or []:
         sid = sc.get("id") or sc.get("type")
@@ -79,14 +80,17 @@ def run_sources(config: dict, ctx: dict, conn, run_id: str) -> dict:
             continue
         flights = res.get("flights") or []
         schedules = res.get("schedules") or []
+        handoffs = res.get("handoffs") or []
         status = res.get("status") or "ok"
         detail = res.get("detail") or ""
         all_records.extend(flights)
         all_schedules.extend(schedules)
-        report[sid] = {"status": status, "rows": len(flights) + len(schedules),
-                       "detail": detail}
-        db.record_source(conn, run_id, sid, typ, status,
-                         len(flights) + len(schedules), detail)
+        all_handoffs.extend(handoffs)
+        n_rows = len(flights) + len(schedules) + len(handoffs)
+        report[sid] = {"status": status, "rows": n_rows, "detail": detail}
+        db.record_source(conn, run_id, sid, typ, status, n_rows, detail)
+
+    db.replace_handoffs(conn, run_id, all_handoffs)
 
     merged = merge_flights(all_records)
     rules = config.get("stage_rules") or []
@@ -112,4 +116,5 @@ def run_sources(config: dict, ctx: dict, conn, run_id: str) -> dict:
         db.replace_schedules(conn, run_id, all_schedules)
 
     db.commit(conn)
-    return {"sources": report, "flights": len(merged), "schedules": len(all_schedules)}
+    return {"sources": report, "flights": len(merged),
+            "schedules": len(all_schedules), "handoffs": len(all_handoffs)}

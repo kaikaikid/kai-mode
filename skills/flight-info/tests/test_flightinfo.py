@@ -14,7 +14,7 @@ if SKILL_ROOT not in sys.path:
     sys.path.insert(0, SKILL_ROOT)
 
 from flightinfo import collect, config, db, render, stage  # noqa: E402
-from flightinfo.sources import board_cards, issues, tasks  # noqa: E402
+from flightinfo.sources import board_cards, handoff, issues, tasks  # noqa: E402
 
 RULES = [
     {"when": "state_closed", "stage": "closed"},
@@ -140,6 +140,65 @@ class TestIssues(unittest.TestCase):
 
     def test_queries_none_is_empty(self):
         self.assertEqual(issues.queries_for("none", 200, True), [])
+
+
+class TestHandoff(unittest.TestCase):
+    def test_collect_missing_dir_is_absent(self):
+        with tempfile.TemporaryDirectory() as repo:
+            res = handoff.collect({}, {"repo_root": repo, "paths": {}})
+            self.assertEqual(res["status"], "absent")
+            self.assertEqual(res["handoffs"], [])
+
+    def test_collect_lists_sorts_and_limits(self):
+        """日期新在前，取首行标题，templates/ 与非月目录跳过。"""
+        with tempfile.TemporaryDirectory() as repo:
+            m = os.path.join(repo, "handoff", "10-session", "2026-10")
+            os.makedirs(m)
+            os.makedirs(os.path.join(repo, "handoff", "templates"))
+            with open(os.path.join(m, "2026-10-24-old.md"), "w", encoding="utf-8") as f:
+                f.write("# 旧的纸条\n正文不搬。\n")
+            with open(os.path.join(m, "2026-10-26-new.md"), "w", encoding="utf-8") as f:
+                f.write("# 新的纸条\n")
+            with open(os.path.join(repo, "handoff", "templates", "T.md"), "w",
+                      encoding="utf-8") as f:
+                f.write("# 模板不该被收\n")
+            res = handoff.collect({"limit": 10},
+                                  {"repo_root": repo, "paths": {"handoff_dir": "handoff"}})
+            self.assertEqual(res["status"], "ok")
+            self.assertEqual(len(res["handoffs"]), 2)
+            newest = res["handoffs"][0]
+            self.assertEqual(newest["doc_date"], "2026-10-26")
+            self.assertEqual(newest["title"], "新的纸条")
+            self.assertEqual(newest["slot"], "10-session")
+            self.assertEqual(newest["rel_path"], "handoff/10-session/2026-10/2026-10-26-new.md")
+            self.assertEqual([r["ord"] for r in res["handoffs"]], [0, 1])
+
+    def test_collect_limit_caps(self):
+        with tempfile.TemporaryDirectory() as repo:
+            m = os.path.join(repo, "handoff", "20-plan", "2026-10")
+            os.makedirs(m)
+            for i in range(5):
+                with open(os.path.join(m, f"2026-10-0{i + 1}-a.md"), "w",
+                          encoding="utf-8") as f:
+                    f.write(f"# {i}\n")
+            res = handoff.collect({"limit": 2},
+                                  {"repo_root": repo, "paths": {"handoff_dir": "handoff"}})
+            self.assertEqual(len(res["handoffs"]), 2)
+
+    def test_db_round_trip_and_render_section(self):
+        """索引要落库再读得出，且渲染成可点的相对链接。"""
+        rows = [{"slot": "10-session", "rel_path": "handoff/10-session/2026-10/x.md",
+                 "title": "标题", "doc_date": "2026-10-26", "ord": 0}]
+        with tempfile.TemporaryDirectory() as repo:
+            conn = db.connect(db.db_path(repo))
+            db.migrate(conn, os.path.join(SKILL_ROOT, "schema"))
+            run = db.new_run_id()
+            self.assertEqual(db.replace_handoffs(conn, run, rows), 1)
+            self.assertEqual(len(db.fetch_handoffs(conn, run)), 1)
+            self.assertEqual(db.fetch_handoffs(conn, "不存在的run"), [])
+            html = render._handoff_section(rows, "../../")
+            self.assertIn('href="../../handoff/10-session/2026-10/x.md"', html)
+            conn.close()
 
 
 class TestMerge(unittest.TestCase):
