@@ -12,6 +12,46 @@ from .sources import get as get_source
 MERGE_FIRST = ("title", "ticket", "assignee", "milestone", "url",
                "owner", "persona", "last_comment", "table_note")
 
+# 掌机归属三源，按「事实优先」排：日表车道 → 票面指派 → 阶段推断。
+# 推断只给「塔台独占发货」这类协议事实用，且必须标 owner_from=infer，
+# 界面上要能看出这一格是推出来的、不是有人认领的。
+DEFAULT_OWNER_INFER = {"to_ship": "tower"}
+
+
+def ticket_key(value) -> str:
+    """'#1711' / '1711' / 'issue:1711' → '1711'（对票号用的是一把尺）。"""
+    s = str(value or "").strip()          # 先去空白，再剥 # ——顺序反了 " #12 " 会漏剥
+    if ":" in s:
+        s = s.rsplit(":", 1)[-1].strip()
+    return s.lstrip("#").strip()
+
+
+def lane_index(schedules: list[dict]) -> dict[str, str]:
+    """票号 → 车道。只认**最新那张日表**：历史表里的排班不算今天的归属。"""
+    if not schedules:
+        return {}
+    latest = max((s.get("table_date") or "") for s in schedules)
+    idx: dict[str, str] = {}
+    for s in schedules:
+        if (s.get("table_date") or "") != latest:
+            continue
+        k = ticket_key(s.get("ticket"))
+        if k and k not in idx and s.get("lane"):
+            idx[k] = s["lane"]
+    return idx
+
+
+def resolve_owner(rec: dict, lane: str | None, role_labels: dict,
+                  infer_map: dict) -> tuple[str, str]:
+    """返回 (显示名, 来源标记)。认不到就 ("", "")——空格子比假名字诚实。"""
+    for raw, from_ in ((lane, "lane"), (rec.get("owner"), "lane"),
+                       (rec.get("assignee"), "assignee"),
+                       ((infer_map or {}).get(rec.get("stage")), "infer")):
+        if not raw:
+            continue
+        return (role_labels.get(raw) or raw), from_
+    return "", ""
+
 
 def merge_flights(records: list[dict]) -> dict[str, dict]:
     """同 uid 合并：证据取并集，展示字段取第一个非空。"""
@@ -99,15 +139,32 @@ def run_sources(config: dict, ctx: dict, conn, run_id: str) -> dict:
     for s in list(config.get("stages") or []) + list(config.get("off_chain_stages") or []):
         labels[s["key"]] = s.get("label") or s["key"]
 
+    role_labels = config.get("role_labels") or {}
+    infer_map = config.get("owner_infer") or DEFAULT_OWNER_INFER
+    stale_after = config.get("stale_after") or {}
+    lanes = lane_index(all_schedules)
+
+    stale_n = 0
     for uid, rec in merged.items():
         ev = {"closed": rec.get("closed"), "labels": rec.get("labels"),
               "last_comment": rec.get("last_comment"), "branches": rec.get("branches"),
-              "table_note": rec.get("table_note"), "assignee": rec.get("assignee")}
+              "table_note": rec.get("table_note"), "assignee": rec.get("assignee"),
+              "url": rec.get("url")}
         st, why = stage.decide(rules, ev)
-        rec["stage"] = st or "undefined"
-        rec["stage_label"] = labels.get(rec["stage"]) or (
-            "未定" if rec["stage"] == "undefined" else rec["stage"])
+        st = st or "undefined"
+        # 二道闸：有在飞证据但已经不动了 → 停滞；别让"挂着分支"冒充"有人在敲"
+        st, why, prev, days = stage.apply_stale(st, why, rec.get("updated_at"), stale_after)
+        if st != prev and prev:
+            stale_n += 1
+        rec["stage"] = st
+        rec["stage_label"] = labels.get(st) or ("未定" if st == "undefined" else st)
         rec["why"] = why
+        rec["prev_stage"] = prev or None
+        rec["stale_days"] = days
+        owner, owner_from = resolve_owner(rec, lanes.get(ticket_key(rec.get("ticket"))),
+                                          role_labels, infer_map)
+        rec["owner"] = owner
+        rec["owner_from"] = owner_from or None
         db.upsert_flight(conn, rec, run_id)
         for kind, value in _evidence_kinds(rec):
             db.add_evidence(conn, uid, kind, value, run_id)
@@ -117,4 +174,5 @@ def run_sources(config: dict, ctx: dict, conn, run_id: str) -> dict:
 
     db.commit(conn)
     return {"sources": report, "flights": len(merged),
-            "schedules": len(all_schedules), "handoffs": len(all_handoffs)}
+            "schedules": len(all_schedules), "handoffs": len(all_handoffs),
+            "stale": stale_n}

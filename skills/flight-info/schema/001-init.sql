@@ -47,7 +47,10 @@ CREATE TABLE IF NOT EXISTS flight (
     open        INTEGER NOT NULL DEFAULT 1,
     updated_at  TEXT NOT NULL,
     closed_at   TEXT,
-    seen_run    TEXT NOT NULL             -- 最后一次出现在哪一轮采集
+    seen_run    TEXT NOT NULL,            -- 最后一次出现在哪一轮采集
+    owner_from  TEXT,                     -- lane | assignee | infer（掌机是事实还是推断）
+    prev_stage  TEXT,                     -- 被判成「停滞」前原本在哪一阶段
+    stale_days  INTEGER                   -- 距上次更新几天（不知道＝NULL，绝不写 0）
 );
 CREATE INDEX IF NOT EXISTS idx_flight_stage ON flight(stage);
 CREATE INDEX IF NOT EXISTS idx_flight_open  ON flight(open);
@@ -100,6 +103,7 @@ DROP VIEW IF EXISTS v_flight;
 CREATE VIEW v_flight AS
 SELECT f.uid, f.ticket, f.title, f.stage, f.stage_label, f.owner, f.persona,
        f.milestone, f.planned, f.why, f.source, f.url, f.labels,
-       f.open, f.updated_at, f.closed_at
+       f.open, f.updated_at, f.closed_at,
+       f.owner_from, f.prev_stage, f.stale_days
 FROM flight f
 WHERE f.seen_run = (SELECT MAX(seen_run) FROM flight);

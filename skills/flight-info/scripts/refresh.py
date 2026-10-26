@@ -49,7 +49,10 @@ def run_refresh(repo_root: str, config_path: str, quiet: bool = False,
         db.migrate(conn, os.path.join(SKILL_ROOT, "schema"))
         run_id = db.new_run_id()
         stats = collect.run_sources(cfg, ctx, conn, run_id)
-        payload = render.build_summary(conn, cfg)
+        payload = render.build_summary(conn, cfg, bdir)
+        # 趋势线：本轮 KPI 先落 history.jsonl，再把（含本轮的）近 N 轮塞回 payload
+        if render.append_history(bdir, run_id, payload["kpi"], payload["sources"]):
+            payload["trend"] = render.read_trend(bdir)
         paths = render.write_outputs(bdir, payload, cfg)
         db.record_board_run(conn, run_id, payload["kpi"], payload["sources"],
                             paths["board.json"]["sha256"], paths["index.html"]["sha256"])

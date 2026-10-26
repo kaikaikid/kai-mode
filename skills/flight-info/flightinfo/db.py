@@ -18,6 +18,31 @@ from datetime import datetime, timezone
 SCHEMA_VERSION = "1"
 DB_FILENAME = "board.db"
 
+# 口径刀（2026-10-26）新增列：SQLite 的 ALTER 不认 IF NOT EXISTS，
+# 所以补列走 Python 侧幂等确保（PRAGMA 查一下再决定加不加），不写进 .sql。
+ENSURE_COLUMNS = {
+    "flight": (
+        ("owner_from", "TEXT"),     # lane | assignee | infer | ""（掌机是事实还是推断）
+        ("prev_stage", "TEXT"),     # 被降级成「停滞」前原本在哪一阶段
+        ("stale_days", "INTEGER"),  # 距上次更新几天（渲染期也会现算，这里留痕）
+    ),
+}
+
+
+def _ensure_columns(conn) -> list[str]:
+    """给已存在的表补新列（幂等）。返回实际补上的列名。"""
+    added = []
+    for table, cols in ENSURE_COLUMNS.items():
+        have = {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}
+        if not have:                       # 表还没建（首次 migrate 前）→ 交给 .sql
+            continue
+        for name, typ in cols:
+            if name not in have:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {typ}")
+                added.append(f"{table}.{name}")
+    conn.commit()
+    return added
+
 
 def now_iso() -> str:
     """本地时区的 ISO 秒级时间戳（人读友好；排序仍单调）。"""
@@ -43,9 +68,13 @@ def connect(path: str) -> sqlite3.Connection:
 
 
 def migrate(conn: sqlite3.Connection, schema_dir: str) -> list[str]:
-    """按文件名顺序跑 schema/*.sql（幂等）。返回本次实际读到的文件。"""
+    """按文件名顺序跑 schema/*.sql（幂等）。返回本次实际读到的文件。
+
+    补列先于建视图：`v_flight` 要 SELECT 新列，列不在就会在查询期炸。
+    """
     if not os.path.isdir(schema_dir):
         raise FileNotFoundError(f"schema 目录不存在：{schema_dir}")
+    _ensure_columns(conn)
     applied = []
     for fn in sorted(os.listdir(schema_dir)):
         if not fn.endswith(".sql"):
@@ -83,6 +112,7 @@ _FLIGHT_COLS = (
     "uid", "ticket", "title", "stage", "stage_label", "owner", "persona",
     "milestone", "planned", "why", "source", "url", "labels", "open",
     "updated_at", "closed_at", "seen_run",
+    "owner_from", "prev_stage", "stale_days",
 )
 
 
@@ -101,9 +131,11 @@ def upsert_flight(conn, rec: dict, run_id: str) -> None:
     row["updated_at"] = rec.get("updated_at") or now_iso()
     conn.execute(
         "INSERT INTO flight(uid, ticket, title, stage, stage_label, owner, persona,"
-        " milestone, planned, why, source, url, labels, open, updated_at, closed_at, seen_run)"
+        " milestone, planned, why, source, url, labels, open, updated_at, closed_at,"
+        " seen_run, owner_from, prev_stage, stale_days)"
         " VALUES (:uid,:ticket,:title,:stage,:stage_label,:owner,:persona,"
-        " :milestone,:planned,:why,:source,:url,:labels,:open,:updated_at,:closed_at,:seen_run)"
+        " :milestone,:planned,:why,:source,:url,:labels,:open,:updated_at,:closed_at,"
+        " :seen_run,:owner_from,:prev_stage,:stale_days)"
         " ON CONFLICT(uid) DO UPDATE SET"
         " ticket=excluded.ticket, title=excluded.title, stage=excluded.stage,"
         " stage_label=excluded.stage_label, owner=excluded.owner, persona=excluded.persona,"
@@ -111,7 +143,8 @@ def upsert_flight(conn, rec: dict, run_id: str) -> None:
         " source=excluded.source, url=excluded.url, labels=excluded.labels,"
         " open=excluded.open, updated_at=excluded.updated_at,"
         " closed_at=COALESCE(excluded.closed_at, flight.closed_at),"
-        " seen_run=excluded.seen_run",
+        " seen_run=excluded.seen_run, owner_from=excluded.owner_from,"
+        " prev_stage=excluded.prev_stage, stale_days=excluded.stale_days",
         row,
     )
 

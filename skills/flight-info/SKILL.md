@@ -14,8 +14,8 @@ description: >
   模块化：db / stage / sources / collect / render / config 单向依赖，源按类型插件式增删。
   刷新靠 git 钩子打脏标记 ＋ 有脏才刷，零 token、跨 agent；任一源失败只降级点名，不整页崩。
   触发：/航班信息、刷新航班信息板、看现在在飞什么、给这个仓装一块板。
-version: 1.1.3
-updated: 2026-10-25
+version: 1.2.0
+updated: 2026-10-26
 allowed-tools: Bash(python:*) Bash(git:*) Read Write
 compatibility: Requires python3 (stdlib only), git
 metadata:
@@ -70,6 +70,11 @@ metadata:
 | `next_text` | 否 | `阶段 → 下一步文案` |
 | `direction` | 否 | `{template, variants[{when,template}]}`，占位符用 KPI 名 |
 | `summary` | 否 | `max_flights` / `max_bytes`（默认 25600）/ `flight_stages[]` / `flight_fields[]` |
+| `stale_after` | 否 | **停滞阈值按阶段分档**：`{"flying":3,"review":2,"to_ship":1,"_to":"stale"}`。命中即从该阶段降级成 `_to`（默认 `stale`），并在 `why` 里写明「原在飞 N 天没动」、`prev_stage` 留原阶段。不给某阶段设阈值＝该阶段永不判停滞。理由：待发货压一天就该喊，排队一周不动是常态——一刀切 3 天会把两类混成一锅。 |
+| `owner_infer` | 否 | 阶段 → 推断掌机（默认 `{"to_ship":"tower"}`：发货权归塔台独占）。推断出来的掌机在界面上带「推」角标——事实与推断不许长一个样。 |
+| `summary.ai_why_chars` | 否 | AI 面判据截断（默认 160）。全文在人面展开行里。 |
+| `summary.ai_note_chars` | 否 | AI 面排班备注截断（默认 160）。实测一条备注能到 2 千字，占 board.json 65% 预算、把航班挤到只剩 2 条。 |
+| `summary.ai_label_max` | 否 | AI 面每票标签上限（默认 6，超出折成「…共 N 枚」）。 |
 | `view.focal_stage` | 否 | 哪一段着赭色，默认 `to_ship`；该段为 0 张时**不亮** |
 | `view.font_source` | 否 | `system`（默认，零网络）/ `web`（引 Google Fonts） |
 | `view.metrics[]` | 否 | `{key,label}` 次级读数；不写＝航班总数 / 今日收尾 / 今日排班 |
@@ -86,10 +91,12 @@ metadata:
 | `github-issues` | `repo` / `state`（`open`\|`closed`\|`none`）/ `limit` / `include_closed`＋`closed_limit` | 票面（`gh` 不可用则降级）。`include_closed: true` 顺带拉已关票——残留 `exec/` 分支只有靠「已关」才能归到已收尾 |
 | `handoff-index` | `path`（缺省 `paths.handoff_dir`）/ `slots` / `limit`（默认 8） | 交接日报索引：只读 `handoff/<槽>/<YYYY-MM>/*.md` 的文件名＋首行标题，**不搬正文**；渲染成可点相对链接的「交接日报索引」区 |
 
-**`stage_rules.when` 取值**：`state_closed` `label_equals` `comment_contains` `branch_exists` `table_note_contains` `assignee_exists` `else`。
+**`stage_rules.when` 取值**：`state_closed` `label_equals` `comment_contains` `branch_exists` `table_note_contains` `assignee_exists` `no_issue` `else`。
+`no_issue`＝有 `exec/` 分支但 GitHub 认不到这张票（`url` 空）⇒ 判「残留分支」。
+**判据按顺序取第一条命中**，所以 `no_issue` 必须排在 `branch_exists` **前面**，否则残留分支永远先被 `branch_exists` 判成在飞（2026-10-26 实测踩过）。
 `why` 可带占位 `{branch}` `{note}` `{assignee}` `{label}`。
 
-**KPI 名**：`in_flight`（在飞+审查）`to_ship` `ready` `queued` `ready_plus_queued` `hold` `closed` `closed_today` `open` `total` `planned`；
+**KPI 名**：`in_flight`（在飞+审查，**不含停滞**）`to_ship` `ready` `queued` `ready_plus_queued` `hold` `stale`（停滞）`unresolved`（残留分支）`closed` `closed_today` `open` `total` `planned`；
 外加 `by_stage`（`{阶段key: 张数}`，阶段轨用它，自定义阶段也认）。
 
 ## 4. 版式（`index.html`）
@@ -104,6 +111,9 @@ metadata:
 | 分隔 | 一律 1px 发丝线，**零阴影**、圆角 ≤ 8px、间距 4 的倍数 |
 | 阶段轨 | 一条带子（发丝线分隔），不是五张卡；链外阶段（可领/挡住）挂在虚线右侧 |
 | 阶段签 | 方角（`rx=2`），不画药丸；在飞＝白底墨边，审查＝灰底，待发货＝赭，挡住＝虚线，已收尾＝无边框 |
+| 航班表列 | 五列：票号（**有 `url` 就出链接**）／内容＋判据／阶段签／掌机（推断的带「推」角标）／**距今**（"今天／昨天／N 天前"，停滞转赭色）。以前整页零条票链、没有时长列——看不出哪张卡了九天 |
+| 降级旗 | 任一源非 `ok` ⇒ 方向句下方一条赭边横块，点名源与缺口（`role="alert"`）。全绿时不占位 |
+| 趋势线 | 读数带里的迷你折线（内联 SVG，零依赖）：未收尾／停滞／待发货 近 N 轮。少于 2 轮不画，不空喊趋势 |
 
 改皮肤只改 `flightinfo/render.py` 顶部的 `CSS` 常量（`:root` 里的 tokens），不动逻辑。
 
@@ -126,7 +136,7 @@ python scripts/install_auto.py --repo-root <仓根> --config <板配置> [--inte
 python scripts/refresh_if_dirty.py --repo-root <仓根> --config <板配置> [--force]
 ```
 
-产物落 `板目录/`：`board.db`（库）｜`board.json`（AI 面）｜`index.html`（人面）。
+产物落 `板目录/`：`board.db`（库）｜`board.json`（AI 面，有字节预算）｜`index.html`（人面，未收尾全量不截断）｜`history.jsonl`（每轮一行 KPI，趋势线的正本；同一 `run_id` 幂等，只留一行）。
 
 ### 5.5 让板「活」起来（自动更新）
 
@@ -162,8 +172,10 @@ python scripts/refresh_if_dirty.py --repo-root <仓根> --config <板配置> [--
 - **`0` 只表示「板生成了」，不代表数据全好** —— 判据读 `board.json` 的 `sources`（`ok`/`absent`/`skipped`/`fail`），别拿退出码当绿灯。
 - 单源炸 ⇒ 该源记 `fail` 并点名，其余照出板。
 - 票源塌 ⇒ 退化成只画日表与卡片里的票。
-- 摘要层超 `max_bytes` ⇒ 从尾部丢票并置 `counts.flights_truncated`。
+- 摘要层超 `max_bytes` ⇒ 从尾部丢票并置 `counts.flights_truncated`。**这条只管 AI 面**：人面（`index.html`）走 `all_open`，未收尾全量出、不截断。以前两本账混在一起，人的屏幕被 AI 的上下文预算管着——正本只画 12 行、页脚小字写「余量见 board.json」，而 board.json 里也只有那 12 行。
+- 字节预算**按写盘形态量**（`indent=1`）。以前按紧凑 JSON 量、按美化写盘，量少约 20%，实测超预算 2.3 KB 还自认合规。
 - git 钩子**只打标记**，退出码恒 0，绝不阻塞 commit。
+- 任一源非 `ok` ⇒ 人面页头出**降级旗**（`board.json` 的 `degraded[]` 同步点名），写清哪个源、什么状态、少了什么。静默少票比报错更坏。
 
 ## 7. 权限与禁区
 

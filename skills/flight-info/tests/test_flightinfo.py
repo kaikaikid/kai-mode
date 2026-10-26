@@ -388,5 +388,212 @@ class TestEndToEnd(unittest.TestCase):
             self.assertEqual(payload["kpi"]["in_flight"], 1)
 
 
+class TestStaleRemap(unittest.TestCase):
+    """停滞：有在飞证据但已经不动了，不许继续冒充在飞。"""
+
+    def test_flying_becomes_stale_after_threshold(self):
+        from datetime import datetime, timedelta
+        old = (datetime.now().astimezone() - timedelta(days=9)).isoformat()
+        st, why, prev, days = stage.apply_stale("flying", "分支 exec/9-x", old,
+                                                {"flying": 3})
+        self.assertEqual(st, "stale")
+        self.assertEqual(prev, "flying")
+        self.assertEqual(days, 9)
+        self.assertIn("9 天没动", why)
+
+    def test_within_threshold_stays(self):
+        from datetime import datetime, timedelta
+        recent = (datetime.now().astimezone() - timedelta(days=1)).isoformat()
+        st, _, prev, days = stage.apply_stale("flying", "分支 x", recent, {"flying": 3})
+        self.assertEqual(st, "flying")
+        self.assertEqual(prev, "")
+
+    def test_unknown_time_is_not_zero_days(self):
+        """时间认不到必须报「不知道」，不能悄悄当 0 天＝活跃。"""
+        st, _, prev, days = stage.apply_stale("flying", "分支 x", "", {"flying": 3})
+        self.assertEqual(st, "flying")
+        self.assertIsNone(days)
+
+    def test_threshold_is_per_stage(self):
+        """待发货压一天就该喊，排队一周不动是常态——阈值按阶段给。"""
+        from datetime import datetime, timedelta
+        two = (datetime.now().astimezone() - timedelta(days=2)).isoformat()
+        cfg = {"flying": 3, "to_ship": 1}
+        self.assertEqual(stage.apply_stale("to_ship", "w", two, cfg)[0], "stale")
+        self.assertEqual(stage.apply_stale("flying", "w", two, cfg)[0], "flying")
+
+    def test_closed_never_becomes_stale(self):
+        from datetime import datetime, timedelta
+        old = (datetime.now().astimezone() - timedelta(days=30)).isoformat()
+        self.assertEqual(stage.apply_stale("closed", "", old, {"flying": 3})[0], "closed")
+
+
+class TestUnresolvedBranch(unittest.TestCase):
+    """残留分支：有 exec/ 分支但 GitHub 认不到这张票，不该进航班流。"""
+
+    def test_no_issue_wins_over_branch(self):
+        rules = [{"when": "no_issue", "stage": "unresolved", "why": "分支 {branch} 无票面"},
+                 {"when": "branch_exists", "stage": "flying", "why": "分支 {branch}"},
+                 {"when": "else", "stage": "queued"}]
+        st, why = stage.decide(rules, {"branches": ["exec/9992"]})
+        self.assertEqual(st, "unresolved")
+        self.assertIn("exec/9992", why)
+
+    def test_branch_with_url_is_flying(self):
+        rules = [{"when": "no_issue", "stage": "unresolved", "why": "无票面"},
+                 {"when": "branch_exists", "stage": "flying", "why": "分支 {branch}"},
+                 {"when": "else", "stage": "queued"}]
+        st, _ = stage.decide(rules, {"branches": ["exec/12-x"],
+                                     "url": "https://x/12"})
+        self.assertEqual(st, "flying")
+
+    def test_validate_accepts_no_issue(self):
+        rules = [{"when": "no_issue", "stage": "unresolved", "value": ""},
+                 {"when": "else", "stage": "queued"}]
+        self.assertEqual(stage.validate_rules(rules), [])
+
+
+class TestOwnerResolution(unittest.TestCase):
+    """掌机三源：日表车道（事实）→ 票面指派（事实）→ 阶段推断（要标记）。"""
+
+    def test_lane_beats_assignee(self):
+        rec = {"owner": "", "assignee": "kaikaikid", "stage": "flying"}
+        self.assertEqual(collect.resolve_owner(rec, "deputy",
+                                               {"deputy": "副机长"}, {}),
+                         ("副机长", "lane"))
+
+    def test_assignee_when_no_lane(self):
+        rec = {"owner": "", "assignee": "kaikaikid", "stage": "flying"}
+        self.assertEqual(collect.resolve_owner(rec, None, {}, {}),
+                         ("kaikaikid", "assignee"))
+
+    def test_infer_is_marked(self):
+        rec = {"owner": "", "assignee": "", "stage": "to_ship"}
+        self.assertEqual(collect.resolve_owner(rec, None, {"tower": "塔台"},
+                                               {"to_ship": "tower"}),
+                         ("塔台", "infer"))
+
+    def test_nothing_found_is_honest_blank(self):
+        self.assertEqual(collect.resolve_owner({"stage": "queued"}, None, {}, {}),
+                         ("", ""))
+
+    def test_lane_index_only_latest_day(self):
+        rows = [{"ticket": "#1", "lane": "main", "table_date": "2026-10-24"},
+                {"ticket": "#1", "lane": "deputy", "table_date": "2026-10-26"},
+                {"ticket": "#2", "lane": "main", "table_date": "2026-10-26"}]
+        idx = collect.lane_index(rows)
+        self.assertEqual(idx, {"1": "deputy", "2": "main"})
+
+    def test_ticket_key_scales(self):
+        for v in ("#1711", "1711", "issue:1711", " #1711 "):
+            self.assertEqual(collect.ticket_key(v), "1711")
+
+
+class TestFacesNotSharedBudget(unittest.TestCase):
+    """人面全量、AI 面按预算裁——两本账不许混。"""
+
+    def _cfg(self):
+        return {"name": "t", "output": {"root": "boards"},
+                "stages": [{"key": "flying", "label": "在飞"},
+                           {"key": "closed", "label": "已收尾"}],
+                "off_chain_stages": [{"key": "stale", "label": "停滞"}],
+                "summary": {"max_flights": 3, "max_bytes": 25600},
+                "stage_rules": [{"when": "else", "stage": "flying"}]}
+
+    def test_human_face_keeps_every_open_flight(self):
+        with tempfile.TemporaryDirectory() as d:
+            conn = db.connect(db.db_path(d))
+            db.migrate(conn, os.path.join(SKILL_ROOT, "schema"))
+            for i in range(10):
+                db.upsert_flight(conn, {"uid": f"issue:{i}", "ticket": f"#{i}",
+                                        "title": f"票 {i}", "stage": "flying",
+                                        "open": 1, "url": f"http://x/{i}"}, "r1")
+            db.upsert_flight(conn, {"uid": "issue:99", "ticket": "#99", "title": "已关",
+                                    "stage": "closed", "closed": True, "open": 0}, "r1")
+            db.commit(conn)
+            payload = render.build_summary(conn, self._cfg(), d)
+            conn.close()
+        self.assertEqual(len(payload["flights"]), 3)        # AI 面受 max_flights 管
+        self.assertEqual(len(payload["all_open"]), 10)      # 人面＝未收尾全量
+        self.assertEqual(payload["counts"]["open_total"], 10)
+
+    def test_board_json_drops_human_only_keys(self):
+        with tempfile.TemporaryDirectory() as d:
+            payload = {"schema": "x", "title": "T", "direction": "", "run_id": "r",
+                       "kpi": render.compute_kpi([]), "flights": [{"t": 1}],
+                       "all_open": [{"a": i} for i in range(50)],
+                       "degraded": [], "trend": [], "schedules": [], "sources": {},
+                       "blocked": [], "milestones": [], "handoffs": [],
+                       "counts": {"flights_total": 1, "flights_included": 1,
+                                  "flights_truncated": False}}
+            render.write_outputs(d, payload, self._cfg())
+            with open(os.path.join(d, "board.json"), encoding="utf-8") as f:
+                bj = json.load(f)
+            self.assertNotIn("all_open", bj)
+            with open(os.path.join(d, "index.html"), encoding="utf-8") as f:
+                html = f.read()
+            self.assertGreater(html.count('class="age'), 1)   # 人面带「距今」列
+
+    def test_budget_measured_the_same_way_it_is_written(self):
+        """紧凑量、美化写＝预算形同虚设。这条锁死 indent 一致性。"""
+        payload = {"flights": [{"why": "字" * 200} for _ in range(30)],
+                   "counts": {"flights_total": 30, "flights_included": 30,
+                              "flights_truncated": False}}
+        out, _ = render.trim_to_bytes(payload, 8000, indent=1)
+        self.assertLessEqual(len(render.dumps(out, 1)), 8000)
+
+
+class TestDegradedFlag(unittest.TestCase):
+    def test_bad_source_is_named(self):
+        got = render._degraded({"issues": {"status": "fail", "detail": "gh 不可用"},
+                                "tasks": {"status": "ok"}})
+        self.assertEqual([g["id"] for g in got], ["issues"])
+        html = render._flag(got)
+        self.assertIn('class="flag"', html)
+        self.assertIn("gh 不可用", html)
+
+    def test_all_green_prints_nothing(self):
+        self.assertEqual(render._degraded({"a": {"status": "ok"}}), [])
+        self.assertEqual(render._flag([]), "")
+
+
+class TestHistory(unittest.TestCase):
+    def test_append_is_idempotent_per_run(self):
+        with tempfile.TemporaryDirectory() as d:
+            kpi = render.compute_kpi([])
+            self.assertTrue(render.append_history(d, "r1", kpi, {}))
+            render.append_history(d, "r1", kpi, {})
+            rows = render.read_trend(d)
+            self.assertEqual([r["run_id"] for r in rows], ["r1"])
+            render.append_history(d, "r2", kpi, {})
+            self.assertEqual([r["run_id"] for r in render.read_trend(d)], ["r1", "r2"])
+
+    def test_trend_needs_two_rounds_to_draw(self):
+        self.assertEqual(render._trend({"trend": []}), "")
+        one = [{"run_id": "a", "kpi": {"open": 3}}]
+        self.assertEqual(render._trend({"trend": one}), "")
+        two = one + [{"run_id": "b", "kpi": {"open": 2}}]
+        html = render._trend({"trend": two})
+        self.assertIn("<svg", html)
+        self.assertIn("未收尾", html)
+
+    def test_missing_history_is_silent(self):
+        self.assertEqual(render.read_trend(None), [])
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(render.read_trend(d), [])
+
+
+class TestKpiNewCounters(unittest.TestCase):
+    def test_stale_not_counted_as_in_flight(self):
+        flights = [{"stage": "flying", "open": 1}, {"stage": "stale", "open": 1},
+                   {"stage": "unresolved", "open": 1}, {"stage": "closed", "open": 0}]
+        k = render.compute_kpi(flights)
+        self.assertEqual(k["in_flight"], 1)
+        self.assertEqual(k["stale"], 1)
+        self.assertEqual(k["unresolved"], 1)
+        self.assertEqual(k["open"], 3)
+
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

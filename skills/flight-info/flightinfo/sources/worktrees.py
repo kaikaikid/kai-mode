@@ -42,6 +42,31 @@ def _local_branches(repo_root: str) -> list[str]:
     return [l.strip() for l in out.stdout.splitlines() if l.strip()] if out.returncode == 0 else []
 
 
+def _branch_dates(repo_root: str) -> dict[str, str]:
+    """分支名 → 最后一次提交时间（ISO）。
+
+    没有这一发，残留分支的票会被写成「本轮刚刚更新」，停滞判定就永远看不见它——
+    2026-10-26 口径刀就是为这个补的。一次 for-each-ref 全取，不按分支逐发。
+    """
+    try:
+        out = subprocess.run(
+            ["git", "-C", repo_root, "for-each-ref",
+             "--format=%(refname:short)%09%(committerdate:iso8601-strict)",
+             "refs/heads"],
+            capture_output=True, text=True, timeout=20, check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return {}
+    if out.returncode != 0:
+        return {}
+    dates: dict[str, str] = {}
+    for line in out.stdout.splitlines():
+        name, _, when = line.partition("\t")
+        if name.strip():
+            dates[name.strip()] = when.strip()
+    return dates
+
+
 def collect(cfg: dict, ctx: dict) -> dict:
     repo_root = ctx["repo_root"]
     prefix = cfg.get("branch_prefix") or "exec/"
@@ -49,6 +74,7 @@ def collect(cfg: dict, ctx: dict) -> dict:
     if not names:
         return {"flights": [], "schedules": [], "status": "fail",
                 "detail": "git 不可用或读不到分支（该源只在本地生效）"}
+    dates = _branch_dates(repo_root)
 
     hit = [b for b in sorted(names) if b.startswith(prefix)]
     flights = []
@@ -72,7 +98,7 @@ def collect(cfg: dict, ctx: dict) -> dict:
             "owner": "",
             "persona": "",
             "planned": False,
-            "updated_at": "",
+            "updated_at": dates.get(b, ""),   # 分支最后提交＝这张票真正动过的时刻
             "source": "git-worktrees",
             "kind": "task",
         })

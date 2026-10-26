@@ -19,6 +19,9 @@ from datetime import date, datetime
 from . import db, stage as stage_mod
 
 BOARD_SCHEMA = "flight-info/1"
+HISTORY_FILENAME = "history.jsonl"       # 每轮一行 KPI：趋势线的正本
+HUMAN_ONLY_KEYS = ("all_open",)             # 只给人看的键，不进 AI 字节预算
+TREND_KEEP = 24                          # 折线画近多少轮
 
 # 焦点阶段：只有它被赭色点亮（0 张时不着色——没活要干就别喊）
 FOCAL_STAGE = "to_ship"
@@ -56,6 +59,9 @@ def compute_kpi(flights: list[dict]) -> dict:
         "ready": by_stage.get("ready", 0),
         "queued": by_stage.get("queued", 0),
         "hold": by_stage.get("hold", 0),
+        # 停滞单独计数：它不算在飞（挂着分支不动 ≠ 有人在敲）
+        "stale": by_stage.get("stale", 0),
+        "unresolved": by_stage.get("unresolved", 0),
         "closed": by_stage.get("closed", 0),
         "closed_today": sum(1 for f in flights
                             if (f.get("closed_at") or "").startswith(today)),
@@ -85,32 +91,113 @@ def _fill(tpl: str, kpi: dict) -> str:
 
 # ── 摘要层（AI 面）────────────────────────────────────────────────
 
-def build_summary(conn, cfg: dict) -> dict:
+def _chain_order(cfg: dict) -> dict:
+    order = {}
+    for i, s in enumerate(list(cfg.get("stages") or [])
+                          + list(cfg.get("off_chain_stages") or [])):
+        order[s.get("key") or ""] = i
+    return order
+
+
+def _sort_flights(rows: list[dict], order: dict) -> list[dict]:
+    """先按阶段链序，同阶段内新的在前。"""
+    rows = sorted(rows, key=lambda f: f.get("updated_at") or "", reverse=True)
+    return sorted(rows, key=lambda f: order.get(f.get("stage") or "", 999))
+
+
+def _face_row(f: dict, cfg: dict) -> dict:
+    """人面一行：把库里躺着、以前没上页面的字段全带上。"""
+    labels = [x.strip() for x in (f.get("labels") or "").split(",") if x.strip()]
+    nxt = (cfg.get("next_text") or {}).get(f.get("stage") or "", "")
+    return {
+        "ticket": f.get("ticket"), "title": f.get("title"),
+        "stage": f.get("stage"), "stage_label": f.get("stage_label"),
+        "next_label": "" if nxt == f.get("stage_label") else nxt,
+        "owner": f.get("owner") or "", "owner_from": f.get("owner_from") or "",
+        "why": f.get("why") or "", "url": f.get("url") or "",
+        "milestone": f.get("milestone") or "",
+        "risk": next((l.split(":", 1)[1] for l in labels if l.startswith("risk:")), ""),
+        "prio": next((l for l in labels if len(l) == 2 and l[0] == "P"), ""),
+        "updated_at": f.get("updated_at") or "",
+        "stale_days": f.get("stale_days"), "prev_stage": f.get("prev_stage") or "",
+    }
+
+
+def _degraded(sources: dict) -> list[dict]:
+    """源没全绿就点名——静默少票比报错更坏。"""
+    return [{"id": k, "status": (v or {}).get("status") or "",
+             "detail": (v or {}).get("detail") or ""}
+            for k, v in (sources or {}).items()
+            if (v or {}).get("status") not in ("ok", None)]
+
+
+def read_trend(board_dir: str | None, keep: int = TREND_KEEP) -> list[dict]:
+    """读 history.jsonl 末尾 N 轮（趋势线用）。文件不在就返回空，不报错。"""
+    if not board_dir:
+        return []
+    path = os.path.join(board_dir, HISTORY_FILENAME)
+    rows = []
+    try:
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    rows.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue                # 坏行跳过，不拖垮整条趋势
+    except OSError:
+        return []
+    return rows[-keep:]
+
+
+def append_history(board_dir: str, run_id: str, kpi: dict, sources: dict) -> bool:
+    """每轮追写一行 KPI（同一 run 幂等，只留一行）。写失败不阻断出板。"""
+    path = os.path.join(board_dir, HISTORY_FILENAME)
+    keep = [r for r in read_trend(board_dir, keep=100000)
+            if r.get("run_id") != run_id]
+    keep.append({"run_id": run_id, "at": db.now_iso(),
+                 "kpi": {k: v for k, v in kpi.items() if k != "by_stage"},
+                 "by_stage": kpi.get("by_stage") or {},
+                 "degraded": [d["id"] for d in _degraded(sources)]})
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            for r in keep:
+                f.write(json.dumps(r, ensure_ascii=False) + "\n")
+    except OSError:
+        return False
+    return True
+
+
+def build_summary(conn, cfg: dict, board_dir: str | None = None) -> dict:
     run = db.latest_run(conn)
     summary_cfg = cfg.get("summary") or {}
     includes = summary_cfg.get("flight_stages")
-    flights = db.fetch_flights(conn, includes or None)
+    all_flights = db.fetch_flights(conn)                 # 全量＝KPI 与里程碑的分母
+    flights = [f for f in all_flights
+               if not includes or f.get("stage") in includes]
     schedules = db.fetch_schedules(conn, run) if run else []
     # 排班只出「最新那一天」：日表目录里留着历史表，混着出会把几天前的排班行
     # 当成今天的（Kai-vass 实测：20 行里前 3 行都是 10-23 的副表）。
     if schedules:
         latest_day = max((s.get("table_date") or "") for s in schedules)
         schedules = [s for s in schedules if (s.get("table_date") or "") == latest_day]
-    kpi = compute_kpi(db.fetch_flights(conn))
+    kpi = compute_kpi(all_flights)
     sources = db.fetch_sources(conn)
 
     # 按阶段链顺序排（库只按 stage 字母序，链序只有配置知道）；同阶段内新的在前
-    order = {}
-    for i, s in enumerate(list(cfg.get("stages") or [])
-                          + list(cfg.get("off_chain_stages") or [])):
-        order[s.get("key") or ""] = i
-    flights.sort(key=lambda f: f.get("updated_at") or "", reverse=True)
-    flights.sort(key=lambda f: order.get(f["stage"], 999))
+    order = _chain_order(cfg)
+    flights = _sort_flights(flights, order)
 
     max_flights = int(summary_cfg.get("max_flights") or 20)
+    # AI 面的判据留首句就够（全文在人面展开行里）。不截的话一条 800 字的日表备注
+    # 能把 20 行的预算吃光——实测 board.json 被裁到只剩 1 张票，那就是假"没事干"。
+    ai_why_chars = int(summary_cfg.get("ai_why_chars") or 160)
     keep = summary_cfg.get("flight_fields") or [
         "ticket", "title", "stage", "stage_label", "next_label", "owner",
-        "why", "updated_at", "milestone"]
+        "why", "updated_at", "milestone", "url", "labels", "owner_from",
+        "stale_days"]
     shown = []
     for f in flights[:max_flights]:
         row = {}
@@ -120,15 +207,20 @@ def build_summary(conn, cfg: dict) -> dict:
                 # 下一步等于阶段名时它没说新东西，别在界面上重复一遍
                 row[k] = "" if nxt == f.get("stage_label") else nxt
             else:
-                row[k] = f.get(k)
+                v = f.get(k)
+                if k == "why" and isinstance(v, str) and len(v) > ai_why_chars:
+                    v = v[:ai_why_chars].rstrip() + "…"
+                row[k] = v
         shown.append(row)
 
     # 卡点 / 里程碑：从 *全量* flights 算（shown 截断到 max_flights，会漏掉 hold 票）。
     blocked = [{"ticket": f.get("ticket"), "title": f.get("title"),
                 "owner": f.get("owner") or "", "why": f.get("why") or ""}
-               for f in flights if (f.get("stage") or "") == "hold"][:8]
+               for f in all_flights if (f.get("stage") or "") == "hold"][:8]
+    # 里程碑进度必须用全量分母：以前用被 flight_stages 过滤掉的列表（不含 closed），
+    # 进度条恒 0%——那是算错，不是真没进度。
     ms_groups: dict[str, list] = {}
-    for f in flights:
+    for f in all_flights:
         ms_groups.setdefault(f.get("milestone") or "（无里程碑）", []).append(f)
     milestones = [{"name": ms, "total": len(fs),
                    "done": sum(1 for f in fs if (f.get("stage") or "") == "closed")}
@@ -146,6 +238,11 @@ def build_summary(conn, cfg: dict) -> dict:
         "direction": direction_sentence(kpi, cfg),
         "kpi": kpi,
         "flights": shown,
+        # 人面专用：未收尾全量、不截断。字节预算是给 AI 上下文用的，不该管人的屏幕。
+        "all_open": [_face_row(f, cfg) for f in
+                     _sort_flights([f for f in all_flights if f.get("open")], order)],
+        "degraded": _degraded(sources),
+        "trend": read_trend(board_dir),
         "schedules": [
             {"lane": s["lane"], "ticket": s["ticket"], "summary": s["summary"],
              "note": s["note"]} for s in schedules
@@ -155,13 +252,24 @@ def build_summary(conn, cfg: dict) -> dict:
         "milestones": milestones,
         "handoffs": db.fetch_handoffs(conn, run) if run else [],
         "counts": {"flights_total": len(flights), "flights_included": len(shown),
-                   "flights_truncated": len(flights) > len(shown)},
+                   "flights_truncated": len(flights) > len(shown),
+                   "open_total": kpi["open"]},
     }
 
 
-def trim_to_bytes(payload: dict, max_bytes: int) -> tuple[dict, bool]:
-    """超限从尾部丢票，并标记截断（不静默超限）。"""
-    raw = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+def dumps(payload: dict, indent: int | None = None) -> bytes:
+    return json.dumps(payload, ensure_ascii=False,
+                      indent=indent).encode("utf-8")
+
+
+def trim_to_bytes(payload: dict, max_bytes: int,
+                  indent: int | None = None) -> tuple[dict, bool]:
+    """超限从尾部丢票，并标记截断（不静默超限）。
+
+    `indent` 必须与真正写盘时一致：以前按紧凑 JSON 量、按 indent=1 写，
+    量出来的字节比实际少约 20%，预算形同虚设（实测超预算 2.3 KB 还自认为合规）。
+    """
+    raw = dumps(payload, indent)
     if len(raw) <= max_bytes:
         return payload, False
     flights = payload.get("flights") or []
@@ -169,7 +277,7 @@ def trim_to_bytes(payload: dict, max_bytes: int) -> tuple[dict, bool]:
         flights.pop()
         payload["counts"]["flights_included"] = len(flights)
         payload["counts"]["flights_truncated"] = True
-        raw = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        raw = dumps(payload, indent)
     return payload, True
 
 
@@ -327,7 +435,7 @@ color:var(--ink);font-weight:600}
 .tag[data-s="hold"]{border-style:dashed;color:var(--muted)}
 .tag[data-s="closed"]{border-color:transparent;color:var(--soft)}
 .tag[data-s="ready"]{border-color:var(--muted);color:var(--muted)}
-.empty{padding:20px 0;color:var(--soft)}
+.empty{padding:20px 0;color:var(--soft}
 
 /* 源状态：全好时整页无色，坏了才亮赭点 */
 .foot{margin-top:32px;padding-top:12px;border-top:1px solid var(--rule);
@@ -446,6 +554,37 @@ def _src_items(sources: dict) -> str:
     return "".join(out)
 
 
+def _flag(degraded: list[dict]) -> str:
+    """降级旗：哪个源没读到、少读了什么，写在脸上而不是让人猜。"""
+    if not degraded:
+        return ""
+    parts = []
+    for d in degraded:
+        parts.append(f'<b>{_esc(d.get("id"))}</b>（{_esc(d.get("status"))}）'
+                     + (f' {_esc(d.get("detail"))}' if d.get("detail") else ""))
+    return ('<div class="flag" role="alert">票面或排班源未全绿 ⇒ 板上的数可能偏少：'
+            + "；".join(parts) + "。</div>")
+
+
+def _trend(payload: dict) -> str:
+    """近 N 轮 KPI 迷你折线（history.jsonl）。少于 2 轮就不画，不空喊趋势。"""
+    rows = [r for r in (payload.get("trend") or []) if isinstance(r, dict)]
+    if len(rows) < 2:
+        return ""
+    keys = (("open", "未收尾"), ("stale", "停滞"), ("to_ship", "待发货"))
+    out = []
+    for key, label in keys:
+        vals = [int(((r.get("kpi") or {}).get(key)) or 0) for r in rows]
+        hi = max(vals) or 1
+        pts = " ".join(f"{i * (86 / max(1, len(vals) - 1)):.1f},{22 - (v / hi) * 20:.1f}"
+                       for i, v in enumerate(vals))
+        out.append(f'<span class="trend"><svg width="86" height="24" viewBox="0 0 86 24" '
+                   f'aria-hidden="true"><polyline fill="none" stroke="currentColor" '
+                   f'stroke-width="1.2" points="{pts}"/></svg>'
+                   f'<b>{vals[-1]}</b>{_esc(label)}（{len(vals)} 轮）</span>')
+    return '<p class="metrics">' + "".join(out) + "</p>"
+
+
 def _blocked_section(blocked: list[dict], role_labels: dict) -> str:
     """置顶的「卡点 / 挡住」区：阶段=hold 的票，标出掌机与卡点原因（来自全量聚合）。"""
     if not blocked:
@@ -518,24 +657,40 @@ def render_html(payload: dict, cfg: dict) -> str:
     lb = _labels(cfg)
     role_labels = cfg.get("role_labels") or {}
 
-    # 航班行
+    # 航班行：人面优先用 all_open（未收尾全量、不截断），没有再退回 AI 面
+    face = payload.get("all_open") or payload["flights"]
     rows = []
-    for f in payload["flights"]:
+    for f in face:
         nxt = f.get("next_label") or ""
         why = f.get("why") or ""
         second = " · ".join(x for x in (nxt, why) if x)
         owner = f.get("owner") or ""
+        tk = _esc(f.get("ticket") or "-")
+        url = f.get("url") or ""
+        tk_cell = (f'<a class="lnk" href="{_esc(url)}" target="_blank" '
+                   f'rel="noreferrer">{tk}</a>') if url else tk
+        days = f.get("stale_days")
+        if days is None:
+            days = stage_mod.dwell_days(f.get("updated_at"))
+        age = ("—" if days is None else
+               ("今天" if days == 0 else ("昨天" if days == 1 else f"{days} 天前")))
+        badges = "".join(f'<span class="bdg">{_esc(x)}</span>'
+                         for x in (f.get("risk") and f"risk:{f['risk']}", f.get("prio")) if x)
         rows.append(
             "<tr>"
-            f'<td class="tk">{_esc(f.get("ticket") or "-")}</td>'
-            f'<td><div class="tt">{_esc(f.get("title"))}</div>'
+            f'<td class="tk">{tk_cell}</td>'
+            f'<td><div class="tt">{_esc(f.get("title"))}{badges}</div>'
             + (f'<div class="s2">{_esc(second)}</div>' if second else "")
             + "</td>"
             f'<td>{_tag(f)}</td>'
-            f'<td class="own{"" if owner else " is-none"}">{_esc(owner or "—")}</td>'
+            f'<td class="own{"" if owner else " is-none"}">{_esc(owner or "—")}'
+            + ('<span class="infer" title="推断：日表里没这张票的排班，按协议独占权推的">'
+               '推</span>' if f.get("owner_from") == "infer" else "")
+            + "</td>"
+            f'<td class="age{" is-stale" if (f.get("stage") == "stale") else ""}">{_esc(age)}</td>'
             "</tr>")
     if not rows:
-        rows.append(f'<tr><td colspan="4" class="empty">'
+        rows.append(f'<tr><td colspan="5" class="empty">'
                     f'没有航班（源里还没读到票）</td></tr>')
 
     # 排班行
@@ -597,10 +752,11 @@ def render_html(payload: dict, cfg: dict) -> str:
 </header>
 
 <section class="brief"><p>{_esc(payload['direction']) or '暂无方向句'}</p></section>
+{_flag(payload.get("degraded") or [])}
 
 {_rail(cfg, kpi, view)}
 {_metrics(payload, kpi, view)}
-<p class="metrics"><span><b>{closed_today}</b>今日收尾</span></p>
+{_trend(payload)}
 
 {top_band}
 
@@ -610,7 +766,7 @@ def render_html(payload: dict, cfg: dict) -> str:
     <span class="sec-n">{len(payload['flights'])}</span></div>
   <table><thead><tr>
     <th>{_esc(lb['ticket'])}</th><th>{_esc(lb['content'])}</th>
-    <th>{_esc(lb['stage'])}</th><th>{_esc(lb['owner'])}</th>
+    <th>{_esc(lb['stage'])}</th><th>{_esc(lb['owner'])}</th><th>距今</th>
   </tr></thead><tbody>
 {''.join(rows)}
   </tbody></table>
@@ -648,12 +804,32 @@ def _schedule_block(srows: list[str], lb: dict, role_labels: dict, n: int) -> st
 def write_outputs(board_dir: str, payload: dict, cfg: dict) -> dict:
     os.makedirs(board_dir, exist_ok=True)
     max_bytes = int((cfg.get("summary") or {}).get("max_bytes") or 25600)
-    payload, trimmed = trim_to_bytes(payload, max_bytes)
-    if trimmed:
-        payload["counts"]["flights_truncated"] = True
 
-    bj = json.dumps(payload, ensure_ascii=False, indent=1).encode("utf-8")
+    # 人面先出（拿全量 all_open）；AI 面再按字节预算裁剪。
+    # 以前是一起裁，结果人的屏幕被 AI 的上下文预算管着——正本只画 12 行、
+    # 页脚小字写"余量见 board.json"，而 board.json 里也只有那 12 行。
     html_text = render_html(payload, cfg).encode("utf-8")
+    ai_payload = {k: v for k, v in payload.items() if k not in HUMAN_ONLY_KEYS}
+    ai_payload["counts"] = dict(payload.get("counts") or {})
+    ai_payload["schedules"] = [dict(s) for s in (payload.get("schedules") or [])]
+    # 排班备注一条能到 2 千字，实测占 board.json 的 65% 预算，把航班挤到只剩两条。
+    # 全文留在人面展开行里，AI 面只留首句。
+    note_cap = int((cfg.get("summary") or {}).get("ai_note_chars") or 160)
+    label_cap = int((cfg.get("summary") or {}).get("ai_label_max") or 6)
+    for f in ai_payload.get("flights") or []:
+        lb = f.get("labels")
+        if isinstance(lb, list) and len(lb) > label_cap:
+            f["labels"] = lb[:label_cap] + [f"…共 {len(lb)} 枚"]
+    for s in ai_payload["schedules"]:
+        note = s.get("note") or ""
+        if len(note) > note_cap:
+            s["note"] = note[:note_cap].rstrip() + "…"
+    ai_payload, trimmed = trim_to_bytes(ai_payload, max_bytes, indent=1)
+    if trimmed:
+        ai_payload["counts"]["flights_truncated"] = True
+    payload["counts"] = ai_payload["counts"]
+
+    bj = dumps(ai_payload, 1)
 
     paths = {}
     for key, data in (("board.json", bj), ("index.html", html_text)):
