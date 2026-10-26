@@ -91,6 +91,11 @@ def build_summary(conn, cfg: dict) -> dict:
     includes = summary_cfg.get("flight_stages")
     flights = db.fetch_flights(conn, includes or None)
     schedules = db.fetch_schedules(conn, run) if run else []
+    # 排班只出「最新那一天」：日表目录里留着历史表，混着出会把几天前的班次
+    # 当成今天的（Kai-vass 实测：20 行里前 3 行都是 10-23 的副表）。
+    if schedules:
+        latest_day = max((s.get("table_date") or "") for s in schedules)
+        schedules = [s for s in schedules if (s.get("table_date") or "") == latest_day]
     kpi = compute_kpi(db.fetch_flights(conn))
     sources = db.fetch_sources(conn)
 
@@ -191,9 +196,13 @@ flex-wrap:wrap;margin-bottom:20px}
 h1{margin:6px 0 0;font-family:var(--serif);font-size:30px;font-weight:400;
 line-height:1.15;letter-spacing:-.01em}
 .sub{margin:4px 0 0;font-size:13px;color:var(--muted)}
-.stamp{display:flex;flex-direction:column;gap:4px;text-align:right}
+.stamp{display:flex;flex-direction:column;gap:4px;text-align:right;align-items:flex-end}
 .stamp b{font-family:var(--mono);font-size:12px;font-weight:400;color:var(--muted);
 font-variant-numeric:tabular-nums}
+.rf{appearance:none;background:none;border:1px solid var(--rule-solid);border-radius:2px;
+color:var(--muted);font-family:var(--mono);font-size:10px;letter-spacing:.12em;
+text-transform:uppercase;padding:3px 9px;cursor:pointer;line-height:1.5}
+.rf:hover{border-color:var(--ink);color:var(--ink)}
 
 /* 方向句：唯一的赭线，1 处焦点 */
 .brief{margin:0 0 20px;padding:2px 0 2px 16px;border-left:2px solid var(--accent)}
@@ -223,6 +232,39 @@ margin-left:20px;border-left:1px dashed var(--rule-solid)}
 color:var(--muted)}
 .metrics b{font-family:var(--mono);font-weight:500;color:var(--ink);
 font-variant-numeric:tabular-nums;margin-right:4px}
+
+/* 置顶排班 + 卡点区 */
+.tops{display:grid;grid-template-columns:1.3fr 1fr;gap:24px;margin-top:24px}
+@media(max-width:720px){.tops{grid-template-columns:1fr}}
+.blocked{background:var(--paper-2);border-radius:6px;padding:14px 16px}
+.blocked h3{margin:0 0 8px;font-size:12px;font-weight:600;letter-spacing:.01em}
+.blocked ul{margin:0;padding:0;list-style:none}
+.blocked li{padding:7px 0;border-bottom:1px solid var(--rule)}
+.blocked li:last-child{border-bottom:0}
+.blocked .tk{display:inline-block;margin-right:8px}
+.blocked .n{color:var(--soft);font-size:12px}
+
+/* 里程碑进度 */
+.ms{margin-top:28px}
+.ms-row{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--rule)}
+.ms-row:last-child{border-bottom:0}
+.ms-name{flex:1 1 auto;font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ms-bar{flex:0 0 140px;height:6px;background:var(--paper-2);border-radius:3px;overflow:hidden}
+.ms-bar i{display:block;height:100%;background:var(--ink);border-radius:3px}
+.ms-n{flex:0 0 auto;font-family:var(--mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* 源健康：页脚强化 */
+.foot{margin-top:32px;padding-top:14px;border-top:1px solid var(--rule-solid);
+display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center}
+.src{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.src .d{width:7px;height:7px;border-radius:50%;background:var(--soft)}
+.src.is-warn .d{background:#c98a1a}
+.src.is-bad .d{background:var(--accent)}
+.src .sid{font-family:var(--mono);color:var(--ink)}
+.src .sst{text-transform:uppercase;letter-spacing:.04em;font-size:10px}
+.src em{color:var(--soft);font-style:normal}
+.fresh{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--soft)}
+.fresh b{color:var(--muted);font-weight:500}
 
 /* 区块 */
 .sec{margin-top:28px}
@@ -379,6 +421,52 @@ def _src_items(sources: dict) -> str:
     return "".join(out)
 
 
+def _blocked_section(flights: list[dict], role_labels: dict) -> str:
+    """置顶的「卡点 / 挡住」区：阶段=hold 的票，标出掌机与卡点原因。"""
+    blocked = [f for f in flights if (f.get("stage") or "") == "hold"]
+    if not blocked:
+        return '<section class="blocked"><h3>卡点 / 挡住</h3>' \
+               '<p class="note">当前没有挡住的票。</p></section>'
+    items = []
+    for f in blocked[:8]:
+        who = f.get("owner") or ""
+        lane = role_labels.get(who, who)
+        items.append(
+            "<li>"
+            f'<span class="tk">{_esc(f.get("ticket") or "-")}</span>'
+            f'{_esc(f.get("title") or "")}'
+            f'<div class="n">{_esc(lane or "—")}'
+            + (f' · {_esc(f.get("why") or "")}' if f.get("why") else "") + "</div>"
+            "</li>")
+    more = f'<p class="note">仅列前 8 张；余下见 board.json。</p>' if len(blocked) > 8 else ""
+    return ('<section class="blocked"><h3>卡点 / 挡住 · '
+            f'{len(blocked)}</h3><ul>{"".join(items)}</ul>{more}</section>')
+
+
+def _milestone_section(flights: list[dict]) -> str:
+    """里程碑进度：按里程碑分组，算 已关/总，画一条进度条。"""
+    groups: dict[str, list[dict]] = {}
+    for f in flights:
+        ms = f.get("milestone") or "（无里程碑）"
+        groups.setdefault(ms, []).append(f)
+    if len(groups) <= 1:
+        return ""
+    rows = []
+    for ms, fs in sorted(groups.items(), key=lambda kv: -len(kv[1])):
+        total = len(fs)
+        done = sum(1 for f in fs if (f.get("stage") or "") == "closed")
+        pct = int(round(100 * done / total)) if total else 0
+        rows.append(
+            '<div class="ms-row">'
+            f'<div class="ms-name">{_esc(ms)}</div>'
+            f'<div class="ms-bar"><i style="width:{pct}%"></i></div>'
+            f'<div class="ms-n">{done}/{total}</div>'
+            "</div>")
+    return ('<section class="sec ms"><div class="sec-hd"><h2>里程碑进度</h2>'
+            f'<span class="sec-n">{len(groups)} 条线</span></div>'
+            f'{"".join(rows)}</section>')
+
+
 def render_html(payload: dict, cfg: dict) -> str:
     kpi = payload["kpi"]
     view = cfg.get("view") or {}
@@ -431,6 +519,12 @@ def render_html(payload: dict, cfg: dict) -> str:
     font = FONT_LINK if view.get("font_source") == "web" else ""
     eyebrow = view.get("eyebrow") or ""
     head_eyebrow = f"{eyebrow} · RUN {run}" if eyebrow else f"RUN {run}"
+    closed_today = kpi.get("closed_today", 0)
+    top_band = (
+        f'<section class="tops">'
+        f'<div class="blocked-wrap">{_schedule_block(srows, lb, role_labels, len(payload["schedules"]))}</div>'
+        f'{_blocked_section(payload["flights"], role_labels)}'
+        f'</section>')
 
     return f"""<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8">
@@ -448,6 +542,8 @@ def render_html(payload: dict, cfg: dict) -> str:
   <div class="stamp">
     <span class="eyebrow">GENERATED</span>
     <b>{_esc(gen)}</b>
+    <button class="rf" type="button" onclick="location.reload()"
+      title="重读磁盘上最新的 index.html（数据由定时任务／提交钩子重生成；要立刻重建请双击 refresh.vbs）">刷新</button>
   </div>
 </header>
 
@@ -455,6 +551,9 @@ def render_html(payload: dict, cfg: dict) -> str:
 
 {_rail(cfg, kpi, view)}
 {_metrics(payload, kpi, view)}
+<p class="metrics"><span><b>{closed_today}</b>今日收尾</span></p>
+
+{top_band}
 
 <section class="sec">
   <div class="sec-hd"><h2>{_esc(lb['flights'])}</h2>
@@ -469,24 +568,29 @@ def render_html(payload: dict, cfg: dict) -> str:
   {trunc}
 </section>
 
-<section class="sec">
-  <div class="sec-hd"><h2>{_esc(lb['schedule'])}</h2>
-    <span class="eyebrow">{_esc(lb['roster'])}</span>
-    <span class="sec-n">{len(payload['schedules'])}</span></div>
-  <table><thead><tr>
-    <th>{_esc(lb['lane'])}</th><th>{_esc(lb['ticket'])}</th>
-    <th>{_esc(lb['summary'])}</th><th>{_esc(lb['note'])}</th>
-  </tr></thead><tbody>
-{''.join(srows)}
-  </tbody></table>
-</section>
+{_milestone_section(payload["flights"])}
 
 <footer class="foot">
   <span class="eyebrow">SOURCE</span>
   {srcs}
+  <span class="fresh">快照 <b>{_esc(gen)}</b></span>
 </footer>
 
 </div></body></html>"""
+
+
+def _schedule_block(srows: list[str], lb: dict, role_labels: dict, n: int) -> str:
+    if not srows:
+        srows = ['<tr><td colspan="4" class="empty">今天没有排班</td></tr>']
+    return ('<section class="sec"><div class="sec-hd"><h2>{sch}</h2>'
+            '<span class="eyebrow">{ros}</span><span class="sec-n">{n}</span></div>'
+            '<table><thead><tr>'
+            '<th>{ln}</th><th>{tk}</th><th>{sm}</th><th>{nt}</th>'
+            '</tr></thead><tbody>{body}</tbody></table></section>').format(
+        sch=_esc(lb["schedule"]), ros=_esc(lb["roster"]), n=n,
+        ln=_esc(lb["lane"]), tk=_esc(lb["ticket"]),
+        sm=_esc(lb["summary"]), nt=_esc(lb["note"]),
+        body="".join(srows))
 
 
 # ── 落盘 ───────────────────────────────────────────────────────────
