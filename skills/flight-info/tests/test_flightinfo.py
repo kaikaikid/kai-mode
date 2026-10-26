@@ -532,7 +532,8 @@ class TestFacesNotSharedBudget(unittest.TestCase):
             self.assertNotIn("all_open", bj)
             with open(os.path.join(d, "index.html"), encoding="utf-8") as f:
                 html = f.read()
-            self.assertGreater(html.count('class="age'), 1)   # 人面带「距今」列
+            self.assertIn(">距今</th>", html)                 # 人面带「距今」列
+            self.assertGreater(html.count('class="upd'), 1)
 
     def test_budget_measured_the_same_way_it_is_written(self):
         """紧凑量、美化写＝预算形同虚设。这条锁死 indent 一致性。"""

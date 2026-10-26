@@ -245,7 +245,7 @@ def build_summary(conn, cfg: dict, board_dir: str | None = None) -> dict:
         "trend": read_trend(board_dir),
         "schedules": [
             {"lane": s["lane"], "ticket": s["ticket"], "summary": s["summary"],
-             "note": s["note"]} for s in schedules
+             "note": s["note"], "table_date": s.get("table_date") or ""} for s in schedules
         ][: int(summary_cfg.get("max_schedule_rows") or 20)],
         "sources": sources,
         "blocked": blocked,
@@ -289,181 +289,280 @@ def trim_to_bytes(payload: dict, max_bytes: int,
 # 要换成 web 字体：板配置 view.font_source = "web"。
 
 CSS = """
+/* ── Token：档名与值取 soft-design-system/tokens/tokens.css 正本（含暗档覆盖）。
+      使用面禁硬编码色值（D-03）：需要透明度就用 color-mix() 从 token 派生。 ── */
 :root{
---paper:#f5f5f5;--card:#ffffff;--paper-2:#ececec;
---ink:#2d3142;--muted:#4f5d75;--soft:#5a6580;
---rule:rgba(45,49,66,.12);--rule-solid:#bfc0c0;
---accent:#bf4520;--accent-tint:rgba(191,69,32,.08);
---serif:'Instrument Serif','Noto Serif SC','Source Han Serif SC','Songti SC','SimSun',serif;
---sans:'Geist',system-ui,-apple-system,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
---mono:'Geist Mono',ui-monospace,SFMono-Regular,Consolas,'Cascadia Mono',monospace;
-}
-@media (prefers-color-scheme:dark){:root{
---paper:#2d3142;--card:#393e53;--paper-2:#393e53;
---ink:#f5f5f5;--muted:#bfc0c0;--soft:#949eb2;
---rule:rgba(245,245,245,.12);--rule-solid:rgba(191,192,192,.25);
---accent:#f08a59;--accent-tint:rgba(240,138,89,.10);
-}}
+--soft-accent:#F4D06F;--soft-accent-warm:#C8D96F;--soft-white:#FFFFFF;--soft-surface:#F2F2F7;
+--soft-bg:#FFFFFF;--soft-canvas:#F8F8F8;--soft-sunken:#E4E4EA;--soft-nav-ancestor-bg:#ECECF0;
+--soft-text-primary:#1C1C1E;--soft-text-secondary:#6E6E74;--soft-text-tertiary:#C7C7CC;
+--soft-status-error:#F25C54;--soft-status-info:#4E8F8F;--soft-black:#1C1C1E;
+--soft-radius-card:12px;--soft-radius-item:16px;--soft-radius-member:24px;--soft-radius-button:20px;
+--soft-radius-pill:999px;--soft-radius-tag:12px;--soft-radius-input:16px;
+--soft-space-xs:4px;--soft-space-sm:8px;--soft-space-md:12px;--soft-space-lg:16px;
+--soft-space-xl:20px;--soft-space-2xl:24px;--soft-space-3xl:32px;
+--soft-shadow-l1:0 1px 2px rgba(15,23,42,.05);
+--soft-shadow-l2:0 2px 4px rgba(15,23,42,.02),0 4px 12px rgba(15,23,42,.04);
+--soft-shadow-l3:0 4px 6px rgba(15,23,42,.03),0 12px 24px rgba(15,23,42,.06);
+--soft-font-size-ui:14px;--soft-border-elevation:1px solid rgba(15,23,42,.06);
+--soft-sidebar-width:216px;--soft-shell-outer-inset:8px;--soft-shell-pane-gap:8px;
+--soft-shell-pane-padding:16px;--soft-content-max-width:1120px;--soft-nav-gap:6px;
+--soft-divider-color:#DCDCDC;--soft-status-bar-height:28px;
+--soft-inset:color-mix(in srgb,var(--soft-surface) 45%,transparent);
+--soft-duration-fast:100ms;--soft-duration-slow:200ms}
+html[data-theme="dark"]{
+--soft-accent:#A594C8;--soft-bg:#0A0A0F;--soft-white:#2C2C2E;--soft-surface:#3A3A3F;
+--soft-canvas:#232326;--soft-sunken:#45454B;--soft-nav-ancestor-bg:#45454B;
+--soft-text-primary:#FFFFFF;--soft-text-secondary:#A1A1A6;--soft-text-tertiary:#48484A;
+--soft-status-error:#f09e98;--soft-status-info:#7FB8B8;--soft-black:#2C2C2E;
+--soft-border-elevation:1px solid rgba(255,255,255,.08);--soft-divider-color:#454545;
+--soft-shadow-l1:0 1px 2px rgba(0,0,0,.3);--soft-shadow-l2:0 2px 8px rgba(0,0,0,.35);
+--soft-shadow-l3:0 12px 24px rgba(0,0,0,.4)}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
-body{margin:0;padding:32px 24px 40px;background:var(--paper);color:var(--ink);
-font-family:var(--sans);font-size:13px;line-height:1.62;-webkit-font-smoothing:antialiased}
-.wrap{max-width:1120px;margin:0 auto}
-.eyebrow{font-family:var(--mono);font-size:9px;font-weight:500;letter-spacing:.18em;
-text-transform:uppercase;color:var(--soft)}
-
-/* 页头 */
-.hd{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;
-flex-wrap:wrap;margin-bottom:20px}
-h1{margin:6px 0 0;font-family:var(--serif);font-size:30px;font-weight:400;
-line-height:1.15;letter-spacing:-.01em}
-.sub{margin:4px 0 0;font-size:13px;color:var(--muted)}
-.stamp{display:flex;flex-direction:column;gap:4px;text-align:right;align-items:flex-end}
-.stamp b{font-family:var(--mono);font-size:12px;font-weight:400;color:var(--muted);
-font-variant-numeric:tabular-nums}
-.rf{appearance:none;background:none;border:1px solid var(--rule-solid);border-radius:2px;
-color:var(--muted);font-family:var(--mono);font-size:10px;letter-spacing:.12em;
-text-transform:uppercase;padding:3px 9px;cursor:pointer;line-height:1.5}
-.rf:hover{border-color:var(--ink);color:var(--ink)}
-
-/* 方向句：唯一的赭线，1 处焦点 */
-.brief{margin:0 0 20px;padding:2px 0 2px 16px;border-left:2px solid var(--accent)}
-.brief p{margin:0;font-family:var(--serif);font-size:17px;line-height:1.5}
-
-/* 阶段轨：一条带子，不是五张卡 */
-.rail{display:flex;align-items:stretch;border-top:1px solid var(--rule);
-border-bottom:1px solid var(--rule);margin:0 0 12px}
-.chain{display:flex;flex:1 1 auto;min-width:0;list-style:none;margin:0;padding:0}
-.seg{position:relative;flex:1 1 0;min-width:0;padding:14px 16px;display:flex;
-flex-direction:column;gap:2px;border-right:1px solid var(--rule)}
-.seg:first-child{padding-left:0}
-.seg:last-child{border-right:0}
-.seg-lab{font-size:12px;font-weight:500;color:var(--muted);letter-spacing:.02em;
-white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.seg-n{font-size:24px;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums}
-.seg.is-done .seg-n,.seg.is-zero .seg-n{color:var(--soft);font-weight:400}
-.seg.is-focal .seg-lab{color:var(--ink)}
-.seg.is-focal .seg-n{color:var(--accent)}
-.offaxis{display:flex;align-items:center;gap:20px;padding:14px 0 14px 20px;
-margin-left:20px;border-left:1px dashed var(--rule-solid)}
-.off{display:flex;flex-direction:column;gap:2px}
-.off-n{font-size:17px;font-weight:500;line-height:1.2;font-variant-numeric:tabular-nums}
-
-/* 次级读数 */
-.metrics{margin:0 0 8px;display:flex;flex-wrap:wrap;gap:4px 20px;font-size:12px;
-color:var(--muted)}
-.metrics b{font-family:var(--mono);font-weight:500;color:var(--ink);
-font-variant-numeric:tabular-nums;margin-right:4px}
-
-/* 置顶排班 + 卡点区 */
-.tops{display:grid;grid-template-columns:1.3fr 1fr;gap:24px;margin-top:24px}
-@media(max-width:720px){.tops{grid-template-columns:1fr}}
-.blocked{background:var(--paper-2);border-radius:6px;padding:14px 16px}
-.blocked h3{margin:0 0 8px;font-size:12px;font-weight:600;letter-spacing:.01em}
-.blocked ul{margin:0;padding:0;list-style:none}
-.blocked li{padding:7px 0;border-bottom:1px solid var(--rule)}
-.blocked li:last-child{border-bottom:0}
-.blocked .tk{display:inline-block;margin-right:8px}
-.blocked .n{color:var(--soft);font-size:12px}
-
-/* 里程碑进度 */
-.ms{margin-top:28px}
-.ms-row{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--rule)}
-.ms-row:last-child{border-bottom:0}
-.ms-name{flex:1 1 auto;font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ms-bar{flex:0 0 140px;height:6px;background:var(--paper-2);border-radius:3px;overflow:hidden}
-.ms-bar i{display:block;height:100%;background:var(--ink);border-radius:3px}
-.ms-n{flex:0 0 auto;font-family:var(--mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
-
-/* 源健康：页脚强化 */
-.foot{margin-top:32px;padding-top:14px;border-top:1px solid var(--rule-solid);
-display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center}
-.src{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
-.src .d{width:7px;height:7px;border-radius:50%;background:var(--soft)}
-.src.is-warn .d{background:#c98a1a}
-.src.is-bad .d{background:var(--accent)}
-.src .sid{font-family:var(--mono);color:var(--ink)}
-.src .sst{text-transform:uppercase;letter-spacing:.04em;font-size:10px}
-.src em{color:var(--soft);font-style:normal}
-.fresh{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--soft)}
-.fresh b{color:var(--muted);font-weight:500}
-
-/* 交接日报索引 */
-.ho{margin-top:28px}
-.ho ul{margin:0;padding:0;list-style:none}
-.ho li{display:flex;align-items:baseline;gap:12px;padding:8px 0;border-bottom:1px solid var(--rule)}
-.ho li:last-child{border-bottom:0}
-.ho .dt{flex:0 0 76px;font-family:var(--mono);font-size:11px;color:var(--soft);
-font-variant-numeric:tabular-nums}
-.ho .sl{flex:0 0 88px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
-.ho .ti{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
-.ho .ti i{font-style:normal;color:var(--soft)}
-
-/* 区块 */
-.sec{margin-top:28px}
-.sec-hd{display:flex;align-items:baseline;gap:10px;padding-bottom:8px;
-border-bottom:1px solid var(--rule-solid)}
-h2{margin:0;font-size:13px;font-weight:600;letter-spacing:.01em}
-.sec-n{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--soft);
-font-variant-numeric:tabular-nums}
-.note{margin:8px 0 0;font-size:12px;color:var(--soft)}
-
-/* 表 */
+body{margin:0;background:var(--soft-bg);color:var(--soft-text-primary);
+font:var(--soft-font-size-ui)/1.5 -apple-system,'PingFang SC','Microsoft YaHei',system-ui,sans-serif;
+-webkit-font-smoothing:antialiased}
+a{color:inherit}
+/* 壳：外留白 8 · 栏间 8 · 侧栏与主区 R4 24（壳成员档）· 成员之间零分割线（D-S06） */
+.shell{display:flex;gap:var(--soft-shell-pane-gap);padding:var(--soft-shell-outer-inset);
+align-items:flex-start;min-height:100vh}
+.side{flex:0 0 var(--soft-sidebar-width);width:var(--soft-sidebar-width);background:var(--soft-white);
+border-radius:var(--soft-radius-member);padding:var(--soft-shell-pane-padding);
+display:flex;flex-direction:column;gap:var(--soft-space-lg);position:sticky;
+top:var(--soft-shell-outer-inset);max-height:calc(100vh - 16px)}
+.main{flex:1 1 auto;min-width:0;background:var(--soft-canvas);
+border-radius:var(--soft-radius-member);padding:var(--soft-space-lg) var(--soft-space-xl) 56px}
+.inner{max-width:var(--soft-content-max-width);margin:0 auto}
+/* 侧栏＝纯导航：品牌行 → 段导航 → 阶段筛选 → 栏底次级。读数一律不放这里 */
+.brand{display:flex;align-items:center;gap:var(--soft-space-md)}
+.brand .mark{width:28px;height:28px;border-radius:var(--soft-radius-card);background:var(--soft-accent);
+color:var(--soft-black);display:grid;place-items:center;font-weight:700;font-size:12px;flex:0 0 auto}
+.brand b{font-size:15px;font-weight:600}
+.grp-t{font-size:11px;font-weight:600;color:var(--soft-text-secondary);letter-spacing:.04em;
+padding:0 0 var(--soft-space-xs) var(--soft-space-xs)}
+.nav{display:flex;flex-direction:column;gap:var(--soft-nav-gap)}
+.nav a{display:flex;align-items:center;gap:var(--soft-space-sm);height:28px;
+padding:0 var(--soft-space-md);border-radius:var(--soft-radius-item);color:var(--soft-text-secondary);
+text-decoration:none;font-size:var(--soft-font-size-ui);font-weight:500;
+transition:background var(--soft-duration-fast)}
+.nav a .c{margin-left:auto;font-size:11px;font-weight:600;color:var(--soft-text-secondary);
+background:var(--soft-inset);border-radius:var(--soft-radius-pill);padding:1px 7px;
+min-width:22px;text-align:center;font-variant-numeric:tabular-nums}
+.nav a:hover{background:var(--soft-inset)}
+.nav a[aria-current=page]{background:var(--soft-inset);color:var(--soft-text-primary);font-weight:600}
+.nav a[aria-current=page] .c{background:var(--soft-accent);color:var(--soft-black)}
+.side .foot{margin-top:auto}
+.side .foot summary{font-size:12px;color:var(--soft-text-secondary);cursor:pointer;
+padding:var(--soft-space-sm) var(--soft-space-xs);list-style:none}
+.side .foot summary::-webkit-details-marker{display:none}
+.side .foot p{margin:0;font-size:12px;line-height:1.7;color:var(--soft-text-secondary)}
+/* 主区第一排＝页面级标题（D-S12），工具排在其下 */
+.page-head{display:flex;align-items:baseline;gap:var(--soft-space-md);flex-wrap:wrap;
+margin:0 0 var(--soft-space-lg)}
+.page-head h1{margin:0;font-size:24px;font-weight:700;line-height:1.25;letter-spacing:-.02em}
+.page-head .read{font-size:12px;color:var(--soft-text-secondary)}
+.page-head .read b{color:var(--soft-text-primary);font-weight:600;font-variant-numeric:tabular-nums}
+.page-head .read.is-warn b{color:var(--soft-text-primary);
+box-shadow:inset 0 -2px 0 color-mix(in srgb,var(--soft-status-error) 75%,transparent)}
+/* 小字不许直接染红：正本只一枚 danger，对白底天然 3.1:1，够大字与图形、不够 12px 正文。
+   告警交给红下划条＋深字，AA 与可见性都要。大数字（.num 28px/700）走 WCAG 大字档 3:1，照旧染红。 */
+.tools{display:flex;align-items:center;gap:var(--soft-space-sm);flex-wrap:wrap;
+margin:0 0 var(--soft-space-xl)}
+.tools .sp{flex:1 1 auto}
+.tbtn{height:28px;min-width:28px;padding:0 var(--soft-space-md);border:none;background:transparent;
+border-radius:var(--soft-radius-pill);color:var(--soft-text-secondary);
+font:500 var(--soft-font-size-ui)/1 inherit;cursor:pointer;display:inline-flex;
+align-items:center;gap:6px;transition:background var(--soft-duration-fast)}
+.tbtn:hover{background:var(--soft-inset);color:var(--soft-text-primary)}
+.tbtn:focus-visible{outline:none;
+box-shadow:0 0 0 3px color-mix(in srgb,var(--soft-accent) 18%,transparent)}
+.tbtn.is-primary{background:var(--soft-accent);color:var(--soft-black);font-weight:600}
+.tbtn .k{font-size:11px;color:var(--soft-text-secondary);border:1px solid var(--soft-divider-color);
+border-radius:var(--soft-radius-tag);padding:0 4px}
+/* Bento 读数带：1×1 与 2×1（B-01 合法比例），内容卡 ≤R3 20（D-S02 封顶） */
+.bento{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--soft-space-md);
+margin:0 0 var(--soft-space-2xl)}
+.b2{grid-column:span 2}
+.card{background:var(--soft-white);border-radius:var(--soft-radius-button);
+box-shadow:var(--soft-shadow-l1);padding:var(--soft-space-lg);min-width:0}
+.card .lab{margin:0 0 var(--soft-space-xs);font-size:13px;color:var(--soft-text-secondary);
+display:flex;align-items:center;gap:6px}
+.card .lab i{width:6px;height:6px;border-radius:50%;background:var(--soft-text-tertiary);flex:0 0 auto}
+.card .num{font-size:28px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums;
+letter-spacing:-.02em}
+.card .sub{font-size:12px;color:var(--soft-text-secondary);margin-top:2px}
+.card.is-warn .lab i{background:var(--soft-status-error)}
+.card.is-warn .num{color:var(--soft-status-error)}
+.card.is-hot .lab i{background:var(--soft-accent)}
+.card[role=button]{cursor:pointer;transition:box-shadow var(--soft-duration-fast)}
+.card[role=button]:hover{box-shadow:var(--soft-shadow-l2)}
+.card[role=button]:focus-visible{outline:none;
+box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--soft-accent) 40%,transparent)}
+.card.on{box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--soft-accent) 55%,transparent),
+var(--soft-shadow-l1)}
+.card.dir{display:flex;flex-direction:column;justify-content:center;gap:var(--soft-space-xs)}
+.card.dir p{margin:0;font-size:15px;line-height:1.5}
+.card.dir p em{font-style:normal;color:var(--soft-text-secondary)}
+/* 降级旗：源非 ok 就点名，全绿不占位 */
+.flag{margin:0 0 var(--soft-space-md);padding:var(--soft-space-md) var(--soft-space-lg);
+border:1px solid var(--soft-status-error);border-left-width:3px;
+border-radius:var(--soft-radius-item);
+background:color-mix(in srgb,var(--soft-status-error) 8%,transparent);font-size:13px}
+.flag b{color:var(--soft-status-error)}
+/* 内容段＝一张卡，段间靠留白（一卡一任务） */
+.sect{background:var(--soft-white);border-radius:var(--soft-radius-button);
+box-shadow:var(--soft-shadow-l1);margin:0 0 var(--soft-space-md)}
+.sect>summary{display:flex;align-items:center;gap:var(--soft-space-sm);cursor:pointer;
+list-style:none;padding:var(--soft-space-lg) var(--soft-space-xl)}
+.sect>summary::-webkit-details-marker{display:none}
+.sect>summary h2{margin:0;font-size:15px;font-weight:600}
+.sect>summary .hint{font-size:12px;color:var(--soft-text-secondary)}
+.sect>summary .arw{margin-left:auto;font-size:12px;color:var(--soft-text-secondary)}
+.sect-body{padding:0 var(--soft-space-xl) var(--soft-space-lg)}
+/* 排班（置顶段） */
+.shifts{display:grid;grid-template-columns:1fr 1fr;gap:var(--soft-space-md)}
+.shift{background:var(--soft-inset);border-radius:var(--soft-radius-card);
+padding:var(--soft-space-md) var(--soft-space-lg)}
+.shift .hd{display:flex;align-items:baseline;gap:var(--soft-space-sm);
+margin-bottom:var(--soft-space-sm)}
+.shift .hd b{font-size:13px;font-weight:600}
+.shift .hd span{margin-left:auto;font-size:12px;color:var(--soft-text-secondary)}
+.shift ol{margin:0;padding:0;list-style:none}
+.shift li{padding:var(--soft-space-sm) 0}
+.shift li+li{box-shadow:inset 0 1px 0 var(--soft-divider-color)}
+.shift li a{font-size:12px;font-weight:600;text-decoration:none;
+color:var(--soft-text-secondary);margin-right:6px}
+.shift li a:hover{color:var(--soft-text-primary)}
+.shift li em{display:block;font-style:normal;font-size:12px;color:var(--soft-text-secondary);
+line-height:1.5;margin-top:2px}
+/* 航班表：4 列（票号／标题·徽章·判据／阶段＋掌机／距今），细节进展开行 */
 table{width:100%;border-collapse:collapse}
-th{text-align:left;padding:8px 16px 8px 0;font-size:11px;font-weight:500;
-color:var(--soft);border-bottom:1px solid var(--rule);white-space:nowrap}
-td{padding:11px 16px 11px 0;border-bottom:1px solid var(--rule);vertical-align:top}
-tr:last-child td{border-bottom:0}
-th:last-child,td:last-child{padding-right:0}
-tbody tr:hover td{background:var(--paper-2)}
-.tk{font-family:var(--mono);font-size:12px;color:var(--muted);white-space:nowrap;
+th{text-align:left;font-size:12px;font-weight:600;color:var(--soft-text-secondary);
+padding:var(--soft-space-sm) var(--soft-space-md) var(--soft-space-sm) 0;
+cursor:pointer;white-space:nowrap;letter-spacing:.02em}
+th:first-child{padding-left:var(--soft-space-sm)}
+th.fixed{cursor:default}
+td{padding:var(--soft-space-md) var(--soft-space-md) var(--soft-space-md) 0;vertical-align:top}
+td:first-child{padding-left:var(--soft-space-sm)}
+tr.flight>td{box-shadow:inset 0 -1px 0 var(--soft-divider-color)}
+tr.flight{cursor:pointer}
+tr.flight:hover>td{background:var(--soft-inset)}
+tr.flight:focus-visible>td{background:var(--soft-inset)}
+.no{font-size:12px;font-weight:600;text-decoration:none;color:var(--soft-text-secondary);
+white-space:nowrap}
+.no:hover{color:var(--soft-text-primary);text-decoration:underline}
+.msl{font-size:12px;color:var(--soft-text-secondary);margin-top:2px}
+.ttl{font-size:13px;font-weight:500;line-height:1.4}
+.ttl .why{display:block;font-size:12px;font-weight:400;color:var(--soft-text-secondary);
+line-height:1.5;margin-top:2px}
+.tag{display:inline-block;font-size:11px;font-weight:600;padding:1px 6px;margin-left:6px;
+border-radius:var(--soft-radius-tag);color:var(--soft-text-secondary);
+background:var(--soft-inset);vertical-align:1px;white-space:nowrap}
+.tag.hi{color:var(--soft-text-primary);font-weight:700;
+background:color-mix(in srgb,var(--soft-status-error) 16%,transparent);
+box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--soft-status-error) 55%,transparent)}
+.chain{display:flex;gap:3px;margin-bottom:5px}
+.chain i{width:14px;height:4px;border-radius:var(--soft-radius-pill);background:var(--soft-sunken)}
+.chain i.on{background:var(--soft-accent)}
+.chain i.e{background:var(--soft-status-error)}
+.chain i.d{background:var(--soft-text-tertiary)}
+.stg{font-size:12px;color:var(--soft-text-secondary);white-space:nowrap}
+.own{display:inline-block;font-size:11px;font-weight:600;border-radius:var(--soft-radius-pill);
+padding:2px 8px;color:var(--soft-text-secondary);background:var(--soft-inset);margin-top:4px;
+white-space:nowrap}
+.own.dash{background:transparent;color:var(--soft-text-secondary)}
+.infer{margin-left:4px;font-size:10px;font-weight:700;color:var(--soft-status-info)}
+.upd{font-size:12px;color:var(--soft-text-secondary);font-variant-numeric:tabular-nums;
+white-space:nowrap}
+.upd.s{color:var(--soft-text-primary);font-weight:600}
+/* 停滞的告警交给红点，不交给 12px 红字：正本只一枚 danger，对白底 3.26:1，
+   够图形与大字、不够小字（WCAG 小字要 4.5）。 */
+.upd.s::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;
+background:var(--soft-status-error);margin-right:5px;vertical-align:1px}
+tr.grp>td{background:var(--soft-inset);padding:var(--soft-space-sm) var(--soft-space-md);
+font-size:12px;color:var(--soft-text-secondary);box-shadow:none}
+tr.grp b{color:var(--soft-text-primary);font-weight:600;font-size:12px;margin-right:6px}
+tr.grp .gbar{display:inline-block;width:72px;height:4px;background:var(--soft-white);
+border-radius:var(--soft-radius-pill);overflow:hidden;vertical-align:middle;margin-right:8px}
+tr.grp .gbar i{display:block;height:100%;background:var(--soft-accent)}
+tr.det{display:none}
+tr.det.open{display:table-row}
+tr.det>td{background:var(--soft-inset);padding:var(--soft-space-md) var(--soft-space-lg);
+box-shadow:inset 0 -1px 0 var(--soft-divider-color)}
+.kv{display:grid;grid-template-columns:76px 1fr;gap:var(--soft-space-xs) var(--soft-space-md);
+font-size:13px;line-height:1.6}
+.kv .k{font-size:12px;color:var(--soft-text-secondary)}
+.kv .v{color:var(--soft-text-secondary);word-break:break-word}
+.empty{padding:var(--soft-space-3xl);text-align:center;color:var(--soft-text-secondary);
+font-size:13px}
+/* 里程碑：横向条（B-03 禁竖长条） */
+.miles{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--soft-space-md)}
+.mile{background:var(--soft-inset);border-radius:var(--soft-radius-card);
+padding:var(--soft-space-md) var(--soft-space-lg)}
+.mile .r{display:flex;align-items:baseline;gap:var(--soft-space-sm);font-size:12px}
+.mile .r b{font-size:13px;font-weight:600}
+.mile .r span{margin-left:auto;font-variant-numeric:tabular-nums;color:var(--soft-text-secondary)}
+.mile .bar{height:4px;background:var(--soft-white);border-radius:var(--soft-radius-pill);
+margin-top:var(--soft-space-sm);overflow:hidden}
+.mile .bar i{display:block;height:100%;background:var(--soft-accent)}
+.hands{display:flex;flex-direction:column}
+.hands a{display:flex;gap:var(--soft-space-md);padding:var(--soft-space-sm) 0;
+text-decoration:none;font-size:12px;color:var(--soft-text-secondary)}
+.hands a+a{box-shadow:inset 0 1px 0 var(--soft-divider-color)}
+.hands a:hover{color:var(--soft-text-primary)}
+.hands .dt{flex:0 0 84px;font-size:12px;color:var(--soft-text-secondary);
 font-variant-numeric:tabular-nums}
-.tt{font-weight:500}
-.s2{margin-top:2px;font-size:12px;color:var(--soft)}
-.own{white-space:nowrap}
-.own.is-none{color:var(--soft)}
-
-/* 阶段签：方角，不是药丸；按墨色浓淡分级，别拿赭色当信号灯 */
-.tag{display:inline-block;padding:1px 6px;border:1px solid var(--rule-solid);
-border-radius:2px;font-size:11px;line-height:1.55;white-space:nowrap;color:var(--muted)}
-.tag[data-s="flying"]{border-color:var(--ink);background:var(--card);color:var(--ink);
-font-weight:500}
-.tag[data-s="review"]{background:var(--paper-2);border-color:var(--rule-solid);
-color:var(--ink)}
-.tag[data-s="to_ship"]{border-color:var(--ink);background:var(--accent-tint);
-color:var(--ink);font-weight:600}
-.tag[data-s="hold"]{border-style:dashed;color:var(--muted)}
-.tag[data-s="closed"]{border-color:transparent;color:var(--soft)}
-.tag[data-s="ready"]{border-color:var(--muted);color:var(--muted)}
-.empty{padding:20px 0;color:var(--soft}
-
-/* 源状态：全好时整页无色，坏了才亮赭点 */
-.foot{margin-top:32px;padding-top:12px;border-top:1px solid var(--rule);
-display:flex;flex-wrap:wrap;align-items:center;gap:6px 20px}
-.src{display:inline-flex;align-items:baseline;gap:6px;font-family:var(--mono);
-font-size:11px;color:var(--muted)}
-.src .d{width:6px;height:6px;border-radius:50%;background:var(--ink);opacity:.4;
-transform:translateY(-1px)}
-.src .sst{color:var(--soft)}
-.src.is-warn .d{background:transparent;box-shadow:inset 0 0 0 1px var(--rule-solid);
-opacity:1}
-.src.is-bad .d{background:var(--accent);opacity:1}
-.src em{font-style:normal;font-family:var(--sans);font-size:11px;color:var(--soft)}
-@media (max-width:720px){
-body{padding:24px 16px 32px}
-h1{font-size:25px}
-.rail{display:block}
-.chain{flex-wrap:wrap}
-.seg{flex:1 0 33.33%;border-right:0;border-bottom:1px solid var(--rule);
-padding:12px 8px 12px 0}
-.seg:first-child{padding-left:0}
-.offaxis{margin:0;padding:12px 0;border-left:0;border-top:1px dashed var(--rule-solid)}
-th,td{padding-right:12px}
-}
-@media print{
-body{background:#fff;padding:0}
-tbody tr:hover td{background:transparent}
-}
+.hands .ti{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 状态条：D-S01 两枚受控模糊落点之一，只放读数不装按钮 */
+.statusbar{position:fixed;left:calc(var(--soft-sidebar-width) + var(--soft-space-3xl));
+right:calc(var(--soft-shell-outer-inset) + var(--soft-space-lg));
+bottom:var(--soft-shell-outer-inset);height:var(--soft-status-bar-height);
+display:flex;align-items:center;gap:var(--soft-space-md);padding:0 var(--soft-space-lg);
+font-size:12px;color:var(--soft-text-secondary);border-radius:var(--soft-radius-pill);
+backdrop-filter:blur(14px) saturate(1.15);
+background:linear-gradient(to bottom,
+color-mix(in srgb,var(--soft-canvas) 0%,transparent),
+color-mix(in srgb,var(--soft-canvas) 62%,transparent))}
+.statusbar .lamp{display:flex;align-items:center;gap:5px;font-variant-numeric:tabular-nums}
+.statusbar .lamp i{width:6px;height:6px;border-radius:50%;background:var(--soft-text-tertiary)}
+.statusbar .lamp.ok i{background:var(--soft-accent)}
+.statusbar .lamp.bad i{background:var(--soft-status-error)}
+.statusbar .sp{margin-left:auto}
+/* ⌘K 浮层（工具带放搜索钮，不做常驻输入框） */
+.ov{position:fixed;inset:0;display:none;z-index:50;align-items:flex-start;
+justify-content:center;padding-top:14vh;
+background:color-mix(in srgb,var(--soft-black) 28%,transparent)}
+.ov.open{display:flex}
+.pal{width:min(560px,92vw);background:var(--soft-white);border-radius:var(--soft-radius-member);
+box-shadow:var(--soft-shadow-l3);padding:var(--soft-space-lg)}
+.pal input{width:100%;height:36px;border:none;background:var(--soft-inset);
+border-radius:var(--soft-radius-input);padding:0 var(--soft-space-lg);
+font:var(--soft-font-size-ui) inherit;color:var(--soft-text-primary);outline:none}
+.pal .tip{margin:var(--soft-space-md) 0 0;font-size:12px;color:var(--soft-text-secondary);
+display:flex;align-items:center;gap:var(--soft-space-sm)}
+.pal .tip b{color:var(--soft-text-primary);font-weight:600;font-variant-numeric:tabular-nums}
+@media(max-width:1080px){.bento{grid-template-columns:repeat(2,1fr)}.miles{grid-template-columns:1fr}}
+@media(max-width:860px){.shell{flex-direction:column}
+.side{position:static;flex:none;width:auto;max-height:none;flex-direction:row;flex-wrap:wrap;
+align-items:center;gap:var(--soft-space-sm) var(--soft-space-md);
+padding:var(--soft-space-sm) var(--soft-space-md);border-radius:var(--soft-radius-button)}
+.side>div{display:contents}.grp-t{display:none}
+.nav{flex-direction:row;flex-wrap:wrap;gap:var(--soft-nav-gap)}
+.nav a{height:28px;padding:0 var(--soft-space-md)}
+.side .foot{display:none}
+.main{padding:var(--soft-space-md)}
+.statusbar{left:calc(var(--soft-shell-outer-inset) + var(--soft-space-sm))}
+.shifts{grid-template-columns:1fr}}
+@media(max-width:560px){.bento{grid-template-columns:repeat(2,1fr)}
+.side{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+.side::-webkit-scrollbar{display:none}.side>div{flex:0 0 auto}
+.nav{flex-wrap:nowrap}.nav a{white-space:nowrap}.brand b{display:none}
+.sect-body{overflow-x:auto;scrollbar-width:none}
+.sect-body::-webkit-scrollbar{display:none}table{min-width:520px}
+.page-head h1{font-size:20px}}
+@media print{.side,.tools,.statusbar,.ov{display:none}.shell{display:block;padding:0}
+.main{background:transparent}.sect{box-shadow:none}
+tr.det{display:table-row}}
 """
 
 
@@ -490,67 +589,118 @@ def _tag(f: dict) -> str:
     return f'<span class="tag" data-s="{_esc(st)}">{_esc(lab)}</span>'
 
 
-def _rail(cfg: dict, kpi: dict, view: dict) -> str:
-    """阶段链＝一条带子。赭色只落在「有活要干」的那一段（默认待发货）。"""
-    by = kpi.get("by_stage") or {}
-    focal = view.get("focal_stage") or FOCAL_STAGE
-    segs = []
-    for s in cfg.get("stages") or []:
-        key = s.get("key") or ""
-        n = int(by.get(key, 0) or 0)
-        cls = "seg"
-        if key == focal and n > 0:
-            cls += " is-focal"
-        elif key == "closed":
-            cls += " is-done"
-        elif n == 0:
-            cls += " is-zero"
-        segs.append(f'<li class="{cls}">'
-                    f'<span class="seg-lab">{_esc(s.get("label") or key)}</span>'
-                    f'<span class="seg-n">{n}</span></li>')
-    offs = []
-    for s in cfg.get("off_chain_stages") or []:
-        key = s.get("key") or ""
-        n = int(by.get(key, 0) or 0)
-        offs.append(f'<span class="off">'
-                    f'<span class="seg-lab">{_esc(s.get("label") or key)}</span>'
-                    f'<b class="off-n">{n}</b></span>')
-    if not segs and not offs:
-        return ""
-    off_html = (f'<div class="offaxis">{"".join(offs)}</div>' if offs else "")
-    return (f'<section class="rail" aria-label="阶段链">'
-            f'<ol class="chain">{"".join(segs)}</ol>{off_html}</section>')
+def _chain_cells(f: dict) -> str:
+    """五格迷你阶段链：当前格着色，停滞／卡点转 danger。"""
+    st = f.get("stage") or ""
+    off = {"ready": ("可领", "d"), "hold": ("卡点", "e"), "stale": ("停滞", "e"),
+           "assigned": ("已派未动", "d"), "unresolved": ("残留", "d"),
+           "closed": ("收尾", "d")}
+    idx = -1
+    if st == "flying":
+        idx = 1
+    elif st == "review":
+        idx = 2
+    elif st == "to_ship":
+        idx = 3
+    cells = []
+    for i in range(5):
+        if idx >= 0:
+            cells.append('<i class="on"></i>' if i == idx else "<i></i>")
+        else:
+            cls = off.get(st, ("", ""))[1]
+            cells.append(f'<i class="{cls}"></i>' if i == 0 else "<i></i>")
+    label = off.get(st, ("", ""))[0] if idx < 0 else (f.get("stage_label") or "")
+    return f'<span class="chain">{"".join(cells)}</span><span class="stg">{_esc(label)}</span>'
 
 
-def _metrics(payload: dict, kpi: dict, view: dict) -> str:
-    spec = view.get("metrics")
-    if spec:
-        items = [(m.get("label") or "", kpi.get(m.get("key"), 0)) for m in spec]
-    else:
-        items = [("航班总数", kpi["total"]),
-                 ("今日收尾", kpi["closed_today"]),
-                 ("今日排班", len(payload.get("schedules") or []))]
-    if not items:
-        return ""
-    body = "".join(f'<span><b>{_esc(v)}</b>{_esc(k)}</span>' for k, v in items)
-    return f'<p class="metrics">{body}</p>'
-
-
-def _src_items(sources: dict) -> str:
-    if not sources:
-        return '<span class="src is-warn"><span class="d"></span><span class="sid">无源</span></span>'
+def _badges(f: dict) -> str:
     out = []
-    for k, v in sources.items():
-        status = (v or {}).get("status") or ""
-        cls = {"ok": "", "absent": " is-warn", "skipped": " is-warn",
-               "fail": " is-bad"}.get(status, " is-warn")
-        detail = (v or {}).get("detail") or ""
-        out.append(
-            f'<span class="src{cls}"><span class="d"></span>'
-            f'<span class="sid">{_esc(k)}</span>'
-            f'<span class="sst">{_esc(status)}</span>'
-            + (f'<em>{_esc(detail)}</em>' if detail else "")
-            + "</span>")
+    risk = f.get("risk") or ""
+    if risk == "high":
+        out.append('<span class="tag hi">risk:high</span>')
+    elif risk:
+        out.append(f'<span class="tag">risk:{_esc(risk)}</span>')
+    if f.get("prio"):
+        out.append(f'<span class="tag">{_esc(f["prio"])}</span>')
+    return "".join(out)
+
+
+def _age_cell(f: dict) -> str:
+    days = f.get("stale_days")
+    if days is None:
+        days = stage_mod.dwell_days(f.get("updated_at"))
+    if days is None:
+        txt = "—"
+    else:
+        txt = "今天" if days == 0 else ("昨天" if days == 1 else f"{days} 天前")
+    cls = "upd s" if f.get("stage") == "stale" else "upd"
+    return f'<td class="{cls}">{_esc(txt)}</td>'
+
+
+def _search_blob(f: dict) -> str:
+    return _esc(" ".join(str(x or "") for x in (
+        f.get("ticket"), f.get("title"), f.get("milestone"), f.get("owner"),
+        f.get("why"), f.get("risk"), f.get("prio"))).lower())
+
+
+def _flight_rows(payload: dict, cfg: dict) -> str:
+    """人面航班行：未收尾全量、按里程碑分组、组内链序→停滞天数降序。"""
+    rows = payload.get("all_open") or []
+    if not rows:
+        return (f'<tr><td colspan="4" class="empty">'
+                f'没有未收尾的票（源里读到 {payload.get("counts", {}).get("flights_total", 0)} 张）'
+                f'</td></tr>')
+    order = _chain_order(cfg)
+    groups: dict[str, list] = {}
+    for f in rows:
+        groups.setdefault(f.get("milestone") or "（未挂里程碑）", []).append(f)
+    keys = sorted(groups, key=lambda k: (-len(groups[k]), k))
+    ms_totals = {m["name"]: m for m in (payload.get("milestones") or [])}
+    out = []
+    for name in keys:
+        pool = groups[name]
+        m = ms_totals.get(name) or {}
+        total = int(m.get("total") or 0) or len(pool)
+        done = int(m.get("done") or 0)
+        pct = int(round(100 * done / total)) if total else 0
+        out.append(f'<tr class="grp"><td colspan="4"><b>{_esc(name)}</b>{len(pool)} 张在表'
+                   f'<span class="gbar"><i style="width:{pct}%"></i></span>'
+                   f'全量 {done}/{total}</td></tr>')
+        pool = sorted(pool, key=lambda f: (order.get(f.get("stage") or "", 999),
+                                           -(f.get("stale_days") or 0)))
+        for f in pool:
+            url = f.get("url") or ""
+            tk = _esc(f.get("ticket") or "-")
+            tk_cell = (f'<a class="no" href="{_esc(url)}" target="_blank" '
+                       f'rel="noreferrer" onclick="event.stopPropagation()">{tk}</a>'
+                       if url else f'<span class="no">{tk}</span>')
+            why = _esc((f.get("why") or "")[:150])
+            nxt = f.get("next_label") or ""
+            owner = f.get("owner") or ""
+            own = (f'<span class="own">{_esc(owner)}</span>' if owner
+                   else '<span class="own dash">未派</span>')
+            if f.get("owner_from") == "infer":
+                own += ('<span class="infer" title="推断：日表里没这张票的排班，'
+                        '按协议独占权推的">推</span>')
+            out.append(
+                '<tr class="flight" tabindex="0" data-k="' + tk + '" data-stage="'
+                + _esc(f.get("stage") or "") + '" data-search="' + _search_blob(f) + '">'
+                + f'<td>{tk_cell}<div class="msl">{_esc(name)}</div></td>'
+                + f'<td><span class="ttl">{_esc(f.get("title"))}{_badges(f)}'
+                + (f'<span class="why">{why}</span>' if why else "") + '</span></td>'
+                + f'<td>{_chain_cells(f)}<br>{own}</td>'
+                + _age_cell(f)
+                + "</tr>"
+                + '<tr class="det" data-d="' + tk + '"><td colspan="4"><div class="kv">'
+                + f'<span class="k">掌机</span><span class="v">{_esc(owner or "—")}'
+                + ('（推断）' if f.get("owner_from") == "infer" else "") + '</span>'
+                + f'<span class="k">下一步</span><span class="v">{_esc(nxt or "—")}</span>'
+                + f'<span class="k">阶段判据</span><span class="v">{why or "—"}</span>'
+                + f'<span class="k">更新</span><span class="v">{_esc(f.get("updated_at") or "—")}</span>'
+                + f'<span class="k">入口</span><span class="v">'
+                + (f'<a class="no" href="{_esc(url)}" target="_blank" rel="noreferrer">'
+                   'GitHub 票面 ↗</a>' if url else "无票面（残留分支）")
+                + "</span></div></td></tr>")
     return "".join(out)
 
 
@@ -562,241 +712,321 @@ def _flag(degraded: list[dict]) -> str:
     for d in degraded:
         parts.append(f'<b>{_esc(d.get("id"))}</b>（{_esc(d.get("status"))}）'
                      + (f' {_esc(d.get("detail"))}' if d.get("detail") else ""))
-    return ('<div class="flag" role="alert">票面或排班源未全绿 ⇒ 板上的数可能偏少：'
+    return ('<div class="flag" role="alert">源未全绿 ⇒ 板上的数可能偏少：'
             + "；".join(parts) + "。</div>")
 
 
 def _trend(payload: dict) -> str:
-    """近 N 轮 KPI 迷你折线（history.jsonl）。少于 2 轮就不画，不空喊趋势。"""
+    """近 N 轮 KPI 迷你折线（history.jsonl）。少于 2 轮不画，不空喊趋势。"""
     rows = [r for r in (payload.get("trend") or []) if isinstance(r, dict)]
     if len(rows) < 2:
         return ""
-    keys = (("open", "未收尾"), ("stale", "停滞"), ("to_ship", "待发货"))
     out = []
-    for key, label in keys:
+    for key, label in (("open", "未收尾"), ("stale", "停滞"), ("to_ship", "待发货")):
         vals = [int(((r.get("kpi") or {}).get(key)) or 0) for r in rows]
         hi = max(vals) or 1
-        pts = " ".join(f"{i * (86 / max(1, len(vals) - 1)):.1f},{22 - (v / hi) * 20:.1f}"
-                       for i, v in enumerate(vals))
-        out.append(f'<span class="trend"><svg width="86" height="24" viewBox="0 0 86 24" '
-                   f'aria-hidden="true"><polyline fill="none" stroke="currentColor" '
-                   f'stroke-width="1.2" points="{pts}"/></svg>'
-                   f'<b>{vals[-1]}</b>{_esc(label)}（{len(vals)} 轮）</span>')
-    return '<p class="metrics">' + "".join(out) + "</p>"
+        pts = " ".join(f"{i * (86 / max(1, len(vals) - 1)):.1f},"
+                       f"{22 - (v / hi) * 20:.1f}" for i, v in enumerate(vals))
+        out.append('<span class="card b1" style="box-shadow:none;background:transparent;'
+                   'padding:0"><p class="lab"><i aria-hidden="true"></i>' + _esc(label) +
+                   '</p><div class="num">' + str(vals[-1]) +
+                   f'<svg width="86" height="24" viewBox="0 0 86 24" aria-hidden="true">'
+                   f'<polyline fill="none" stroke="currentColor" stroke-width="1.2" '
+                   f'points="{pts}"/></svg></div>'
+                   f'<div class="sub">近 {len(vals)} 轮</div></span>')
+    return '<div class="bento">' + "".join(out) + "</div>"
 
 
-def _blocked_section(blocked: list[dict], role_labels: dict) -> str:
-    """置顶的「卡点 / 挡住」区：阶段=hold 的票，标出掌机与卡点原因（来自全量聚合）。"""
-    if not blocked:
-        return '<section class="blocked"><h3>卡点 / 挡住</h3>' \
-               '<p class="note">当前没有挡住的票。</p></section>'
-    items = []
-    for f in blocked:
-        who = f.get("owner") or ""
-        lane = role_labels.get(who, who)
-        items.append(
-            "<li>"
-            f'<span class="tk">{_esc(f.get("ticket") or "-")}</span>'
-            f'{_esc(f.get("title") or "")}'
-            f'<div class="n">{_esc(lane or "—")}'
-            + (f' · {_esc(f.get("why") or "")}' if f.get("why") else "") + "</div>"
-            "</li>")
-    more = '<p class="note">仅列前 8 张；余下见 board.json。</p>' if len(blocked) > 8 else ""
-    return ('<section class="blocked"><h3>卡点 / 挡住 · '
-            f'{len(blocked)}</h3><ul>{"".join(items)}</ul>{more}</section>')
+def _sidebar(cfg: dict, payload: dict, kpi: dict) -> str:
+    """侧栏＝纯导航。读数、源灯、搜索框一律不进这里（用户令）。"""
+    face = payload.get("all_open") or []
+    secs = [("s-shift", "▤", "塔台排班", len(payload.get("schedules") or [])),
+            ("s-board", "✈", "航班信息表", len(face)),
+            ("s-mile", "◎", "里程碑", len(payload.get("milestones") or [])),
+            ("s-hand", "▥", "交接日报", len(payload.get("handoffs") or []))]
+    nav = "".join(f'<a href="#{key}" data-sec="{key}"><span class="ic" aria-hidden="true">'
+                  f'{ic}</span>{_esc(lab)}<span class="c">{n}</span></a>'
+                  for key, ic, lab, n in secs)
+    stages = [("all", "○", "全部", len(face)),
+              ("flying", "◉", "在飞", kpi["in_flight"]),
+              ("stale", "▲", "停滞", kpi["stale"]),
+              ("to_ship", "▶", "待发货", kpi["to_ship"]),
+              ("hold", "■", "卡点", kpi["hold"]),
+              ("ready", "◇", "可领", kpi["ready"]),
+              ("queued", "·", "排队", kpi["queued"]),
+              ("unresolved", "×", "残留分支", kpi["unresolved"])]
+    stg = "".join(f'<a href="#s-board" data-stage="{key}"><span class="ic" aria-hidden="true">'
+                  f'{ic}</span>{_esc(lab)}<span class="c">{n}</span></a>'
+                  for key, ic, lab, n in stages if n or key == "all")
+    return (
+        '<aside class="side"><div class="brand"><span class="mark" aria-hidden="true">FC'
+        '</span><b>' + _esc(payload["title"]) + "</b></div>"
+        f'<div><div class="grp-t">段</div><nav class="nav" id="nav">{nav}</nav></div>'
+        f'<div><div class="grp-t">按阶段筛</div><nav class="nav" id="stages">{stg}</nav></div>'
+        '<details class="foot"><summary>口径与数据源</summary><p>'
+        '在飞＝日表在飞段 或 分支近期有提交；有指派人／只有残留分支<b>不算在飞</b>。<br>'
+        '停滞＝在飞证据超过阈值没动（阈值按阶段分档，写在板配置里）。<br>'
+        '掌机带「推」＝按协议推断，不是有人认领。<br>'
+        '库 board.db · 人面未收尾全量不截断。</p></details></aside>')
 
 
-def _milestone_section(milestones: list[dict]) -> str:
-    """里程碑进度：按里程碑分组，算 已关/总，画一条进度条（来自全量聚合）。"""
-    if len(milestones) <= 1:
-        return ""
+def _bento(payload: dict, kpi: dict, cfg: dict) -> str:
+    """上层信息用小卡片（B-01 只准 1×1／2×1，一卡一任务，内容卡 ≤R3 20）。"""
+    cards = [("to_ship", "待发货", kpi["to_ship"], "塔台合并推送", "is-hot"),
+             ("stale", "停滞", kpi["stale"], "超阈值没动", "is-warn"),
+             ("hold", "卡点", kpi["hold"], "等解", "is-warn"),
+             ("flying", "在飞", kpi["in_flight"], "有活证据", "")]
+    out = [f'<div class="card b1 {cls}" data-stage="{key}" role="button" tabindex="0">'
+           f'<p class="lab"><i aria-hidden="true"></i>{_esc(lab)}</p>'
+           f'<div class="num">{n}</div><div class="sub">{_esc(sub)}</div></div>'
+           for key, lab, n, sub, cls in cards]
+    sched = payload.get("schedules") or []
+    day = max((s.get("table_date") or "") for s in sched) if sched else ""
+    out.append('<div class="card b2 dir"><p class="lab"><i aria-hidden="true"></i>下一轮方向</p>'
+               f"<p>{_esc(payload['direction'] or '暂无方向句')}</p></div>")
+    out.append('<div class="card b2"><p class="lab"><i aria-hidden="true"></i>今日排班</p>'
+               f'<div class="num">{len(sched)}'
+               '<span style="font-size:14px;font-weight:500;color:var(--soft-text-secondary)"> '
+               '行 · 日表只由塔台写</span></div>'
+               f'<div class="sub">{_esc(day or "今天还没有日表")}</div></div>')
+    return f'<div class="bento">{"".join(out)}</div>'
+
+
+def _shift_section(payload: dict, cfg: dict) -> str:
+    role_labels = cfg.get("role_labels") or {}
+    sched = payload.get("schedules") or []
+    day = max((s.get("table_date") or "") for s in sched) if sched else ""
+    blocks = []
+    for lane in sorted({s.get("lane") for s in sched} or {"main"}):
+        rows = [s for s in sched if s.get("lane") == lane]
+        items = "".join(
+            f'<li><a href="https://github.com/{_esc(cfg.get("repo") or "")}/issues/"'
+            f' target="_blank" rel="noreferrer">{_esc(r.get("ticket") or "（无票号）")}</a>'
+            f'{_esc(r.get("summary") or "")}'
+            + (f'<em>{_esc((r.get("note") or "")[:120])}</em>' if r.get("note") else "")
+            + "</li>" for r in rows[:14])
+        blocks.append(f'<div class="shift"><div class="hd"><b>{_esc(role_labels.get(lane) or lane)}'
+                      f'</b><span>{len(rows)} 行 · {_esc(day or "—")}</span></div>'
+                      f"<ol>{items or '<li>今天没有排班</li>'}</ol></div>")
+    return ('<details class="sect" id="s-shift" open><summary><h2>塔台排班</h2>'
+            '<span class="hint">置顶 · 先看今天谁飞什么 · 日表只由塔台写</span>'
+            '<span class="arw">收起</span></summary>'
+            f'<div class="sect-body"><div class="shifts">{"".join(blocks)}</div></div></details>')
+
+
+def _milestone_grid(milestones: list[dict]) -> str:
     rows = []
-    for ms in milestones:
-        total = ms.get("total", 0)
-        done = ms.get("done", 0)
+    for m in milestones:
+        total = int(m.get("total") or 0)
+        done = int(m.get("done") or 0)
+        if total < 3:
+            continue
         pct = int(round(100 * done / total)) if total else 0
-        rows.append(
-            '<div class="ms-row">'
-            f'<div class="ms-name">{_esc(ms.get("name") or "")}</div>'
-            f'<div class="ms-bar"><i style="width:{pct}%"></i></div>'
-            f'<div class="ms-n">{done}/{total}</div>'
-            "</div>")
-    return ('<section class="sec ms"><div class="sec-hd"><h2>里程碑进度</h2>'
-            f'<span class="sec-n">{len(milestones)} 条线</span></div>'
-            f'{"".join(rows)}</section>')
+        rows.append(f'<div class="mile"><div class="r"><b>{_esc(m.get("name"))}</b>'
+                    f"<span>{done}/{total} · {pct}%</span></div>"
+                    f'<div class="bar"><i style="width:{pct}%"></i></div></div>')
+    return f'<div class="miles">{"".join(rows) or '<p class="empty">无可算里程碑</p>'}</div>'
 
 
 def _handoff_section(handoffs: list[dict], link_prefix: str = "") -> str:
-    """交接日报索引：最近的纸条层入口（槽位 / 标题 / 日期，可点开原文件）。"""
+    """交接日报：只列索引，正文在文件里（相对链接，file:// 下可直接跳）。"""
     if not handoffs:
-        return ""
+        return '<p class="empty">没有读到交接日报</p>'
     items = []
     for h in handoffs:
         tp = h.get("rel_path") or ""
-        title = h.get("title") or os.path.basename(tp)
+        title = (h.get("title") or "").strip("` ")[:60] or os.path.basename(tp)
         href = _esc(link_prefix + tp) if tp else ""
-        ti = (f'<a href="{href}" title="{_esc(tp)}">{_esc(title)}</a>'
-              if href else _esc(title))
-        items.append(
-            "<li>"
-            f'<span class="dt">{_esc(h.get("doc_date") or "")}</span>'
-            f'<span class="sl">{_esc(h.get("slot") or "")}</span>'
-            f'<span class="ti">{ti}</span>'
-            "</li>")
-    return ('<section class="sec ho"><div class="sec-hd"><h2>交接日报索引</h2>'
-            f'<span class="eyebrow">HANDOFF</span>'
-            f'<span class="sec-n">{len(handoffs)}</span></div>'
-            f'<ul>{"".join(items)}</ul>'
-            '<p class="note">只列索引，正文在文件里；点开是相对路径，file:// 下可直接跳。</p>'
-            '</section>')
+        ti = (f'<a href="{href}" title="{_esc(tp)}"><span class="dt">{_esc(h.get("doc_date"))}</span>'
+              f'<span class="ti">{_esc(h.get("slot"))} · {_esc(title)}</span></a>') if href else \
+            f'<span class="ti">{_esc(title)}</span>'
+        items.append(ti)
+    return f'<div class="hands">{"".join(items)}</div>'
+
+
+def _statusbar(sources: dict) -> str:
+    lamps = []
+    for sid, v in (sources or {}).items():
+        status = (v or {}).get("status") or ""
+        cls = "ok" if status == "ok" else ("bad" if status == "fail" else "")
+        lamps.append(f'<span class="lamp {cls}" title="{_esc(sid)} {_esc(status)}">'
+                     f'<i aria-hidden="true"></i>{_esc(sid)} {_esc((v or {}).get("detail") or "")}'
+                     f"</span>")
+    return ('<div class="statusbar"><span>' + "".join(lamps) + '</span>'
+            '<span class="sp"></span><span>flight-info · 只读各源，不写票面与日表</span></div>')
+
+
+JS = """
+var STALE=0;
+function $(s,p){return (p||document).querySelector(s)}
+function $$(s,p){return [].slice.call((p||document).querySelectorAll(s))}
+var st={stage:"all",q:"",open:{}};
+function rows(){return $$("#tbody tr.flight")}
+function apply(){
+  var shown=0;
+  rows().forEach(function(tr){
+    var okS=st.stage==="all"||tr.dataset.stage===st.stage;
+    var okQ=!st.q||(tr.dataset.search||"").indexOf(st.q)>-1;
+    var on=okS&&okQ;tr.hidden=!on;
+    var d=document.querySelector('tr.det[data-d="'+tr.dataset.k+'"]');
+    if(d){d.hidden=!on||!st.open[tr.dataset.k];}
+    if(on)shown++;
+  });
+  $$("#tbody tr.grp").forEach(function(g){
+    var n=0,s=g.nextElementSibling;
+    while(s&&s.classList.contains("flight")){if(!s.hidden)n++;s=s.nextElementSibling}
+    g.hidden=n===0;});
+  $("#crumb").textContent=(st.stage==="all"?"":"阶段＝"+st.stage+" · ")
+    +(st.q?"搜「"+st.q+"」· ":"")+shown+" / "+rows().length+" 张";
+  $$(".card[data-stage]").forEach(function(c){
+    c.classList.toggle("on",c.dataset.stage===st.stage)});
+  $$("#stages a").forEach(function(a){
+    if(a.dataset.stage===st.stage)a.setAttribute("aria-current","page");
+    else a.removeAttribute("aria-current")});
+  var q=$("#q");if(q&&q.value!==st.q)q.value=st.q;}
+function hash(){var h=[];if(st.stage!=="all")h.push("stage="+st.stage);
+  if(st.q)h.push("q="+encodeURIComponent(st.q));
+  history.replaceState(null,"",h.length?"#"+h.join("&"):location.pathname);}
+function unhash(){(location.hash||"").replace(/^#/,"").split("&").forEach(function(p){
+  var kv=p.split("=");if(kv[0]==="stage")st.stage=decodeURIComponent(kv[1]||"all");
+  if(kv[0]==="q")st.q=decodeURIComponent(kv[1]||"");});}
+function jump(){var s=$("#s-board");if(s){s.open=true;
+  s.scrollIntoView({behavior:"smooth",block:"start"});}}
+$$("#stages").length&&$("#stages").addEventListener("click",function(e){
+  var a=e.target.closest("a[data-stage]");if(!a)return;e.preventDefault();
+  st.stage=a.dataset.stage;hash();apply();jump();});
+$$(".card[data-stage]").forEach(function(c){
+  function go(){st.stage=c.dataset.stage;hash();apply();jump();}
+  c.addEventListener("click",go);
+  c.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();go()}});});
+$("#nav").addEventListener("click",function(e){var a=e.target.closest("a[data-sec]");if(!a)return;
+  e.preventDefault();var s=document.getElementById(a.dataset.sec);if(!s)return;s.open=true;
+  s.scrollIntoView({behavior:"smooth",block:"start"});
+  $$("#nav a").forEach(function(x){x.removeAttribute("aria-current")});
+  a.setAttribute("aria-current","page");});
+$("#tbody").addEventListener("click",function(e){var tr=e.target.closest("tr.flight");
+  if(!tr||e.target.closest("a"))return;toggle(tr.dataset.k);});
+$("#tbody").addEventListener("keydown",function(e){var tr=e.target.closest("tr.flight");
+  if(!tr)return;if(e.key==="Enter"||e.key===" "){e.preventDefault();toggle(tr.dataset.k);}});
+function toggle(k){var d=document.querySelector('tr.det[data-d="'+k+'"]');if(!d)return;
+  var on=d.classList.toggle("open");d.hidden=!on;st.open[k]=on?1:0;}
+$("#expand").addEventListener("click",function(){
+  var closed=$$("#tbody tr.det").filter(function(d){return !d.classList.contains("open")});
+  var open=closed.length>0;
+  $$("#tbody tr.det").forEach(function(d){d.classList.toggle("open",open);
+    if(!open)d.hidden=true;st.open[d.dataset.d]=open?1:0;});
+  this.textContent=open?"收起细节":"展开细节";});
+$("#qbtn").addEventListener("click",function(){pal(true)});
+function pal(on){var ov=$("#ov");ov.classList.toggle("open",on);
+  if(on){lastFocus=document.activeElement;setTimeout(function(){$("#q").focus()},30);}
+  else if(lastFocus&&lastFocus.focus)lastFocus.focus();}
+var lastFocus=null;
+$("#ov").addEventListener("keydown",function(e){if(e.key!=="Tab")return;
+  var f=$$("input,button,[tabindex]:not([tabindex='-1'])",this);if(!f.length)return;
+  e.preventDefault();var i=f.indexOf(document.activeElement);
+  var nx=e.shiftKey?(i<=0?f[f.length-1]:f[i-1]):(i>=f.length-1?f[0]:f[i+1]);if(nx)nx.focus();});
+$("#q").addEventListener("input",function(){st.q=this.value.trim().toLowerCase();hash();apply();});
+$("#ov").addEventListener("click",function(e){if(e.target===this)pal(false);});
+$("#refresh").addEventListener("click",function(){
+  if(location.protocol==="file:"){location.reload();return}
+  fetch("board.json?_="+Date.now(),{cache:"no-store"}).then(function(){location.reload()})
+  .catch(function(){location.reload()});});
+$("#theme").addEventListener("click",function(){var el=document.documentElement;
+  el.setAttribute("data-theme",el.getAttribute("data-theme")==="dark"?"light":"dark");});
+$$("details.sect").forEach(function(s){s.addEventListener("toggle",function(){
+  var a=s.querySelector(".arw");if(a)a.textContent=s.open?"收起":"展开";});});
+function tick(){var el=$("#age");if(!el||!el.dataset.ts)return;
+  var m=Math.max(0,Math.floor((Date.now()-Number(el.dataset.ts))/60000));
+  el.textContent=m<1?"刚刚":(m<60?m+" 分钟前":Math.floor(m/60)+" 小时 "+(m%60)+" 分前");
+  $("#stamp").classList.toggle("is-warn",m>15);}
+document.addEventListener("keydown",function(e){
+  if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==="k"){e.preventDefault();pal(true);}
+  if(e.key==="Escape"){if($("#ov").classList.contains("open")){pal(false);}
+    else if(st.q||st.stage!=="all"){st.q="";st.stage="all";hash();apply();}}});
+(function init(){
+  if(window.matchMedia&&matchMedia("(prefers-color-scheme:dark)").matches)
+    document.documentElement.setAttribute("data-theme","dark");
+  unhash();apply();tick();setInterval(tick,30000);})();
+"""
 
 
 def render_html(payload: dict, cfg: dict) -> str:
     kpi = payload["kpi"]
     view = cfg.get("view") or {}
     lb = _labels(cfg)
-    role_labels = cfg.get("role_labels") or {}
-
-    # 航班行：人面优先用 all_open（未收尾全量、不截断），没有再退回 AI 面
-    face = payload.get("all_open") or payload["flights"]
-    rows = []
-    for f in face:
-        nxt = f.get("next_label") or ""
-        why = f.get("why") or ""
-        second = " · ".join(x for x in (nxt, why) if x)
-        owner = f.get("owner") or ""
-        tk = _esc(f.get("ticket") or "-")
-        url = f.get("url") or ""
-        tk_cell = (f'<a class="lnk" href="{_esc(url)}" target="_blank" '
-                   f'rel="noreferrer">{tk}</a>') if url else tk
-        days = f.get("stale_days")
-        if days is None:
-            days = stage_mod.dwell_days(f.get("updated_at"))
-        age = ("—" if days is None else
-               ("今天" if days == 0 else ("昨天" if days == 1 else f"{days} 天前")))
-        badges = "".join(f'<span class="bdg">{_esc(x)}</span>'
-                         for x in (f.get("risk") and f"risk:{f['risk']}", f.get("prio")) if x)
-        rows.append(
-            "<tr>"
-            f'<td class="tk">{tk_cell}</td>'
-            f'<td><div class="tt">{_esc(f.get("title"))}{badges}</div>'
-            + (f'<div class="s2">{_esc(second)}</div>' if second else "")
-            + "</td>"
-            f'<td>{_tag(f)}</td>'
-            f'<td class="own{"" if owner else " is-none"}">{_esc(owner or "—")}'
-            + ('<span class="infer" title="推断：日表里没这张票的排班，按协议独占权推的">'
-               '推</span>' if f.get("owner_from") == "infer" else "")
-            + "</td>"
-            f'<td class="age{" is-stale" if (f.get("stage") == "stale") else ""}">{_esc(age)}</td>'
-            "</tr>")
-    if not rows:
-        rows.append(f'<tr><td colspan="5" class="empty">'
-                    f'没有航班（源里还没读到票）</td></tr>')
-
-    # 排班行
-    srows = []
-    for s in payload["schedules"]:
-        lane = s.get("lane") or ""
-        srows.append(
-            "<tr>"
-            f'<td class="tk">{_esc(role_labels.get(lane) or lane)}</td>'
-            f'<td class="tk">{_esc(s.get("ticket") or "-")}</td>'
-            f'<td>{_esc(s.get("summary"))}</td>'
-            f'<td class="s2">{_esc(s.get("note") or "")}</td>'
-            "</tr>")
-    if not srows:
-        srows.append('<tr><td colspan="4" class="empty">今天没有排班</td></tr>')
-
-    counts = payload.get("counts") or {}
-    trunc = ""
-    if counts.get("flights_truncated"):
-        trunc = (f'<p class="note">表内只列 {counts.get("flights_included")} 张；'
-                 f'本轮共 {counts.get("flights_total")} 张，余量见 board.json。</p>')
-
-    run = payload.get("run_id") or ""
     gen = (payload.get("generated_at") or "").replace("T", " ")[:16]
-    srcs = _src_items(payload.get("sources") or {})
-    font = FONT_LINK if view.get("font_source") == "web" else ""
-    eyebrow = view.get("eyebrow") or ""
-    head_eyebrow = f"{eyebrow} · RUN {run}" if eyebrow else f"RUN {run}"
-    closed_today = kpi.get("closed_today", 0)
-    # 交接索引用相对链接：index.html 在 <output.root>/<name>/ 下，往上一层层回到仓根。
+    run = payload.get("run_id") or ""
     out_root = ((cfg.get("output") or {}).get("root") or ".").strip("/")
     depth = (len([p for p in out_root.split("/") if p]) if out_root else 0) + 1
-    link_prefix = "../" * depth
-    top_band = (
-        f'<section class="tops">'
-        f'<div class="blocked-wrap">{_schedule_block(srows, lb, role_labels, len(payload["schedules"]))}</div>'
-        f'{_blocked_section(payload.get("blocked") or [], role_labels)}'
-        f'</section>')
+    face = payload.get("all_open") or payload["flights"]
+    try:
+        ts_ms = int(datetime.fromisoformat(payload["generated_at"]).timestamp() * 1000)
+    except (ValueError, KeyError):
+        ts_ms = 0
 
     return f"""<!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8">
+<html lang="zh-CN" data-ui-theme="soft"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<title>{_esc(payload['title'])}</title>{font}
-<style>{CSS}</style></head><body><div class="wrap">
-
-<header class="hd">
-  <div>
-    <div class="eyebrow">{_esc(head_eyebrow)}</div>
+<title>{_esc(payload['title'])}</title>
+<style>{CSS}</style></head><body>
+<div class="shell">
+{_sidebar(cfg, payload, kpi)}
+<main class="main"><div class="inner">
+  <header class="page-head">
     <h1>{_esc(payload['title'])}</h1>
-    <p class="sub">{_esc(payload.get('subtitle') or '')}</p>
+    <span class="read" id="stamp">快照 <b>{_esc(gen)}</b> ·
+      <span id="age" data-ts="{ts_ms}">刚刚</span></span>
+    <span class="read"><b>{kpi['open']}</b> 张未收尾 · <b>{kpi['closed']}</b> 张已收尾</span>
+  </header>
+  <div class="tools">
+    <button class="tbtn" id="qbtn" title="搜索（Ctrl+K）">搜索<span class="k">Ctrl K</span></button>
+    <button class="tbtn" id="expand" title="展开或收起全部行细节">展开细节</button>
+    <button class="tbtn" id="theme" title="切换亮暗">◐ 外观</button>
+    <span class="sp"></span>
+    <button class="tbtn is-primary" id="refresh"
+      title="重读磁盘上最新的板；要立刻重建请双击板目录的 refresh.vbs">刷新</button>
   </div>
-  <div class="stamp">
-    <span class="eyebrow">GENERATED</span>
-    <b>{_esc(gen)}</b>
-    <button class="rf" type="button" onclick="location.reload()"
-      title="重读磁盘上最新的 index.html（数据由定时任务／提交钩子重生成；要立刻重建请双击 refresh.vbs）">刷新</button>
-  </div>
-</header>
+  {_flag(payload.get("degraded") or [])}
+  {_bento(payload, kpi, cfg)}
+  {_shift_section(payload, cfg)}
+  <details class="sect" id="s-board" open>
+    <summary><h2>{_esc(lb['flights'])}</h2><span class="hint" id="crumb">{len(face)} 张未收尾 · 按里程碑分组</span>
+      <span class="arw">收起</span></summary>
+    <div class="sect-body">
+      <table><thead><tr>
+        <th class="fixed" style="width:132px">{_esc(lb['ticket'])} / 里程碑</th>
+        <th class="fixed">{_esc(lb['content'])} · 徽章 · 判据</th>
+        <th class="fixed" style="width:152px">{_esc(lb['stage'])} / {_esc(lb['owner'])}</th>
+        <th class="fixed" style="width:76px">距今</th>
+      </tr></thead><tbody id="tbody">
+        {_flight_rows(payload, cfg)}
+      </tbody></table>
+      <p class="empty" id="empty" hidden>没有符合筛选条件的票</p>
+    </div>
+  </details>
+  <details class="sect" id="s-mile" open>
+    <summary><h2>里程碑进度</h2><span class="hint">已收尾 ÷ 全部（全量分母）</span>
+      <span class="arw">收起</span></summary>
+    <div class="sect-body">{_milestone_grid(payload.get("milestones") or [])}</div>
+  </details>
+  <details class="sect" id="s-hand">
+    <summary><h2>交接日报</h2><span class="hint">索引 · 点开看全文</span>
+      <span class="arw">展开</span></summary>
+    <div class="sect-body">{_handoff_section(payload.get("handoffs") or [], "../" * depth)}</div>
+  </details>
+  {_trend(payload)}
+</div></main>
+</div>
+{_statusbar(payload.get("sources") or {})}
+<div class="ov" id="ov"><div class="pal">
+  <input id="q" placeholder="搜票号 / 标题 / 里程碑 / 掌机 / 判据" aria-label="搜票">
+  <p class="tip"><span>Esc 关闭 · 再按一次清筛选</span>
+    <span style="margin-left:auto">筛选态写进网址</span></p>
+</div></div>
+<script>{JS}</script>
+</body></html>"""
 
-<section class="brief"><p>{_esc(payload['direction']) or '暂无方向句'}</p></section>
-{_flag(payload.get("degraded") or [])}
-
-{_rail(cfg, kpi, view)}
-{_metrics(payload, kpi, view)}
-{_trend(payload)}
-
-{top_band}
-
-<section class="sec">
-  <div class="sec-hd"><h2>{_esc(lb['flights'])}</h2>
-    <span class="eyebrow">{_esc(lb['tickets'])}</span>
-    <span class="sec-n">{len(payload['flights'])}</span></div>
-  <table><thead><tr>
-    <th>{_esc(lb['ticket'])}</th><th>{_esc(lb['content'])}</th>
-    <th>{_esc(lb['stage'])}</th><th>{_esc(lb['owner'])}</th><th>距今</th>
-  </tr></thead><tbody>
-{''.join(rows)}
-  </tbody></table>
-  {trunc}
-</section>
-
-{_milestone_section(payload.get("milestones") or [])}
-{_handoff_section(payload.get("handoffs") or [], link_prefix)}
-
-<footer class="foot">
-  <span class="eyebrow">SOURCE</span>
-  {srcs}
-  <span class="fresh">快照 <b>{_esc(gen)}</b></span>
-</footer>
-
-</div></body></html>"""
-
-
-def _schedule_block(srows: list[str], lb: dict, role_labels: dict, n: int) -> str:
-    if not srows:
-        srows = ['<tr><td colspan="4" class="empty">今天没有排班</td></tr>']
-    return ('<section class="sec"><div class="sec-hd"><h2>{sch}</h2>'
-            '<span class="eyebrow">{ros}</span><span class="sec-n">{n}</span></div>'
-            '<table><thead><tr>'
-            '<th>{ln}</th><th>{tk}</th><th>{sm}</th><th>{nt}</th>'
-            '</tr></thead><tbody>{body}</tbody></table></section>').format(
-        sch=_esc(lb["schedule"]), ros=_esc(lb["roster"]), n=n,
-        ln=_esc(lb["lane"]), tk=_esc(lb["ticket"]),
-        sm=_esc(lb["summary"]), nt=_esc(lb["note"]),
-        body="".join(srows))
 
 
 # ── 落盘 ───────────────────────────────────────────────────────────
