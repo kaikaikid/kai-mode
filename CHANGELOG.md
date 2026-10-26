@@ -2,6 +2,21 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.24.14 — 2026-10-26
+
+- `flight-info`：加**一键接上自动更新**（`scripts/install_auto.py`，Windows）。
+  把三件事按依赖收齐：① git 钩子（写进仓的*有效* `core.hooksPath`，不只是 `.git/hooks`；
+  钩子只打脏标记，不同步刷、不阻塞 git）② 定时任务（`schtasks`，当前用户上下文、仅登录时、
+  隐藏窗口，**无 token＝不存密码**；消费脏标记、周期调 `refresh_if_dirty`）③ 人工入口
+  `refresh.vbs`（复制到板目录，`start "" /min` 隐藏窗口，无黑窗强制重建）。
+  - 页面右上角加「刷新」按钮（`location.reload()` 重读磁盘最新页；真正的重生成走钩子/定时/vbs）。
+  - `schtasks /Create` 被本机安全策略拒（`Access is denied`）时**降级成告警、不阻断安装**——
+    钩子与手动刷新仍可用，周期刷新在能建任务的环境补。
+  - 设计一个事实：静态 `file://` 页面不能从按钮直接执行本地 vbs（浏览器会下载而非运行），
+    所以按钮只 reload；立刻重建靠双击 `refresh.vbs`。
+  - 记一笔：`magpie/data/library` 下的技能副本是单向同步落点，直接改会被宿主复位；
+    正本永远是真源仓。
+
 ## 0.24.13 — 2026-10-25
 
 - `flight-info`：修两个让板子说假话的源缺陷（真实项目装板时实测）：

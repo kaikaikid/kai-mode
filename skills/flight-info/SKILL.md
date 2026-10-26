@@ -116,11 +116,37 @@ python scripts/refresh.py --repo-root <仓根> --config <板目录>/board.config
 # 装有脏才刷的 git 钩子（默认干跑，--apply 才落盘）
 python scripts/install_hook.py --repo-root <仓根> [--apply] [--remove --apply]
 
+# 一键接上自动更新（钩子 ＋ 定时任务 ＋ 人工入口；见第 5.5 节）
+python scripts/install_auto.py --repo-root <仓根> --config <板配置> [--interval 15] [--apply] [--remove --apply]
+
 # 给闹钟/人工用的幂等刷新（无脏直接跳过）
 python scripts/refresh_if_dirty.py --repo-root <仓根> --config <板配置> [--force]
 ```
 
 产物落 `板目录/`：`board.db`（库）｜`board.json`（AI 面）｜`index.html`（人面）。
+
+### 5.5 让板「活」起来（自动更新）
+
+板默认是**手动**刷的。要自动更新，跑 `install_auto.py --apply` 会收齐三层：
+
+1. **git 钩子**（`post-commit` / `post-merge`）：写进仓的**有效** `core.hooksPath`
+   （本仓是 `.githooks`，不是 `.git/hooks`）。钩子只往 `.git/flight-info-dirty` 写时间戳，
+   **不同步刷、不阻塞 git**（退出码恒 0，fail-open）。
+2. **人工入口** `refresh.vbs`（复制到板目录）：页面右上角「刷新」按钮指向它，双击也能跑。
+   `start "" /min` 隐藏窗口，无黑窗；它强制重生成一次（无视脏标记）。
+   ⚠️ 页面是静态 `file://` HTML，浏览器**不能**从按钮直接执行本地 vbs；按钮目前做
+   `location.reload()` 重读磁盘上的最新页面。真·重建点按钮后会滞后一轮定时/钩子，
+   想立刻重建就用双击 `refresh.vbs`。
+3. **定时任务**（`schtasks`，仅登录时运行、隐藏窗口，每 `interval` 分钟）：消费脏标记、调
+   `refresh_if_dirty`。**无 token**：用当前用户上下文、`/RP` 不写（不存密码）；
+   代价＝登出/关机时不刷。
+
+> **本机实测**：部分 Windows 安全策略禁止 `schtasks /Create`（报错 `Access is denied`），
+> 此时第 ③ 层建不出——`install_auto.py` 把它降级成告警、不阻断整次安装；
+> 钩子与手动刷新仍可用。要周期刷新，在能建任务的环境重跑即可。
+>
+> 另外：定时任务用系统账号跑时 `gh` 读不到你的 GitHub 登录态（票面源降级）；
+> 用当前用户 ＋ 仅登录时 ＝ `gh` 正常、又无 token。两全。
 
 ## 6. 退出码与降级
 
@@ -146,7 +172,7 @@ python scripts/refresh_if_dirty.py --repo-root <仓根> --config <板配置> [--
 ## 8. 验证命令
 
 ```bash
-python -m unittest discover -s tests -v          # 24 项单元测试（含端到端）
+python -m unittest discover -s tests -v          # 29 项单元测试（含端到端）
 python scripts/init_board.py --repo-root <临时仓>  # 自证：装完能用
 python scripts/refresh.py --repo-root <临时仓> --config <板配置> --no-network
 ```
