@@ -1747,6 +1747,87 @@ VENDOR_SYNC = "scripts/vendor-sync.py"
 VENDOR_MIRROR = os.path.expanduser(os.path.join("~", ".workbuddy", "skills"))
 
 
+# ── 28 命令面覆盖：技能正文 ```bash 块里声明要跑的命令，必须在它自己的 allowed-tools 里 ──
+CMD_FENCE_RE = re.compile(r"^```[ \t]*(?:bash|sh|shell|console)[ \t]*\n(.*?)^```", re.S | re.M)
+CMD_LEAD_RE = re.compile(r"^\s*(?:[A-Za-z_][A-Za-z0-9_]*=\S+\s+)*([a-z][a-z0-9._-]{1,24})\b")
+CMD_SKIP_WORDS = {"cd", "export", "set", "echo", "if", "then", "else", "elif", "for", "while",
+                  "do", "done", "true", "false", "source", "exit", "test", "command", "and", "or"}
+
+
+def _skill_allowed_tools(text: str) -> str:
+    """取 SKILL.md frontmatter 里的 allowed-tools 值（支持折叠标量续行）。"""
+    lines = text.splitlines()
+    if not lines or lines[0].strip() != "---":
+        return ""
+    value, collecting = "", False
+    for ln in lines[1:60]:
+        if ln.strip() == "---":
+            break
+        if collecting:
+            if ln.startswith(("  ", "\t")):
+                value += " " + ln.strip()
+                continue
+            break
+        if ln.startswith("allowed-tools:"):
+            value = ln.split(":", 1)[1].strip()
+            collecting = True
+    return value
+
+
+def _cmd_binaries(block: str) -> set:
+    """一个 bash 块里每条命令（含 `&&`／`;` 串接的段）的起始二进制名，去掉 shell 内建。
+    先抹掉引号内文本：`--jq '{...}'` 里的 `select(`、`map(` 不是命令。"""
+    found = set()
+    for raw in block.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        line = line.lstrip("$").strip()
+        line = re.sub(r"'[^']*'", "''", line)
+        line = re.sub(r'"[^"]*"', '""', line)
+        for seg in re.split(r"&&|;", line):
+            m = CMD_LEAD_RE.match(seg)
+            if m and m.group(1) not in CMD_SKIP_WORDS:
+                found.add(m.group(1))
+    return found
+
+
+def chk_command_surface(root: str, ms=None):
+    """技能自己声明要跑的命令，工具面没登记 ⇒ 到会硬拦白名单的宿主上就是一步步弹审批、停下来问人。
+    `Bash(*)` 或裸 `Bash` 视为全覆盖；不认为该命令由本技能跑的，把它移出 ```bash 块。"""
+    d = os.path.join(root, "skills")
+    if not os.path.isdir(d):
+        return "skip", "没有 skills/ 目录（不适用）"
+    bad, scanned, cmds = [], 0, 0
+    for name in sorted(x for x in os.listdir(d) if os.path.isdir(os.path.join(d, x))):
+        md = os.path.join(d, name, "SKILL.md")
+        if not os.path.isfile(md):
+            continue
+        try:
+            with open(md, encoding="utf-8") as f:
+                text = f.read()
+        except (OSError, UnicodeDecodeError) as exc:
+            bad.append(f"{name}：读不出来 {exc!r}")
+            continue
+        scanned += 1
+        at = _skill_allowed_tools(text)
+        wild = "Bash(*)" in at or re.search(r"(^|\s)Bash($|\s)", at) is not None
+        for block in CMD_FENCE_RE.findall(text):
+            for biname in sorted(_cmd_binaries(block)):
+                cmds += 1
+                if wild or f"Bash({biname}:*)" in at:
+                    continue
+                bad.append(f"{name} 缺 Bash({biname}:*)")
+    if bad:
+        uniq = sorted(set(bad))
+        return "fail", (f"{len(bad)} 条声明要跑的命令不在该技能 allowed-tools 里：" + "；".join(uniq[:8])
+                        + (f"（共 {len(uniq)} 处）" if len(uniq) > 8 else "")
+                        + "。修法：按上面点名的 Bash(<命令>:*) 补进那个技能的 allowed-tools；"
+                          "不该它跑的移出 ```bash 块")
+    return "ok", (f"command-surface 扫了 {scanned} 份 SKILL.md 的 ```bash 块，"
+                  f"{cmds} 条命令全部在各自 allowed-tools 内（无 bash 块的技能不计）")
+
+
 def chk_vendor(root, ms):
     """19 vendor/：未纳入 git ⇒ 红（克隆不可复原）；本机无镜像 ⇒ skip；有镜像则跑 --check 比漂移。"""
     if not os.path.isdir(os.path.join(root, VENDOR_REL)):
@@ -1837,6 +1918,7 @@ CHECKS = (
     ("host-neutral", "宿主专有 token 不进正本", chk_host_neutral),
     ("handoff-slots", "交接文档分类（槽位/命名/归位）", chk_handoff),
     ("skill-spec", "技能格式对齐 Agent Skills 1.2", chk_skill_spec),
+    ("command-surface", "技能声明的命令在自己工具面里", chk_command_surface),
     ("agents-contract", "子代理人格层契约", chk_agents),
     ("canon-dup", "判据一个家（退役词/平行正本）", chk_canon),
     ("vendor-sync", "辅助技能原样副本（跟踪/漂移）", chk_vendor),

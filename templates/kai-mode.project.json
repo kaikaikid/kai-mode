@@ -64,6 +64,9 @@
   "models": {
     "_note": "③子代理模型：只按人格配，没有档位、没有 default、没有角色槽。键＝agents/<人格>.md 的文件名；model=null 表示不写 model、用宿主默认（inherit）。写者＝项目初始化器；读者＝装机 agent 按宿主适配说明投影。本文件禁止出现任何模型 slug（doctor 拦）。",
     "agents": {
+      "adjudicator": {
+        "model": null
+      },
       "explorer": {
         "model": null
       },

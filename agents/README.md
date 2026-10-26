@@ -8,7 +8,7 @@
 | 层 | 数量 | 管什么 | 正本 |
 |---|---|---|---|
 | 岗位 | 4：地勤／塔台／机长／副机长 | 会话身份：谁跟人对话、谁排班、谁按票施工、谁收工 | [ADR-0003](../docs/adr/0003-airport-rebuild-four-roles.md) ＋ 四个岗位技能 |
-| 人格 | 6：见 §4 | 一次委派单元：能不能写、交什么形状 | 本目录 |
+| 人格 | 7：见 §4 | 一次委派单元：能不能写、交什么形状 | 本目录 |
 | 交汇 | — | 何时不派、谁能派给谁、并发与失败处理 | [dispatch.md](dispatch.md) |
 
 **岗位是长期的会话身份，人格是一次性的委派契约**：一个岗位可拉起多个人格，一个人格从不排班。
@@ -29,7 +29,7 @@
 |---|---|
 | `README.md` | 本文件：层契约（字段／权限／校验） |
 | `dispatch.md` | 票外派发策略：何时不派、谁能派谁、并发边界、失败处理、上下文纪律 |
-| `<人格>.md` × 6 | 人格文件 |
+| `<人格>.md` × 7 | 人格文件 |
 
 ## 3. frontmatter
 
@@ -61,11 +61,14 @@
 | [explorer](explorer.md) | readonly | 定位、追调用链、报影响面；含 `large-source` 压缩模式 |
 | [librarian](librarian.md) | readonly | 外部／时效／版本事实，必带来源 |
 | [planner](planner.md) | readonly | 模糊工作 → 有序可测计划 |
+| [adjudicator](adjudicator.md) | readonly | 无人可问时的取舍判决：`ruling=a\|b\|defer` ＋ 撤销路径与改判条件 |
 | [worker](worker.md) | write | 有界实现 + 自验（**唯一可写人格**） |
 | [reviewer](reviewer.md) | readonly | 审计划（`plan`）／审 diff（`code`）／安全专项（`security`）／静默失败（`silent-failure`） |
 | [visual-designer](visual-designer.md) | readonly | 看界面（`observe`）／出设计规格（`design`） |
 
 **模式先于人格**：新增能力先给现有人格加 `mode`，不加人格文件。人格只在「性格与权限真的不同」时才新增。
+例外要登记：`adjudicator` 是第七人格而非 reviewer 的新模式——它出的是**会被执行的取舍判决**（`ruling=`），
+不是对别人成果的 `pass`／`fail`，且模型档独立；理由与边界见 [ADR-0018](../docs/adr/0018-in-run-adjudication.md)。
 
 ## 5. 正文
 

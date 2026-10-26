@@ -697,3 +697,72 @@ def test_tracked_handoff_spec_files_are_green(tmp_path):
     _git_init_add(root)
     rc, data = run_doctor(root)
     assert status_of(data, "tracked-cache") == "ok"
+
+
+# ── 28 command-surface ──────────────────────────────────────────────────────
+
+SKILL_WITH_CMD = """---
+name: {name}
+status: active
+approved_by: human:kaikaikid
+approved: 2026-10-26
+sources: []
+description: >
+  {name} 的说明。
+version: 1.0.0
+updated: 2026-10-26
+allowed-tools: {at}
+---
+
+# {name}
+
+## 验证命令
+
+```bash
+python scripts/gate.py --ticket 1
+```
+"""
+
+
+def _set_skill_md(root, name, at):
+    (root / "skills" / name / "SKILL.md").write_text(
+        SKILL_WITH_CMD.format(name=name, at=at), encoding="utf-8")
+
+
+def test_command_surface_uncovered_is_red(tmp_path):
+    """正文声明要跑 python，工具面只给 git ⇒ 必须红，并点名是哪个技能缺哪个命令。"""
+    root = make_repo(tmp_path)
+    _set_skill_md(root, "alpha", "Bash(git:*) Read Grep")
+    rc, data = run_doctor(root)
+    assert rc == 1
+    assert status_of(data, "command-surface") == "fail"
+    detail = detail_of(data, "command-surface")
+    assert "alpha 缺 Bash(python:*)" in detail
+    assert "Bash(python:*)" in detail
+
+
+def test_command_surface_covered_is_green(tmp_path):
+    """同一条命令登记进 allowed-tools 就绿，且绿话要打印覆盖面（扫了几份、几条）。"""
+    root = make_repo(tmp_path)
+    _set_skill_md(root, "alpha", "Bash(git:*) Bash(python:*) Read Grep")
+    rc, data = run_doctor(root)
+    assert rc == 0, data
+    assert status_of(data, "command-surface") == "ok"
+    assert "1 条命令" in detail_of(data, "command-surface")
+
+
+def test_command_surface_wildcard_bash_is_green(tmp_path):
+    """`Bash(*)` 与裸 `Bash` 都算全覆盖；串接命令按每段各量一次。"""
+    root = make_repo(tmp_path)
+    _set_skill_md(root, "alpha", "Bash(*) Read")
+    assert status_of(run_doctor(root)[1], "command-surface") == "ok"
+    _set_skill_md(root, "alpha", "Read Grep Bash")
+    assert status_of(run_doctor(root)[1], "command-surface") == "ok"
+    _set_skill_md(root, "alpha", "Bash(gh:*) Bash(python:*)")
+    (root / "skills" / "alpha" / "SKILL.md").write_text(
+        SKILL_WITH_CMD.format(name="alpha", at="Bash(gh:*) Bash(python:*)").replace(
+            "python scripts/gate.py --ticket 1",
+            "cd repo && python scripts/gate.py; gh issue view 1"),
+        encoding="utf-8")
+    rc, data = run_doctor(root)
+    assert status_of(data, "command-surface") == "ok", detail_of(data, "command-surface")

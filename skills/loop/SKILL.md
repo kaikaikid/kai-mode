@@ -7,9 +7,9 @@ sources: []
 description: >
   机长 / 副机长共用的单票闭环（不是用户入口）。判据与本技能冲突时以协议正本为准。
   触发：由 `/机长`、`/副机长` 自动带入；「loop」不是口令。
-version: 5.3.3
-updated: 2026-10-24
-allowed-tools: Read Grep
+version: 5.4.0
+updated: 2026-10-26
+allowed-tools: Read Grep Bash(python:*)
 compatibility: Host-agnostic
 dependencies:
   skills:
@@ -33,6 +33,9 @@ dependencies:
 → `fail` 修 1 次再审 → `pass` 后按判词格式写「待发货」（首行 `verdict=`、第二行 `ac=<通过数>/<总数>`；
 格式与窄读命令见兄弟技能 `pilot`）。
 
+`pass` 写进待发货＝这票在你这儿**完工**：当场释放在飞名额，接着补日表的下一张。合并、push、关票归塔台，
+它按情况分批——不等收货、不拿「批收尾」当停点（停点闭集见协议正本 §七）。
+
 ## 收工
 
 做完一张票先跑收工门禁（**不许早停**是硬约束）。门禁脚本归**项目仓**，路径从项目配置实例
@@ -42,7 +45,8 @@ dependencies:
 python <gates.captain_preflight> --lane main|deputy
 ```
 
-判定：`decision=STOP` 才能停；`REVIEW` 加 `--ack-review` 才能停；`CONTINUE` 不许停；
+判定：`decision=STOP` 才能停；`REVIEW` 判完确实没活、加 `--ack-review` 才能停；`CONTINUE` 不许停——
+**表的判据看未完工票**，已 `pass` 进待发货的行不再算你的在飞；
 `BLOCKED` 先把卡点写进 issue 评论（**不得当空表**）。判据细则正本住项目仓该脚本，本仓不复述。
 
 ## 角色

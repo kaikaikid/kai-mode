@@ -51,7 +51,7 @@
 ## 校验
 
 ```bash
-python scripts/doctor.py --with-tests   # 27 项；package-layout 报安装面条数与骨架件数，config-instance 实跑初始化器，payload-budget 卡分层字节
+python scripts/doctor.py --with-tests   # 项数看汇总行；package-layout 报安装面条数与骨架件数，config-instance 实跑初始化器，payload-budget 卡分层字节
 ```
 
 `package-layout` 红通常只有三种：安装面混进被排除文件、骨架源越界／缺失、实跑生成集合与清单不一致。

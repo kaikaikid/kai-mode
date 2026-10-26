@@ -62,7 +62,7 @@
       "scope": "global",
       "install": "auto",
       "source": ".ai/skills/loop",
-      "summary": "机长 / 副机长共用的单票闭环协议薄导航：读日表、按票施工与审查。",
+      "summary": "机长 / 副机长共用的单票闭环协议薄导航：读日表、按票施工与审查、pass 即释放在飞帽。",
       "tags": [
         "protocol"
       ],
@@ -86,7 +86,7 @@
       "kind": "framework",
       "scope": "global",
       "install": "auto",
-      "summary": "机场体系的塔台：60 分钟轮巡先发货后排班（排班放最后），独占 push 与关票，不写产品代码。",
+      "summary": "机场体系的塔台：60 分钟轮巡先发货后排班（排班放最后），发货批次按情况自决、不等机长一批做完；独占 push 与关票，不写产品代码。",
       "tags": [
         "role"
       ],
@@ -98,7 +98,7 @@
       "kind": "framework",
       "scope": "global",
       "install": "auto",
-      "summary": "机场体系的机长：goal 模式每机 2 张票，派施工与审查子代理；只管理不写码、不 push。",
+      "summary": "机场体系的机长：滚动跑完自己那张日表（在飞帽只算未完工票，待发货不占位），每票派施工＋审查；跃迁窗口内取舍派裁决子代理、不提问；只管理不写码、不 push。",
       "tags": [
         "role"
       ],
@@ -110,7 +110,7 @@
       "kind": "framework",
       "scope": "global",
       "install": "auto",
-      "summary": "机场体系的副机长：与机长同权另起一条 loop，独立日表与身份，只管理不写码。",
+      "summary": "机场体系的副机长：与机长同权同流程（滚动消费、窗内裁决），另起一条 loop，独立日表与身份，只管理不写码。",
       "tags": [
         "role"
       ],

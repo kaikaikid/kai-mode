@@ -2,6 +2,26 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.25.0 — 2026-10-26
+
+- **机长滚动消费日表，发货与机长节奏解耦**（[0017](docs/adr/0017-captain-drains-day-table.md)，用户令 #6）：
+  `pass` 写进待发货当场释放在飞名额（帽只算未完工票）；帽是并发上限不是批次，一张完工即补下一张，
+  滚到日表跑空才停；停点收成闭集五类（红线／同错早停／修 1 次仍 fail／BLOCKED 与恢复对不上／表跑空），
+  「批收尾」「等塔台收货」不再是停的理由。换手点下沉到单票收尾自检三件齐，塔台只在发现机长停摆时提换手；
+  发货批次归塔台按触面与门成本自决。`pilot`／`copilot` 2.6.0、`loop` 5.4.0、`tower` 1.6.0、`kai-mode` 2.6.0。
+- **跃迁窗口内自主裁决**（[0018](docs/adr/0018-in-run-adjudication.md)，同一张票）：开窗＝用户对这条会话说
+  「跃迁」或明示跑到清空；窗内取舍题派新人格 `adjudicator`（只读、新上下文、`ruling=a|b|defer` ＋ 争点／判据／
+  所选／撤销路径与改判条件）照判词执行，**不为取舍向用户提问**；红线仍停该票等人，两份正本互斥与人眼观感题
+  转上报不转她；同争点不重派、两次互否停裁。协议 §十一 由四档变五档。
+- **第七人格 `agents/adjudicator.md`**：`agents/README.md` §0／§2／§4 与 `dispatch.md` §3 同批登记，
+  模板 `models.agents.adjudicator.model=null`（不发明模型 slug，强档由项目实例填）。
+- **doctor 新增第 28 项 `command-surface`**：技能正文 ```bash 块声明要跑的命令必须出现在该技能
+  `allowed-tools` 里（`Bash(*)`／裸 `Bash` 算全覆盖；先抹引号内文本，`--jq '{...}'` 不算命令）；
+  绿话打印覆盖面（17 份／23 条）。首跑量出 5 个技能缺登记：`pilot`／`copilot` 补 `Bash(gh:*) Bash(python:*)`
+  （正文自己声明要跑窄读与 preflight，旧白名单只有 git——到会硬拦的宿主上就是一步步弹审批）、
+  `loop`／`tower`／`kai-handoff` 补 `Bash(python:*)`、`kai-boom-idea-log` 补 `Bash(git:*)`。测例 +3（红／绿／通配与串接）。
+- 项数不再手抄：`AGENTS.md` 与 `docs/package-layout.md` 的「27 项」改成看 doctor 汇总行（手写数会随门漂移）。
+
 ## 0.24.15 — 2026-10-26
 
 - `flight-info`：人读面（`index.html`）结构重排，板子不再偏薄。

@@ -9,11 +9,11 @@ sources:
   - resource: "skills/loop/SKILL.md"
     note: "单票闭环、等待与止损的随装入口；本文件只写车道差异与副机长措辞"
 description: >
-  机场体系的副机长：与机长同权限、同一套流程，独立日表 `-deputy.md`。
+  机场体系的副机长：与机长同权限、同一套流程（滚动消费自己那张日表、待发货不占位、跃迁窗口内取舍派裁决子代理不提问），独立日表 `-deputy.md`。
   触发：`/副机长`（人工唤醒）；塔台只写日表/播报，kai-mode 只推荐命令，不自动起角色。
-version: 2.5.4
-updated: 2026-10-25
-allowed-tools: Bash(git:*) Read Grep
+version: 2.6.0
+updated: 2026-10-26
+allowed-tools: Bash(git:*) Bash(gh:*) Bash(python:*) Read Grep
 compatibility: Requires git
 metadata:
   alias: 副机长
@@ -43,6 +43,7 @@ dependencies:
 这些是负担，不是硬闸。
 
 读票用窄读、判词格式、收尾自检三件均同机长，不另立口径。
+**取舍题也不自决硬拍、更不问人**：机长技能「跃迁窗口」那一整套照用（窗外写卡点交塔台攒批）。
 
 ## 收工复查
 
@@ -50,8 +51,8 @@ dependencies:
 python <gates.captain_preflight> --lane deputy
 ```
 
-`CONTINUE` 继续；`REVIEW` 判完确实没活加 `--ack-review`；`STOP` 才停；
-`BLOCKED` 写卡点，不得当空表。
+`CONTINUE` 继续补下一张（表的判据只算未完工票，已 `pass` 进待发货的不占你名额）；
+`REVIEW` 判完确实没活加 `--ack-review`；`STOP` 才停；`BLOCKED` 写卡点，不得当空表。
 
 ## 验证命令
 
