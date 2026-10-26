@@ -64,7 +64,7 @@ python scripts/init-project.py --repo <目标仓> --answers a.json   # 机器填
 | 5 | 交接目录 | `handoff` | `paths.handoff_dir` |
 | 6 | 想法目录 | `ideas` | `paths.ideas_dir` |
 | 7 | ADR 目录 | `docs/adr` | `registry.adrs.dir` |
-| 8 | 宿主 | `qoder` | `host.adapter` |
+| 8 | 宿主 | 回车＝本机当前宿主（**不设 qoder 默认**，模板铁律禁止偏置） | `host.adapter` |
 | 9 | 收工门禁脚本（本项目没有就留空＝null，别抄别仓的门名） | 空 | `gates.captain_preflight` |
 | 10 | 想法池汇总票号 | 空 | `issue.boom_summary_ticket` |
 | 11 | 子代理模型（回车＝全部人格都用宿主默认／填一个模型名＝全部同值／`n`＝逐个填；人格名单由 `agents/` 实量派生，不抄数） | 全 null | `models.agents.<人格>.model` |

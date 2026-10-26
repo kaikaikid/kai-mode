@@ -5,7 +5,7 @@
   "ship_mode": "tower",
   "host": {
     "_note": "宿主选择器：只记用哪份宿主适配说明，不记宿主字段名、不记模型。换宿主时改这一处；宿主差异仍住适配说明。",
-    "adapter": "<qoder|codex|opencode|claude|copilot|cursor>"
+    "adapter": "<填你实际在用的宿主：qoder|codex|opencode|claude|copilot|cursor>"
   },
   "registry": {
     "_note": "①判据/剧本注册面：剧本登记行全量收编于此（原登记面文件退役），新增剧本只在 playbooks[] 加一行，入口与技能不复述；判据落点 registry.adrs / registry.rules。路径相对项目仓根。",

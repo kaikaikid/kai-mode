@@ -105,7 +105,7 @@ def build_answers(repo: str, a, yes: bool) -> dict:
         "handoff_dir": ask("5/11 交接目录", "handoff", yes),
         "ideas_dir": ask("6/11 想法目录", "ideas", yes),
         "adr_dir": ask("7/11 ADR 目录", "docs/adr", yes),
-        "host": ask("8/11 宿主（qoder / codex / opencode / claude / copilot / cursor）", "qoder", yes),
+        "host": ask("8/11 宿主（qoder / codex / opencode / claude / copilot / cursor）— 回车＝本机当前宿主，不确定就填你实际在用的那一个", "", yes),
         "preflight_gate": ask("9/11 收工门禁脚本（相对仓根；本项目没有就回车留 null，别抄别仓的门名）",
                              "", yes),
         "boom_summary_ticket": ask("10/11 想法池汇总票号（可留空）", "", yes),
