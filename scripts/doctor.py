@@ -1564,9 +1564,31 @@ def chk_agents(root, ms):
                         continue  # 模板占位符，不判
                     if v not in ok_ids:
                         bad.append(f"{os.path.relpath(fp, root).replace(chr(92), '/')}：persona={v} 不在人格集内")
+    # 人格**计数**不许写死：加一格就会把别处的旧数留成假话（第七人格落地时实测三处残留）
+    PERSONA_COUNT_RX = re.compile(r"[0-9]+\s*(?:个|种)\s*(?:子代理)?人格"
+                                  r"|全部\s*(?:[0-9]+|[一二两三四五六七八九十])\s*个")
+    count_files = [os.path.join(root, x) for x in ("README.md", "AGENTS.md")
+                   if os.path.isfile(os.path.join(root, x))]
+    for cd in ("skills", "loops", "templates", "agents", "adapters"):
+        cbase = os.path.join(root, cd)
+        if os.path.isdir(cbase):
+            for dirpath, dirs, names in os.walk(cbase):
+                dirs[:] = [x for x in dirs if x not in ("__pycache__", ".pytest_cache")]
+                count_files += [os.path.join(dirpath, x) for x in names if x.endswith(TEXT_EXT)]
+    for fp in count_files:
+        try:
+            with open(fp, encoding="utf-8") as f:
+                ftext = f.read()
+        except (OSError, UnicodeDecodeError):
+            continue
+        for i, ln in enumerate(ftext.splitlines(), 1):
+            cm = PERSONA_COUNT_RX.search(ln)
+            if cm:
+                bad.append("%s:%d 写死了人格计数「%s」（改指针，名单由 agents/ 实量派生）"
+                           % (os.path.relpath(fp, root).replace("\\", "/"), i, cm.group(0).strip()))
     if bad:
         return "fail", "；".join(bad[:6]) + (f"（共 {len(bad)} 处）" if len(bad) > 6 else "")
-    return "ok", f"{len(personas)} 个人格：字段·零外链·零 slug·README 两向一致·persona 有家"
+    return "ok", f"{len(personas)} 个格：字段·零外链·零 slug·README 两向一致·persona 有家·计数未写死"
 
 
 # ── 18 判据归属门（ADR-0007）：一条判据一个家，退役词与平行正本都要红 ──────────
@@ -1749,18 +1771,19 @@ VENDOR_MIRROR = os.path.expanduser(os.path.join("~", ".workbuddy", "skills"))
 
 # ── 28 命令面覆盖：技能正文 ```bash 块里声明要跑的命令，必须在它自己的 allowed-tools 里 ──
 CMD_FENCE_RE = re.compile(r"^```[ \t]*(?:bash|sh|shell|console)[ \t]*\n(.*?)^```", re.S | re.M)
-CMD_LEAD_RE = re.compile(r"^\s*(?:[A-Za-z_][A-Za-z0-9_]*=\S+\s+)*([a-z][a-z0-9._-]{1,24})\b")
+CMD_LEAD_RE = re.compile(r"^\s*(?:[A-Za-z_][A-Za-z0-9_]*=\S+\s+)*([A-Za-z][A-Za-z0-9._-]{1,24})\b")
 CMD_SKIP_WORDS = {"cd", "export", "set", "echo", "if", "then", "else", "elif", "for", "while",
-                  "do", "done", "true", "false", "source", "exit", "test", "command", "and", "or"}
+                  "do", "done", "true", "false", "source", "exit", "test", "and", "or"}
+CMD_PREFIX_WORDS = {"command", "sudo", "time", "env", "nohup", "npx"}
 
 
 def _skill_allowed_tools(text: str) -> str:
-    """取 SKILL.md frontmatter 里的 allowed-tools 值（支持折叠标量续行）。"""
+    """取 SKILL.md frontmatter 里的 allowed-tools 值（折叠标量的续行也算，不限行数）。"""
     lines = text.splitlines()
     if not lines or lines[0].strip() != "---":
         return ""
     value, collecting = "", False
-    for ln in lines[1:60]:
+    for ln in lines[1:]:
         if ln.strip() == "---":
             break
         if collecting:
@@ -1774,27 +1797,57 @@ def _skill_allowed_tools(text: str) -> str:
     return value
 
 
+def _bash_covers(allowed: str, biname: str) -> bool:
+    """`Bash(<命令>:*)`、更细的 `Bash(<命令>:<子命令>:*)`、`Bash(*)` 与裸 `Bash` 都算覆盖。"""
+    for tok in re.findall(r"Bash\(([^)]*)\)", allowed):
+        head = tok.split(":")[0].strip().lower()
+        if head == biname or head == "*":
+            return True
+    return re.search(r"(^|[\s,])Bash($|[\s,])", allowed) is not None
+
+
 def _cmd_binaries(block: str) -> set:
-    """一个 bash 块里每条命令（含 `&&`／`;` 串接的段）的起始二进制名，去掉 shell 内建。
-    先抹掉引号内文本：`--jq '{...}'` 里的 `select(`、`map(` 不是命令。"""
-    found = set()
+    """一个 bash 块里每条命令的起始二进制名（小写归一）。
+    先抹引号与 `$( )`／反引号里的文本（`--jq '{…}'` 的 `select(` 不是命令）、去行内注释、
+    跳过 heredoc 正文；`&&`、`;`、带空格的管道分段；`sudo`/`time`/`env` 这类前缀词后移。"""
+    found, heredoc = set(), None
     for raw in block.splitlines():
         line = raw.strip()
+        if heredoc:
+            if line == heredoc:
+                heredoc = None
+            continue
         if not line or line.startswith("#"):
             continue
+        hd = re.search(r"<<-?\s*['\"]?([A-Za-z_]\w*)['\"]?", line)
+        if hd:
+            heredoc = hd.group(1)
         line = line.lstrip("$").strip()
         line = re.sub(r"'[^']*'", "''", line)
         line = re.sub(r'"[^"]*"', '""', line)
-        for seg in re.split(r"&&|;", line):
-            m = CMD_LEAD_RE.match(seg)
-            if m and m.group(1) not in CMD_SKIP_WORDS:
-                found.add(m.group(1))
+        line = re.sub(r"\$\([^)]*\)", "()", line)
+        line = re.sub(r"`[^`]*`", "()", line)
+        line = re.sub(r"\s+#\s.*$", "", line)
+        for seg in re.split(r"&&|;|\s\|\s", line):
+            seg = seg.strip()
+            while True:
+                m = CMD_LEAD_RE.match(seg)
+                if not m:
+                    break
+                word = m.group(1).lower()
+                if word in CMD_PREFIX_WORDS:
+                    seg = seg[m.end():].strip()
+                    continue
+                if word not in CMD_SKIP_WORDS:
+                    found.add(word)
+                break
     return found
 
 
 def chk_command_surface(root: str, ms=None):
     """技能自己声明要跑的命令，工具面没登记 ⇒ 到会硬拦白名单的宿主上就是一步步弹审批、停下来问人。
-    `Bash(*)` 或裸 `Bash` 视为全覆盖；不认为该命令由本技能跑的，把它移出 ```bash 块。"""
+    `Bash(*)`、`Bash(<命令>:*)`、`Bash(<命令>:<子>:*)` 与裸 `Bash` 都算覆盖；
+    不认为该命令由本技能跑的，把它移出 ```bash 块。"""
     d = os.path.join(root, "skills")
     if not os.path.isdir(d):
         return "skip", "没有 skills/ 目录（不适用）"
@@ -1811,11 +1864,13 @@ def chk_command_surface(root: str, ms=None):
             continue
         scanned += 1
         at = _skill_allowed_tools(text)
-        wild = "Bash(*)" in at or re.search(r"(^|\s)Bash($|\s)", at) is not None
-        for block in CMD_FENCE_RE.findall(text):
+        fences = CMD_FENCE_RE.findall(text)
+        if fences and not at:
+            bad.append(f"{name}：有 ```bash 块却没登记 allowed-tools")
+        for block in fences:
             for biname in sorted(_cmd_binaries(block)):
                 cmds += 1
-                if wild or f"Bash({biname}:*)" in at:
+                if _bash_covers(at, biname):
                     continue
                 bad.append(f"{name} 缺 Bash({biname}:*)")
     if bad:

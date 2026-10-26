@@ -766,3 +766,64 @@ def test_command_surface_wildcard_bash_is_green(tmp_path):
         encoding="utf-8")
     rc, data = run_doctor(root)
     assert status_of(data, "command-surface") == "ok", detail_of(data, "command-surface")
+
+
+def test_command_surface_shape_edge_cases(tmp_path):
+    """量具本身不能假绿也不能假红：真管道要量到、jq 程序与 heredoc 正文不算命令、
+    大写与 `$( )` 与行内注释都要归一、细粒度 `Bash(git:add:*)` 算覆盖。"""
+    root = make_repo(tmp_path)
+
+    def one(cmd, at):
+        p = root / "skills" / "alpha" / "SKILL.md"
+        base = SKILL_WITH_CMD.split("```bash")[0].replace("{at}", at).replace("{name}", "alpha")
+        p.write_text(base + "```bash\n" + cmd + "\n```\n", encoding="utf-8")
+        return run_doctor(root)[1]
+
+    # ① 真管道后的命令必须量到：jq 没登记 ⇒ 红（假绿＝漏量）
+    data = one("git log --oneline | jq .title", "Bash(git:*) Read")
+    assert status_of(data, "command-surface") == "fail"
+    assert "alpha 缺 Bash(jq:*)" in detail_of(data, "command-surface")
+    # ② jq 里的程序文本不是命令（假红）：`--jq '{…select(.body|startswith(…))…}'`
+    data = one('gh issue view 1 --jq \'{[.comments[]|select(.body|startswith("verdict="))]|last}\'',
+               "Bash(gh:*) Read")
+    assert status_of(data, "command-surface") == "ok", detail_of(data, "command-surface")
+    # ③ 花括号展开 `main|deputy` 不是命令（假红）
+    data = one("python gate.py --lane main|deputy", "Bash(python:*) Read")
+    assert status_of(data, "command-surface") == "ok", detail_of(data, "command-surface")
+    # ④ heredoc 正文不算命令（假红）
+    data = one("cat > f.json <<EOF\npython -c 'x'\nEOF", "Bash(cat:*) Read")
+    assert status_of(data, "command-surface") == "ok", detail_of(data, "command-surface")
+    # ⑤ 大写首词、`$( )`、行内注释都要归一
+    data = one("Python gate.py --check  # 跑一下", "Bash(python:*) Read")
+    assert status_of(data, "command-surface") == "ok", detail_of(data, "command-surface")
+    data = one("echo $(python gate.py) && gh issue close 1", "Bash(echo:*) Bash(gh:*) Read")
+    assert status_of(data, "command-surface") == "ok", detail_of(data, "command-surface")
+    data = one("echo $(python gate.py) && gh issue close 1", "Bash(echo:*) Read")
+    assert status_of(data, "command-surface") == "fail"
+    assert "alpha 缺 Bash(gh:*)" in detail_of(data, "command-surface")
+    # ⑥ 细粒度前缀算覆盖
+    data = one("git add -A", "Bash(git:add:*) Read")
+    assert status_of(data, "command-surface") == "ok", detail_of(data, "command-surface")
+
+
+def test_persona_count_hardcoded_is_red(tmp_path):
+    """人格**个数**不许抄第二份：加一格就会把别处旧数留成假话（第七人格落地时实测三处）。"""
+    root = make_repo(tmp_path)
+    (root / "agents").mkdir()
+    (root / "agents" / "worker.md").write_text(
+        "---\nname: worker\ndescription: 可写实现。\nversion: 1.0.0\nmetadata:\n  access: write\n---\n\n"
+        "# worker\n\n正文。\n", encoding="utf-8")
+    (root / "agents" / "README.md").write_text(
+        "# agents\n\n| 人格 | access | 何时派 |\n|---|---|---|\n"
+        "| [worker](worker.md) | write | 有界实现 |\n\n"
+        "一个岗位可拉起多个人格，一个人格从不排班。\n", encoding="utf-8")
+    p = root / "skills" / "alpha" / "SKILL.md"
+    p.write_text(p.read_text(encoding="utf-8") + "\n子代理层：6 个人格。\n", encoding="utf-8")
+    rc, data = run_doctor(root)
+    assert rc == 1 and status_of(data, "agents-contract") == "fail"
+    assert "写死了人格计数" in detail_of(data, "agents-contract")
+    # 「× 7」式写法与 prose「一个人格从不排班」「可派全部人格」都不是计数，不该炸
+    p.write_text(SKILL_MD.format(name="alpha") + "\n一个岗位可拉起多个人格，一个人格从不排班；主代理可派全部人格。\n",
+                 encoding="utf-8")
+    rc, data = run_doctor(root)
+    assert "写死了人格计数" not in detail_of(data, "agents-contract"), detail_of(data, "agents-contract")

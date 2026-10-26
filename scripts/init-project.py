@@ -133,7 +133,7 @@ def norm_model(v):
 
 
 def ask_models(yes: bool):
-    """第 11 问：返回 None（六个都用宿主默认）｜模型名字符串（六个同值）｜{人格: 模型|None}。"""
+    """第 11 问：返回 None（全部人格用宿主默认）｜模型名字符串（全部同值）｜{人格: 模型|None}。"""
     names = discover_personas()
     if yes or not names:
         return None

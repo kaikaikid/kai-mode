@@ -52,6 +52,7 @@ accepted —— 2026-10-26 用户令（#6）：「机长能够一直推进自己
 
 ## 验证
 
-- `python scripts/doctor.py --with-tests` 全绿。
+- `python scripts/doctor.py --with-tests` 全绿；同仓并行 lane 的在制件（如 `skills/flight-info`）
+  若带红，按归属另记，不由本票兜，也不许为它放宽判据。
 - `canon-dup`：名额数值只出现在 `loops/loop-protocol.md`（技能与人格只留指针）。
 - 手工读正本：`loop-protocol` §一／§十、`pilot`／`copilot`／`tower` 里搜不到「批收尾＝换手点」或「等收货」作为停止理由。

@@ -107,7 +107,7 @@ kai-mode 只推荐命令，不在唤醒名单；**机长/副机长也不得唤�
 |---|---|
 | 一张票从领到发、名额、审查门、回执、红线 | 兄弟技能 `loop` |
 | 派子代理：何时不派、谁能派谁、并发、上下文纪律 | 框架仓 `agents/dispatch.md` |
-| 子代理人格：权限（`access`）、6 个人格、加人格步骤 | 框架仓 `agents/README.md` |
+| 子代理人格：权限（`access`）、人格清单、加人格步骤 | 框架仓 `agents/README.md` |
 | 开票与 Definition of Ready | 地勤技能 ＋ 框架仓 `docs/agents/issue-tracker.md` |
 | 交接文档与跨 agent 看板 | 项目 `handoff/README.md`（装机骨架自带） |
 | 技能目录与字段契约 | 框架仓 `docs/skill-layout.md` |

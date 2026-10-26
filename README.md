@@ -78,7 +78,7 @@ kai-mode 是「一句话需求 → 票 → 排班 → 施工 → 审查 → 发�
 ```text
 skills/           技能目录：一个技能一目录，必含 SKILL.md（清单见 registry.json）
 skills/kai-mode/  入口与路由：正本地图（判据不住这里，只给路径）
-agents/           子代理人格层：6 个人格（裸名）＋ dispatch.md（派发策略）
+agents/           子代理人格层：人格文件（裸名，清单见 `agents/README.md` §4）＋ dispatch.md（派发策略）
 skills/flight-info/   看板展示层：SKILL.md ＋ flightinfo/（db·stage·sources·collect·render）＋ schema/*.sql ＋ scripts/（建板/刷新/钩子）
 registry.json     技能注册表：技能清单的单一事实源（装机清单从它派生）
 scripts/          仓级工具：doctor.py（校验入口，一条命令验全仓）

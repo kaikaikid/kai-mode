@@ -66,6 +66,7 @@ accepted —— 2026-10-26 用户令（#6）：「我需要跃迁模式下能够
 
 ## 验证
 
-- `python scripts/doctor.py --with-tests` 全绿；`agents-contract` 认到第七人格。
+- `python scripts/doctor.py --with-tests` 全绿；`agents-contract` 认到第七人格，且计数守卫不再放过写死的个数；
+  同仓并行 lane 的在制件若带红，按归属另记，不由本票兜，也不许为它放宽判据。
 - 手工：窗内出现取舍题 ⇒ 票面出现一条 `ruling=` 且没有向用户的提问；红线仍写「停该票等人」。
 - 手工：窗内出现「两份正本互斥」⇒ 只看到延后＋上报，看不到第三个裁决。

@@ -67,7 +67,7 @@ python scripts/init-project.py --repo <目标仓> --answers a.json   # 机器填
 | 8 | 宿主 | `qoder` | `host.adapter` |
 | 9 | 收工门禁脚本（本项目没有就留空＝null，别抄别仓的门名） | 空 | `gates.captain_preflight` |
 | 10 | 想法池汇总票号 | 空 | `issue.boom_summary_ticket` |
-| 11 | 子代理模型（回车＝六个都用宿主默认／填一个模型名＝六个都用／`n`＝逐个填） | 全 null | `models.agents.<人格>.model` |
+| 11 | 子代理模型（回车＝全部人格都用宿主默认／填一个模型名＝全部同值／`n`＝逐个填；人格名单由 `agents/` 实量派生，不抄数） | 全 null | `models.agents.<人格>.model` |
 
 **脚本顺手铺两个组件**（这就是「作为组件引入」的落法）：
 

@@ -26,7 +26,7 @@
 
 | 派活方 | 可派 | 不派 |
 |---|---|---|
-| 主代理（票外对话） | 全部 7 个 | — |
+| 主代理（票外对话） | 全部人格 | — |
 | 机长／副机长 | 票内：worker + reviewer；机动：explorer、librarian、planner；**无人可问时的取舍：adjudicator**（判据见 [ADR-0018](../docs/adr/0018-in-run-adjudication.md)，本表只登记谁能派它） | 不派第二个 worker 到同一文件域；不派 adjudicator 裁红线 |
 | 塔台 | 不派 | 只排班与发货，派活归机长 |
 | 地勤 | 不派 | 只对话、规划、开票 |

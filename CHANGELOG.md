@@ -34,6 +34,14 @@
   （正文自己声明要跑窄读与 preflight，旧白名单只有 git——到会硬拦的宿主上就是一步步弹审批）、
   `loop`／`tower`／`kai-handoff` 补 `Bash(python:*)`、`kai-boom-idea-log` 补 `Bash(git:*)`。测例 +3（红／绿／通配与串接）。
 - 项数不再手抄：`AGENTS.md` 与 `docs/package-layout.md` 的「27 项」改成看 doctor 汇总行（手写数会随门漂移）。
+- **新上下文审查判 `fail`（3/6）后补修**（同一张票 #6）：① 人格**计数**在三处写死成旧数（`skills/kai-mode`、
+  `README.md`、`set-kai-mode` 第 11 问），一律改指针，`agents-contract` 加一条计数守卫（`× 7`、prose
+  「一个人格从不排班」不误炸，测例 +1）；② 三条新语义（停点闭集／跃迁开窗判据／裁决四件形状）登记进
+  `docs/canon.json`——`loops/` 与 `agents/` 是 repo_only、装到宿主读不到，所以技能留一份可执行副本是**声明过**的，
+  第三份才红；`ruling=` 的三值与四件收回人格自己的输出契约，技能只用 marker；③ `command-surface` 修假绿假红：
+  带空格的管道分段（`git log | jq` 现在会量到 `jq`）、heredoc 正文跳过、`$( )` 与反引号剥离、行内注释截断、
+  大写首词归一、`Bash(git:add:*)` 这类细粒度前缀算覆盖（测例 +1，全套 51 项绿）；④ 两份 ADR 的「全绿」验证行
+  补上并行在制件的归属口径。
 
 ## 0.24.15 — 2026-10-26
 

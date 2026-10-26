@@ -100,6 +100,50 @@
         "AGENTS.md"
       ],
       "why": "日表行数区间是协议数值（§零 记录面）；塔台按指针补表，不抄第二份"
+    },
+    {
+      "key": "stoppoint-closed-set",
+      "home": "loops/loop-protocol.md",
+      "pattern": "同错早停.{0,40}日表跑空|五类之外不许停",
+      "forbidden": [
+        "agents",
+        "adapters",
+        "templates",
+        "README.md",
+        "AGENTS.md"
+      ],
+      "why": "停点闭集（§七／ADR-0017 D3）。`skills/pilot` 允许留一份可执行副本：安装面只装技能，读不到 loops/（ADR-0013）；第三份不许出现。"
+    },
+    {
+      "key": "leap-window-open",
+      "home": "skills/pilot/SKILL.md",
+      "pattern": "跑到清空别打扰|开窗＝|出窗＝",
+      "forbidden": [
+        "loops",
+        "agents",
+        "adapters",
+        "templates",
+        "README.md",
+        "AGENTS.md",
+        "skills/copilot",
+        "skills/tower",
+        "skills/kai-mode"
+      ],
+      "why": "跃迁窗口开窗／出窗判据的家在安装面（pilot「跃迁窗口」节），ADR-0018 D1 是裁决依据；副机长与塔台只指过来。"
+    },
+    {
+      "key": "ruling-shape",
+      "home": "agents/adjudicator.md",
+      "pattern": "ruling=a|争点／判据／所选",
+      "forbidden": [
+        "skills",
+        "loops",
+        "adapters",
+        "templates",
+        "README.md",
+        "AGENTS.md"
+      ],
+      "why": "裁决三值与四件形状只住人格的输出契约；协议与技能只用 marker 名 `ruling=`。"
     }
   ]
 }
