@@ -147,6 +147,7 @@ python scripts/plugin-check.py
 ## 判据正本
 
 - 插件化剧本（现行结构）：本仓 [`docs/adr/0021-plugin-playbooks-and-persona-retirement.md`](docs/adr/0021-plugin-playbooks-and-persona-retirement.md)
+- 在飞容量与并行判据（触面互斥／共享状态黑名单／执法门）：本仓 [`docs/adr/0022-touchset-based-inflight-cap.md`](docs/adr/0022-touchset-based-inflight-cap.md)
 - 机场体系裁决：本仓 [`docs/adr/0003-airport-rebuild-four-roles.md`](docs/adr/0003-airport-rebuild-four-roles.md)
 - 单句入口与拍板：本仓 [`docs/adr/0002-single-entry-and-dual-lane.md`](docs/adr/0002-single-entry-and-dual-lane.md)
 - 评估与安装治理：本仓 [`docs/adr/0009-harness-audit-install-profiles-and-host-neutrality.md`](docs/adr/0009-harness-audit-install-profiles-and-host-neutrality.md)
