@@ -613,5 +613,118 @@ class TestKpiNewCounters(unittest.TestCase):
 
 
 
+class TestLaneOrder(unittest.TestCase):
+    """车道左右顺序＝配置书写顺序，不是字母序（副机长不该天然压在主前面）。"""
+
+    def _cfg(self):
+        return {"name": "t", "output": {"root": "boards"}, "repo": "o/r",
+                "role_labels": {"main": "主机长", "deputy": "副机长", "tower": "塔台"},
+                "stages": [{"key": "queued", "label": "排队"}],
+                "sources": [{"id": "tasks", "type": "tasks-table",
+                             "lanes": ["main", "deputy", "ace"]}],
+                "stage_rules": [{"when": "else", "stage": "queued"}]}
+
+    def test_order_follows_config(self):
+        self.assertEqual(render._lane_order(self._cfg()), ["main", "deputy", "ace"])
+
+    def test_main_renders_left_of_deputy(self):
+        sched = [{"lane": "deputy", "ticket": "#2", "summary": "副道活", "note": "",
+                  "table_date": "2026-10-27"},
+                 {"lane": "main", "ticket": "#1", "summary": "主道活", "note": "",
+                  "table_date": "2026-10-27"}]
+        html = render._shift_section({"schedules": sched}, self._cfg())
+        self.assertLess(html.index("主机长"), html.index("副机长"))
+
+    def test_unknown_lane_still_shows_after_known(self):
+        self.assertEqual(render._ordered_lanes({"zed", "main"}, ["main", "deputy"]),
+                         ["main", "zed"])
+
+
+class TestUrgentLane(unittest.TestCase):
+    """紧急任务＝王牌腿：日表 ace 车道 或 ace-queue 标签，任一成立就亮。"""
+
+    def _cfg(self):
+        return {"name": "t", "output": {"root": "boards"}, "repo": "o/r",
+                "role_labels": {"main": "主机长", "deputy": "副机长",
+                                "tower": "塔台", "ace": "王牌机长"},
+                "stages": [{"key": "queued", "label": "排队"},
+                           {"key": "flying", "label": "在飞"}],
+                "off_chain_stages": [{"key": "hold", "label": "挡住"}],
+                "sources": [{"id": "tasks", "type": "tasks-table",
+                             "lanes": ["main", "deputy", "ace"]}],
+                "stage_rules": [{"when": "else", "stage": "queued"}],
+                "view": {"urgent": {"lanes": ["ace"], "label": "ace-queue"}}}
+
+    def _payload(self, sched_rows, flights):
+        with tempfile.TemporaryDirectory() as d:
+            conn = db.connect(db.db_path(d))
+            db.migrate(conn, os.path.join(SKILL_ROOT, "schema"))
+            run = "r1"
+            # build_summary 靠 source_run 定位"最新一轮"，夹具必须记一笔源
+            db.record_source(conn, run, "tasks", "tasks-table", "ok", len(sched_rows), "测例")
+            db.replace_schedules(conn, run, sched_rows)
+            for f in flights:
+                db.upsert_flight(conn, f, run)
+            db.commit(conn)
+            payload = render.build_summary(conn, self._cfg(), d)
+            conn.close()
+        return payload
+
+    def test_ace_rows_leave_shift_and_light_urgent(self):
+        payload = self._payload(
+            [{"lane": "main", "ticket": "#1", "summary": "主道", "note": "",
+              "table_date": "2026-10-27"},
+             {"lane": "ace", "ticket": "#77", "summary": "线上着火", "note": "加急",
+              "table_date": "2026-10-27"}],
+            [{"uid": "issue:1", "ticket": "#1", "title": "主道", "stage": "queued",
+              "open": 1}])
+        self.assertEqual([r["ticket"] for r in payload["urgent"]["rows"]], ["#77"])
+        self.assertEqual([s["ticket"] for s in payload["schedules"]], ["#1"])
+        html = render._urgent_section(payload, self._cfg())
+        self.assertIn("线上着火", html)
+        self.assertIn("王牌机长", html)
+        self.assertNotIn("当前没有加急任务", html)
+
+    def test_ace_queue_label_counts_as_urgent(self):
+        payload = self._payload([], [
+            {"uid": "issue:88", "ticket": "#88", "title": "熔断没接", "stage": "flying",
+             "open": 1, "labels": ["ace-queue", "risk:high"],
+             "url": "https://x/88"}])
+        self.assertEqual([x["ticket"] for x in payload["urgent"]["tickets"]], ["#88"])
+        html = render._urgent_section(payload, self._cfg())
+        self.assertIn("#88", html)
+        self.assertIn('href="https://x/88"', html)      # 加急票必须能直接点开
+        self.assertIn("1 张 · 加急", html)
+        self.assertIn("协议同刻只许 1 张", html)
+
+    def test_empty_state_tells_how_to_light_it(self):
+        payload = self._payload([], [])
+        html = render._urgent_section(payload, self._cfg())
+        self.assertIn("当前没有加急任务", html)
+        self.assertIn("ace-queue", html)          # 空态要自带亮起方式
+        self.assertIn("-ace.md", html)
+
+    def test_over_one_ticket_is_reported(self):
+        """协议：王牌同刻只许 1 张。超了必须看得见，不能默默堆着。"""
+        payload = self._payload(
+            [{"lane": "ace", "ticket": "#a1", "summary": "一", "note": "",
+              "table_date": "2026-10-27"},
+             {"lane": "ace", "ticket": "#a2", "summary": "二", "note": "",
+              "table_date": "2026-10-27"}], [])
+        html = render._urgent_section(payload, self._cfg())
+        self.assertIn("超编", html)
+
+    def test_urgent_section_precedes_shift(self):
+        payload = self._payload(
+            [{"lane": "main", "ticket": "#1", "summary": "主道", "note": "",
+              "table_date": "2026-10-27"}], [])
+        html = render.render_html(dict(payload, title="T", direction="", run_id="r1",
+                                       kpi=render.compute_kpi([]), degraded=[], trend=[],
+                                       milestones=[], handoffs=[], sources={}, blocked=[],
+                                       counts={}), self._cfg())
+        self.assertLess(html.index('id="s-urgent"'), html.index('id="s-shift"'))
+
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

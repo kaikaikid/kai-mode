@@ -183,6 +183,14 @@ def build_summary(conn, cfg: dict, board_dir: str | None = None) -> dict:
     if schedules:
         latest_day = max((s.get("table_date") or "") for s in schedules)
         schedules = [s for s in schedules if (s.get("table_date") or "") == latest_day]
+    # 加急腿：王牌车道的排班行 ＋ 打了加急标签的开放票。两条信号任一成立就亮。
+    urgent_cfg = (cfg.get("view") or {}).get("urgent") or {}
+    urgent_lanes = set(urgent_cfg.get("lanes") or ["ace"])
+    urgent_label = urgent_cfg.get("label") or "ace-queue"
+    ace_sched = [s for s in schedules if (s.get("lane") or "") in urgent_lanes]
+    schedules = [s for s in schedules if (s.get("lane") or "") not in urgent_lanes]
+    ace_tickets = [f for f in all_flights
+                   if urgent_label in [x.strip() for x in (f.get("labels") or "").split(",")]]
     kpi = compute_kpi(all_flights)
     sources = db.fetch_sources(conn)
 
@@ -247,6 +255,15 @@ def build_summary(conn, cfg: dict, board_dir: str | None = None) -> dict:
             {"lane": s["lane"], "ticket": s["ticket"], "summary": s["summary"],
              "note": s["note"], "table_date": s.get("table_date") or ""} for s in schedules
         ][: int(summary_cfg.get("max_schedule_rows") or 20)],
+        "urgent": {
+            "label": urgent_label,
+            "lanes": sorted(urgent_lanes),
+            "rows": [{"lane": s["lane"], "ticket": s["ticket"], "summary": s["summary"],
+                      "note": s["note"], "table_date": s.get("table_date") or ""}
+                     for s in ace_sched],
+            "tickets": [_face_row(f, cfg) for f in
+                        _sort_flights(ace_tickets, _chain_order(cfg))],
+        },
         "sources": sources,
         "blocked": blocked,
         "milestones": milestones,
@@ -409,6 +426,22 @@ border:1px solid var(--soft-status-error);border-left-width:3px;
 border-radius:var(--soft-radius-item);
 background:color-mix(in srgb,var(--soft-status-error) 8%,transparent);font-size:13px}
 .flag b{color:var(--soft-status-error)}
+/* 紧急任务：加急腿。描边＋底色都从暖黄派生，不新引色相（D-S03） */
+.sect.urgent{box-shadow:inset 3px 0 0 var(--soft-accent),var(--soft-shadow-l1)}
+.sect.urgent>summary h2{color:var(--soft-text-primary)}
+.sect.urgent .hint.is-over{color:var(--soft-status-error);font-weight:600}
+.urgent-box{background:var(--soft-inset);border-radius:var(--soft-radius-card);
+padding:var(--soft-space-md) var(--soft-space-lg)}
+.urgent-box .hd{display:flex;align-items:baseline;gap:var(--soft-space-sm);
+margin-bottom:var(--soft-space-sm)}
+.urgent-box .hd b{font-size:13px;font-weight:600}
+.urgent-box .hd span{margin-left:auto;font-size:12px;color:var(--soft-text-secondary)}
+.urgent-box ol{margin:0;padding:0;list-style:none}
+.urgent-box li{padding:var(--soft-space-sm) 0;font-size:13px}
+.urgent-box li+li{box-shadow:inset 0 1px 0 var(--soft-divider-color)}
+.urgent-box li em{display:block;font-style:normal;font-size:12px;
+color:var(--soft-text-secondary);margin-top:2px}
+.sect .empty code,.urgent-box code{font-family:ui-monospace,Consolas,monospace;font-size:12px}
 /* 内容段＝一张卡，段间靠留白（一卡一任务） */
 .sect{background:var(--soft-white);border-radius:var(--soft-radius-button);
 box-shadow:var(--soft-shadow-l1);margin:0 0 var(--soft-space-md)}
@@ -744,7 +777,11 @@ def _trend(payload: dict) -> str:
 def _sidebar(cfg: dict, payload: dict, kpi: dict) -> str:
     """侧栏＝纯导航。读数、源灯、搜索框一律不进这里（用户令）。"""
     face = payload.get("all_open") or []
-    secs = [("s-shift", "▤", "塔台排班", len(payload.get("schedules") or [])),
+    u = payload.get("urgent") or {}
+    secs = [("s-urgent", "▲", "紧急任务",
+             len({(r.get("ticket") or "") for r in (u.get("rows") or [])}
+                 | {(x.get("ticket") or "") for x in (u.get("tickets") or [])})),
+            ("s-shift", "▤", "塔台排班", len(payload.get("schedules") or [])),
             ("s-board", "✈", "航班信息表", len(face)),
             ("s-mile", "◎", "里程碑", len(payload.get("milestones") or [])),
             ("s-hand", "▥", "交接日报", len(payload.get("handoffs") or []))]
@@ -796,12 +833,31 @@ def _bento(payload: dict, kpi: dict, cfg: dict) -> str:
     return f'<div class="bento">{"".join(out)}</div>'
 
 
+def _lane_order(cfg: dict) -> list:
+    """车道顺序＝板配置 sources[].lanes 的书写顺序。
+
+    以前按字母排，deputy 天然排在 main 前面 ⇒ 主机长被挤到右边，
+    与协议里"主道优先"读反了。顺序是配置，不是排序键。
+    """
+    out = []
+    for sc in cfg.get("sources") or []:
+        for lane in (sc.get("lanes") or []):
+            if lane not in out:
+                out.append(lane)
+    return out
+
+
+def _ordered_lanes(lanes: set, order: list) -> list:
+    known = [l for l in order if l in lanes]
+    return known + sorted(l for l in lanes if l not in known)
+
+
 def _shift_section(payload: dict, cfg: dict) -> str:
     role_labels = cfg.get("role_labels") or {}
     sched = payload.get("schedules") or []
     day = max((s.get("table_date") or "") for s in sched) if sched else ""
     blocks = []
-    for lane in sorted({s.get("lane") for s in sched} or {"main"}):
+    for lane in _ordered_lanes({s.get("lane") for s in sched} or {"main"}, _lane_order(cfg)):
         rows = [s for s in sched if s.get("lane") == lane]
         items = "".join(
             f'<li><a href="https://github.com/{_esc(cfg.get("repo") or "")}/issues/"'
@@ -816,6 +872,56 @@ def _shift_section(payload: dict, cfg: dict) -> str:
             '<span class="hint">置顶 · 先看今天谁飞什么 · 日表只由塔台写</span>'
             '<span class="arw">收起</span></summary>'
             f'<div class="sect-body"><div class="shifts">{"".join(blocks)}</div></div></details>')
+
+
+def _urgent_section(payload: dict, cfg: dict) -> str:
+    """紧急任务＝王牌机长这条腿。加急优先可见，所以排在塔台排班之前。"""
+    role_labels = cfg.get("role_labels") or {}
+    u = payload.get("urgent") or {}
+    rows = u.get("rows") or []
+    tickets = u.get("tickets") or []
+    label = u.get("label") or "ace-queue"
+    total = len({(r.get("ticket") or "") for r in rows} | {(t.get("ticket") or "") for t in tickets})
+    over = total - 1 if total > 1 else 0
+    head = ('<span class="hint">王牌机长 · 用户直连加急通道 · 协议同刻只许 1 张</span>')
+    if over:
+        head = (f'<span class="hint is-over">超编：同刻 {total} 张（协议只许 1 张）</span>')
+    if not total:
+        body = ('<p class="empty">当前没有加急任务。<br>亮起方式（任一即可）：'
+                f'① 给票打 <code>{_esc(label)}</code> 标签；'
+                '② 或落王牌日表 <code>.ai/tasks/&lt;日期&gt;-ace.md</code>'
+                '（王牌日表只由王牌写）。</p>')
+    else:
+        items = []
+        seen = set()
+        for r in rows:
+            key = r.get("ticket") or r.get("summary")
+            if key in seen:
+                continue
+            seen.add(key)
+            items.append(
+                '<li><a class="no" href="https://github.com/'
+                + _esc((cfg.get("repo") or "")) + '/issues/" target="_blank" rel="noreferrer">'
+                + _esc(r.get("ticket") or "（无票号）") + '</a>'
+                + _esc(r.get("summary") or "")
+                + ('<em>' + _esc((r.get("note") or "")[:120]) + '</em>' if r.get("note") else "")
+                + "</li>")
+        for tk in tickets:
+            if tk.get("ticket") in seen:
+                continue
+            seen.add(tk.get("ticket"))
+            items.append('<li><a class="no" href="' + _esc(tk.get("url") or "#")
+                         + '" target="_blank" rel="noreferrer">' + _esc(tk.get("ticket"))
+                         + '</a>' + _esc(tk.get("title") or "")
+                         + '<em>' + _esc(tk.get("stage_label") or "")
+                         + (' · ' + _esc(tk.get("owner")) if tk.get("owner") else "")
+                         + '</em></li>')
+        body = ('<div class="urgent-box"><div class="hd"><b>'
+                + _esc(role_labels.get("ace") or "王牌机长") + '</b><span>'
+                + str(total) + ' 张 · 加急</span></div><ol>' + "".join(items) + "</ol></div>")
+    return ('<details class="sect urgent" id="s-urgent" open><summary><h2>紧急任务</h2>'
+            + head + '<span class="arw">收起</span></summary>'
+            '<div class="sect-body">' + body + "</div></details>")
 
 
 def _milestone_grid(milestones: list[dict]) -> str:
@@ -995,6 +1101,7 @@ def render_html(payload: dict, cfg: dict) -> str:
   </div>
   {_flag(payload.get("degraded") or [])}
   {_bento(payload, kpi, cfg)}
+  {_urgent_section(payload, cfg)}
   {_shift_section(payload, cfg)}
   <details class="sect" id="s-board" open>
     <summary><h2>{_esc(lb['flights'])}</h2><span class="hint" id="crumb">{len(face)} 张未收尾 · 按里程碑分组</span>
