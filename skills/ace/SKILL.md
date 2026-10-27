@@ -1,5 +1,5 @@
 ---
-name: ace-pilot
+name: ace
 status: active
 approved_by: human:kaikaikid
 approved: 2026-10-27
@@ -48,7 +48,7 @@ dependencies:
 
 ## 激活方式
 
-- 口令：`/王牌飞行员`；技能名：`ace-pilot`；别名：王牌。
+- 口令：`/王牌飞行员`；技能名：`ace`；别名：王牌。
 - **仅人工唤醒**（角色之间不互相拉起）：kai-mode 只推荐命令，
   地勤 / 塔台 / 机长 / 副机长都不得拉起它。
 - 用户当前会话可以直接对王牌说话；一旦开始按票施工，就回到协议口径（续跑指针、停点闭集都不豁免）。

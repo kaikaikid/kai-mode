@@ -13,7 +13,7 @@
         "tower",
         "pilot",
         "copilot",
-        "ace-pilot",
+        "ace",
         "kai-handoff"
       ]
     },
@@ -27,7 +27,7 @@
         "tower",
         "pilot",
         "copilot",
-        "ace-pilot",
+        "ace",
         "kai-handoff",
         "principle-ask-one-question-at-a-time",
         "principle-ceremony-collapses-with-scale",

@@ -61,7 +61,7 @@ dependencies:
 | 塔台 | `/塔台` | 独立岗位；默认每 60 分钟被唤醒，也可人工唤醒；kai-mode 只推荐命令；先发货、后补排班（排班放最后）；合并、push、关票 | [`skills/tower/SKILL.md`](../tower/SKILL.md) |
 | 机长 | `/机长` | goal 模式读 `-main` 日表并滚到跑空（在飞名额按协议正本，待发货不占位）；窗内取舍派裁决子代理 | [`skills/pilot/SKILL.md`](../pilot/SKILL.md) |
 | 副机长 | `/副机长` | 同一条 loop 的另一分支，读 `-deputy` 日表 | [`skills/copilot/SKILL.md`](../copilot/SKILL.md) |
-| 王牌飞行员 | `/王牌飞行员` | 用户直连的加急通道；读 `ace-queue` 标签票，在自己的 `-ace.md` 车道滚动消费，同刻 1 张；简单免票热修、复杂自补票 | [`skills/ace-pilot/SKILL.md`](../ace-pilot/SKILL.md) |
+| 王牌飞行员 | `/王牌飞行员` | 用户直连的加急通道；读 `ace-queue` 标签票，在自己的 `-ace.md` 车道滚动消费，同刻 1 张；简单免票热修、复杂自补票 | [`skills/ace/SKILL.md`](../ace/SKILL.md) |
 
 **权限硬线**：塔台独占 push 与关票；机长/副机长/王牌只管理不写码（王牌热修是受控例外）、不 push；地勤只开票不施工；kai-mode 只做入口。
 

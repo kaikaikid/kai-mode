@@ -117,8 +117,8 @@
       "since": "0.2.0"
     },
     {
-      "name": "ace-pilot",
-      "path": "skills/ace-pilot",
+      "name": "ace",
+      "path": "skills/ace",
       "kind": "framework",
       "scope": "global",
       "install": "auto",

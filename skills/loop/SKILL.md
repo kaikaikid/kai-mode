@@ -55,7 +55,7 @@ python <gates.captain_preflight> --lane main|deputy|ace
 |---|---|---|
 | 机长 | `-main.md` | [`../pilot/SKILL.md`](../pilot/SKILL.md) |
 | 副机长 | `-deputy.md` | [`../copilot/SKILL.md`](../copilot/SKILL.md) |
-| 王牌飞行员 | `-ace.md` | [`../ace-pilot/SKILL.md`](../ace-pilot/SKILL.md) |
+| 王牌飞行员 | `-ace.md` | [`../ace/SKILL.md`](../ace/SKILL.md) |
 
 ## 派活用哪个方法技能
 
