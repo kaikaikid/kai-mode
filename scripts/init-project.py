@@ -207,7 +207,7 @@ def apply(cfg: dict, ans: dict) -> dict:
     paths = cfg.setdefault("paths", {})
     paths["day_tables_dir"] = ans.get("day_tables_dir") or ".ai/tasks"
     paths["day_table_pattern"] = "YYYY-MM-DD-{lane}.md"
-    paths["lanes"] = ["main", "deputy", "ace"]
+    paths["lanes"] = ["main", "deputy", "second", "ace"]
     paths["handoff_dir"] = ans.get("handoff_dir") or "handoff"
     paths["ideas_dir"] = ans.get("ideas_dir") or "ideas"
     gates = cfg.setdefault("gates", {})
@@ -391,7 +391,7 @@ def main() -> int:
     print("     值可带子命令（读取端按 `python <值>` 直接插值），例：scripts/scope-check.py close-gate")
     print("  2) 补记录面：paths.audit_dir / module_cards / dashboard 填本仓实有落点，没有的留 null（读取端如实报缺件，不猜路径）")
     print("  3) 跑 python <kai-mode 仓>/scripts/doctor.py 确认本仓绿；在目标仓跑一轮角色自证")
-    print("  4) 日表目录下写今日 -main.md / -deputy.md，再由塔台排班")
+    print("  4) 日表目录下写今日 -main.md / -deputy.md / -second.md，再由塔台排班")
     return 0
 
 

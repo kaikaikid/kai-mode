@@ -24,6 +24,10 @@ stays short on purpose, it is read every session):
 4. One rule has one home — everywhere else, leave a pointer only
 5. `python scripts/doctor.py` green before you stop
 
+## Communication
+
+Explain professional problems in plain language — no jargon without explanation, use everyday analogies when possible. If a term is unavoidable, explain it first before using it.
+
 ## Red lines (the only hard stops; everything else is a default)
 
 | Red line | Meaning |
@@ -85,6 +89,15 @@ mechanically. To write about a retired mechanism on purpose, mark that line `can
 ## Issue tracker
 
 Issues live in GitHub Issues, driven by the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+**开票归属**：本仓 Issue 只收框架自身问题，项目票一律开到项目仓。`gh issue create` / `gh pr create`
+必须显式带 `--repo <owner/name>`，**不得靠 cwd 推断**——cwd 在项目仓时 `gh` 会自动落到项目仓，
+这就是「票开错仓」的常见成因。目标仓从项目配置实例或 `git remote -v` 读；读不到就停手问人。
+
+**能否杜绝**：只写在 AGENTS.md **不能**机械杜绝，模型仍可能不带 `--repo` 直接跑。真正的拦截靠宿主
+hook（PreToolUse 拦 `gh issue create|gh pr create`，缺 `--repo` 即拒）：脚本 `issue-guard.py`、
+接法与验收住 `adapters/claude.md`「开票归属钩子」，**只能由 `set-kai-mode` 第 6 步探到缺口并问过用户后安装**。
+**本仓当前未装该 hook ⇒ 状态＝规则约束、未机械拦截**；装好后把这句改成「已机械拦截」并写 hook 落点。
 
 ## Triage labels
 

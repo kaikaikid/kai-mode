@@ -29,6 +29,12 @@
         "notes": "同一条 loop 的另一分支，读 -deputy 日表"
       },
       {
+        "name": "second-officer",
+        "trigger": "/second-officer",
+        "route": "second-officer",
+        "notes": "同一条 loop 的第三条机长道，读 -second 日表"
+      },
+      {
         "name": "ground-crew",
         "trigger": "/地勤",
         "route": "ground-crew",
@@ -52,7 +58,9 @@
     "day_table_pattern": "YYYY-MM-DD-{lane}.md",
     "lanes": [
       "main",
-      "deputy"
+      "deputy",
+      "second",
+      "ace"
     ],
     "handoff_dir": "handoff",
     "ideas_dir": "ideas",

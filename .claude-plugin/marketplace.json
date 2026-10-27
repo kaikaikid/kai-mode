@@ -8,7 +8,7 @@
       "name": "airport",
       "displayName": "机场体系",
       "source": "./airport",
-      "description": "五岗位机场剧本：地勤开票、塔台排班发货、机长与副机长滚动施工、王牌加急。"
+      "description": "六岗位机场剧本：地勤开票、塔台排班发货、机长/副机长/二副滚动施工、王牌加急。"
     },
     {
       "name": "core",

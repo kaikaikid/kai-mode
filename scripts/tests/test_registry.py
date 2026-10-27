@@ -142,8 +142,9 @@ def test_install_plan_falls_back_to_builtin_without_registry(tmp_path):
     os.makedirs(root, exist_ok=True)
     plan = ms.install_plan(root)
     assert set(plan) == set(ms.FAMILIES)
-    assert len(plan) == 8
+    assert len(plan) == 9
     assert plan["loop"]["source"] == os.path.join(".ai", "skills", "loop")
+    assert plan["二副"]["source"] == os.path.join(".ai", "skills", "project-skills", "二副")
 
 
 def test_unknown_schema_is_reported_not_guessed(tmp_path):
@@ -543,4 +544,61 @@ def test_install_plan_without_profiles_rejects_profile(tmp_path):
     _write(root, [_entry("a"), _entry("b")])
     with pytest.raises(SystemExit):
         ms.install_plan(root, "core")  # 无 profiles 文件 ⇒ 指定档位应报错，不静默全装
+
+
+def _mk_skill(base, name, body):
+    d = os.path.join(str(base), name)
+    os.makedirs(d, exist_ok=True)
+    with open(os.path.join(d, "SKILL.md"), "w", encoding="utf-8") as f:
+        f.write(f"---\nname: {name}\n---\n{body}\n")
+
+
+def _fake_plan(*names):
+    # source 缺省，让候选顺序落到 path（`skills/<名>`）；写死 source="skills" 会把整棵 skills 当正本。
+    return {n: {"path": f"skills/{n}"} for n in names}
+
+
+def _read(base, name):
+    with open(os.path.join(str(base), name, "SKILL.md"), encoding="utf-8") as f:
+        return f.read()
+
+
+def test_conflict_rows_only_flags_same_name_different_content(tmp_path):
+    """库内已有同名但内容不同 ⇒ 冲突（要用户抉择）；库内没有 ⇒ 只是缺件，不算冲突。"""
+    root, lib = tmp_path / "repo", tmp_path / "lib"
+    _mk_skill(root / "skills", "tower", "# ours")
+    _mk_skill(root / "skills", "other", "# ours other")
+    _mk_skill(lib, "tower", "# theirs")
+    plan = _fake_plan("tower", "other")
+    rows, drifted, _ = ms.check(str(root), str(lib), plan=plan)
+    assert drifted
+    conflicts = ms.conflict_rows(rows, plan)
+    assert [c["name"] for c in conflicts] == ["tower"]
+    assert conflicts[0]["status"] == "漂移"
+
+
+def test_apply_skip_keeps_existing_copy_and_writes_the_rest(tmp_path):
+    root, lib, home = tmp_path / "repo", tmp_path / "data" / "library" / "skills", tmp_path / "home"
+    _mk_skill(root / "skills", "tower", "# ours")
+    _mk_skill(root / "skills", "other", "# ours other")
+    _mk_skill(lib, "tower", "# theirs")
+    with open(os.path.join(str(tmp_path / "data"), "library.json"), "w", encoding="utf-8") as f:
+        json.dump({"skills": [], "icons": {}}, f)
+    plan = _fake_plan("tower", "other")
+    rc = ms.apply(str(root), str(lib), dry=False, home=str(home), plan=plan, skip={"tower"})
+    assert rc == 0
+    assert "# theirs" in _read(lib, "tower"), "选了保留现有就不许覆盖"
+    assert "# ours other" in _read(lib, "other"), "未冲突项照常安装"
+
+
+def test_apply_without_skip_overwrites_after_user_choice(tmp_path):
+    root, lib, home = tmp_path / "repo", tmp_path / "data" / "library" / "skills", tmp_path / "home"
+    _mk_skill(root / "skills", "tower", "# ours")
+    _mk_skill(lib, "tower", "# theirs")
+    with open(os.path.join(str(tmp_path / "data"), "library.json"), "w", encoding="utf-8") as f:
+        json.dump({"skills": [], "icons": {}}, f)
+    plan = _fake_plan("tower")
+    rc = ms.apply(str(root), str(lib), dry=False, home=str(home), plan=plan)
+    assert rc == 0
+    assert "# ours" in _read(lib, "tower")
 

@@ -6,8 +6,8 @@ approved: 2026-10-21
 sources:
   - resource: "../kai-mode/SKILL.md"
     note: "入口本体；本技能只装它脚下的东西，不改它的流程"
-  - resource: "../../../airport/skills/{ground-crew,tower,pilot,copilot,ace}/SKILL.md"
-    note: "五岗位技能正本；本技能负责把它们装到宿主"
+  - resource: "../../../airport/skills/{ground-crew,tower,pilot,copilot,second-officer,ace}/SKILL.md"
+    note: "六岗位技能正本；本技能负责把它们装到宿主"
   - resource: "scripts/magpie-sync.py"
     note: "技能正本 → Magpie 中央库 → 各家宿主链接的回写口"
 description: >
@@ -18,8 +18,8 @@ description: >
   doctor、缺件如实登记。触发：新 agent 接手装配、换宿主、装/改定时器、修技能落点、
   给项目出技能骨架、迁旧配置实例、问「这套东西都住在哪」。
   不做日常施工。
-version: 5.0.0
-updated: 2026-10-25
+version: 5.4.0
+updated: 2026-10-27
 allowed-tools: Bash(*) Read Write Edit
 compatibility: Requires python3, git
 ---
@@ -41,7 +41,7 @@ compatibility: Requires python3, git
 - 给目标项目仓生成项目本地技能骨架（生成式腿，首例＝验收/验证技能）。
 - 项目仓配置实例还是 schema 2（读取端记 warn）——走迁移腿，别拖过双仓回归期。
 
-## 装到别的项目：QA 初始化（先跑这个，再走下面的六步）
+## 装到别的项目：QA 初始化（先跑这个，再走下面的七步）
 
 装进一个新项目不是拷文件，是**把项目差异问清楚**。一条命令跑完十问，生成实例 ＋ 铺两个组件：
 
@@ -80,26 +80,27 @@ python scripts/init-project.py --repo <目标仓> --answers a.json   # 机器填
 ## 一步配置（装完即可用）
 
 **铁律：先看缺什么，再装。** 进本技能第一件事是跑「第 0 步 · 缺口扫描」（全只读），
-把六件各自的现状列成一张**缺口清单**——已就位的明确标「跳过，不重复装」，缺的才列成「推荐处理项」。
-**先把清单念给用户听，用户点头才执行对应步骤**；绝不闷头把六步全跑一遍（那会重复装已经就位的东西）。
+把各项的现状列成一张**缺口清单**——已就位的明确标「跳过，不重复装」，缺的才列成「推荐处理项」。
+**先把清单念给用户听，用户点头才执行对应步骤**；绝不闷头把七步全跑一遍（那会重复装已经就位的东西）。
 
 | # | 装什么 | 验收 |
 |---|---|---|
 | 0 | **缺口扫描（只读，先看缺什么）** | 出一张缺口清单：每项标「已就位/跳过」或「需处理（原因）」，先念给用户 |
 | 1 | 注入方法论与技能（仓库内正本） | 16 个技能文件在位（以注册表 `install:auto` 为准），入口/角色/协议互指一致 |
 | 2 | 装技能到宿主（岗位技能 ＋ 入口/安装/协议技能） | 宿主技能列表里能看见，内容与正本同哈希 |
-| 3 | 装 60 分钟唤醒定时器 | `list` 回读 `enabled=true`、周期 1 小时 |
+| 3 | 装 60 分钟唤醒定时器（门卫薄壳） | `list` 回读 `enabled=true`、周期 1 小时；到点跑一次 `wake-gate.py` 看 `rc=0/10` 与理由 |
 | 4 | worktree 环境自检（三项） | 解释器 / node / 依赖三项都有明确读数 |
 | 5 | doctor | 项目仓 `ready.py` 与 `env-doctor` 全绿或如实点红 |
 | 6 | 缺件登记与交接 | 缺件如实登记进日报（三格判据唯一正本：[`principle-report-missing-parts`](../principle-report-missing-parts/SKILL.md)） |
+| 7 | **开票归属守卫**（宿主 PreToolUse 钩子，`matcher=Bash`） | 在项目仓里跑 `gh issue create --title probe` → **必须被拒**；带 `--repo` 的同一条 → 放行 |
 
 ### 0. 缺口扫描（只读，先看缺什么再决定装不装）
 
-> **这一步只读数、不写盘。** 进本技能先跑它，把六件各自的现状列成「缺口清单」，再决定后面装不装。
+> **这一步只读数、不写盘。** 进本技能先跑它，把各项的现状列成「缺口清单」，再决定后面装不装。
 
 | 项 | 只读探法 | 判「已就位（跳过）」 | 判「需处理」 |
 |---|---|---|---|
-| 1 正本技能 | 按 `.claude-plugin/marketplace.json` 的插件目录里 `skills/*/SKILL.md` 派生清单（当前 19 条自动件 ＋ 1 条手动件），逐个检查 `SKILL.md` ＋ 互指 grep | 清单内都在、互指路径一致 | 缺文件或互指断裂 |
+| 1 正本技能 | 按 `.claude-plugin/marketplace.json` 的插件目录里 `skills/*/SKILL.md` 派生清单（当前 20 条自动件 ＋ 1 条手动件），逐个检查 `SKILL.md` ＋ 互指 grep | 清单内都在、互指路径一致 | 缺文件或互指断裂 |
 | 2 宿主同步 | `python skills/set-kai-mode/scripts/magpie-sync.py check`（按回执档位；无回执=full） | 漂移表三面全绿（内容/落点/注册） | 有漂移文件（列出具体哪些） |
 | 3 唤醒定时器 | 现测证据：项目配置 `paths.handoff_dir` 当日日报里 `cron-tower-*` 轮次 / 宿主 `list` 回读 `enabled` | 今日有真实运行轮次或 `enabled=true` | 无运行证据且宿主无定时口 |
 | 4 环境三项 | `test -x` 解释器/node、`test -d node_modules` | 三项都有明确读数 | 任一项缺（报绝对路径） |
@@ -107,19 +108,27 @@ python scripts/init-project.py --repo <目标仓> --answers a.json   # 机器填
 | 6 存证 | 项目仓 `python scripts/skill-attest.py verify`（项目仓有该脚本时） | rc=0 全过 | 有哈希不符（列出哪个文件） |
 | 7 项目配置实例 | 仓库根探测（只读）：`git rev-parse --show-toplevel` → 读 `<root>/.ai/kai-mode.project.json` 的 `schema` 字段 | schema 4 实例在位且过「模型核对」 | 无实例 → 按 D4 报缺件三格（怎么补＝本技能生成或手工按模板填）；schema 2/3 → 走「迁移腿」 |
 | 8 宿主技能与命令 | 列宿主技能目录（`adapters/<宿主>.md`）与插件命令 | 角色技能与命令都能读到 | 缺落点 → 按 `adapters/<宿主>.md` 补，软约束要登记 |
+| 9 同名技能冲突 | `python <本技能目录>/scripts/magpie-sync.py check --json` 看 `conflicts[]`（同一名字、库/宿主已有内容与正本不同） | 无冲突（`conflicts` 为空） | 有冲突 → **逐条问用户去留**；不许静默覆盖 |
+| 10 开票归属守卫 | 读宿主 `settings.json` 的 `hooks.PreToolUse` 里有没有 `issue-guard.py`；有则 `python <本技能目录>/scripts/issue-guard.py --self-test` | 钩子已挂且自测 ok | 未挂 → 列进推荐清单（只有用户点头才写 settings.json）；挂错了 → 按第 7 步重写 |
 
 **产出与动作**：
 - 把清单念给用户：**已就位逐项说「跳过，不重复装」**；**需处理项列成推荐清单**，附原因。
-- 用户点头后才执行步骤 1–6 里对应的「需处理」项；**标「已就位」的项只回读确认、不做任何写操作**（不重装、不重同步、不重建定时器）。
+- 用户点头后才执行步骤 1–7 里对应的「需处理」项；**标「已就位」的项只回读确认、不做任何写操作**（不重装、不重同步、不重建定时器）。
 - 一条铁律：**能只读判定的，绝不做写操作**；写盘（sync apply / 建定时器 / attest）只在缺口清单确有该项时才发生。
-- 步骤 1–6 因此变成「执行缺口清单」——只动清单里标了需处理的项，不是无脑六步全跑；
+- **同名不同内容＝必须由用户抉择，不许静默覆盖**：`conflicts[]` 每一条都要问「保留现有的／用本仓版覆盖」，默认推荐保留。
+  用户选保留 ⇒ apply 时把该名放进 `--skip <名,...>`（脚本打印「保留现有」，不写库、不建链、不进注册档）；
+  选覆盖 ⇒ 正常 apply（写前自动备份）。两边都要留的通用件按 `kai-` 前缀另装——前缀只用于 `skills/` 这一层，
+  目的就是避免两个来源的同名技能互相覆盖。宿主落点已有实体目录（非链接）本来就不覆盖，会报「落点失败」，同一类抉择。
+  已知无冲突的三类：角色技能（tower／pilot／…，名字独占）、本仓特化件（`kai-` 前缀）、
+  以及只引用不安装的通用方法技能（`tdd`／`code-review` 等，住 `vendor/skills/`，随上游更新）。
+- 步骤 1–7 因此变成「执行缺口清单」——只动清单里标了需处理的项，不是无脑七步全跑；
   两条腿**探到才走**：清单第 7 项探到 schema 2 实例 → 走迁移腿，用户要点生成 → 走生成式腿。
 
 ### 1. 注入方法论与技能
 
 - 正本全部住在仓库里（中立层），任何宿主一进仓库即生效：
   - 入口与安装：`core/skills/{kai-mode,set-kai-mode}/SKILL.md`
-  - 岗位技能：`airport/skills/{ground-crew,tower,pilot,copilot,ace}/SKILL.md`
+  - 岗位技能：`airport/skills/{ground-crew,tower,pilot,copilot,second-officer,ace}/SKILL.md`
   - 单票闭环：`airport/skills/loop/SKILL.md` ＋ `airport/skills/loop/references/loop-protocol.md`
   - 看板展示层：`board/skills/flight-info/SKILL.md`（SQLite 落库 ＋ 模块化采集/判据/渲染；装配与刷新都在它的 `scripts/`；板库根＝板配置 `output.root`，相对项目仓根）
 - 项目仓落点从项目配置实例读：项目技能目录 `registry.skills.project_skills_dir`、单票闭环目录 `registry.skills.loop_dir`；
@@ -147,9 +156,9 @@ python $S apply --profile core             # 正本 → 库 → 各家链接；�
   落点必须项目级，不装全局。
 - 要装/更新的技能（装机清单＝`.claude-plugin/marketplace.json` 列出的插件目录里 `skills/*/SKILL.md`；
   安装器现场派生，不落第二份清单）：
-  `airport` 6 条、`core` 10 条（9 自动＋1 手动）、`board` 1 条、`intake` 1 条、`ops` 2 条。
-- **安装档位**：`manifests/install-profiles.json` 定两档——`core`（9 条最小闭环：入口/安装/协议/五岗位/交接）、
-  `full`（19 条自动件全部）。`apply/check --profile core|full`；缺省读库根回执里的档位，无回执＝`full`。
+  `airport` 7 条、`core` 10 条（9 自动＋1 手动）、`board` 1 条、`intake` 1 条、`ops` 2 条。
+- **安装档位**：`manifests/install-profiles.json` 定两档——`core`（10 条最小闭环：入口/安装/协议/六岗位/交接）、
+  `full`（20 条自动件全部）。`apply/check --profile core|full`；缺省读库根回执里的档位，无回执＝`full`。
 - **安装回执**：库根 `.kai-mode-source.json` 记来源根、HEAD、档位、技能清单与每技能哈希；
   `doctor` 的 `install-receipt` 项校验。回执里另记「宿主落点」：技能目录、命令名、子代理口。写库前整包备份到 `<库根>/.backups/`（保留 5 份），失败自动还原。
 - 手动件（如 `harness-audit`）不进档位；需要时单独 `install:manual` 装。
@@ -204,8 +213,10 @@ python $S apply --profile core             # 正本 → 库 → 各家链接；�
    - 周期：`0 * * * *`（默认 1 小时；周期可调，改这里一处）。
    - 工作目录：主树绝对路径。
    - 执行模式：独立会话（Qoder `outputMode=independent`）。
-   - prompt 只放**薄壳**：`读取并执行 airport/skills/tower/SKILL.md 全文；任务名 cron-tower-<日期>-<时分>`。
-     长规则只住技能正本，任务配置里不存第二份。
+   - prompt 只放**门卫薄壳**（长规则住技能正本，任务配置里不存第二份）：
+     `先跑 python <tower 技能目录>/scripts/wake-gate.py；退出码 10 ⇒ 只回它那一行即结束，不读任何技能；`
+     `退出码 0 ⇒ 读取并执行 airport/skills/tower/SKILL.md 全文跑一轮；退出码 2 ⇒ 按缺件三格报告。`
+     门卫是纯脚本，跳过时零模型调用——没活或上一轮还在跑都不再拉起一整轮会话。
    - Qoder 建任务时统一 `executionAuthorization=true`（Full Access，与既有定时任务同档）。
    - 旧的四枚定时任务：**停用或删除**，不得与 60 分钟唤醒定时器并存。
      顺序：先 `disable` → 等 `runningAt` 为空或确认已停 → 再 `remove`；**别对正在跑的直接 remove**。
@@ -260,7 +271,25 @@ python scripts/framework-gate.py --selftest   # 推前框架门自证
 
 读数**只能出自门**；红就报红，不静默吞错后返回成功。长期红的门只走基线文件，不在本技能里改判据。
 
-### 6. 缺件登记与交接
+### 6. 开票归属守卫（缺 `--repo` 即拒）
+
+> 治的病：在项目仓里跑 `gh` 会按 cwd 落仓，随手 `gh issue create` 就把框架问题开到项目仓（或反过来）。
+> 判据住脚本、不住正文：`scripts/issue-guard.py`；**本技能是唯一安装口**，别人不许手写这段 settings。
+
+1. **先探**：读宿主 `settings.json` 的 `hooks.PreToolUse`，找 `issue-guard.py`。
+   已挂 → 只跑 `--self-test`，绿了就写「跳过，不重复装」；没挂 → 进推荐清单等用户点头。
+2. **再装**（用户点头才写；写前备份 `settings.json`）：
+   - Claude Code：`hooks.PreToolUse` 追加一条 `matcher: "Bash"`，`hooks[].command` 指向本脚本的**绝对路径**
+     （宿主配置里不写相对路径），超时 10 秒；脚本从 stdin 读 `tool_input.command`，缺 `--repo` 就 `exit 2`。
+   - 其它宿主：按 `adapters/<宿主>.md` 的钩子形状折算；宿主没有钩子口 ⇒ 三格登记
+     `no-hook-surface`，**不许谎报已拦截**。
+3. **验收**（两条都要做，读数写回执）：
+   - 在项目仓里跑 `gh issue create --title probe` → 被拒（`rc=2`），且提示里给出实例 `issue.repo`；
+   - 同一条加 `--repo <实例里的仓>` → 放行（`rc=0`）。
+4. **降级**：项目配置实例没有 `issue.repo` ⇒ 仍要求 `--repo`，只是说不出该填哪个仓；按缺件三格报告。
+5. **不碰**：不自动改用户其它 hook，不替项目仓写 `.githooks/`，不把授权写宽（只拦开票/开 PR 两类）。
+
+### 7. 缺件登记与交接
 
 - **缺件登记判据细则唯一正本**：[`skills/principle-report-missing-parts/`](../principle-report-missing-parts/SKILL.md)（何时进场/判据/反例/验证）；本步只管交接——缺件登记进项目配置 `paths.handoff_dir` 当日日报「要你拍」段。
 - 装完交一张「安装回执」：装了哪几件技能、定时器 jobId 与周期、三项环境读数、doctor 结果、缺件清单、**宿主落点核对**。
@@ -364,7 +393,7 @@ python scripts/framework-gate.py --selftest   # 推前框架门自证
 | 你要的 | 去哪 |
 |---|---|
 | 怎么提需求、拷问、定稿、路由 | [`skills/kai-mode/SKILL.md`](../kai-mode/SKILL.md) |
-| 五岗位各自怎么干 | [`ground-crew`](../../../airport/skills/ground-crew/SKILL.md)／[`tower`](../../../airport/skills/tower/SKILL.md)／[`pilot`](../../../airport/skills/pilot/SKILL.md)／[`copilot`](../../../airport/skills/copilot/SKILL.md)／[`ace`](../../../airport/skills/ace/SKILL.md) |
+| 六岗位各自怎么干 | [`ground-crew`](../../../airport/skills/ground-crew/SKILL.md)／[`tower`](../../../airport/skills/tower/SKILL.md)／[`pilot`](../../../airport/skills/pilot/SKILL.md)／[`copilot`](../../../airport/skills/copilot/SKILL.md)／[`second-officer`](../../../airport/skills/second-officer/SKILL.md)／[`ace`](../../../airport/skills/ace/SKILL.md) |
 | 单票闭环怎么跑 | [`airport/skills/loop/SKILL.md`](../../../airport/skills/loop/SKILL.md) ＋ `references/loop-protocol.md` |
 | 本机环境事实（解释器、node、坑） | 本机 `agents.local.md`（不入库，每台一份） |
 | 改了技能正本怎么让各家吃到 | 本技能「2. 装技能到宿主」＋ `magpie-sync.py` |

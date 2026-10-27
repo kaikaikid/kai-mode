@@ -49,7 +49,7 @@ claude
 # 你的角色是 cc-<角色>-<时间戳>；只做该文件写的动作。
 ```
 
-插件命令装好后也可以直接 `/airport:pilot`、`/airport:tower`、`/airport:ground-crew`、`/airport:copilot`、`/airport:ace`。
+插件命令装好后也可以直接 `/airport:pilot`、`/airport:tower`、`/airport:ground-crew`、`/airport:copilot`、`/airport:second-officer`、`/airport:ace`。
 
 非交互执行（脚本/回执）：
 
@@ -59,6 +59,60 @@ claude -p "读取并执行 <项目仓根>/airport/skills/<角色>/SKILL.md 全�
 ```
 
 未实测的 flag（如 `--permission-mode`、`--allowedTools`）先 `claude --help` 当场核对，不把猜测写进正本。
+
+## 定时唤醒塔台（门卫薄壳）
+
+Claude 桌面端/Code 的定时任务每轮**都会拉起一次模型会话**，所以 prompt 必须是门卫薄壳，
+不能直接写「读取并执行塔台技能全文」——否则没活、上一轮还在跑，都白烧一整轮。
+
+```text
+定时任务（每 60 分钟）
+  ├─ cwd：项目仓根
+  └─ prompt（薄壳，全文照抄，不加长规则）：
+     在项目仓根执行 `python <tower 技能目录>/scripts/wake-gate.py`。
+     退出码 10 ⇒ 只回复它打印的那一行，立即结束，不读任何技能、不扫 Issue、不排班。
+     退出码 0 ⇒ 读取并执行 airport/skills/tower/SKILL.md 全文，按该文件跑一轮；任务名 cron-tower-<日期>-<时分>。
+     退出码 2 ⇒ 按缺件三格如实报告，结束。
+```
+
+- 门卫判据住 `tower/scripts/wake-gate.py`，prompt 里不复述：上一轮还在跑（令牌心跳新于
+  `tower_cron.interval_min + 5` 分钟）⇒ 跳过；零待发货且三张正常日表都在下限以上 ⇒ 跳过；
+  待发货探测失败 ⇒ 放行（失败不等于零活）。
+- **跳过时零模型调用**：门卫是纯脚本，`rc=10` 那一轮只有一个短回合的回复，不加载 21KB 技能正文。
+- 建完必回读：`list_scheduled_tasks` 看 `enabled`、`nextRunAt`、`lastRunAt` 有没有动；
+  看到被手动停（`enabled=false`）⇒ 报「建过、现在是停的」两句，**不自动重开**。
+- 只唤醒塔台；角色之间不互相拉起（唤醒围栏）。人工 `/tower` 不过门卫。
+
+## 开票归属钩子（PreToolUse）
+
+`gh` 落在哪仓看 cwd：在项目仓里跑 `gh issue create` 就把票开到项目仓。治法是宿主钩子拒掉缺 `--repo` 的开票命令；
+判据住 `set-kai-mode/scripts/issue-guard.py`，**只在 `set-kai-mode` 第 6 步安装**，本文件只写接法与验收。
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"<宿主技能目录>/set-kai-mode/scripts/issue-guard.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+- 脚本从 stdin 读 `tool_input.command`，取不到就当放行（不拦空输入）；
+  `gh issue create` / `gh pr create` 缺 `--repo` / `-R` ⇒ `exit 2`，提示里带实例 `issue.repo`。
+- 验收两条：项目仓里 `gh issue create --title probe` 被拒；加 `--repo <owner/name>` 放行。
+- 路径用**绝对路径**：钩子进程的 cwd 不保证是技能目录。
+- 落点：用户级 `<本机数据根>/claude/settings.json`（全局拦）或项目级 `.claude/settings.json`（只拦本仓）；
+  `set-kai-mode` 按缺口清单问过再写，写前备份。
 
 ## 新上下文与执行三职
 

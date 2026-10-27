@@ -81,7 +81,7 @@ updated: <YYYY-MM-DD>
 | `allowed-tools` | 预批准可用工具（空格分隔） | 按角色收紧；例 塔台 `Bash(git:*) Read Grep` |
 | `compatibility` | 环境要求（≤500 字符） | 需脚本的写 `Requires python3, git`；纯原则写 `Host-agnostic` |
 | `metadata` | 自由键值 | 中文技能写 `alias: <中文名>`，给机器留中文别名 |
-| `dependencies` | 依赖的其他技能（嵌套） | 例 机长 / 副机长 依赖 `loop` |
+| `dependencies` | 依赖的其他技能（嵌套） | 例 机长 / 副机长 / 二副 依赖 `loop` |
 | `license` | 许可证 | 对外分享时补 |
 
 **技能名一律 kebab-case 英文**（规范硬性：小写字母数字 + 连字符，等于目录名）；

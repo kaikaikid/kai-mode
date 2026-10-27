@@ -56,11 +56,13 @@ Qoder 没有 Claude Code 那种 `/plugin:command` 命名空间。角色用两种
 ```text
 Qoder CLI 定时任务（每 60 分钟，enabled）
   ├─ cwd：项目仓根
-  ├─ prompt 薄壳：读取并执行 airport/skills/tower/SKILL.md 全文
+  ├─ prompt 薄壳：先跑 tower/scripts/wake-gate.py；rc=10 收场，rc=0 才读 airport/skills/tower/SKILL.md 全文
   └─ 任务名：kai-tower-<日期>-<时分>
 ```
 
 - 落点：`<项目>/.qoder/scheduled_tasks.json`；也可用 `/loop` 把间隔语法转成 cron。
+- **prompt 用门卫薄壳**（同 `adapters/claude.md` §定时口）：先跑 `scripts/wake-gate.py`，
+  `rc=10` 只回一行即结束、不读技能；`rc=0` 才读塔台技能全文。没活或上一轮还在跑时零模型调用。
 - 建完必回读：`/crontab` 或任务列表看 `enabled` 与下次执行时间；`pauseReason=manual` ＝ 有人手动停，别自动重开。
 - IDE 用户可用「Automations」建同样的 60 分钟任务；它没有公开的 cron 表达式语法，按 UI 填。
 - **只唤醒塔台**；角色之间不互相拉起（唤醒围栏）。

@@ -62,6 +62,7 @@ FAMILIES = {
     "塔台": os.path.join(".ai", "skills", "project-skills", "塔台"),
     "机长": os.path.join(".ai", "skills", "project-skills", "机长"),
     "副机长": os.path.join(".ai", "skills", "project-skills", "副机长"),
+    "二副": os.path.join(".ai", "skills", "project-skills", "二副"),
     "航班信息": os.path.join(".ai", "skills", "project-skills", "航班信息"),
 }
 # 正本根认两种布局：项目仓落点（实例 registry.skills，缺省同上）与框架仓 `skills/<名>`。
@@ -92,6 +93,8 @@ LEGACY_ALIASES = {
     "塔台": "tower",
     "机长": "pilot",
     "副机长": "copilot",
+    "二副": "second-officer",
+    "第二副机长": "second-officer",
     "地勤": "ground-crew",
     "航班信息": "flight-info",
     "set-航班信息": "flight-info",
@@ -873,6 +876,12 @@ def check(root: str, library: str, home: str | None = None, plan: dict | None = 
     return rows, drifted, len(faces)
 
 
+def conflict_rows(rows: list, plan: dict) -> list:
+    """同名不同内容（库/宿主已有副本与正本不符）＝需要用户抉择去留的那几条。"""
+    return [{"name": r[0], "status": r[1], "detail": r[2]}
+            for r in rows if r[0] in plan and r[1] == "漂移"]
+
+
 def copy_family(root: str, library: str, name: str, dry: bool, plan: dict | None = None) -> list:
     src = family_src(root, name, plan)
     written = []
@@ -988,11 +997,19 @@ def link_faces(library: str, names, home: str | None = None, dry: bool = False):
 
 
 def apply(root: str, library: str, dry: bool, home: str | None = None,
-          plan: dict | None = None, profile: str | None = None, retire: bool = False) -> int:
+          plan: dict | None = None, profile: str | None = None, retire: bool = False,
+          skip: set | None = None) -> int:
     plan = plan if plan is not None else install_plan(root, profile)
+    skip_names = {str(n).strip() for n in (skip or []) if str(n).strip()}
+    unknown = sorted(skip_names - set(plan))
+    if unknown:
+        print(f"  跳过名单里有不在安装面的名字（忽略）：{'、'.join(unknown)}")
+    targets = [n for n in plan if n not in skip_names]
     rows, drifted, nfaces = check(root, library, home, plan)
     print(f"正本根={root}  库={library}  档位={profile or 'full'}  落点面={nfaces} 家  "
           f"写前漂移={'有' if drifted else '无'}")
+    for name in sorted(skip_names & set(plan)):
+        print(f"  保留现有 {name}（--skip：用户选择不去覆盖）")
     had_library = os.path.isdir(library)
     backup = None if dry else backup_library(library)
     if backup:
@@ -1001,23 +1018,23 @@ def apply(root: str, library: str, dry: bool, home: str | None = None,
     rules = payload_rules(root)
     pruned = []
     try:
-        for name in plan:
+        for name in targets:
             written += copy_family(root, library, name, dry, plan)
             if not dry:
                 pruned += [f"{name}/{rel}" for rel in prune_payload_excluded(library, name, rules)]
         if dry:
             try:
-                added = patch_registry(library, list(plan), dry=True)
+                added = patch_registry(library, list(targets), dry=True)
             except SystemExit as exc:
                 print(f"  注册档预演被自证挡下：{exc}")
         else:
-            added = patch_registry(library, list(plan))
-        made, failed = link_faces(library, list(plan), home, dry)
+            added = patch_registry(library, list(targets))
+        made, failed = link_faces(library, list(targets), home, dry)
         if not dry:
-            hashes = {name: tree_digest(family_src(root, name, plan), rules) for name in plan}
+            hashes = {name: tree_digest(family_src(root, name, plan), rules) for name in targets}
             marker = write_source_marker(
-                library, root, len(plan), profile=profile or marked_profile(library),
-                skill_names=list(plan), hashes=hashes, source_commit=source_commit(root))
+                library, root, len(targets), profile=profile or marked_profile(library),
+                skill_names=list(targets), hashes=hashes, source_commit=source_commit(root))
     except BaseException as exc:
         if backup and restore_library(library, backup):
             print(f"  apply 失败，已从备份还原：{backup}")
@@ -1050,7 +1067,7 @@ def apply(root: str, library: str, dry: bool, home: str | None = None,
                 print(f"  退役跳过 {x}")
         print("（dry-run：盘上未改动）")
         return 0
-    _rows, drifted2, _n = check(root, library, home, plan)
+    _rows, drifted2, _n = check(root, library, home, {n: plan[n] for n in targets})
     if drifted2:
         if backup and restore_library(library, backup):
             print(f"回写后复量仍有漂移，已从备份还原：{backup}")
@@ -1314,6 +1331,9 @@ def main() -> int:
     ap.add_argument("--retire-legacy", action="store_true",
                     help="一次性迁移：旧中文角色目录移到 .retired 并摘掉宿主旧链")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--json", action="store_true", help="check 输出机器可读的漂移/冲突表")
+    ap.add_argument("--skip", default=None,
+                    help="apply 时跳过的技能名（逗号分隔）：初始化时用户选「保留现有」的那几个")
     ap.add_argument("--selftest", action="store_true")
     a = ap.parse_args()
     if a.selftest:
@@ -1335,13 +1355,24 @@ def main() -> int:
         return 2
     if a.mode == "check":
         rows, drifted, nfaces = check(root, library, plan=plan)
+        if a.json:
+            conflicts = conflict_rows(rows, plan)
+            print(json.dumps({
+                "root": root, "library": library, "profile": profile or "full",
+                "faces": nfaces, "drifted": drifted,
+                "conflicts": conflicts,
+                "rows": [{"name": r[0], "status": r[1], "detail": r[2], "kind": r[4]}
+                         for r in rows],
+            }, ensure_ascii=False, indent=2))
+            return 1 if drifted else 0
         print(f"正本根={root}  库={library}  档位={profile or 'full'}  落点面={nfaces} 家")
         for r in rows:
             print("  ", " | ".join(str(c) for c in r).rstrip(" |"))
         print("CHECK", "漂移" if drifted else "全绿")
         return 1 if drifted else 0
+    skip = {s.strip() for s in (a.skip or "").split(",") if s.strip()}
     return apply(root, library, a.dry_run, plan=plan, profile=profile,
-                 retire=a.retire_legacy)
+                 retire=a.retire_legacy, skip=skip)
 
 
 if __name__ == "__main__":
