@@ -7,7 +7,7 @@ sources: []
 description: >
   机长 / 副机长 / 王牌飞行员共用的单票闭环（不是用户入口）。判据以协议正本为准。
   触发：由 `/pilot`、`/copilot`、`/ace` 自动带入；「loop」不是口令。
-version: 6.0.0
+version: 6.1.0
 updated: 2026-10-27
 allowed-tools: Read Grep Bash(python:*)
 compatibility: Host-agnostic
@@ -34,6 +34,20 @@ dependencies:
 | [`references/loop-protocol.md`](references/loop-protocol.md) | 单票闭环判据正本：名额、记录面、停点、等待梯、发货边界 |
 | [`references/dispatch.md`](references/dispatch.md) | 票外派发：何时派、谁能派、轻卡五件、回执四要素、派生固定一层 |
 | [`references/adjudication.md`](references/adjudication.md) | 取舍裁决：什么时候派、`ruling=` 三值与四件、不裁的四类 |
+
+## 脚本（先跑脚本，再读正文）
+
+机械判断先交给脚本，拿小 JSON 再决策；正文只用来处理脚本判不了的取舍。
+
+| 脚本 | 用途 |
+|---|---|
+| `scripts/ticket.py show --ticket <n>` | 窄读票面，输出 AC／允许面／禁止面／验证命令 |
+| `scripts/ticket.py ready --ticket <n>` | 开工前查三件；缺件直接红 |
+| `scripts/ticket.py verdict --text "<判词>"` | 验 `verdict=`／`ac=` 形状与分母 |
+| `scripts/ticket.py receipt --file <回执>` | 验回执字段；行数上限可按协议传 `--max-lines` |
+| `scripts/ticket.py pointer --file <指针>` | 验续跑指针四件 |
+| `scripts/protocol.py --section 三` | 只打印协议那一节，不整份加载 |
+| `scripts/worktree.py status --lane main` | 车道槽、分支、HEAD、脏否（只读） |
 
 ## 一张票
 

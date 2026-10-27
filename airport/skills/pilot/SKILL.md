@@ -10,7 +10,7 @@ description: >
   机场体系的机长：读自己日表并滚动跑完它；每票开工→施工→独立审查→判词，待发货不占执行名额。
   取舍题默认派裁决子代理出 `ruling=`、不问人；「停」与「等」分家，收场必先落续跑指针。只管理不写码、不 push。
   触发：`/pilot`、说「机长」「开工」「继续跑」「把日表跑完」。
-version: 3.0.0
+version: 3.1.0
 updated: 2026-10-27
 allowed-tools: Bash(git:*) Bash(gh:*) Bash(python:*) Read Grep
 compatibility: Requires git
@@ -27,6 +27,8 @@ dependencies:
 
 > **判据正本**＝兄弟技能 `loop` 的 `references/loop-protocol.md`；本文件是执行清单，冲突以正本为准。
 > **派活规则**＝`references/dispatch.md`；**裁决形状**＝`references/adjudication.md`。
+> **先跑脚本**：票面、回执、判词、指针与车道树都有机械检查，见 `loop` 技能「脚本」节；
+> 只取协议某一节时用 `../loop/scripts/protocol.py --section <节>`，不整份加载。
 
 ## 角色定位
 
@@ -70,17 +72,21 @@ python <gates.captain_preflight> --lane main
 
 ### 1. 取票
 
-只做日表里的票；表外票不开工。窄读票面（票体＋最近判词＋最后 3 条评论，不拉全量历史）：
+只做日表里的票；表外票不开工。先用脚本窄读票面（不拉全量历史）：
 
 ```bash
-gh issue view <n> --json number,title,body,state,labels,comments --jq '{number,title,state,labels:[.labels[].name],body,latest_verdict:([.comments[]|select(.body|startswith("verdict="))]|last|.body // ""),recent:(.comments[-3:]|map(.body))}'
+python ../loop/scripts/ticket.py ready --ticket <n>
+python ../loop/scripts/ticket.py show --ticket <n>
 ```
+
+脚本起不来再退回 `gh issue view`；别猜票面。
 
 **过线判据**：票面有 AC、允许修改面、验证命令；缺一件 → 写卡点，不开工。
 
 ### 2. 开工
 
 写开工评论：分支名、施工子代理、验证计划、预计断点；在**自己的车道工作树**里建票分支，从 `dev` 拉。
+先跑 `python ../loop/scripts/worktree.py status --lane main` 看槽位、分支与脏否；槽位缺失就报缺件，不新建。
 
 **过线判据（可死性三件，缺一不许拖 worker）**：
 ① 票面有开工评论；② 分支已有至少一笔 scoped commit；③ 独占车道槽位且与在飞票的允许面零交叠。
@@ -97,7 +103,8 @@ gh issue view <n> --json number,title,body,state,labels,comments --jq '{number,t
 派**另一段新上下文**的审查子代理，只读，逐条对 AC 与机检；施工者不得自审。
 
 **过线判据**：首行 `verdict=pass|fail`，第二行 `ac=<通过数>/<总数>`；`fail` 每条四要素（点、严重度、证据、建议修法），
-`pass` 每条证据写 `file:line` 且可点开。
+`pass` 每条证据写 `file:line` 且可点开。落票前用
+`python ../loop/scripts/ticket.py verdict --ticket <n> --text "<判词>"` 验形状与分母。
 
 ### 5. 判词
 
@@ -121,6 +128,7 @@ gh issue view <n> --json number,title,body,state,labels,comments --jq '{number,t
 - **B 态＝挂等牌收场**：只剩等子代理／等定时器／等下一班，先落指针再结束，并写明「这不是完工，在等 X」。
 
 **过线判据**：指针四件齐全；票状态没有被改成完成；没有替塔台发货。
+指针落票前用 `python ../loop/scripts/ticket.py pointer --file <指针文件>`（或 `--text`）验四件。
 
 ## 连接器与降级
 
