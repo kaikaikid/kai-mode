@@ -218,6 +218,33 @@ class TestHandoff(unittest.TestCase):
             conn.close()
 
 
+class TestHandoffDateForms(unittest.TestCase):
+    """跨角色交接件用 HANDOFF-YYYYMMDD-主题.md：以前解析不到日期 ⇒ 沉到月初 ⇒ 被条数上限挤掉。"""
+
+    def test_prefixed_form_parses(self):
+        self.assertEqual(handoff._doc_date("HANDOFF-20261026-route-1900-to-tower.md"),
+                         "2026-10-26")
+        self.assertEqual(handoff._doc_date("2026-10-26-tower-cron.md"), "2026-10-26")
+
+    def test_non_dates_are_rejected(self):
+        for fn in ("README.md", "v9.14-notes.md", "12345678.md"):
+            self.assertEqual(handoff._doc_date(fn), "", fn)
+
+    def test_handoff_file_ranks_with_same_day_reports(self):
+        with tempfile.TemporaryDirectory() as repo:
+            m = os.path.join(repo, "handoff", "10-session", "2026-10")
+            os.makedirs(m)
+            for fn in ("2026-10-26-tower-cron.md",
+                       "HANDOFF-20261026-route-1900-to-tower.md"):
+                with open(os.path.join(m, fn), "w", encoding="utf-8") as f:
+                    f.write("# 标题\n")
+            res = handoff.collect({"limit": 8},
+                                  {"repo_root": repo, "paths": {"handoff_dir": "handoff"}})
+            self.assertEqual([r["doc_date"] for r in res["handoffs"]],
+                             ["2026-10-26", "2026-10-26"])
+            self.assertEqual(len(res["handoffs"]), 2)   # 不被挤掉
+
+
 class TestMerge(unittest.TestCase):
     def test_same_uid_merges_evidence(self):
         merged = collect.merge_flights([

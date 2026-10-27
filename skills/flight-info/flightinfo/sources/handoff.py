@@ -14,7 +14,16 @@ from __future__ import annotations
 import os
 import re
 
-DATE = re.compile(r"^(\d{4}-\d{2}-\d{2})")
+DATE = re.compile(r"(\d{4})-?(\d{2})-?(\d{2})")   # 不锚定：也认 HANDOFF-YYYYMMDD-…
+def _doc_date(fn: str) -> str:
+    """文件名里的日期。以前只认开头带连字符的写法，跨角色交接件用的是
+    `HANDOFF-YYYYMMDD-主题.md` ⇒ 解析不到日期 ⇒ 排序沉到月初 ⇒ 被索引条数上限挤掉，
+    板上完全看不见这类件（实测 2026-10-27：两份 HANDOFF-* 都不在索引里）。"""    
+    for m in DATE.finditer(fn):
+        y, mo, d = m.group(1), int(m.group(2)), int(m.group(3))
+        if 1 <= mo <= 12 and 1 <= d <= 31:
+            return f"{y}-{mo:02d}-{d:02d}"
+    return ""
 MONTH = re.compile(r"^(\d{4})-(\d{2})$")
 DEFAULT_SLOTS = ("10-session", "20-plan", "30-research", "40-review")
 
@@ -41,10 +50,8 @@ def collect(cfg: dict, ctx: dict) -> dict:
             for fn in os.listdir(mdir):
                 if not fn.endswith(".md"):
                     continue
-                dm = DATE.match(fn)
-                if dm:
-                    doc_date = dm.group(1)
-                else:
+                doc_date = _doc_date(fn)
+                if not doc_date:
                     mm = MONTH.match(month)
                     doc_date = f"{mm.group(1)}-{mm.group(2)}-01"
                 rows.append({"slot": slot,
