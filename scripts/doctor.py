@@ -2080,7 +2080,7 @@ def chk_plugin_manifest(root: str, ms=None):
 
 
 CHECKS = (
-    ("registry-file", "注册表文件", chk_registry_file),
+    ("registry-file", "市场清单/注册表", chk_registry_file),
     ("registry-fields", "注册表字段", chk_registry_fields),
     ("plugin-manifest", "插件清单与版本锁", chk_plugin_manifest),
     ("skill-frontmatter", "frontmatter 与 name 三处一致", chk_frontmatter),

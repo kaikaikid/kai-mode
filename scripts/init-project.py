@@ -111,16 +111,6 @@ def build_answers(repo: str, a, yes: bool) -> dict:
     }
 
 
-def discover_personas() -> list:
-    """人格名从 agents/*.md 派生（排除 README/dispatch），不写第二份名单。
-    人格层已退役（无 agents/）时返回空表；保留函数供旧仓兼容。"""
-    d = os.path.join(ROOT, "agents")
-    if not os.path.isdir(d):
-        return []
-    return sorted(fn[:-3] for fn in os.listdir(d)
-                  if fn.endswith(".md") and fn not in ("README.md", "dispatch.md"))
-
-
 def drop_placeholders(node, path=""):
     """占位不落盘：值里还带 <尖括号> 的字段（＝没问出答案）一律改 null，返回被抹的键路径。"""
     wiped = []

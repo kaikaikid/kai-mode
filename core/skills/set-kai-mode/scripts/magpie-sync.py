@@ -32,6 +32,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -275,6 +276,29 @@ def read_skill_registry(root: str) -> tuple:
     return data, None
 
 
+def _frontmatter_description(text: str) -> str:
+    """取 frontmatter 里 description 的第一行正文（inline 或块式都认），取不到返回空串。"""
+    m = re.search(r"^---\s*\n(.*?)\n---\s*$", text, re.MULTILINE | re.DOTALL)
+    if not m:
+        return ""
+    lines = m.group(1).splitlines()
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if not stripped.startswith("description:"):
+            continue
+        val = stripped[len("description:"):].strip()
+        if val and val not in (">", "|", ">-", "|-", ">+", "|+"):
+            return val
+        for nxt in lines[i + 1:]:
+            s = nxt.strip()
+            if not s:
+                continue
+            if not nxt[:1].isspace():
+                break  # 到了下一个顶层键
+            return s
+    return ""
+
+
 def synthesize_registry_from_marketplace(root: str, marketplace_path: str) -> dict:
     """从 .claude-plugin/marketplace.json 合成注册表数据，保持向后兼容的内存形状。"""
     try:
@@ -298,7 +322,6 @@ def synthesize_registry_from_marketplace(root: str, marketplace_path: str) -> di
 
         plugin_name = plugin.get("name")
         plugin_source = plugin.get("source")
-        plugin_desc = plugin.get("description", "")
 
         # Skip plugins with non-string/remote source
         if not isinstance(plugin_name, str) or not isinstance(plugin_source, str):
@@ -335,19 +358,11 @@ def synthesize_registry_from_marketplace(root: str, marketplace_path: str) -> di
                 skill_md_path = os.path.join(skill_dir, "SKILL.md")
 
                 if os.path.isdir(skill_dir) and os.path.isfile(skill_md_path):
-                    # Read SKILL.md for summary
+                    # summary = frontmatter description 的第一行（取不到回落技能名）
                     summary = skill_name
                     try:
                         with open(skill_md_path, encoding="utf-8") as f:
-                            content = f.read()
-                            # Extract first non-empty line from frontmatter description
-                            import re
-                            frontmatter_match = re.search(r'^---\s*\n(.*?)\n---\s*\n', content, re.MULTILINE | re.DOTALL)
-                            if frontmatter_match:
-                                fm_content = frontmatter_match.group(1)
-                                desc_match = re.search(r'description:\s*\n\s*([^\n]+)', fm_content, re.MULTILINE)
-                                if desc_match:
-                                    summary = desc_match.group(1).strip()
+                            summary = _frontmatter_description(f.read()) or skill_name
                     except (OSError, ValueError):
                         pass
 

@@ -23,7 +23,7 @@
     },
     "core": {
       "version": "1.0.0",
-      "digest": "0c5092ea562c5a7efdd268d02145c27cf8af93fc2c8fbf6e05a5c52ede64a682",
+      "digest": "eb1206f6701506ea96282b5187409ec12a3c9dba269a699ec90b73e1bd12f0be",
       "skills": {
         "harness-audit": "0.2.0",
         "kai-handoff": "0.3.5",

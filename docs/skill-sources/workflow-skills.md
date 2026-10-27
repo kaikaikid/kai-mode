@@ -41,13 +41,13 @@
 
 | 外部技能 | 用在工作流的哪一步 | 本仓承载「流程」的那一份（不复制方法） |
 |---|---|---|
-| `vendor/skills/tdd` | 施工：先红后绿 | `loops/loop-protocol.md` §三.3／§九（接缝＝票面验证命令、一测例一提交） |
+| `vendor/skills/tdd` | 施工：先红后绿 | `airport/skills/loop/references/loop-protocol.md` §三.3／§九（接缝＝票面验证命令、一测例一提交） |
 | `vendor/skills/code-review` | 审查：双轴出判词 | 同文件 §四（机器门／语义门、判词四要素） |
 | `vendor/skills/diagnosing-bugs` | 连续失败／原因不明 | 同文件 §七／§八（卡点、止损、等待纪律） |
 | `vendor/skills/domain-modeling` | 定稿第 2 步：术语与 ADR | `skills/kai-mode/SKILL.md` 定稿段 ＋ `docs/adr/` |
 | `vendor/skills/to-tickets` | 定稿第 3 步：拆票草案 | `skills/kai-mode/SKILL.md` 定稿段 ＋ `skills/ground-crew/SKILL.md` 票面六件套 |
 | `vendor/skills/writing-for-agents` | 写 SKILL／AGENTS 文档 | `docs/skill-layout.md`（八字段、<500 行）＋ `scripts/doctor.py` |
-| `vendor/skills/security-audit` | 审查：安全专项（六阶段漏洞猎取） | `agents/reviewer.md` 的 `security` 模式 ＋ `agents/dispatch.md` §2／§3 |
+| `vendor/skills/security-audit` | 审查：安全专项（六阶段漏洞猎取） | `airport/skills/loop/references/dispatch.md` 的 安全专项 ＋ `airport/skills/loop/references/dispatch.md` §2／§3 |
 
 `vendor/skills/security-audit` 额外三条（与其他六个不同）：
 上游 `cloudflare/security-audit-skill`（MIT，`LICENSE` 随件），**需要 node**（两个零依赖校验器）与**OS 沙箱**（真跑目标代码）；
@@ -67,7 +67,7 @@
 | 源 | 理由 |
 |---|---|
 | `research` | 全文只有「起后台代理、查一手来源、落一份 md」；`agents/librarian.md` 已承载同一纪律 |
-| `implement` | 15 行薄壳，内容＝按票实现→tdd→code-review；`loops/loop-protocol.md` §二 已写死同样顺序 |
+| `implement` | 15 行薄壳，内容＝按票实现→tdd→code-review；`airport/skills/loop/references/loop-protocol.md` §二 已写死同样顺序 |
 | `grilling` | 「一次一问逐个确认」判据正本已是 `skills/principle-ask-one-question-at-a-time/` |
 
 ## 7. 对账（30 天一次）
