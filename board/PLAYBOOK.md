@@ -11,7 +11,7 @@
 
 ## 车道
 
-日表源默认读 `*-main.md`／`*-deputy.md`／`*-ace.md`；王牌日表只读，塔台不写。
+日表源默认读 `*-main.md`／`*-deputy.md`／`*-second.md`／`*-ace.md`；王牌日表只读，塔台不写。
 
 ## 纪律
 

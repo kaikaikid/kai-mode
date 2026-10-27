@@ -25,11 +25,35 @@ import refresh as refresh_mod  # noqa: E402
 MARKER = "flight-info-dirty"
 
 
+def _board_age_min(repo_root: str, config_path: str) -> float:
+    """板有多旧（分钟）。读 board.json 的 generated_at；读不到就当作「很旧」。
+
+    为什么需要：git 钩子只看得到本地提交，Issue 评论／标签的更新不产生提交，
+    纯钩子驱动会让板停在「GitHub 早更新了，板上还是旧的」。
+    """
+    import json
+    from datetime import datetime, timezone
+    try:
+        cfg = json.load(open(config_path, encoding="utf-8"))
+        root = (cfg.get("output") or {}).get("root") or ""
+        name = cfg.get("name") or ""
+        bj = os.path.join(repo_root, *root.split("/"), name, "board.json")
+        gen = (json.load(open(bj, encoding="utf-8")) or {}).get("generated_at") or ""
+        dt = datetime.fromisoformat(gen)
+    except (OSError, ValueError, TypeError):
+        return float("inf")
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return (datetime.now(timezone.utc) - dt).total_seconds() / 60.0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="脏标记驱动的幂等刷新")
     ap.add_argument("--repo-root", required=True)
     ap.add_argument("--config", required=True)
     ap.add_argument("--force", action="store_true", help="无视脏标记强制刷")
+    ap.add_argument("--max-age", type=int, default=0,
+                    help="板龄上限（分钟）：超过就刷，治「GitHub 更新了但本地没提交」")
     ap.add_argument("--quiet", action="store_true")
     a = ap.parse_args()
 
@@ -41,6 +65,10 @@ def main() -> int:
             stamp = (f.read() or "").strip()
     except OSError:
         stamp = ""
+
+    if a.max_age and not stamp:
+        if _board_age_min(repo_root, a.config) >= a.max_age:
+            stamp = "aging"            # 板太旧：按「有脏」处理
 
     if not stamp and not a.force:
         if not a.quiet:

@@ -3,14 +3,16 @@
 """一键接上「活的航班信息板」自动更新（Windows；零 token、无黑窗）。
 
 把三件事按依赖顺序收齐：
-  ① git 钩子（post-commit / post-merge）：写进仓的 *有效* hooksPath——
+  ① git 钩子（post-commit / post-merge / post-checkout）：写进仓的 *有效* hooksPath——
      默认 .git/hooks；本仓设了 core.hooksPath＝.githooks，就写 .githooks。
      钩子只往 .git/flight-info-dirty 写时间戳，不同步刷、不阻塞 git
      （退出码恒 0，fail-open）。
-  ② 定时任务（schtasks，仅登录时运行、隐藏窗口）：每 `interval` 分钟调
-     refresh_if_dirty.py。用**当前用户上下文**、不存密码、不讨凭证 = 无 token；
-     代价＝登出/关机时不刷。git 钩子打的脏标记由它消费。
+  ② 定时任务（schtasks，仅登录时运行、隐藏窗口）：每 `interval` 分钟（默认 30）调
+     refresh_tick.vbs → refresh_if_dirty.py --max-age interval。用**当前用户上下文**、
+     不存密码、不讨凭证 = 无 token；代价＝登出/关机时不刷。
+     --max-age 是 GitHub 新鲜度的兜底：Issue 评论/标签更新不产生本地提交，钩子看不见。
   ③ 人工入口 refresh.vbs：复制到板目录，页面「刷新」按钮指向它（无黑窗重建）。
+  黑窗：本工具生成的所有入口都走 wscript（GUI 子系统）；不再用 start /min python。
 
 为什么是这套（不是别的）：
   - 不用 (cmd … &) 丢后台：钩子一退出子进程就被回收，板根本没刷。
@@ -41,7 +43,7 @@ from flightinfo import config  # noqa: E402
 MARKER = "flight-info-dirty"
 SIGN = "# managed by kai-mode skill: flight-info"
 SCHTASK_PREFIX = "flight-info-"
-HOOKS = ("post-commit", "post-merge")
+HOOKS = ("post-commit", "post-merge", "post-checkout")
 
 # 现有 .githooks/post-commit / post-merge 是退役残 stub（指向已删的「技能/航班信息」
 # 和 .design/航班信息）。本工具会识别并覆盖它们；非本工具生成则拒绝。
@@ -107,22 +109,37 @@ def install_hooks(repo_root: str, hooks_dir: str, apply: bool) -> int:
     return rc
 
 
-def _write_task_bat(board_dir: str, repo_root: str, cfg_path: str, apply: bool) -> str | None:
-    """写一个 start /min 隐藏窗口的刷新 bat，返回其路径（无 apply 时返回预定路径）。"""
-    py = os.path.join(SKILL_ROOT, "scripts", "refresh_if_dirty.py")
+def _write_task_bat(board_dir: str, repo_root: str, cfg_path: str, apply: bool,
+                    interval: int = 30) -> str | None:
+    """写定时任务入口：bat → wscript //B refresh_tick.vbs → refresh_if_dirty --max-age。
+
+    三条硬约束：
+    - 零黑窗：全部走 wscript（GUI 子系统），`Run cmd, 0, True` 把 python 也藏起来；
+      不再用 `start /min python`（仍会闪一下控制台）。
+    - 零 token：纯脚本，不起 AI 会话、不存密码（schtasks 用当前用户上下文）。
+    - GitHub 也新鲜：钩子只看得到本地提交，所以每次 tick 用 `--max-age` 兜底——
+      有脏立刻刷，没脏但板龄超过 interval 也刷一次。
+    """
     bat = os.path.join(board_dir, "refresh_task.bat")
-    body = (
-        "@echo off\n"
-        f'start "" /min python "{py}" --repo-root "{repo_root}" '
-        f'--config "{cfg_path}" --quiet\n'
+    tick = os.path.join(board_dir, "refresh_tick.vbs")
+    py = os.path.join(SKILL_ROOT, "scripts", "refresh_if_dirty.py")
+    tick_body = (
+        "' refresh_tick.vbs — 定时任务的静默入口（由 install_auto.py 生成，勿手改）\n"
+        "Set sh = CreateObject(\"WScript.Shell\")\n"
+        f'cmd = "python ""{py}"" --repo-root ""{repo_root}"" '
+        f'--config ""{cfg_path}"" --max-age {int(interval)} --quiet"\n'
+        "sh.Run cmd, 0, True\n"
     )
+    bat_body = "@echo off\r\n" f'wscript //B "{tick}"\r\n'
     if apply:
         os.makedirs(board_dir, exist_ok=True)
+        with open(tick, "w", encoding="utf-8", newline="\r\n") as f:
+            f.write(tick_body)
         with open(bat, "w", encoding="utf-8", newline="\r\n") as f:
-            f.write(body)
-        print(f"  定时任务入口 bat：{bat}（start /min 隐藏窗口）")
+            f.write(bat_body)
+        print(f"  定时任务入口：{bat} → wscript //B refresh_tick.vbs（零黑窗，--max-age {interval}）")
     else:
-        print(f"  定时任务入口 bat：[干跑] 会写 {bat}")
+        print(f"  定时任务入口：[干跑] 会写 {bat} ＋ refresh_tick.vbs（零黑窗）")
     return bat
 
 
@@ -181,7 +198,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="接上航班信息板自动更新（钩子＋定时任务＋人工入口）")
     ap.add_argument("--repo-root", required=True)
     ap.add_argument("--config", required=True, help="板配置 board.config.json")
-    ap.add_argument("--interval", type=int, default=15, help="定时任务间隔（分钟，默认 15）")
+    ap.add_argument("--interval", type=int, default=30, help="定时任务间隔（分钟，默认 30）")
     ap.add_argument("--apply", action="store_true", help="真正落盘（默认干跑）")
     ap.add_argument("--remove", action="store_true", help="卸载（钩子停用、定时任务删除；vbs 保留）")
     a = ap.parse_args()
@@ -209,7 +226,8 @@ def main() -> int:
     rc = 0
     rc |= install_hooks(repo_root, hooks_dir, a.apply)
     if not a.remove:
-        bat = _write_task_bat(board_dir, repo_root, os.path.abspath(a.config), a.apply)
+        bat = _write_task_bat(board_dir, repo_root, os.path.abspath(a.config), a.apply,
+                              a.interval)
         rc |= install_task(repo_root, os.path.abspath(a.config), task_name, a.interval, a.apply, bat)
         rc |= install_vbs(board_dir, a.apply)
     else:

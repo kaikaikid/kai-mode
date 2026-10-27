@@ -2,6 +2,59 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.31.0 — 2026-10-27
+
+- **塔台待发货探测**：新增 `airport/skills/tower/scripts/ship-queue.py`——从 Issue 判词
+  （`verdict=pass`＋`ac=n/m`）派生待发货队列，不新增记录面：只拉 `updated_at` 变化的 issue
+  与其评论（`since=` 带 60 秒重叠）、写前日志后再推进 cursor、凭「票已关／sha 已进
+  `origin/dev`」自动退役；`peek` 零票时塔台只读一行即走轻量轮。探测失败 `rc=3` 明确不等于
+  零票，调用方退回全量扫评论。机长等角色不写账本，只有持牌塔台写 `paths.state_dir/ship-queue.json`。
+  测试 18 条并入 `skill-tests`。`tower` 2.1.0。
+- **worker 预算加档**：每车道子代理限额 3→5（主、副、二副合计 15），用户拍板直接生效、
+  不经 7 天升档梯；升档梯基线随之上移（升 6，全断回落一档到 4／3），机检改 `--per-lane 5`。
+  P1–P3 触面互斥、可死性三件与王牌保守默认不变，规划权仍在机长；见 ADR-0024。
+  `loop` 协议升 v11、`loop` 6.3.0。
+- **唤醒门卫（治定时器空跑）**：新增 `airport/skills/tower/scripts/wake-gate.py`——定时任务 prompt
+  改成门卫薄壳：上一轮还在跑（令牌心跳新于 `interval+5` 分钟）或零待发货且三张正常日表都在下限以上
+  ⇒ `rc=10` 只回一行、**不加载技能正文**；有活才 `rc=0` 放行。探测失败按放行处理（失败不等于零活），
+  自身异常也放行（宁可跑一轮，不可漏活）。门卫内部转调 `ship-queue.py peek`，不另写判据。
+  **首个适配宿主＝Claude Code**（`adapters/claude.md` §定时唤醒塔台），Qoder 与 `set-kai-mode`
+  的薄壳同步改写。测试 10 条并入 `skill-tests`。`tower` 2.2.0、`set-kai-mode` 5.2.0。
+- **航班信息板换骨（KWP 皮肤 ＋ 看板列）**：`board/skills/flight-info` 升 1.5.0——
+  - 视觉换成 KWP（`anthropics/knowledge-work-plugins`）暖白陶橙皮肤；表体改「列＝阶段、卡＝票」
+    的看板，另留「看板／列表」视图切换；旧版信息架构（Bento 读数、紧急任务、三车道排班、
+    里程碑、交接、趋势、状态条）全部保留。
+  - 新增两个源：`ship-queue`（读塔台待发货队列）与 `tower-token`（持牌人／心跳龄），
+    板子上多出「待发货队列」段和状态条塔台灯；运行态落 `runtime_state` 表（只留近 20 轮）。
+  - 配置补 P0 正确性缺口：`stale_after` 写进样例、`no_issue → unresolved` 前置、
+    `assigned/unresolved` 链外阶段、`view.urgent.max` 字段化、日表备注三条判据补回。
+  - 自动更新：钩子扩到三枚（`post-commit`／`post-merge`／`post-checkout`）且认 `core.hooksPath`；
+    定时任务默认 30 分钟、全链路 `wscript`（零黑窗、零 token），
+    `refresh_if_dirty --max-age` 兜底「GitHub 更新了但没有本地提交」。
+  - 页面自刷新：http 下每 60 秒比对 `generated_at` 变了就重载，另有手动刷新按钮与「距今」时间戳。
+  - 测试 +11 条（钩子三件套、max-age、无黑窗入口、运行态保留、两个新源），flight-info 共 85 条。
+- **初始化同名技能抉择**：`magpie-sync.py check --json` 新增 `conflicts[]`（同名但库/宿主副本与正本
+  内容不同），`apply --skip <名,...>` 支持用户选「保留现有的」——不写库、不建链、不进注册档；
+  `set-kai-mode` §0 缺口扫描新增第 9 项，冲突必须逐条问用户去留，默认推荐保留，**不再静默覆盖**。
+  测试 3 条并入仓级测试。`set-kai-mode` 5.3.0。
+- **开票归属守卫（只备不装）**：新增 `core/skills/set-kai-mode/scripts/issue-guard.py`——
+  宿主 PreToolUse 钩子里拒掉缺 `--repo`／`-R` 的 `gh issue create`／`gh pr create`，仓库从项目配置
+  实例 `issue.repo` 读，读不到仍要求显式 `--repo`；stdin 读 `tool_input.command`，取不到即放行。
+  接法与两条验收住 `adapters/claude.md`，安装步骤住 `set-kai-mode` §6（缺口扫描第 10 项），
+  **本次只写方法论与脚本、不写任何宿主 settings**。测试 9 条并入仓级测试。
+
+
+- **二副车道**：新增 `second-officer` 技能与 `/second-officer` 命令（二副／第二副机长）——
+  与机长、副机长同权同流程，独立 `-second.md` 日表与 `lane-second`，不新增权限；`loop` 协议升 v10，
+  三张正常日表的 worker 预算各 3、合计 9，王牌车道不并入。
+- **排班与看板**：塔台排班扩到三张正常日表，显式车道标签优先于亲和与均衡；`flight-info` 默认读
+  `*-second.md`，车道顺序 `main`→`deputy`→`second`→`ace`，`role_labels` 增 `second`。
+- **Issue 车道标签**：四条排队标签成为规范——`main-queue`／`deputy-queue`／`second-queue`／`ace-queue`；
+  `ace-queue` 语义不变，其余三条为显式钉车道。
+- 版本：`second-officer` 1.0.0、`pilot` 3.3.0、`copilot` 3.1.0、`ace` 1.3.0、`loop` 6.2.0、
+  `tower` 2.0.0、`ground-crew` 1.6.0、`kai-mode` 3.1.0、`set-kai-mode` 5.1.0、`flight-info` 1.4.0、
+  `airport` 3.3.0、`board` 1.2.0。
+
 ## 0.29.0 — 2026-10-27
 
 - **单票闭环 P1 脚本化**：`pilot/scripts/card.py`（从票面 JSON 生成派工卡五件）、

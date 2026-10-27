@@ -1,8 +1,8 @@
 # kai-mode —— 机场体系的技能与通用剧本仓库
 
-> **状态：0.29.0（2026-10-27 插件化剧本＋闭环 P0/P1 脚本化＋看板车道适配：KWP 形态——剧本＝插件、角色＝命令、步骤＝技能；`airport`／`core`／`board`／`intake`／`ops` 五个插件；人格层与 `registry.json` 退役，协议 v9 一车道一树；新增 `incident-response`／`runbook` 与 `plugin-check`；`loop` 补 ticket／protocol／worktree，角色补 card／round／ticket-lint；看板日表源改认 main／deputy／ace；见 [ADR-0021](docs/adr/0021-plugin-playbooks-and-persona-retirement.md)）。**
+> **状态：0.31.0（2026-10-27 塔台待发货探测：新增 `ship-queue.py`，从 Issue 判词派生待发货队列，增量扫描（`since=`）＋写前日志＋「票已关／sha 已进 `dev`」自动退役；零票时塔台只读一行即走轻量轮，探测失败 `rc=3` 不等于零票；机长不写账本。worker 预算加档：每车道子代理限额 3→5，规划权仍在机长（[ADR-0024](docs/adr/0024-worker-budget-five-per-lane.md)）。定时器改**门卫薄壳**：`wake-gate.py` 先判上一轮是否还在跑、有没有活，跳过时零模型调用（首个适配宿主＝Claude Code）。航班信息板换骨：KWP 暖白陶橙皮肤 ＋ 看板列＝阶段，新增待发货队列与塔台灯，钩子扩到三枚、30 分钟脚本定时器零黑窗，`--max-age` 兜底 GitHub 侧更新。初始化遇到同名不同内容技能时逐条问用户去留，默认保留现有，不再静默覆盖。上一版 0.30.0：二副车道——新增第四位机长 `second-officer`，塔台排班扩到三张正常日表，Issue 车道标签补齐四条；见 [ADR-0023](docs/adr/0023-second-officer-fourth-pilot-lane.md)）。**
 > （[0003：四角色＋1 小时唤醒塔台](docs/adr/0003-airport-rebuild-four-roles.md)；[0020：王牌飞行员加急车道](docs/adr/0020-ace-pilot-expedited-lane.md)）；**本仓是宿主装机正本**（`magpie-sync apply --root <本仓>`，
-> 按市场清单的插件目录装齐，当前 19 条自动件），项目仓那份技能副本只作镜像。
+> 按市场清单的插件目录装齐，当前 20 条自动件），项目仓那份技能副本只作镜像。
 > 旧五角色（Tower/Ground/Coordinator/Group-A/B）、租约、班次、handoff 按铃那套已随机场体系重做退役（本仓 [0003](docs/adr/0003-airport-rebuild-four-roles.md)）<!-- canon:allow-retired -->
 > （git 历史可捞）。
 
@@ -32,9 +32,10 @@ kai-mode 是「一句话需求 → 票 → 排班 → 施工 → 审查 → 发�
 | 地勤 | `/ground-crew`（说「地勤」也认） | 对话、规划、开票（六件套＋`ready-for-agent`）、收想法 | 写码、push、派施工 |
 | 塔台 | `/tower`（说「塔台」「出货」也认） | 独立岗位；默认每 60 分钟由定时器唤醒，也可人工唤醒；kai-mode 只推荐命令；先发货、后补排班（日表行数见协议正本，放本轮最后） | 写码、替审查下结论 |
 | 机长 / 副机长 | `/pilot` `/copilot`（说「机长」「副机长」也认） | goal 模式滚动跑完自己那张日表（在飞帽只算未完工票，`pass` 进待发货即释放）；每票 1 施工＋1 审查（新上下文），跃迁窗口内取舍派 `adjudicator` 出 `ruling=` | 写码、push、合并 |
-| 王牌飞行员 | `/ace`（说「王牌」也认） | 用户直连的加急通道；读 `ace-queue` 标签票，在自己那张 `-ace.md` 滚动消费（同刻 1 张）；简单免票热修、复杂自补票 | 写 `-main`/`-deputy` 日表、push、合并、关票 |
+| 二副 | `/second-officer`（说「二副」「第二副机长」也认） | 同机长：滚动跑完 `-second.md`；第三条正常机长道，与副机长并列而非替补 | 写码、push、合并、读写别人的日表 |
+| 王牌飞行员 | `/ace`（说「王牌」也认） | 用户直连的加急通道；读 `ace-queue` 标签票，在自己那张 `-ace.md` 滚动消费（同刻 1 张）；简单免票热修、复杂自补票 | 写 `-main`/`-deputy`/`-second` 日表、push、合并、关票 |
 
-**权限硬线（[0003](docs/adr/0003-airport-rebuild-four-roles.md) ＋ [0020](docs/adr/0020-ace-pilot-expedited-lane.md)）**：塔台**独占** push 与关票；机长/副机长/王牌只管理不写码（王牌热修是受控例外）、不 push；地勤只开票；记录面三分——主副日表只由塔台写、王牌日表只由王牌写、状态只写 Issue 评论、代码只进分支。
+**权限硬线（[0003](docs/adr/0003-airport-rebuild-four-roles.md) ＋ [0020](docs/adr/0020-ace-pilot-expedited-lane.md) ＋ [0023](docs/adr/0023-second-officer-fourth-pilot-lane.md)）**：塔台**独占** push 与关票；机长/副机长/二副/王牌只管理不写码（王牌热修是受控例外）、不 push；地勤只开票；记录面三分——主、副、二副三张日表只由塔台写、王牌日表只由王牌写、状态只写 Issue 评论、代码只进分支。
 
 **唤醒围栏（[0010](docs/adr/0010-role-wake-fence.md)）**：角色之间不互相拉起/唤醒；只有人工与定时器（仅塔台）能唤醒角色，kai-mode 只推荐命令、不自动起角色。子代理是票内委派，不受此围栏影响。
 
@@ -52,8 +53,9 @@ kai-mode 是「一句话需求 → 票 → 排班 → 施工 → 审查 → 发�
                     最后补排班写两张日表）              同刻 1 张；简单可免票热修）
                     │                                  │
                     ▼                                  │
-        机长 ──┬── 机长 ──┐   ← 主/副各按协议名额在飞；子代理按需
-        副机长 ┘          │                          │
+        机长 ──┬── 机长 ──┐   ← 主/副/二副各按协议名额在飞；子代理按需
+        副机长 ├── 副机长 │
+        二副   ┘          │                          │
        （每票：施工子代理[独立 worktree] → 审查子代理[新上下文]）
                     │  verdict=pass ＋逐条 AC 证据 → 「待发货」
                     ▼
@@ -62,7 +64,7 @@ kai-mode 是「一句话需求 → 票 → 排班 → 施工 → 审查 → 发�
                     └── 库存下降 → 下一轮补排班
 ```
 
-记录面三分：**日表**（主副塔台写／王牌写自己的，排班视图）＋ **Issue 正文与评论**（唯一事实源）＋ **分支与提交**（代码与回执）。断点三件套 = 这三样，继任者按它续跑。
+记录面三分：**日表**（主、副、二副塔台写／王牌写自己的，排班视图）＋ **Issue 正文与评论**（唯一事实源）＋ **分支与提交**（代码与回执）。断点三件套 = 这三样，继任者按它续跑。
 热修免票但仍留四件：分支提交、新上下文判词、`-ace.md` 的 `H-` 行、当日日报——**少的是票，不是记录**。
 
 ## 交接与断点（省叙述，不省证据）
@@ -81,7 +83,7 @@ kai-mode 是「一句话需求 → 票 → 排班 → 施工 → 审查 → 发�
 
 ```text
 .claude-plugin/marketplace.json   唯一分发清单：五个剧本插件的名字、版本、来源
-airport/    机场体系剧本：commands/（五岗位）＋ skills/（loop·pilot·copilot·tower·ground-crew·ace）
+airport/    机场体系剧本：commands/（六岗位）＋ skills/（loop·pilot·copilot·second-officer·tower·ground-crew·ace）
 core/       入口与安装剧本：commands/ ＋ skills/（入口、安装、交接、审计、六条原则）
 board/      看板剧本：skills/flight-info（SQLite → board.json ＋ index.html）
 intake/     想法池剧本：skills/kai-boom-idea-log

@@ -198,6 +198,7 @@ def build_summary(conn, cfg: dict, board_dir: str | None = None) -> dict:
                    if urgent_label in [x.strip() for x in (f.get("labels") or "").split(",")]]
     kpi = compute_kpi(all_flights)
     sources = db.fetch_sources(conn)
+    runtime = db.fetch_runtime(conn)
 
     # 按阶段链顺序排（库只按 stage 字母序，链序只有配置知道）；同阶段内新的在前
     order = _chain_order(cfg)
@@ -270,6 +271,7 @@ def build_summary(conn, cfg: dict, board_dir: str | None = None) -> dict:
                         _sort_flights(ace_tickets, _chain_order(cfg))],
         },
         "sources": sources,
+        "runtime": runtime,
         "blocked": blocked,
         "milestones": milestones,
         "handoffs": db.fetch_handoffs(conn, run) if run else [],
@@ -311,285 +313,268 @@ def trim_to_bytes(payload: dict, max_bytes: int,
 # 要换成 web 字体：板配置 view.font_source = "web"。
 
 CSS = """
-/* ── Token：档名与值取 soft-design-system/tokens/tokens.css 正本（含暗档覆盖）。
-      使用面禁硬编码色值（D-03）：需要透明度就用 color-mix() 从 token 派生。 ── */
+/* ── Token：KWP（anthropics/knowledge-work-plugins）看板皮肤。
+      暖白纸底 #faf9f5 · 陶橙强调 #D97757 · 卡片白 · 发丝描边。
+      改皮肤只改这里；使用面禁硬编码色值。暗档由 html[data-theme=dark] 整块覆盖。 ── */
 :root{
---soft-accent:#F4D06F;--soft-accent-warm:#C8D96F;--soft-white:#FFFFFF;--soft-surface:#F2F2F7;
---soft-bg:#FFFFFF;--soft-canvas:#F8F8F8;--soft-sunken:#E4E4EA;--soft-nav-ancestor-bg:#ECECF0;
---soft-text-primary:#1C1C1E;--soft-text-secondary:#6E6E74;--soft-text-tertiary:#C7C7CC;
---soft-status-error:#F25C54;--soft-status-info:#4E8F8F;--soft-black:#1C1C1E;
---soft-radius-card:12px;--soft-radius-item:16px;--soft-radius-member:24px;--soft-radius-button:20px;
---soft-radius-pill:999px;--soft-radius-tag:12px;--soft-radius-input:16px;
---soft-space-xs:4px;--soft-space-sm:8px;--soft-space-md:12px;--soft-space-lg:16px;
---soft-space-xl:20px;--soft-space-2xl:24px;--soft-space-3xl:32px;
---soft-shadow-l1:0 1px 2px rgba(15,23,42,.05);
---soft-shadow-l2:0 2px 4px rgba(15,23,42,.02),0 4px 12px rgba(15,23,42,.04);
---soft-shadow-l3:0 4px 6px rgba(15,23,42,.03),0 12px 24px rgba(15,23,42,.06);
---soft-font-size-ui:14px;--soft-border-elevation:1px solid rgba(15,23,42,.06);
---soft-sidebar-width:216px;--soft-shell-outer-inset:8px;--soft-shell-pane-gap:8px;
---soft-shell-pane-padding:16px;--soft-content-max-width:1120px;--soft-nav-gap:6px;
---soft-divider-color:#DCDCDC;--soft-status-bar-height:28px;
---soft-inset:color-mix(in srgb,var(--soft-surface) 45%,transparent);
---soft-duration-fast:100ms;--soft-duration-slow:200ms}
+--bg-primary:#faf9f5;--bg-secondary:#F5F4EF;--bg-card:#FFFFFF;
+--text-primary:#141413;--text-secondary:#5c5c5a;--text-muted:#8c8c8a;
+--accent:#D97757;--accent-hover:#c4684a;--border:#e5e4df;--border-light:#eeeee9;
+--shadow:rgba(20,20,19,.04);--shadow-hover:rgba(20,20,19,.08);
+--positive:#5B8C5A;--negative:#C4553F;--info:#4F7C8C;
+--radius:10px;--radius-lg:14px;--radius-pill:999px;
+--gap:16px;--sidebar-w:216px;
+--font:14px/1.5 'Inter',-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',system-ui,sans-serif}
 html[data-theme="dark"]{
---soft-accent:#A594C8;--soft-bg:#0A0A0F;--soft-white:#2C2C2E;--soft-surface:#3A3A3F;
---soft-canvas:#232326;--soft-sunken:#45454B;--soft-nav-ancestor-bg:#45454B;
---soft-text-primary:#FFFFFF;--soft-text-secondary:#A1A1A6;--soft-text-tertiary:#48484A;
---soft-status-error:#f09e98;--soft-status-info:#7FB8B8;--soft-black:#2C2C2E;
---soft-border-elevation:1px solid rgba(255,255,255,.08);--soft-divider-color:#454545;
---soft-shadow-l1:0 1px 2px rgba(0,0,0,.3);--soft-shadow-l2:0 2px 8px rgba(0,0,0,.35);
---soft-shadow-l3:0 12px 24px rgba(0,0,0,.4)}
+--bg-primary:#141413;--bg-secondary:#1d1d1b;--bg-card:#242421;
+--text-primary:#f5f4ef;--text-secondary:#a9a9a4;--text-muted:#7d7d78;
+--accent:#e08c6b;--accent-hover:#eda283;--border:#34342f;--border-light:#2c2c28;
+--shadow:rgba(0,0,0,.3);--shadow-hover:rgba(0,0,0,.45);
+--positive:#8fbc8f;--negative:#e08c7b;--info:#8fb3bf}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--soft-bg);color:var(--soft-text-primary);
-font:var(--soft-font-size-ui)/1.5 -apple-system,'PingFang SC','Microsoft YaHei',system-ui,sans-serif;
+body{margin:0;background:var(--bg-primary);color:var(--text-primary);font:var(--font);
 -webkit-font-smoothing:antialiased}
 a{color:inherit}
-/* 壳：外留白 8 · 栏间 8 · 侧栏与主区 R4 24（壳成员档）· 成员之间零分割线（D-S06） */
-.shell{display:flex;gap:var(--soft-shell-pane-gap);padding:var(--soft-shell-outer-inset);
-align-items:flex-start;min-height:100vh}
-.side{flex:0 0 var(--soft-sidebar-width);width:var(--soft-sidebar-width);background:var(--soft-white);
-border-radius:var(--soft-radius-member);padding:var(--soft-shell-pane-padding);
-display:flex;flex-direction:column;gap:var(--soft-space-lg);position:sticky;
-top:var(--soft-shell-outer-inset);max-height:calc(100vh - 16px)}
-.main{flex:1 1 auto;min-width:0;background:var(--soft-canvas);
-border-radius:var(--soft-radius-member);padding:var(--soft-space-lg) var(--soft-space-xl) 56px}
-.inner{max-width:var(--soft-content-max-width);margin:0 auto}
-/* 侧栏＝纯导航：品牌行 → 段导航 → 阶段筛选 → 栏底次级。读数一律不放这里 */
-.brand{display:flex;align-items:center;gap:var(--soft-space-md)}
-.brand .mark{width:28px;height:28px;border-radius:var(--soft-radius-card);background:var(--soft-accent);
-color:var(--soft-black);display:grid;place-items:center;font-weight:700;font-size:12px;flex:0 0 auto}
+/* 壳：左栏导航 + 主区（KWP dashboard.html 的 header/aside 骨架） */
+.shell{display:flex;gap:var(--gap);padding:12px;align-items:flex-start;min-height:100vh}
+.side{flex:0 0 var(--sidebar-w);width:var(--sidebar-w);background:var(--bg-card);
+border:1px solid var(--border-light);border-radius:var(--radius-lg);padding:16px;
+display:flex;flex-direction:column;gap:16px;position:sticky;top:12px;
+max-height:calc(100vh - 24px);overflow:auto}
+.main{flex:1 1 auto;min-width:0;padding:4px 8px 64px}
+.inner{max-width:1400px;margin:0 auto}
+.brand{display:flex;align-items:center;gap:10px}
+.brand .mark{width:28px;height:28px;border-radius:8px;background:var(--accent);
+color:#fff;display:grid;place-items:center;font-weight:700;font-size:11px;flex:0 0 auto;
+letter-spacing:.02em}
 .brand b{font-size:15px;font-weight:600}
-.grp-t{font-size:11px;font-weight:600;color:var(--soft-text-secondary);letter-spacing:.04em;
-padding:0 0 var(--soft-space-xs) var(--soft-space-xs)}
-.nav{display:flex;flex-direction:column;gap:var(--soft-nav-gap)}
-.nav a{display:flex;align-items:center;gap:var(--soft-space-sm);height:28px;
-padding:0 var(--soft-space-md);border-radius:var(--soft-radius-item);color:var(--soft-text-secondary);
-text-decoration:none;font-size:var(--soft-font-size-ui);font-weight:500;
-transition:background var(--soft-duration-fast)}
-.nav a .c{margin-left:auto;font-size:11px;font-weight:600;color:var(--soft-text-secondary);
-background:var(--soft-inset);border-radius:var(--soft-radius-pill);padding:1px 7px;
+.grp-t{font-size:11px;font-weight:600;color:var(--text-muted);letter-spacing:.06em;
+text-transform:uppercase;padding:0 0 4px 6px}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav a{display:flex;align-items:center;gap:8px;height:30px;padding:0 10px;
+border-radius:8px;color:var(--text-secondary);text-decoration:none;font-size:13px;
+font-weight:500;transition:background .12s ease}
+.nav a .c{margin-left:auto;font-size:11px;font-weight:600;color:var(--text-muted);
+background:var(--bg-secondary);border-radius:var(--radius-pill);padding:1px 7px;
 min-width:22px;text-align:center;font-variant-numeric:tabular-nums}
-.nav a:hover{background:var(--soft-inset)}
-.nav a[aria-current=page]{background:var(--soft-inset);color:var(--soft-text-primary);font-weight:600}
-.nav a[aria-current=page] .c{background:var(--soft-accent);color:var(--soft-black)}
+.nav a:hover{background:var(--bg-secondary);color:var(--text-primary)}
+.nav a[aria-current=page]{background:var(--bg-secondary);color:var(--text-primary);font-weight:600}
+.nav a[aria-current=page] .c{background:var(--accent);color:#fff}
 .side .foot{margin-top:auto}
-.side .foot summary{font-size:12px;color:var(--soft-text-secondary);cursor:pointer;
-padding:var(--soft-space-sm) var(--soft-space-xs);list-style:none}
+.side .foot summary{font-size:12px;color:var(--text-muted);cursor:pointer;
+padding:6px 4px;list-style:none}
 .side .foot summary::-webkit-details-marker{display:none}
-.side .foot p{margin:0;font-size:12px;line-height:1.7;color:var(--soft-text-secondary)}
-/* 主区第一排＝页面级标题（D-S12），工具排在其下 */
-.page-head{display:flex;align-items:baseline;gap:var(--soft-space-md);flex-wrap:wrap;
-margin:0 0 var(--soft-space-lg)}
-.page-head h1{margin:0;font-size:24px;font-weight:700;line-height:1.25;letter-spacing:-.02em}
-.page-head .read{font-size:12px;color:var(--soft-text-secondary)}
-.page-head .read b{color:var(--soft-text-primary);font-weight:600;font-variant-numeric:tabular-nums}
-.page-head .read.is-warn b{color:var(--soft-text-primary);
-box-shadow:inset 0 -2px 0 color-mix(in srgb,var(--soft-status-error) 75%,transparent)}
-/* 小字不许直接染红：正本只一枚 danger，对白底天然 3.1:1，够大字与图形、不够 12px 正文。
-   告警交给红下划条＋深字，AA 与可见性都要。大数字（.num 28px/700）走 WCAG 大字档 3:1，照旧染红。 */
-.tools{display:flex;align-items:center;gap:var(--soft-space-sm);flex-wrap:wrap;
-margin:0 0 var(--soft-space-xl)}
+.side .foot p{margin:0;font-size:12px;line-height:1.7;color:var(--text-secondary)}
+.page-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:4px 0 14px}
+.page-head .eyebrow{font-size:11px;font-weight:600;letter-spacing:.12em;
+text-transform:uppercase;color:var(--accent);width:100%;margin-bottom:-6px}
+.page-head h1{margin:0;font-size:24px;font-weight:600;line-height:1.2;letter-spacing:-.02em}
+.page-head .read{font-size:12px;color:var(--text-secondary)}
+.page-head .read b{color:var(--text-primary);font-weight:600;font-variant-numeric:tabular-nums}
+.page-head .read.is-warn b{color:var(--text-primary);
+box-shadow:inset 0 -2px 0 color-mix(in srgb,var(--negative) 70%,transparent)}
+.tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 16px}
 .tools .sp{flex:1 1 auto}
-.tbtn{height:28px;min-width:28px;padding:0 var(--soft-space-md);border:none;background:transparent;
-border-radius:var(--soft-radius-pill);color:var(--soft-text-secondary);
-font:500 var(--soft-font-size-ui)/1 inherit;cursor:pointer;display:inline-flex;
-align-items:center;gap:6px;transition:background var(--soft-duration-fast)}
-.tbtn:hover{background:var(--soft-inset);color:var(--soft-text-primary)}
-.tbtn:focus-visible{outline:none;
-box-shadow:0 0 0 3px color-mix(in srgb,var(--soft-accent) 18%,transparent)}
-.tbtn.is-primary{background:var(--soft-accent);color:var(--soft-black);font-weight:600}
-.tbtn .k{font-size:11px;color:var(--soft-text-secondary);border:1px solid var(--soft-divider-color);
-border-radius:var(--soft-radius-tag);padding:0 4px}
-/* Bento 读数带：1×1 与 2×1（B-01 合法比例），内容卡 ≤R3 20（D-S02 封顶） */
-.bento{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--soft-space-md);
-margin:0 0 var(--soft-space-2xl)}
+.tbtn{height:30px;min-width:30px;padding:0 12px;border:1px solid var(--border);
+background:var(--bg-card);border-radius:8px;color:var(--text-secondary);
+font:500 13px/1 inherit;cursor:pointer;display:inline-flex;align-items:center;gap:6px;
+transition:all .12s ease}
+.tbtn:hover{border-color:var(--border);color:var(--text-primary);box-shadow:0 1px 3px var(--shadow-hover)}
+.tbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tbtn.is-primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.tbtn.is-primary:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
+.tbtn .k{font-size:11px;color:var(--text-muted);border:1px solid var(--border);
+border-radius:6px;padding:0 4px}
+.viewtoggle{display:flex;gap:4px;background:var(--bg-secondary);padding:3px;border-radius:9px}
+.viewtoggle button{background:transparent;border:none;padding:5px 12px;font-size:13px;
+color:var(--text-muted);border-radius:7px;cursor:pointer;font-weight:500}
+.viewtoggle button:hover{color:var(--text-primary)}
+.viewtoggle button.active{background:var(--bg-card);color:var(--text-primary);
+box-shadow:0 1px 2px var(--shadow)}
+.bento{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--gap);margin:0 0 16px}
 .b2{grid-column:span 2}
-.card{background:var(--soft-white);border-radius:var(--soft-radius-button);
-box-shadow:var(--soft-shadow-l1);padding:var(--soft-space-lg);min-width:0}
-.card .lab{margin:0 0 var(--soft-space-xs);font-size:13px;color:var(--soft-text-secondary);
-display:flex;align-items:center;gap:6px}
-.card .lab i{width:6px;height:6px;border-radius:50%;background:var(--soft-text-tertiary);flex:0 0 auto}
+.card{background:var(--bg-card);border:1px solid var(--border-light);
+border-radius:var(--radius);box-shadow:0 1px 3px var(--shadow);padding:16px 18px;min-width:0}
+.card .lab{margin:0 0 4px;font-size:12px;color:var(--text-muted);
+display:flex;align-items:center;gap:6px;text-transform:uppercase;letter-spacing:.05em}
+.card .lab i{width:6px;height:6px;border-radius:50%;background:var(--text-muted);flex:0 0 auto}
 .card .num{font-size:28px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums;
 letter-spacing:-.02em}
-.card .sub{font-size:12px;color:var(--soft-text-secondary);margin-top:2px}
-.card.is-warn .lab i{background:var(--soft-status-error)}
-.card.is-warn .num{color:var(--soft-status-error)}
-.card.is-hot .lab i{background:var(--soft-accent)}
-.card[role=button]{cursor:pointer;transition:box-shadow var(--soft-duration-fast)}
-.card[role=button]:hover{box-shadow:var(--soft-shadow-l2)}
-.card[role=button]:focus-visible{outline:none;
-box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--soft-accent) 40%,transparent)}
-.card.on{box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--soft-accent) 55%,transparent),
-var(--soft-shadow-l1)}
-.card.dir{display:flex;flex-direction:column;justify-content:center;gap:var(--soft-space-xs)}
-.card.dir p{margin:0;font-size:15px;line-height:1.5}
-.card.dir p em{font-style:normal;color:var(--soft-text-secondary)}
-/* 降级旗：源非 ok 就点名，全绿不占位 */
-.flag{margin:0 0 var(--soft-space-md);padding:var(--soft-space-md) var(--soft-space-lg);
-border:1px solid var(--soft-status-error);border-left-width:3px;
-border-radius:var(--soft-radius-item);
-background:color-mix(in srgb,var(--soft-status-error) 8%,transparent);font-size:13px}
-.flag b{color:var(--soft-status-error)}
-/* 紧急任务：加急腿。描边＋底色都从暖黄派生，不新引色相（D-S03） */
-.sect.urgent{box-shadow:inset 3px 0 0 var(--soft-accent),var(--soft-shadow-l1)}
-.sect.urgent>summary h2{color:var(--soft-text-primary)}
-.sect.urgent .hint.is-over{color:var(--soft-status-error);font-weight:600}
-.urgent-box{background:var(--soft-inset);border-radius:var(--soft-radius-card);
-padding:var(--soft-space-md) var(--soft-space-lg)}
-.urgent-box .hd{display:flex;align-items:baseline;gap:var(--soft-space-sm);
-margin-bottom:var(--soft-space-sm)}
-.urgent-box .hd b{font-size:13px;font-weight:600}
-.urgent-box .hd span{margin-left:auto;font-size:12px;color:var(--soft-text-secondary)}
-.urgent-box ol{margin:0;padding:0;list-style:none}
-.urgent-box li{padding:var(--soft-space-sm) 0;font-size:13px}
-.urgent-box li+li{box-shadow:inset 0 1px 0 var(--soft-divider-color)}
-.urgent-box li em{display:block;font-style:normal;font-size:12px;
-color:var(--soft-text-secondary);margin-top:2px}
-.sect .empty code,.urgent-box code{font-family:ui-monospace,Consolas,monospace;font-size:12px}
-/* 内容段＝一张卡，段间靠留白（一卡一任务） */
-.sect{background:var(--soft-white);border-radius:var(--soft-radius-button);
-box-shadow:var(--soft-shadow-l1);margin:0 0 var(--soft-space-md)}
-.sect>summary{display:flex;align-items:center;gap:var(--soft-space-sm);cursor:pointer;
-list-style:none;padding:var(--soft-space-lg) var(--soft-space-xl)}
+.card .sub{font-size:12px;color:var(--text-muted);margin-top:2px}
+.card.is-warn .lab i{background:var(--negative)}
+.card.is-warn .num{color:var(--negative)}
+.card.is-hot .lab i{background:var(--accent)}
+.card[role=button]{cursor:pointer;transition:all .15s ease}
+.card[role=button]:hover{box-shadow:0 4px 12px var(--shadow-hover);border-color:var(--border)}
+.card.on{box-shadow:inset 0 0 0 2px var(--accent)}
+.card.dir{display:flex;flex-direction:column;justify-content:center;gap:4px}
+.card.dir p{margin:0;font-size:14px;line-height:1.5}
+.flag{margin:0 0 12px;padding:10px 14px;border:1px solid var(--negative);
+border-left-width:3px;border-radius:var(--radius);
+background:color-mix(in srgb,var(--negative) 7%,transparent);font-size:13px}
+.flag b{color:var(--negative)}
+.sect{background:var(--bg-card);border:1px solid var(--border-light);
+border-radius:var(--radius);box-shadow:0 1px 3px var(--shadow);margin:0 0 12px}
+.sect>summary{display:flex;align-items:center;gap:8px;cursor:pointer;list-style:none;
+padding:14px 18px}
 .sect>summary::-webkit-details-marker{display:none}
 .sect>summary h2{margin:0;font-size:15px;font-weight:600}
-.sect>summary .hint{font-size:12px;color:var(--soft-text-secondary)}
-.sect>summary .arw{margin-left:auto;font-size:12px;color:var(--soft-text-secondary)}
-.sect-body{padding:0 var(--soft-space-xl) var(--soft-space-lg)}
-/* 排班（置顶段） */
-.shifts{display:grid;grid-template-columns:1fr 1fr;gap:var(--soft-space-md)}
-.shift{background:var(--soft-inset);border-radius:var(--soft-radius-card);
-padding:var(--soft-space-md) var(--soft-space-lg)}
-.shift .hd{display:flex;align-items:baseline;gap:var(--soft-space-sm);
-margin-bottom:var(--soft-space-sm)}
+.sect>summary .hint{font-size:12px;color:var(--text-muted)}
+.sect>summary .arw{margin-left:auto;font-size:12px;color:var(--text-muted)}
+.sect-body{padding:0 18px 16px}
+.sect.urgent{border-left:3px solid var(--accent)}
+.sect.urgent .hint.is-over{color:var(--negative);font-weight:600}
+.urgent-box{background:var(--bg-secondary);border-radius:var(--radius);
+padding:12px 16px}
+.urgent-box .hd{display:flex;align-items:baseline;gap:8px;margin-bottom:6px}
+.urgent-box .hd b{font-size:13px;font-weight:600}
+.urgent-box .hd span{margin-left:auto;font-size:12px;color:var(--text-muted)}
+.urgent-box ol{margin:0;padding:0;list-style:none}
+.urgent-box li{padding:6px 0;font-size:13px}
+.urgent-box li+li{border-top:1px solid var(--border-light)}
+.urgent-box li em{display:block;font-style:normal;font-size:12px;
+color:var(--text-muted);margin-top:2px}
+.sect .empty code,.urgent-box code{font-family:ui-monospace,Consolas,monospace;font-size:12px}
+.shifts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.shift{background:var(--bg-secondary);border-radius:var(--radius);padding:12px 16px}
+.shift .hd{display:flex;align-items:baseline;gap:8px;margin-bottom:6px}
 .shift .hd b{font-size:13px;font-weight:600}
-.shift .hd span{margin-left:auto;font-size:12px;color:var(--soft-text-secondary)}
+.shift .hd span{margin-left:auto;font-size:12px;color:var(--text-muted)}
 .shift ol{margin:0;padding:0;list-style:none}
-.shift li{padding:var(--soft-space-sm) 0}
-.shift li+li{box-shadow:inset 0 1px 0 var(--soft-divider-color)}
-.shift li a{font-size:12px;font-weight:600;text-decoration:none;
-color:var(--soft-text-secondary);margin-right:6px}
-.shift li a:hover{color:var(--soft-text-primary)}
-.shift li em{display:block;font-style:normal;font-size:12px;color:var(--soft-text-secondary);
+.shift li{padding:6px 0;font-size:13px}
+.shift li+li{border-top:1px solid var(--border-light)}
+.shift li a{font-size:12px;font-weight:600;text-decoration:none;color:var(--text-secondary);
+margin-right:6px}
+.shift li a:hover{color:var(--accent-hover)}
+.shift li em{display:block;font-style:normal;font-size:12px;color:var(--text-muted);
 line-height:1.5;margin-top:2px}
-/* 航班表：4 列（票号／标题·徽章·判据／阶段＋掌机／距今），细节进展开行 */
+.shift .zero{font-size:12px;color:var(--text-muted)}
+.qrow{display:flex;align-items:baseline;gap:10px;padding:7px 0;font-size:13px}
+.qrow+.qrow{border-top:1px solid var(--border-light)}
+.qrow .tk{font-size:12px;font-weight:600;color:var(--text-secondary);min-width:56px}
+.qrow .ac{font-size:12px;color:var(--text-muted);min-width:52px;
+font-variant-numeric:tabular-nums}
+.qrow .sha{font-family:ui-monospace,Consolas,monospace;font-size:11px;color:var(--text-muted)}
+.qrow .br{color:var(--text-secondary);font-size:12px}
+.qrow .held{margin-left:auto;font-size:11px;font-weight:600;color:var(--negative)}
+.board{display:flex;gap:16px;overflow-x:auto;padding:2px 2px 12px;align-items:flex-start}
+.col{background:var(--bg-secondary);border-radius:12px;min-width:280px;max-width:340px;
+flex:0 0 300px;display:flex;flex-direction:column;max-height:calc(100vh - 260px)}
+.colhead{padding:12px 14px;font-weight:600;font-size:12px;text-transform:uppercase;
+letter-spacing:.05em;color:var(--text-secondary);display:flex;
+justify-content:space-between;align-items:center}
+.colhead .cnt{background:var(--bg-card);padding:2px 9px;border-radius:var(--radius-pill);
+font-size:11px;font-weight:500;color:var(--text-muted)}
+.colcards{flex:1;overflow-y:auto;padding:0 10px 10px;min-height:60px}
+.kcard{background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius);
+padding:12px 14px;margin-bottom:8px;box-shadow:0 1px 3px var(--shadow);
+transition:box-shadow .15s ease,border-color .15s ease}
+.kcard:hover{box-shadow:0 4px 12px var(--shadow-hover);border-color:var(--border)}
+.kcard .kt{font-size:13px;font-weight:500;line-height:1.45}
+.kcard .kt .no{font-size:12px;font-weight:600;margin-right:6px}
+.kcard .km{display:flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap}
+.kcard .kw{font-size:12px;color:var(--text-muted);margin-top:4px;line-height:1.45}
+.kcard .kage{margin-left:auto;font-size:11px;color:var(--text-muted);
+font-variant-numeric:tabular-nums}
+.board-empty{font-size:12px;color:var(--text-muted);padding:8px 4px}
 table{width:100%;border-collapse:collapse}
-th{text-align:left;font-size:12px;font-weight:600;color:var(--soft-text-secondary);
-padding:var(--soft-space-sm) var(--soft-space-md) var(--soft-space-sm) 0;
-cursor:pointer;white-space:nowrap;letter-spacing:.02em}
-th:first-child{padding-left:var(--soft-space-sm)}
+th{text-align:left;font-size:12px;font-weight:600;color:var(--text-muted);
+padding:8px 12px 8px 0;white-space:nowrap;letter-spacing:.02em}
+th:first-child{padding-left:8px}
 th.fixed{cursor:default}
-td{padding:var(--soft-space-md) var(--soft-space-md) var(--soft-space-md) 0;vertical-align:top}
-td:first-child{padding-left:var(--soft-space-sm)}
-tr.flight>td{box-shadow:inset 0 -1px 0 var(--soft-divider-color)}
+td{padding:12px 12px 12px 0;vertical-align:top}
+td:first-child{padding-left:8px}
+tr.flight>td{border-top:1px solid var(--border-light)}
 tr.flight{cursor:pointer}
-tr.flight:hover>td{background:var(--soft-inset)}
-tr.flight:focus-visible>td{background:var(--soft-inset)}
-.no{font-size:12px;font-weight:600;text-decoration:none;color:var(--soft-text-secondary);
+tr.flight:hover>td{background:var(--bg-secondary)}
+tr.flight:focus-visible>td{background:var(--bg-secondary)}
+.no{font-size:12px;font-weight:600;text-decoration:none;color:var(--text-secondary);
 white-space:nowrap}
-.no:hover{color:var(--soft-text-primary);text-decoration:underline}
-.msl{font-size:12px;color:var(--soft-text-secondary);margin-top:2px}
+.no:hover{color:var(--accent-hover);text-decoration:underline}
+.msl{font-size:12px;color:var(--text-muted);margin-top:2px}
 .ttl{font-size:13px;font-weight:500;line-height:1.4}
-.ttl .why{display:block;font-size:12px;font-weight:400;color:var(--soft-text-secondary);
+.ttl .why{display:block;font-size:12px;font-weight:400;color:var(--text-muted);
 line-height:1.5;margin-top:2px}
-.tag{display:inline-block;font-size:11px;font-weight:600;padding:1px 6px;margin-left:6px;
-border-radius:var(--soft-radius-tag);color:var(--soft-text-secondary);
-background:var(--soft-inset);vertical-align:1px;white-space:nowrap}
-.tag.hi{color:var(--soft-text-primary);font-weight:700;
-background:color-mix(in srgb,var(--soft-status-error) 16%,transparent);
-box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--soft-status-error) 55%,transparent)}
+.tag{display:inline-block;font-size:11px;font-weight:600;padding:1px 7px;margin-left:6px;
+border-radius:var(--radius-pill);color:var(--text-secondary);background:var(--bg-secondary);
+vertical-align:1px;white-space:nowrap}
+.tag.hi{color:var(--negative);background:color-mix(in srgb,var(--negative) 12%,transparent)}
 .chain{display:flex;gap:3px;margin-bottom:5px}
-.chain i{width:14px;height:4px;border-radius:var(--soft-radius-pill);background:var(--soft-sunken)}
-.chain i.on{background:var(--soft-accent)}
-.chain i.e{background:var(--soft-status-error)}
-.chain i.d{background:var(--soft-text-tertiary)}
-.stg{font-size:12px;color:var(--soft-text-secondary);white-space:nowrap}
-.own{display:inline-block;font-size:11px;font-weight:600;border-radius:var(--soft-radius-pill);
-padding:2px 8px;color:var(--soft-text-secondary);background:var(--soft-inset);margin-top:4px;
+.chain i{width:14px;height:4px;border-radius:var(--radius-pill);background:var(--border)}
+.chain i.on{background:var(--accent)}
+.chain i.e{background:var(--negative)}
+.chain i.d{background:var(--text-muted)}
+.stg{font-size:12px;color:var(--text-muted);white-space:nowrap}
+.own{display:inline-block;font-size:11px;font-weight:600;border-radius:var(--radius-pill);
+padding:2px 8px;color:var(--text-secondary);background:var(--bg-secondary);margin-top:4px;
 white-space:nowrap}
-.own.dash{background:transparent;color:var(--soft-text-secondary)}
-.infer{margin-left:4px;font-size:10px;font-weight:700;color:var(--soft-status-info)}
-.upd{font-size:12px;color:var(--soft-text-secondary);font-variant-numeric:tabular-nums;
+.own.dash{background:transparent;color:var(--text-muted)}
+.infer{margin-left:4px;font-size:10px;font-weight:700;color:var(--info)}
+.upd{font-size:12px;color:var(--text-muted);font-variant-numeric:tabular-nums;
 white-space:nowrap}
-.upd.s{color:var(--soft-text-primary);font-weight:600}
-/* 停滞的告警交给红点，不交给 12px 红字：正本只一枚 danger，对白底 3.26:1，
-   够图形与大字、不够小字（WCAG 小字要 4.5）。 */
+.upd.s{color:var(--text-primary);font-weight:600}
 .upd.s::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;
-background:var(--soft-status-error);margin-right:5px;vertical-align:1px}
-tr.grp>td{background:var(--soft-inset);padding:var(--soft-space-sm) var(--soft-space-md);
-font-size:12px;color:var(--soft-text-secondary);box-shadow:none}
-tr.grp b{color:var(--soft-text-primary);font-weight:600;font-size:12px;margin-right:6px}
-tr.grp .gbar{display:inline-block;width:72px;height:4px;background:var(--soft-white);
-border-radius:var(--soft-radius-pill);overflow:hidden;vertical-align:middle;margin-right:8px}
-tr.grp .gbar i{display:block;height:100%;background:var(--soft-accent)}
+background:var(--negative);margin-right:5px;vertical-align:1px}
+tr.grp>td{background:var(--bg-secondary);padding:7px 12px;font-size:12px;
+color:var(--text-muted)}
+tr.grp b{color:var(--text-primary);font-weight:600;font-size:12px;margin-right:6px}
+tr.grp .gbar{display:inline-block;width:72px;height:4px;background:var(--bg-card);
+border-radius:var(--radius-pill);overflow:hidden;vertical-align:middle;margin-right:8px}
+tr.grp .gbar i{display:block;height:100%;background:var(--accent)}
 tr.det{display:none}
 tr.det.open{display:table-row}
-tr.det>td{background:var(--soft-inset);padding:var(--soft-space-md) var(--soft-space-lg);
-box-shadow:inset 0 -1px 0 var(--soft-divider-color)}
-.kv{display:grid;grid-template-columns:76px 1fr;gap:var(--soft-space-xs) var(--soft-space-md);
-font-size:13px;line-height:1.6}
-.kv .k{font-size:12px;color:var(--soft-text-secondary)}
-.kv .v{color:var(--soft-text-secondary);word-break:break-word}
-.empty{padding:var(--soft-space-3xl);text-align:center;color:var(--soft-text-secondary);
-font-size:13px}
-/* 里程碑：横向条（B-03 禁竖长条） */
-.miles{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--soft-space-md)}
-.mile{background:var(--soft-inset);border-radius:var(--soft-radius-card);
-padding:var(--soft-space-md) var(--soft-space-lg)}
-.mile .r{display:flex;align-items:baseline;gap:var(--soft-space-sm);font-size:12px}
+tr.det>td{background:var(--bg-secondary);padding:12px 16px;border-top:1px solid var(--border-light)}
+.kv{display:grid;grid-template-columns:76px 1fr;gap:4px 12px;font-size:13px;line-height:1.6}
+.kv .k{font-size:12px;color:var(--text-muted)}
+.kv .v{color:var(--text-secondary);word-break:break-word}
+.empty{padding:32px;text-align:center;color:var(--text-muted);font-size:13px}
+.miles{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.mile{background:var(--bg-secondary);border-radius:var(--radius);padding:12px 16px}
+.mile .r{display:flex;align-items:baseline;gap:8px;font-size:12px}
 .mile .r b{font-size:13px;font-weight:600}
-.mile .r span{margin-left:auto;font-variant-numeric:tabular-nums;color:var(--soft-text-secondary)}
-.mile .bar{height:4px;background:var(--soft-white);border-radius:var(--soft-radius-pill);
-margin-top:var(--soft-space-sm);overflow:hidden}
-.mile .bar i{display:block;height:100%;background:var(--soft-accent)}
+.mile .r span{margin-left:auto;font-variant-numeric:tabular-nums;color:var(--text-muted)}
+.mile .bar{height:4px;background:var(--bg-card);border-radius:var(--radius-pill);
+margin-top:8px;overflow:hidden}
+.mile .bar i{display:block;height:100%;background:var(--accent)}
 .hands{display:flex;flex-direction:column}
-.hands a{display:flex;gap:var(--soft-space-md);padding:var(--soft-space-sm) 0;
-text-decoration:none;font-size:12px;color:var(--soft-text-secondary)}
-.hands a+a{box-shadow:inset 0 1px 0 var(--soft-divider-color)}
-.hands a:hover{color:var(--soft-text-primary)}
-.hands .dt{flex:0 0 84px;font-size:12px;color:var(--soft-text-secondary);
+.hands a{display:flex;gap:12px;padding:7px 0;text-decoration:none;font-size:12px;
+color:var(--text-secondary)}
+.hands a+a{border-top:1px solid var(--border-light)}
+.hands a:hover{color:var(--accent-hover)}
+.hands .dt{flex:0 0 84px;font-size:12px;color:var(--text-muted);
 font-variant-numeric:tabular-nums}
 .hands .ti{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-/* 状态条：D-S01 两枚受控模糊落点之一，只放读数不装按钮 */
-.statusbar{position:fixed;left:calc(var(--soft-sidebar-width) + var(--soft-space-3xl));
-right:calc(var(--soft-shell-outer-inset) + var(--soft-space-lg));
-bottom:var(--soft-shell-outer-inset);height:var(--soft-status-bar-height);
-display:flex;align-items:center;gap:var(--soft-space-md);padding:0 var(--soft-space-lg);
-font-size:12px;color:var(--soft-text-secondary);border-radius:var(--soft-radius-pill);
-backdrop-filter:blur(14px) saturate(1.15);
-background:linear-gradient(to bottom,
-color-mix(in srgb,var(--soft-canvas) 0%,transparent),
-color-mix(in srgb,var(--soft-canvas) 62%,transparent))}
+.statusbar{position:fixed;left:calc(var(--sidebar-w) + 40px);right:24px;bottom:10px;
+height:30px;display:flex;align-items:center;gap:12px;padding:0 16px;font-size:12px;
+color:var(--text-secondary);border:1px solid var(--border-light);border-radius:var(--radius-pill);
+background:color-mix(in srgb,var(--bg-card) 88%,transparent);
+backdrop-filter:blur(12px) saturate(1.1);box-shadow:0 2px 8px var(--shadow)}
 .statusbar .lamp{display:flex;align-items:center;gap:5px;font-variant-numeric:tabular-nums}
-.statusbar .lamp i{width:6px;height:6px;border-radius:50%;background:var(--soft-text-tertiary)}
-.statusbar .lamp.ok i{background:var(--soft-accent)}
-.statusbar .lamp.bad i{background:var(--soft-status-error)}
+.statusbar .lamp i{width:6px;height:6px;border-radius:50%;background:var(--text-muted)}
+.statusbar .lamp.ok i{background:var(--positive)}
+.statusbar .lamp.bad i{background:var(--negative)}
 .statusbar .sp{margin-left:auto}
-/* ⌘K 浮层（工具带放搜索钮，不做常驻输入框） */
 .ov{position:fixed;inset:0;display:none;z-index:50;align-items:flex-start;
-justify-content:center;padding-top:14vh;
-background:color-mix(in srgb,var(--soft-black) 28%,transparent)}
+justify-content:center;padding-top:14vh;background:rgba(20,20,19,.28)}
 .ov.open{display:flex}
-.pal{width:min(560px,92vw);background:var(--soft-white);border-radius:var(--soft-radius-member);
-box-shadow:var(--soft-shadow-l3);padding:var(--soft-space-lg)}
-.pal input{width:100%;height:36px;border:none;background:var(--soft-inset);
-border-radius:var(--soft-radius-input);padding:0 var(--soft-space-lg);
-font:var(--soft-font-size-ui) inherit;color:var(--soft-text-primary);outline:none}
-.pal .tip{margin:var(--soft-space-md) 0 0;font-size:12px;color:var(--soft-text-secondary);
-display:flex;align-items:center;gap:var(--soft-space-sm)}
-.pal .tip b{color:var(--soft-text-primary);font-weight:600;font-variant-numeric:tabular-nums}
+.pal{width:min(560px,92vw);background:var(--bg-card);border-radius:var(--radius-lg);
+box-shadow:0 12px 32px rgba(20,20,19,.18);padding:16px;border:1px solid var(--border)}
+.pal input{width:100%;height:38px;border:1px solid var(--border);background:var(--bg-primary);
+border-radius:9px;padding:0 14px;font:14px inherit;color:var(--text-primary);outline:none}
+.pal input:focus{border-color:var(--accent)}
+.pal .tip{margin:10px 0 0;font-size:12px;color:var(--text-muted);
+display:flex;align-items:center;gap:8px}
+.pal .tip b{color:var(--text-primary);font-weight:600;font-variant-numeric:tabular-nums}
 @media(max-width:1080px){.bento{grid-template-columns:repeat(2,1fr)}.miles{grid-template-columns:1fr}}
 @media(max-width:860px){.shell{flex-direction:column}
 .side{position:static;flex:none;width:auto;max-height:none;flex-direction:row;flex-wrap:wrap;
-align-items:center;gap:var(--soft-space-sm) var(--soft-space-md);
-padding:var(--soft-space-sm) var(--soft-space-md);border-radius:var(--soft-radius-button)}
+align-items:center;gap:6px 12px;padding:10px 12px}
 .side>div{display:contents}.grp-t{display:none}
-.nav{flex-direction:row;flex-wrap:wrap;gap:var(--soft-nav-gap)}
-.nav a{height:28px;padding:0 var(--soft-space-md)}
+.nav{flex-direction:row;flex-wrap:wrap;gap:4px}
 .side .foot{display:none}
-.main{padding:var(--soft-space-md)}
-.statusbar{left:calc(var(--soft-shell-outer-inset) + var(--soft-space-sm))}
+.main{padding:8px 4px 64px}
+.statusbar{left:12px}
 .shifts{grid-template-columns:1fr}}
 @media(max-width:560px){.bento{grid-template-columns:repeat(2,1fr)}
 .side{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
@@ -600,8 +585,8 @@ padding:var(--soft-space-sm) var(--soft-space-md);border-radius:var(--soft-radiu
 .page-head h1{font-size:20px}}
 .pstamp{display:none}
 @media print{.side,.tools,.statusbar,.ov{display:none}
-.pstamp{display:block;margin:0 0 12px;font-size:12px;color:var(--soft-text-secondary)}
-.pstamp b{color:var(--soft-text-primary)}
+.pstamp{display:block;margin:0 0 12px;font-size:12px;color:var(--text-muted)}
+.pstamp b{color:var(--text-primary)}
 .shell{display:block;padding:0}
 .main{background:transparent}.sect{box-shadow:none}
 tr.det{display:table-row}}
@@ -852,7 +837,7 @@ def _bento(payload: dict, kpi: dict, cfg: dict) -> str:
                f"<p>{_esc(payload['direction'] or '暂无方向句')}</p></div>")
     out.append('<div class="card b2"><p class="lab"><i aria-hidden="true"></i>今日排班</p>'
                f'<div class="num">{len(sched)}'
-               '<span style="font-size:14px;font-weight:500;color:var(--soft-text-secondary)"> '
+               '<span style="font-size:14px;font-weight:500;color:var(--text-muted)"> '
                '行 · 日表只由塔台写</span></div>'
                f'<div class="sub">{_esc(day or "今天还没有日表")}</div></div>')
     return f'<div class="bento">{"".join(out)}</div>'
@@ -907,11 +892,12 @@ def _urgent_section(payload: dict, cfg: dict) -> str:
     tickets = u.get("tickets") or []
     label = u.get("label") or "ace-queue"
     total = len({(r.get("ticket") or "") for r in rows} | {(t.get("ticket") or "") for t in tickets})
-    over = total - 1 if total > 1 else 0
+    max_urgent = int(((cfg.get("view") or {}).get("urgent") or {}).get("max") or 1)
+    over = total - max_urgent if total > max_urgent else 0
     ace_name = role_labels.get("ace") or "王牌"   # 叫法跟配置与术语表走，不在代码里另立一名
-    head = (f'<span class="hint">{_esc(ace_name)} · 用户直连加急通道 · 协议同刻只许 1 张</span>')
+    head = (f'<span class="hint">{_esc(ace_name)} · 用户直连加急通道 · 协议同刻只许 {max_urgent} 张</span>')
     if over:
-        head = (f'<span class="hint is-over">超编：同刻 {total} 张（协议只许 1 张）</span>')
+        head = (f'<span class="hint is-over">超编：同刻 {total} 张（协议只许 {max_urgent} 张）</span>')
     if not total:
         body = ('<p class="empty">当前没有加急任务。<br>亮起方式（任一即可）：'
                 f'① 给票打 <code>{_esc(label)}</code> 标签；'
@@ -984,7 +970,91 @@ def _handoff_section(handoffs: list[dict], link_prefix: str = "") -> str:
     return f'<div class="hands">{"".join(items)}</div>'
 
 
-def _statusbar(sources: dict) -> str:
+def _kanban(payload: dict, cfg: dict) -> str:
+    """看板主区（KWP 形态）：列＝阶段，卡＝票。只读，不可拖拽。
+
+    列顺序＝配置阶段链；链外阶段（停滞/卡点/可领/已派/残留）只有真有票才成列，
+    免得每天多出五根空栏杆。
+    """
+    rows = payload.get("all_open") or []
+    order = _chain_order(cfg)
+    labels = {}
+    for s in list(cfg.get("stages") or []) + list(cfg.get("off_chain_stages") or []):
+        labels[s.get("key") or ""] = s.get("label") or s.get("key")
+    groups: dict[str, list] = {}
+    for f in rows:
+        groups.setdefault(f.get("stage") or "undefined", []).append(f)
+    cols = [s.get("key") for s in (cfg.get("stages") or [])]
+    for s in (cfg.get("off_chain_stages") or []):
+        k = s.get("key")
+        if k and k != "closed" and groups.get(k):
+            cols.append(k)
+    out = []
+    for key in cols:
+        pool = sorted(groups.get(key) or [],
+                      key=lambda f: (order.get(f.get("stage") or "", 999),
+                                     -(f.get("stale_days") or 0)))
+        cards = []
+        for f in pool:
+            url = f.get("url") or ""
+            tk = f.get("ticket") or "-"
+            tk_cell = (f'<a class="no" href="{_esc(url)}" target="_blank" rel="noreferrer">{_esc(tk)}</a>'
+                       if url else f'<span class="no">{_esc(tk)}</span>')
+            why = _esc(_plain(f.get("why"))[:110])
+            owner = f.get("owner") or ""
+            owner_bit = (f'<span class="own">{_esc(owner)}</span>' if owner else "")
+            ms = _esc(f.get("milestone") or "")
+            age = _age_text(f)
+            cards.append('<div class="kcard" data-stage="' + _esc(key) + '" data-search="'
+                         + _search_blob(f) + '"><div class="kt">' + tk_cell
+                         + _esc(f.get("title")) + _badges(f) + '</div><div class="km">'
+                         + owner_bit + _tag(f)
+                         + (f'<span class="msl">{ms}</span>' if ms else "")
+                         + f'<span class="kage">{_esc(age)}</span></div>'
+                         + (f'<div class="kw">{why}</div>' if why else "")
+                         + "</div>")
+        out.append('<section class="col" data-col="' + _esc(key) + '"><div class="colhead">'
+                   + _esc(labels.get(key) or key)
+                   + '<span class="cnt">' + str(len(pool)) + '</span></div>'
+                   + '<div class="colcards">'
+                   + ("".join(cards) or '<p class="board-empty">空</p>')
+                   + "</div></section>")
+    return '<div class="board" id="board">' + "".join(out) + "</div>"
+
+
+def _age_text(f: dict) -> str:
+    days = f.get("stale_days")
+    if days is None:
+        days = stage_mod.dwell_days(f.get("updated_at"))
+    if days is None:
+        return "—"
+    return "今天" if days == 0 else ("昨天" if days == 1 else f"{days} 天前")
+
+
+def _queue_section(payload: dict) -> str:
+    """待发货队列（ship-queue 源）：塔台还没发出去的票。读不到就明说读不到。"""
+    q = (payload.get("runtime") or {}).get("queue") or {}
+    rows = q.get("rows") or []
+    if not rows:
+        detail = "尚无队列（塔台跑过 ship-queue sync 后才有）" if q else "未接 ship-queue 源"
+        return ('<details class="sect" id="s-queue"><summary><h2>待发货队列</h2>'
+                f'<span class="hint">{_esc(detail)}</span>'
+                '<span class="arw">展开</span></summary></details>')
+    items = []
+    for r in rows:
+        held = f'<span class="held">{_esc(r["held"])}</span>' if r.get("held") else ""
+        items.append('<div class="qrow"><span class="tk">#' + _esc(r.get("ticket"))
+                     + '</span><span class="ac">ac ' + _esc(r.get("ac") or "?")
+                     + '</span><span class="sha">' + _esc((r.get("sha") or "")[:7])
+                     + '</span><span class="br">' + _esc(r.get("branch") or "")
+                     + '</span>' + held + "</div>")
+    return ('<details class="sect" id="s-queue" open><summary><h2>待发货队列</h2>'
+            f'<span class="hint">{len(rows)} 张 · 由塔台写，新判词下一轮进队</span>'
+            '<span class="arw">收起</span></summary>'
+            f'<div class="sect-body">{"".join(items)}</div></details>')
+
+
+def _statusbar(sources: dict, runtime: dict | None = None) -> str:
     lamps = []
     for sid, v in (sources or {}).items():
         status = (v or {}).get("status") or ""
@@ -992,7 +1062,21 @@ def _statusbar(sources: dict) -> str:
         lamps.append(f'<span class="lamp {cls}" title="{_esc(sid)} {_esc(status)}">'
                      f'<i aria-hidden="true"></i>{_esc(sid)} {_esc((v or {}).get("detail") or "")}'
                      f"</span>")
-    return ('<div class="statusbar"><span>' + "".join(lamps) + '</span>'
+    tower = (runtime or {}).get("tower") or {}
+    tower_lamp = ""
+    if tower:
+        state = tower.get("state") or ""
+        cls = "ok" if state == "running" else ""
+        age = tower.get("age_min")
+        txt = (f"{tower.get('holder')} 心跳 {age:.0f} 分钟前" if age is not None
+               else "塔台空闲")
+        if state == "stale":
+            txt = f"{tower.get('holder')} 令牌可能已死（心跳 {age:.0f} 分钟前）" \
+                if age is not None else "塔台令牌状态未知"
+        tower_lamp = (f'<span class="lamp {cls}" title="塔台令牌"><i aria-hidden="true"></i>'
+                      f'塔台 {_esc(txt)}</span>')
+    return ('<div class="statusbar"><span class="lamps">' + "".join(lamps) + '</span>'
+            + tower_lamp +
             '<span class="sp"></span><span>flight-info · 只读各源，不写票面与日表</span></div>')
 
 
@@ -1000,24 +1084,33 @@ JS = """
 var STALE=0;
 function $(s,p){return (p||document).querySelector(s)}
 function $$(s,p){return [].slice.call((p||document).querySelectorAll(s))}
-var st={stage:"all",q:"",open:{}};
+var st={stage:"all",q:"",open:{},view:"board"};
 function rows(){return $$("#tbody tr.flight")}
+function kcards(){return $$("#boardView .kcard")}
 function apply(){
-  var shown=0;
+  var shown=0,total=0;
   rows().forEach(function(tr){
     var okS=st.stage==="all"||tr.dataset.stage===st.stage;
     var okQ=!st.q||(tr.dataset.search||"").indexOf(st.q)>-1;
-    var on=okS&&okQ;tr.hidden=!on;
+    var on=okS&&okQ;tr.hidden=!on;total++;
     var d=document.querySelector('tr.det[data-d="'+tr.dataset.k+'"]');
     if(d){d.hidden=!on||!st.open[tr.dataset.k];}
     if(on)shown++;
   });
+  kcards().forEach(function(c){
+    var okS=st.stage==="all"||c.dataset.stage===st.stage;
+    var okQ=!st.q||(c.dataset.search||"").indexOf(st.q)>-1;
+    c.hidden=!(okS&&okQ);});
+  $$("#boardView .col").forEach(function(col){
+    var n=kcards().filter(function(c){return c.closest(".col")===col&&!c.hidden}).length;
+    var cnt=col.querySelector(".cnt");if(cnt)cnt.textContent=n;
+    col.hidden=n===0&&st.stage!=="all";});
   $$("#tbody tr.grp").forEach(function(g){
     var n=0,s=g.nextElementSibling;
     while(s&&s.classList.contains("flight")){if(!s.hidden)n++;s=s.nextElementSibling}
     g.hidden=n===0;});
   $("#crumb").textContent=(st.stage==="all"?"":"阶段＝"+st.stage+" · ")
-    +(st.q?"搜「"+st.q+"」· ":"")+shown+" / "+rows().length+" 张";
+    +(st.q?"搜「"+st.q+"」· ":"")+shown+" / "+total+" 张";
   $$(".card[data-stage]").forEach(function(c){
     c.classList.toggle("on",c.dataset.stage===st.stage)});
   $$("#stages a").forEach(function(a){
@@ -1046,6 +1139,40 @@ $("#nav").addEventListener("click",function(e){var a=e.target.closest("a[data-se
   a.setAttribute("aria-current","page");});
 $("#tbody").addEventListener("click",function(e){var tr=e.target.closest("tr.flight");
   if(!tr||e.target.closest("a"))return;toggle(tr.dataset.k);});
+function setView(v){
+  st.view=v;
+  var bv=$("#boardView"),lv=$("#listView");
+  if(bv)bv.hidden=v!=="board";if(lv)lv.hidden=v!=="list";
+  var bb=$("#boardBtn"),lb2=$("#listBtn");
+  if(bb)bb.classList.toggle("active",v==="board");
+  if(lb2)lb2.classList.toggle("active",v==="list");
+  var ex=$("#expand");if(ex)ex.style.display=v==="list"?"":"none";
+  apply();
+  try{localStorage.setItem("fi-view",v)}catch(e){}
+}
+var _bb=$("#boardBtn"),_lb=$("#listBtn");
+if(_bb)_bb.addEventListener("click",function(){setView("board")});
+if(_lb)_lb.addEventListener("click",function(){setView("list")});
+/* 自刷新：三档。① File System Access 每秒看 index.html 的 lastModified —— 重建后自动重载；
+   ② 不支持 API 时退回 60 秒 location.reload()；③ 手动按钮永远可用。 */
+var _lastMod=0,_watch=null;
+function _startWatch(){
+  if(_watch)clearInterval(_watch);
+  _watch=setInterval(function(){
+    if(document.hidden)return;
+    fetch(location.href,{method:"HEAD",cache:"no-store"}).then(function(r){
+      var lm=Date.parse(r.headers.get("last-modified")||"");
+      if(!lm)return;
+      if(_lastMod&&lm>_lastMod){location.reload()}
+      else if(!_lastMod){_lastMod=lm}
+    }).catch(function(){});
+  },5000);
+}
+(function initView(){
+  var v="board";try{v=localStorage.getItem("fi-view")||"board"}catch(e){}
+  setView(v==="list"?"list":"board");
+  _startWatch();
+})();
 $("#tbody").addEventListener("keydown",function(e){var tr=e.target.closest("tr.flight");
   if(!tr)return;if(e.key==="Enter"||e.key===" "){e.preventDefault();toggle(tr.dataset.k);}});
 function toggle(k){var d=document.querySelector('tr.det[data-d="'+k+'"]');if(!d)return;
@@ -1071,6 +1198,19 @@ $("#refresh").addEventListener("click",function(){
   if(location.protocol==="file:"){location.reload();return}
   fetch("board.json?_="+Date.now(),{cache:"no-store"}).then(function(){location.reload()})
   .catch(function(){location.reload()});});
+/* 重建心跳：页面自己不看文件系统也能知道"盘上已换了一版"——
+   重建时 write_outputs 会写 generated_at；这里每 60 秒取一次 board.json 的
+   generated_at（file:// 下取不到就安静跳过，靠手动刷新）。 */
+var _gen=null;
+setInterval(function(){
+  if(document.hidden)return;
+  fetch("board.json?_="+Date.now(),{cache:"no-store"}).then(function(r){return r.json()})
+  .then(function(j){
+    var g=j.generated_at||"";
+    if(_gen===null){_gen=g;return}
+    if(g&&g!==_gen){location.reload()}
+  }).catch(function(){});
+},60000);
 $("#theme").addEventListener("click",function(){var el=document.documentElement;
   el.setAttribute("data-theme",el.getAttribute("data-theme")==="dark"?"light":"dark");});
 $$("details.sect").forEach(function(s){s.addEventListener("toggle",function(){
@@ -1116,6 +1256,7 @@ def render_html(payload: dict, cfg: dict) -> str:
   <p class="pstamp">打印件 · 快照 <b>{_esc(gen)}</b> · run {_esc(run)} ·
     未收尾 {kpi['open']} 张（屏上可交互，纸上是死数）</p>
   <header class="page-head">
+    <span class="eyebrow">{_esc((view.get("eyebrow") or "RUN"))} · {_esc(payload.get("subtitle") or "")}</span>
     <h1>{_esc(payload['title'])}</h1>
     <span class="read" id="stamp">快照 <b>{_esc(gen)}</b> ·
       <span id="age" data-ts="{ts_ms}">刚刚</span></span>
@@ -1125,6 +1266,10 @@ def render_html(payload: dict, cfg: dict) -> str:
   </header>
   <div class="tools">
     <button class="tbtn" id="qbtn" title="搜索（Ctrl+K）">搜索<span class="k">Ctrl K</span></button>
+    <div class="viewtoggle" id="viewtoggle">
+      <button id="boardBtn" class="active" type="button">看板</button>
+      <button id="listBtn" type="button">列表</button>
+    </div>
     <button class="tbtn" id="expand" title="展开或收起全部行细节">展开细节</button>
     <button class="tbtn" id="theme" title="切换亮暗">◐ 外观</button>
     <span class="sp"></span>
@@ -1135,10 +1280,13 @@ def render_html(payload: dict, cfg: dict) -> str:
   {_bento(payload, kpi, cfg)}
   {_urgent_section(payload, cfg)}
   {_shift_section(payload, cfg)}
+  {_queue_section(payload)}
   <details class="sect" id="s-board" open>
-    <summary><h2>{_esc(lb['flights'])}</h2><span class="hint" id="crumb">{len(face)} 张未收尾 · 按里程碑分组</span>
+    <summary><h2>{_esc(lb['flights'])}</h2><span class="hint" id="crumb">{len(face)} 张未收尾 · 看板按阶段分列</span>
       <span class="arw">收起</span></summary>
     <div class="sect-body">
+      <div id="boardView">{_kanban(payload, cfg)}</div>
+      <div id="listView" hidden>
       <table><thead><tr>
         <th class="fixed" style="width:132px">{_esc(lb['ticket'])} / 里程碑</th>
         <th class="fixed">{_esc(lb['content'])} · 徽章 · 判据</th>
@@ -1147,6 +1295,7 @@ def render_html(payload: dict, cfg: dict) -> str:
       </tr></thead><tbody id="tbody">
         {_flight_rows(payload, cfg)}
       </tbody></table>
+      </div>
       <p class="empty" id="empty" hidden>没有符合筛选条件的票</p>
     </div>
   </details>
@@ -1163,7 +1312,7 @@ def render_html(payload: dict, cfg: dict) -> str:
   {_trend(payload)}
 </div></main>
 </div>
-{_statusbar(payload.get("sources") or {})}
+{_statusbar(payload.get("sources") or {}, payload.get("runtime") or {})}
 <div class="ov" id="ov"><div class="pal">
   <input id="q" placeholder="搜票号 / 标题 / 里程碑 / 掌机 / 判据" aria-label="搜票">
   <p class="tip"><span>Esc 关闭 · 再按一次清筛选</span>

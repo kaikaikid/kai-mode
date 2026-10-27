@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from . import db, stage
+from .sources import collect as collect_source
 from .sources import get as get_source
 
 MERGE_FIRST = ("title", "ticket", "assignee", "milestone", "url",
@@ -101,23 +102,28 @@ def run_sources(config: dict, ctx: dict, conn, run_id: str) -> dict:
     """跑全部源，返回 {"sources": {...}, "flights": n, "schedules": n,
     "handoffs": n}。源除 flights/schedules 外可带 handoffs（非航班形态的记录）。"""
     all_records, all_schedules, all_handoffs, report = [], [], [], {}
+    runtime = {"queue": None, "tower": None}
 
     for sc in config.get("sources") or []:
         sid = sc.get("id") or sc.get("type")
         typ = sc.get("type")
         try:
-            mod = get_source(typ)
+            get_source(typ)
         except KeyError as e:
             report[sid] = {"status": "fail", "rows": 0, "detail": str(e)}
             db.record_source(conn, run_id, sid, typ or "?", "fail", 0, str(e))
             continue
         try:
-            res = mod.collect(sc, ctx)
+            res = collect_source(typ, sc, ctx)
         except Exception as e:                      # 单源炸不拖垮整页
             detail = f"{type(e).__name__}: {e}"
             report[sid] = {"status": "fail", "rows": 0, "detail": detail}
             db.record_source(conn, run_id, sid, typ, "fail", 0, detail)
             continue
+        if res.get("queue") is not None:
+            runtime["queue"] = res["queue"]
+        if res.get("tower") is not None:
+            runtime["tower"] = res["tower"]
         flights = res.get("flights") or []
         schedules = res.get("schedules") or []
         handoffs = res.get("handoffs") or []
@@ -171,6 +177,8 @@ def run_sources(config: dict, ctx: dict, conn, run_id: str) -> dict:
 
     if all_schedules:
         db.replace_schedules(conn, run_id, all_schedules)
+    if runtime["queue"] is not None or runtime["tower"] is not None:
+        db.replace_runtime(conn, run_id, runtime)
 
     db.commit(conn)
     return {"sources": report, "flights": len(merged),

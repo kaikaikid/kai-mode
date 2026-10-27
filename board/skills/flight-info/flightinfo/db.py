@@ -182,6 +182,33 @@ def record_board_run(conn, run_id, kpi: dict, sources: dict,
     )
 
 
+def replace_runtime(conn, run_id: str, payload: dict) -> None:
+    """一轮一条运行态快照（队列＋令牌）；只留最近 N 轮，治库无限涨。"""
+    import json
+    conn.execute("INSERT OR REPLACE INTO runtime_state(run_id, at, payload)"
+                 " VALUES (?,?,?)",
+                 (run_id, now_iso(), json.dumps(payload, ensure_ascii=False)))
+    conn.execute("DELETE FROM runtime_state WHERE run_id NOT IN"
+                 " (SELECT run_id FROM runtime_state ORDER BY run_id DESC LIMIT ?)",
+                 (RUNTIME_KEEP,))
+
+
+def fetch_runtime(conn) -> dict:
+    import json
+    row = conn.execute("SELECT payload FROM runtime_state"
+                       " ORDER BY run_id DESC LIMIT 1").fetchone()
+    if not row:
+        return {}
+    try:
+        data = json.loads(row["payload"])
+    except ValueError:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+RUNTIME_KEEP = 20
+
+
 def replace_handoffs(conn, run_id: str, rows: list[dict]) -> int:
     """一轮采集的交接索引整体替换（幂等，不累加）。"""
     conn.execute("DELETE FROM handoff_doc WHERE run_id = ?", (run_id,))

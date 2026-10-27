@@ -30,10 +30,24 @@ printf '%s\\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$root/.git/{marker}" 2>/dev/n
 exit 0
 """.format(sign=SIGN, marker=MARKER)
 
-HOOKS = ("post-commit", "post-merge")
+HOOKS = ("post-commit", "post-merge", "post-checkout")
 
 
 def _hook_path(repo_root: str, name: str) -> str:
+    """写进仓**当前生效**的 hooks 目录：先读 core.hooksPath，缺省 .git/hooks。
+
+    旧版硬编码 .git/hooks：项目仓设了 core.hooksPath=.githooks 时装到错地方，
+    钩子永远不触发（2026-10-27 实测）。两个安装器必须用同一把尺。
+    """
+    import subprocess
+    try:
+        out = subprocess.run(["git", "-C", repo_root, "config", "--get", "core.hooksPath"],
+                             capture_output=True, text=True, timeout=20, check=False)
+        hp = (out.stdout or "").strip()
+    except (OSError, subprocess.SubprocessError):
+        hp = ""
+    if hp:
+        return os.path.join(hp if os.path.isabs(hp) else os.path.join(repo_root, hp), name)
     return os.path.join(repo_root, ".git", "hooks", name)
 
 
@@ -45,10 +59,13 @@ def main() -> int:
     a = ap.parse_args()
 
     repo_root = os.path.abspath(a.repo_root)
-    hooks_dir = os.path.join(repo_root, ".git", "hooks")
-    if not os.path.isdir(hooks_dir):
-        print(f"不是 git 仓或缺 .git/hooks：{repo_root}", file=sys.stderr)
+    if not os.path.isdir(os.path.join(repo_root, ".git")):
+        print(f"不是 git 仓：{repo_root}", file=sys.stderr)
         return 2
+    hooks_dir = os.path.dirname(_hook_path(repo_root, "post-commit"))
+    print(f"生效 hooks 目录：{hooks_dir}")
+    if a.apply:
+        os.makedirs(hooks_dir, exist_ok=True)
 
     rc = 0
     for name in HOOKS:
