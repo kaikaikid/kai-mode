@@ -70,8 +70,11 @@ def _first_heading(path: str) -> str:
                 line = line.strip()
                 if line.startswith("# "):
                     return line[2:].strip()
-                if line and not line.startswith(("#", ">", "---", "|")):
-                    return line[:120]
+                # 只认真标题。以前把首行正文当标题，结果日报索引里冒出
+                # "- **发货 4 张**（#1759 刀2／…"这种整句 markdown；
+                # 认不到就回落文件名（文件名本身带日期与角色，够定位）。
+                if line.startswith("#"):
+                    continue
     except OSError:
         pass
     return ""

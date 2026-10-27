@@ -14,6 +14,7 @@ import hashlib
 import html
 import json
 import os
+import re
 from datetime import date, datetime
 
 from . import db, stage as stage_mod
@@ -626,6 +627,23 @@ def _tag(f: dict) -> str:
     return f'<span class="tag" data-s="{_esc(st)}">{_esc(lab)}</span>'
 
 
+BOLD_RE = re.compile(r"\*\*(.+?)\*\*")
+CODE_RE = re.compile(r"`([^`]*)`")
+
+def _keep1(m):
+    return m.group(1)
+
+
+def _plain(text) -> str:
+    """日表原文带的 markdown 记号洗掉——`**粗体**` 与反引号在页面上是噪音不是格式。"""
+    s = str(text or "")
+    s = re.sub(BOLD_RE, _keep1, s)
+    s = re.sub(CODE_RE, _keep1, s)
+    # 日表原文里常有配不成对的记号（截断或手抖），成对洗完后落单的也清掉：
+    # 这个域里 "**" 只可能是粗体、"`" 只可能是代码，不存在合法字面量。
+    return s.replace("**", "").replace("`", "")
+
+
 def _chain_cells(f: dict) -> str:
     """五格迷你阶段链：当前格着色，停滞／卡点转 danger。"""
     st = f.get("stage") or ""
@@ -711,8 +729,8 @@ def _flight_rows(payload: dict, cfg: dict) -> str:
             tk_cell = (f'<a class="no" href="{_esc(url)}" target="_blank" '
                        f'rel="noreferrer" onclick="event.stopPropagation()">{tk}</a>'
                        if url else f'<span class="no">{tk}</span>')
-            why = _esc((f.get("why") or "")[:150])
-            nxt = f.get("next_label") or ""
+            why = _esc(_plain(f.get("why"))[:150])
+            nxt = _plain(f.get("next_label")) or ""
             owner = f.get("owner") or ""
             own = (f'<span class="own">{_esc(owner)}</span>' if owner
                    else '<span class="own dash">未派</span>')
@@ -863,7 +881,7 @@ def _shift_section(payload: dict, cfg: dict) -> str:
             f'<li><a href="https://github.com/{_esc(cfg.get("repo") or "")}/issues/"'
             f' target="_blank" rel="noreferrer">{_esc(r.get("ticket") or "（无票号）")}</a>'
             f'{_esc(r.get("summary") or "")}'
-            + (f'<em>{_esc((r.get("note") or "")[:120])}</em>' if r.get("note") else "")
+            + (f'<em>{_esc(_plain(r.get("note"))[:120])}</em>' if r.get("note") else "")
             + "</li>" for r in rows[:14])
         blocks.append(f'<div class="shift"><div class="hd"><b>{_esc(role_labels.get(lane) or lane)}'
                       f'</b><span>{len(rows)} 行 · {_esc(day or "—")}</span></div>'
@@ -899,12 +917,16 @@ def _urgent_section(payload: dict, cfg: dict) -> str:
             if key in seen:
                 continue
             seen.add(key)
-            items.append(
-                '<li><a class="no" href="https://github.com/'
-                + _esc((cfg.get("repo") or "")) + '/issues/" target="_blank" rel="noreferrer">'
-                + _esc(r.get("ticket") or "（无票号）") + '</a>'
-                + _esc(r.get("summary") or "")
-                + ('<em>' + _esc((r.get("note") or "")[:120]) + '</em>' if r.get("note") else "")
+            tk = r.get("ticket") or "（无票号）"
+            # 只有真票号才配 GitHub 链接；无票热修（H-…）拼出去就是死链
+            if re.fullmatch(r"#\d+", tk):
+                cell = ('<a class="no" href="https://github.com/'
+                        + _esc(cfg.get("repo") or "") + "/issues/" + tk[1:]
+                        + '" target="_blank" rel="noreferrer">' + _esc(tk) + "</a>")
+            else:
+                cell = '<span class="no">' + _esc(tk) + "</span>"
+            items.append("<li>" + cell + _esc(r.get("summary") or "")
+                + ('<em>' + _esc(_plain(r.get("note"))[:120]) + '</em>' if r.get("note") else "")
                 + "</li>")
         for tk in tickets:
             if tk.get("ticket") in seen:
@@ -945,7 +967,7 @@ def _handoff_section(handoffs: list[dict], link_prefix: str = "") -> str:
     items = []
     for h in handoffs:
         tp = h.get("rel_path") or ""
-        title = (h.get("title") or "").strip("` ")[:60] or os.path.basename(tp)
+        title = _plain((h.get("title") or "").strip("` "))[:60] or os.path.basename(tp)
         href = _esc(link_prefix + tp) if tp else ""
         ti = (f'<a href="{href}" title="{_esc(tp)}"><span class="dt">{_esc(h.get("doc_date"))}</span>'
               f'<span class="ti">{_esc(h.get("slot"))} · {_esc(title)}</span></a>') if href else \
