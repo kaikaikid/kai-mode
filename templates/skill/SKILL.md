@@ -19,9 +19,9 @@ metadata:
 
 # <技能名> —— <一句话定位>
 
-> **本文件是骨架模板**：复制到 `skills/<名>/SKILL.md`，把所有 `<...>` 占位替换掉；
-> 然后去仓根 `registry.json` 登记一行，再跑 `python scripts/doctor.py`。
-> 契约见 [`docs/skill-layout.md`](../../docs/skill-layout.md)。
+> **本文件是骨架模板**：复制到 `<插件>/skills/<名>/SKILL.md`，把所有 `<...>` 占位替换掉；
+> 然后跑 `python scripts/plugin-check.py --bump` 与仓级 doctor。
+> 契约见 `docs/skill-layout.md`（维护侧文档，不随技能安装）。
 
 ## 角色定位
 
@@ -63,9 +63,9 @@ metadata:
 
 ## 验证命令
 
-```bash
-python scripts/doctor.py --with-tests
-python -m pytest <本技能的 tests 目录> -q
+```text
+维护侧体检（不随技能安装）：plugin-check ＋ 仓级 doctor
+技能自测：python -m pytest <本技能的 tests 目录> -q
 ```
 
 ## 正本

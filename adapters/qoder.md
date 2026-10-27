@@ -1,56 +1,103 @@
-# Qoder 适配器：60 分钟唤醒塔台 ＋ 按需子会话
+# Qoder 适配器：装什么、放哪、叫什么都
 
-> 本文只讲**怎么在这个宿主上起岗位**。Qoder 没有 per-agent 文件，人格怎么落见 [README.md](README.md) §2。
+> 本文只讲 Qoder（Alibaba 的 AI 编码 IDE/CLI）。总则见 [README.md](README.md)。
+> 事实来源：docs.qoder.com（2026-10-27 查）；**未实测的 flag 不写死，装机时 `qoder --help` 现场核对**。
 
-> 2026-10-21 实测（[0003](../docs/adr/0003-airport-rebuild-four-roles.md) D1/D5 的宿主中立装配，实测事实沿用）：定时执行会话（`independent`/`merged`）**没有** `qoder_cron`；同一会话**有** `create_chat_session`；它开出的普通子会话**有** `qoder_cron`。
+## 0. 官方事实（可点开）
 
-## 能力判据（现测，别抄）
+| 事实 | 落点／命令 | 来源 |
+|---|---|---|
+| 项目技能 | `.qoder/skills/<name>/SKILL.md` | https://docs.qoder.com/extensions/skills |
+| 用户技能 | `~/.qoder/skills/<name>/SKILL.md` | https://docs.qoder.com/cli/Skills |
+| 插件技能 | `<plugin>/skills/<name>/SKILL.md` | https://docs.qoder.com/cli/plugins |
+| 插件清单 | `.qoder-plugin/plugin.json`；`qoder plugins install <dir> -s project` | https://docs.qoder.com/cli/plugins |
+| 项目规则 | `.qoder/rules/**/*.md`；`AGENTS.md` 也读 | https://docs.qoder.com/user-guide/rules |
+| 子代理 | `.qoder/agents/<agentName>.md`（frontmatter `name`／`description`） | https://docs.qoder.com/cli/subagent |
+| 定时任务 | CLI `<project>/.qoder/scheduled_tasks.json`、`/loop`、`/crontab`；IDE「Automations」 | https://docs.qoder.com/cli/scheduled-tasks |
+| 兼容 Claude 配置 | CLI 0.1.22 发布说明有 `--with-claude-config`（读 Claude Skills/Commands/Subagents）；CLI 参考页未列 | https://docs.qoder.com/release-notes/qoder-cli |
+
+- **技能 frontmatter**：官方只要求 `name`（小写字母数字连字符，≤64）与 `description`（≤1024）；
+  本仓的八字段在 Qoder 里按「额外字段忽略」处理，不会报错。
+- **优先级冲突**：IDE 文档说项目级优先；CLI 文档与排障页说用户级优先（`built-in < plugins < project < user`）。
+  装机时以**实际加载到的那份**为准，并把版本与优先级读数写进回执。
+- `qoder_cron` 在公开文档里**查不到**；旧文那条是运行时观测。以 `.qoder/scheduled_tasks.json`／`/loop` 为准。
+
+## 1. 装什么
+
+一个剧本一个插件目录。以机场剧本为例，装三样：
+
+| 装什么 | 源 | 放哪 |
+|---|---|---|
+| 插件清单 | `<plugin>/.qoder-plugin/plugin.json` | 项目 `.qoder-plugin/plugin.json`，或 `qoder plugins install <plugin目录> -s project` |
+| 技能 | `<plugin>/skills/<名>/SKILL.md` ＋ `scripts/`、`templates/`、`references/` | `.qoder/skills/<名>/`（项目级优先于用户级——先按项目级装） |
+| 命令 | `<plugin>/commands/<role>.md` | Qoder 无同形 commands 目录：用 `--with-claude-config`（若本机版本支持），否则把命令正文当角色提示词 |
+
+- **不要装全局**：`~/.qoder/skills/` 只在你明确要跨项目共用时用；项目级优先，且不会和别人的框架打架。
+- **路径不写死**：项目技能目录可由项目配置实例 `registry.skills.project_skills_dir` 覆盖；读不到就报缺件，不猜。
+- `.agents/skills` 也是 Qoder 的兼容来源（IDE 0.4.2＋／CLI 1.1.11＋），但解析规则未公开；不作为首选落点。
+
+## 2. 叫什么都
+
+Qoder 没有 Claude Code 那种 `/plugin:command` 命名空间。角色用两种叫法：
+
+1. **自然语言**：说「机长开工」「塔台出货」「王牌加急」——技能 `description` 里的触发词负责命中。
+2. **显式提示词**：把命令正文（`<plugin>/commands/<role>.md` 去掉 frontmatter）作为 prompt，
+   或直接写：
+
+```text
+读取并执行 <项目>/airport/skills/pilot/SKILL.md 全文；只做该文件写的动作。
+```
+
+- 如果本机 CLI 支持 `--with-claude-config`，Claude 风格的命令名会一并被读到；**先 `qoder --help` 确认**。
+- 命令里不放长规则；规则只住 `SKILL.md`。
+
+## 3. 定时唤醒塔台（主形状）
+
+```text
+Qoder CLI 定时任务（每 60 分钟，enabled）
+  ├─ cwd：项目仓根
+  ├─ prompt 薄壳：读取并执行 airport/skills/tower/SKILL.md 全文
+  └─ 任务名：kai-tower-<日期>-<时分>
+```
+
+- 落点：`<项目>/.qoder/scheduled_tasks.json`；也可用 `/loop` 把间隔语法转成 cron。
+- 建完必回读：`/crontab` 或任务列表看 `enabled` 与下次执行时间；`pauseReason=manual` ＝ 有人手动停，别自动重开。
+- IDE 用户可用「Automations」建同样的 60 分钟任务；它没有公开的 cron 表达式语法，按 UI 填。
+- **只唤醒塔台**；角色之间不互相拉起（唤醒围栏）。
+
+## 4. 新上下文（审查腿）
+
+- 首选 Qoder 原生 subagent：`.qoder/agents/<名>.md`，frontmatter 至少 `name`／`description`；
+  只读用 `tools` 白名单或 `disallowedTools`（有硬机制就写死，没有就标软约束）。
+- 次选：另起一个新会话，只给 AC／diff／证据。
+- 再次：独立进程（若本机有 CLI 入口）。
+- **复用施工会话 ⇒ 不算独立验收**；起不了新上下文 ⇒ 登记 `no-new-context`，不许记「已审查」。
+
+## 5. 探测与验证（装完贴读数）
 
 ```bash
-# 在目标角色的执行会话里测，不在主会话里测
-mcp_list(keyword="cron")                       # 预期 0 条（定时执行会话）
-mcp_get("mcp__builtin__create_chat_session")   # 预期可用
+qoder --version                      # 入口与版本
+qoder --help                         # 确认 plugins / scheduled / --with-claude-config 是否在
+test -f .qoder/skills/pilot/SKILL.md && echo skill-ok
+test -f .qoder-plugin/plugin.json && echo plugin-ok
 ```
 
-子会话里再测一次 `mcp_list(keyword="cron")`；有 `qoder_cron` 才走定时子会话路径。没有 ⇒ 按 `adapters/opencode.md` 或 `adapters/codex.md` 起角色；仍不行 ⇒ 缺件如实登记（塔台只能人工 `/塔台`）。
+再跑一次真实角色提示词，确认它能读到技能并只做技能里的事；做不到的写「未测」，不算完成。
 
-## 宿主工具探测（schema 2 `execution.host_tools` 契约迁入，[0004](../docs/adr/0004-project-config-schema.md) D6）
+## 6. 降级与缺件
 
-- **Builder（施工）**：`create_chat_session` 起普通子会话（general-purpose），带派工卡与独立 worktree；开不出会话口 ⇒ 降级 `opencode.md` / `codex.md` 起角色。
-- **Reviewer（评审）**：**另起一次**子会话、只读 prompt（新上下文，永不复用施工会话）；复用 ⇒ 不算独立验收。
-- **Researcher（检索/探索）**：探索型子代理（`Explore`）；没有探索口 ⇒ 只读子会话顶替。
-- **降级登记**：探测不过的口写进 `/set-kai-mode` 缺件登记（缺什么口/卡在哪一步/要谁拍），不静默换形状。
+| 缺什么 | 登记 | 退路 |
+|---|---|---|
+| 没有 `qoder` 入口 | `no-launcher` | 换 Codex／OpenCode 或人工 |
+| 没有命令口 | — | 用角色提示词；不算缺件 |
+| 没有原生 subagent | `no-new-context` | 另起新会话；再不行停审查腿并登记 |
+| 没有定时任务 | `no-timer` | 人工 `/tower`；不假装有定时器 |
+| `--with-claude-config` 不存在 | — | 手动复制技能与命令正文 |
+| 优先级与文档冲突 | `soft-permission-only`（如涉及权限） | 以实际加载到的那份为准，回执留读数 |
 
-## 主形状：每 60 分钟唤醒塔台
+## 7. 边界
 
-```text
-qoder_cron 任务（每 60 分钟，enabled）
-  ├─ cwd：主树绝对路径
-  ├─ outputMode：independent（独立会话）
-  ├─ executionAuthorization：true（Full Access）
-  └─ prompt 薄壳：读取并执行 skills/tower/SKILL.md 全文；任务名 cron-tower-<日期>-<时分>
-```
-
-- prompt 只放薄壳，长规则只住技能正本，任务配置里不存第二份。
-- 建完必回读：`list` 看 `enabled` / `nextRunAt`（换算成人话几点）；`pauseReason=manual` ＝ 有人手动停，别自动重开。
-- 旧的多枚定时任务先 `disable` → 确认 `runningAt` 为空 → 再 `remove`；**别对正在跑的直接 remove**；不得与 60 分钟唤醒定时器并存（[0003](../docs/adr/0003-airport-rebuild-four-roles.md) D5）。
-
-## 备用形状：人工点火（起塔台之外的角色）
-
-```text
-角色会话（无 qoder_cron）
-  └─ create_chat_session(固定「只起塔台」prompt)
-     └─ 子会话（有 qoder_cron）
-        ├─ 确认目标不在岗（在岗 ⇒ already-running，不按）
-        ├─ qoder_cron run(jobId) 一次
-        └─ 写回执后结束
-```
-
-- **仅人工执行**：这条链路由人手动触发；任何角色不得自动调用会话创建口（[ADR-0010](../docs/adr/0010-role-wake-fence.md)）。
-- 子会话是点火器不是执行体：只负责把目标拉起，不替角色干活、不替审查下结论。
-- 塔台停摆时，人工拉起继任机长走同一条路；缺会话口就把缺件写进 `/set-kai-mode` 的缺件登记。
-
-## 边界
-
-- 会话口与定时口都是宿主专有能力：必须有 ①能力探测 ②降级腿 ③缺件如实登记（[0003](../docs/adr/0003-airport-rebuild-four-roles.md) D1 宿主中立）。
 - 不替角色施工；只把角色按契约跑起来。
+- 不建/删其他宿主的定时任务。
+- 付费／额度未授权 ⇒ `paid-not-authorized`，不偷偷换模型。
+- 版本、认证状态与探针读数写进项目本机配置，不回写框架正文。

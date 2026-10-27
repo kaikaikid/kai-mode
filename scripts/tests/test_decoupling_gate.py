@@ -11,22 +11,23 @@ GATE = "decoupling-gate"
 def test_residue_file_turns_gate_red_and_lists_position(tmp_path):
     """①假文件带硬路径残留 ⇒ 门红，且按「文件:行号:模式」点名、给修法。"""
     root = make_repo(tmp_path)
-    (root / "skills" / "alpha" / "notes.md").write_text(
+    (root / "core" / "skills" / "alpha").mkdir(parents=True)
+    (root / "core" / "skills" / "alpha" / "notes.md").write_text(
         "第一行干净。\n读取 .ai/router.md 的登记面，主树在 kai-vass。\n", encoding="utf-8")
     rc, data = run_doctor(root)
     assert rc == 1
     assert status_of(data, GATE) == "fail"
     detail = detail_of(data, GATE)
-    assert "skills/alpha/notes.md:2:.ai/router" in detail
-    assert "skills/alpha/notes.md:2:kai-vass" in detail
+    assert "core/skills/alpha/notes.md:2:.ai/router" in detail
+    assert "core/skills/alpha/notes.md:2:kai-vass" in detail
     assert "修法" in detail and "kai-mode.project.json" in detail  # 指到配置实例
 
 
 def test_whitelist_dirs_do_not_report(tmp_path):
-    """②白名单目录里的残留不报：skills 内层的 _superseded/ 归档不算正本。"""
+    """②白名单目录里的残留不报：插件技能内层的 _superseded/ 归档不算正本。"""
     root = make_repo(tmp_path)
-    sup = root / "skills" / "alpha" / "_superseded"
-    sup.mkdir()
+    sup = root / "core" / "skills" / "alpha" / "_superseded"
+    sup.mkdir(parents=True)
     (sup / "old.md").write_text("旧稿残留 kai-vass 主树。\n", encoding="utf-8")
     rc, data = run_doctor(root)
     assert status_of(data, GATE) == "ok"
@@ -86,6 +87,7 @@ def test_schema3_template_metadata_junk_key_is_red(tmp_path):
 def test_clean_repo_gate_is_green(tmp_path):
     """④干净仓 ⇒ 门绿，整仓也绿。"""
     root = make_repo(tmp_path)
+    (root / "core").mkdir()
     rc, data = run_doctor(root)
     assert data["ok"] is True
     assert rc == 0

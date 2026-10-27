@@ -11,7 +11,7 @@ import pytest
 sys.dont_write_bytecode = True  # 别在技能目录里落 __pycache__（会被装机尺当成正本差异）
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
-MAGPIE = os.path.join(REPO, "skills", "set-kai-mode", "scripts", "magpie-sync.py")
+MAGPIE = os.path.join(REPO, "core", "skills", "set-kai-mode", "scripts", "magpie-sync.py")
 
 
 def _load():
@@ -39,9 +39,37 @@ def _write(root, entries, schema=None):
     return root
 
 
-def test_registry_json_parses_and_is_valid():
-    with open(os.path.join(REPO, "registry.json"), encoding="utf-8") as f:
-        data = json.load(f)
+def _repo_inventory():
+    """本仓的装机清单：优先 registry.json（老仓），否则由 marketplace 合成。"""
+    data, err = ms.read_skill_registry(REPO)
+    assert err is None, err
+    assert data is not None, "本仓既没有 registry.json 也没有 .claude-plugin/marketplace.json"
+    return data
+
+
+def _plugin_skill_dirs():
+    """盘上每个插件下的技能目录（marketplace 布局），repo 相对路径（正斜杠）。"""
+    mp_path = os.path.join(REPO, ".claude-plugin", "marketplace.json")
+    if not os.path.isfile(mp_path):
+        return None
+    with open(mp_path, encoding="utf-8") as f:
+        mp = json.load(f)
+    found = []
+    for plugin in mp.get("plugins") or []:
+        src = plugin.get("source")
+        if not isinstance(src, str) or not os.path.isdir(os.path.join(REPO, *os.path.normpath(src).split(os.sep))):
+            continue
+        skills_dir = os.path.join(REPO, *os.path.normpath(src).split(os.sep), "skills")
+        if not os.path.isdir(skills_dir):
+            continue
+        for name in os.listdir(skills_dir):
+            if os.path.isfile(os.path.join(skills_dir, name, "SKILL.md")):
+                found.append(name)
+    return sorted(found)
+
+
+def test_inventory_parses_and_is_valid():
+    data = _repo_inventory()
     assert data["schema"] == ms.REGISTRY_SCHEMA
     assert isinstance(data["version"], int) and not isinstance(data["version"], bool)
     assert ms.registry_entry_problems(data) == []
@@ -49,20 +77,21 @@ def test_registry_json_parses_and_is_valid():
     assert len(names) == len(set(names))
 
 
-def test_registry_covers_every_skill_dir_on_disk():
-    """盘上每个技能目录都在注册表里（清单不靠手工枚举：对着盘面数）。"""
-    with open(os.path.join(REPO, "registry.json"), encoding="utf-8") as f:
-        data = json.load(f)
-    skills_dir = os.path.join(REPO, "skills")
-    on_disk = sorted(n for n in os.listdir(skills_dir)
-                     if os.path.isfile(os.path.join(skills_dir, n, "SKILL.md")))
+def test_inventory_covers_every_skill_dir_on_disk():
+    """盘上每个技能目录都在清单里（清单不靠手工枚举：对着盘面数）。"""
+    data = _repo_inventory()
     registered = sorted(e["name"] for e in data["skills"])
+    on_disk = _plugin_skill_dirs()
+    if on_disk is None:
+        # 老仓：skills/ 平铺
+        skills_dir = os.path.join(REPO, "skills")
+        on_disk = sorted(n for n in os.listdir(skills_dir)
+                         if os.path.isfile(os.path.join(skills_dir, n, "SKILL.md")))
     assert on_disk == registered
 
 
-def test_registry_paths_match_disk():
-    with open(os.path.join(REPO, "registry.json"), encoding="utf-8") as f:
-        data = json.load(f)
+def test_inventory_paths_match_disk():
+    data = _repo_inventory()
     for e in data["skills"]:
         assert os.path.isdir(os.path.join(REPO, *e["path"].split("/"))), e["name"]
         assert e["path"].split("/")[-1] == e["name"], e["name"]
@@ -150,6 +179,205 @@ def test_source_marker_receipt_fields(tmp_path):
     assert data["hashes"] == {"a": "h1", "b": "h2"}
     assert data["source_commit"] == "deadbeef"
     assert ms.marked_profile(lib) == "core"
+
+
+def test_marketplace_synthesis(tmp_path):
+    """测试从 marketplace.json 合成注册表"""
+    root = str(tmp_path / "repo")
+    os.makedirs(root, exist_ok=True)
+
+    # Create marketplace.json
+    marketplace = {
+        "name": "kai-mode",
+        "plugins": [
+            {
+                "name": "airport",
+                "source": "./airport",
+                "description": "五岗位机场剧本"
+            },
+            {
+                "name": "core",
+                "source": "./core",
+                "description": "统一入口、装机"
+            }
+        ]
+    }
+    os.makedirs(os.path.join(root, ".claude-plugin"), exist_ok=True)
+    with open(os.path.join(root, ".claude-plugin", "marketplace.json"), "w", encoding="utf-8") as f:
+        json.dump(marketplace, f, ensure_ascii=False)
+
+    # Create plugin manifests
+    for plugin in ["airport", "core"]:
+        plugin_dir = os.path.join(root, plugin)
+        os.makedirs(plugin_dir, exist_ok=True)
+        os.makedirs(os.path.join(plugin_dir, ".claude-plugin"), exist_ok=True)
+
+        manifest = {
+            "name": plugin,
+            "version": "1.0.0",
+            "description": f"{plugin} 描述"
+        }
+        with open(os.path.join(plugin_dir, ".claude-plugin", "plugin.json"), "w", encoding="utf-8") as f:
+            json.dump(manifest, f, ensure_ascii=False)
+
+        # Create some skills
+        skills_dir = os.path.join(plugin_dir, "skills")
+        os.makedirs(skills_dir, exist_ok=True)
+
+        for skill in ["test-skill-1", "test-skill-2"]:
+            skill_dir = os.path.join(skills_dir, skill)
+            os.makedirs(skill_dir, exist_ok=True)
+
+            # Create SKILL.md with frontmatter
+            skill_md = f"""---
+name: {skill}
+status: active
+approved_by: human:test
+approved: 2026-10-27
+sources:
+  - resource: "test"
+    note: "test"
+description: >
+  {skill} 的说明。
+version: 1.0.0
+updated: 2026-10-27
+---
+
+# {skill}
+
+正文。
+"""
+            with open(os.path.join(skill_dir, "SKILL.md"), "w", encoding="utf-8") as f:
+                f.write(skill_md)
+
+    # Test synthesis
+    data, err = ms.read_skill_registry(root)
+    assert data is not None
+    assert err is None
+    assert data["schema"] == "kai-mode-registry/1"
+    assert data["version"] == 1
+
+    # Check skills
+    skills = data["skills"]
+    assert len(skills) == 4  # 2 plugins × 2 skills each
+
+    # Verify skill structure
+    skill_names = [s["name"] for s in skills]
+    assert "test-skill-1" in skill_names
+    assert "test-skill-2" in skill_names
+
+    # Check specific skill
+    skill = next(s for s in skills if s["name"] == "test-skill-1")
+    assert skill["path"] in ["./airport/skills/test-skill-1", "./core/skills/test-skill-1", "airport/skills/test-skill-1", "core/skills/test-skill-1"]
+    assert skill["kind"] == "framework"
+    assert skill["scope"] == "global"
+    assert skill["install"] == "auto"
+    assert skill["plugin"] in ["airport", "core"]
+    assert skill["version"] == "1.0.0"
+    assert skill["since"] == "1.0.0"
+
+
+def test_marketplace_synthesis_fallback_to_legacy(tmp_path):
+    """测试当 registry.json 存在时优先使用它"""
+    root = str(tmp_path / "repo")
+    os.makedirs(root, exist_ok=True)
+
+    # Create registry.json
+    _write(root, [_entry("legacy-skill")])
+
+    # Also create marketplace.json
+    marketplace = {
+        "name": "kai-mode",
+        "plugins": [
+            {
+                "name": "core",
+                "source": "./core",
+                "description": "统一入口、装机"
+            }
+        ]
+    }
+    os.makedirs(os.path.join(root, ".claude-plugin"), exist_ok=True)
+    with open(os.path.join(root, ".claude-plugin", "marketplace.json"), "w", encoding="utf-8") as f:
+        json.dump(marketplace, f, ensure_ascii=False)
+
+    # Test that registry.json takes precedence
+    data, err = ms.read_skill_registry(root)
+    assert data is not None
+    assert err is None
+    assert len(data["skills"]) == 1
+    assert data["skills"][0]["name"] == "legacy-skill"
+
+
+def test_marketplace_invalid_format_errors(tmp_path):
+    """测试无效的 marketplace.json 格式会报错"""
+    root = str(tmp_path / "repo")
+    os.makedirs(root, exist_ok=True)
+
+    # Invalid marketplace - missing plugins
+    os.makedirs(os.path.join(root, ".claude-plugin"), exist_ok=True)
+    with open(os.path.join(root, ".claude-plugin", "marketplace.json"), "w", encoding="utf-8") as f:
+        json.dump({"name": "test"}, f, ensure_ascii=False)
+
+    data, err = ms.read_skill_registry(root)
+    assert data is None
+    assert "plugins" in err
+
+
+def test_marketplace_remote_source_skipped(tmp_path):
+    """测试远程 source 的插件会被跳过"""
+    root = str(tmp_path / "repo")
+    os.makedirs(root, exist_ok=True)
+
+    # Marketplace with remote source
+    marketplace = {
+        "name": "kai-mode",
+        "plugins": [
+            {
+                "name": "remote-plugin",
+                "source": "https://github.com/example/plugin",
+                "description": "远程插件"
+            },
+            {
+                "name": "local-plugin",
+                "source": "./local-plugin",
+                "description": "本地插件"
+            }
+        ]
+    }
+    os.makedirs(os.path.join(root, ".claude-plugin"), exist_ok=True)
+    with open(os.path.join(root, ".claude-plugin", "marketplace.json"), "w", encoding="utf-8") as f:
+        json.dump(marketplace, f, ensure_ascii=False)
+
+    # Create local plugin
+    plugin_dir = os.path.join(root, "local-plugin")
+    os.makedirs(plugin_dir, exist_ok=True)
+    os.makedirs(os.path.join(plugin_dir, ".claude-plugin"), exist_ok=True)
+
+    manifest = {
+        "name": "local-plugin",
+        "version": "1.0.0",
+        "description": "本地插件描述"
+    }
+    with open(os.path.join(plugin_dir, ".claude-plugin", "plugin.json"), "w", encoding="utf-8") as f:
+        json.dump(manifest, f, ensure_ascii=False)
+
+    # Add one skill inside the local plugin
+    skill_dir = os.path.join(plugin_dir, "skills", "local-skill")
+    os.makedirs(skill_dir)
+    with open(os.path.join(skill_dir, "SKILL.md"), "w", encoding="utf-8") as f:
+        f.write("---\nname: local-skill\ndescription: >\n  本地技能。\n---\n\n# local-skill\n")
+
+    # Test synthesis
+    data, err = ms.read_skill_registry(root)
+    assert data is not None
+    assert err is None
+
+    # Only local plugin skills should be included
+    skills = data["skills"]
+    skill_names = [s["name"] for s in skills]
+    assert "local-plugin" not in skill_names  # The plugin itself is not a skill
+    assert "local-skill" in skill_names
+    assert any("local-plugin/skills/" in s["path"] for s in skills)
 
 
 def test_backup_and_restore_roundtrip(tmp_path):
@@ -302,8 +530,7 @@ def test_repo_install_profiles_are_valid():
     with open(os.path.join(REPO, "manifests", "install-profiles.json"), encoding="utf-8") as f:
         cfg = json.load(f)
     assert cfg["schema"] == ms.PROFILES_SCHEMA
-    with open(os.path.join(REPO, "registry.json"), encoding="utf-8") as f:
-        reg = json.load(f)
+    reg = _repo_inventory()
     auto = {e["name"] for e in reg["skills"] if e.get("install") == "auto"}
     for name in ("core", "full"):
         assert name in cfg["profiles"]

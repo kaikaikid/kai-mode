@@ -1,0 +1,8 @@
+{
+  "name": "board",
+  "version": "1.0.0",
+  "description": "Flight Information 看板：SQLite 落库，出 board.json 与 index.html。",
+  "author": {
+    "name": "kaikaikid"
+  }
+}

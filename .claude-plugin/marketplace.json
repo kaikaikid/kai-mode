@@ -1,0 +1,38 @@
+{
+  "name": "kai-mode",
+  "owner": {
+    "name": "kaikaikid"
+  },
+  "plugins": [
+    {
+      "name": "airport",
+      "displayName": "机场体系",
+      "source": "./airport",
+      "description": "五岗位机场剧本：地勤开票、塔台排班发货、机长与副机长滚动施工、王牌加急。"
+    },
+    {
+      "name": "core",
+      "displayName": "入口与安装",
+      "source": "./core",
+      "description": "统一入口、装机、交接与六条原则；不含岗位流程。"
+    },
+    {
+      "name": "board",
+      "displayName": "看板",
+      "source": "./board",
+      "description": "Flight Information 看板：SQLite 落库，出 board.json 与 index.html。"
+    },
+    {
+      "name": "intake",
+      "displayName": "想法池",
+      "source": "./intake",
+      "description": "收想法：全文落盘，汇总票只贴简述。"
+    },
+    {
+      "name": "ops",
+      "displayName": "事故与运维",
+      "source": "./ops",
+      "description": "事故分级、时间线、复盘补票；可重复运维步骤与回滚。"
+    }
+  ]
+}

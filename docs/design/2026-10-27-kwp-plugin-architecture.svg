@@ -1,0 +1,236 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1120" viewBox="0 0 1600 1120" font-family="Microsoft YaHei, PingFang SC, Noto Sans SC, Segoe UI, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+    <marker id="arrowTeal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0f766e"/>
+    </marker>
+    <marker id="arrowAmber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#b45309"/>
+    </marker>
+    <filter id="shadow" x="-4%" y="-4%" width="108%" height="112%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1f2933" flood-opacity="0.10"/>
+    </filter>
+    <style>
+      .panel { fill: #fffdf8; stroke: #d9d2c3; stroke-width: 1.2; }
+      .card { fill: #ffffff; stroke: #d6cfc0; stroke-width: 1.1; }
+      .card-accent { fill: #f0fdfa; stroke: #5eead4; stroke-width: 1.6; }
+      .card-amber { fill: #fffbeb; stroke: #fcd34d; stroke-width: 1.3; }
+      .card-muted { fill: #f8fafc; stroke: #cbd5e1; stroke-width: 1.0; }
+      .card-retired { fill: #fef2f2; stroke: #fca5a5; stroke-width: 1.0; stroke-dasharray: 5 4; }
+      .title { fill: #14213d; font-size: 30px; font-weight: 700; }
+      .sub { fill: #5b6577; font-size: 14px; }
+      .panel-title { fill: #14213d; font-size: 17px; font-weight: 700; }
+      .h { fill: #14213d; font-size: 15px; font-weight: 700; }
+      .b { fill: #334155; font-size: 12.5px; }
+      .s { fill: #64748b; font-size: 11.5px; }
+      .mono { fill: #0f766e; font-size: 12px; font-family: Consolas, Cascadia Mono, monospace; }
+      .chip { fill: #e0f2fe; stroke: #7dd3fc; stroke-width: 1; }
+      .chip-text { fill: #075985; font-size: 13px; font-weight: 700; }
+      .step { fill: #f8fafc; stroke: #94a3b8; stroke-width: 1.1; }
+      .step-num { fill: #0f766e; font-size: 12px; font-weight: 700; }
+      .gate { fill: #f5f3ff; stroke: #c4b5fd; stroke-width: 1.1; }
+      .line { stroke: #475569; stroke-width: 1.4; fill: none; }
+      .line-dash { stroke: #94a3b8; stroke-width: 1.2; fill: none; stroke-dasharray: 5 5; }
+      .line-teal { stroke: #0f766e; stroke-width: 1.8; fill: none; }
+      .line-amber { stroke: #b45309; stroke-width: 1.5; fill: none; }
+      .label { fill: #64748b; font-size: 11px; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1120" fill="#f6f4ef"/>
+
+  <text x="48" y="58" class="title">kai-mode × KWP：插件化剧本架构</text>
+  <text x="48" y="86" class="sub">用 KWP 的原生结构承载机场体系：剧本 = 插件，角色 = 命令，步骤 = 技能。人格层退役，宿主原生上下文执行。</text>
+
+  <!-- ============ LEFT: distribution ============ -->
+  <rect x="32" y="116" width="486" height="964" rx="14" class="panel" filter="url(#shadow)"/>
+  <text x="56" y="150" class="panel-title">① 分发层 · KWP 原生</text>
+  <text x="56" y="172" class="s">一份市场清单，每个剧本一个插件目录</text>
+
+  <rect x="52" y="190" width="446" height="96" rx="10" class="card-accent"/>
+  <text x="68" y="216" class="mono">.claude-plugin/marketplace.json</text>
+  <text x="68" y="240" class="b">唯一清单：插件名 · 版本 · 来源 · 描述</text>
+  <text x="68" y="260" class="b">本地剧本＝目录；上游剧本＝sha 钉死</text>
+  <text x="68" y="278" class="s">registry.json 退役（这份清单取代它）</text>
+
+  <line x1="275" y1="286" x2="275" y2="306" class="line" marker-end="url(#arrow)"/>
+
+  <rect x="52" y="310" width="446" height="118" rx="10" class="card-accent"/>
+  <text x="68" y="336" class="h">airport · 机场体系剧本</text>
+  <text x="68" y="358" class="b">commands/ 地勤 · 塔台 · 机长 · 副机长 · 王牌</text>
+  <text x="68" y="378" class="b">skills/ loop · pilot · copilot · tower · ground-crew · ace</text>
+  <text x="68" y="398" class="s">角色的“快速触发口”：命令只负责加载剧本，不复制规则</text>
+  <text x="68" y="416" class="s">判据正本随技能安装：skills/loop/references/loop-protocol.md</text>
+
+  <line x1="275" y1="428" x2="275" y2="444" class="line"/>
+
+  <rect x="52" y="448" width="446" height="92" rx="10" class="card"/>
+  <text x="68" y="474" class="h">core · 入口与安装剧本</text>
+  <text x="68" y="496" class="b">命令：kai-mode · set-kai-mode · handoff</text>
+  <text x="68" y="516" class="b">技能：入口、安装、交接、六条原则</text>
+  <text x="68" y="534" class="s">安装器按插件清单发现技能，不再读注册表</text>
+
+  <rect x="52" y="552" width="446" height="78" rx="10" class="card"/>
+  <text x="68" y="578" class="h">board · 看板剧本</text>
+  <text x="68" y="600" class="b">skills/flight-info：SQLite → board.json ＋ index.html</text>
+  <text x="68" y="618" class="s">人读面与机读面分开</text>
+
+  <rect x="52" y="642" width="446" height="78" rx="10" class="card"/>
+  <text x="68" y="668" class="h">intake · 想法池剧本</text>
+  <text x="68" y="690" class="b">skills/boom-idea-log：全文落盘，汇总票只贴简述</text>
+  <text x="68" y="708" class="s">只收不施工，分发交给地勤</text>
+
+  <rect x="52" y="732" width="446" height="96" rx="10" class="card-amber"/>
+  <text x="68" y="758" class="h">ops · 事故与运维剧本（新增）</text>
+  <text x="68" y="780" class="b">skills/incident-response：分级 · 时间线 · 复盘 → 补票</text>
+  <text x="68" y="800" class="b">skills/runbook：可重复运维步骤 · 失败分支 · 回滚</text>
+  <text x="68" y="818" class="s">只进 full 档；不进 core</text>
+
+  <rect x="52" y="844" width="446" height="104" rx="10" class="card-muted"/>
+  <text x="68" y="870" class="h">每个插件目录的固定形状</text>
+  <text x="68" y="894" class="mono">.claude-plugin/plugin.json + .qoder-plugin/plugin.json</text>
+  <text x="68" y="912" class="mono">PLAYBOOK.md · commands/ · skills/ · CONNECTORS.md</text>
+  <text x="68" y="934" class="s">同一份目录，两家宿主各读自己的清单；SKILL.md 是步骤</text>
+
+  <rect x="52" y="962" width="446" height="96" rx="10" class="card-retired"/>
+  <text x="68" y="988" class="h" fill="#b91c1c">退役清单</text>
+  <text x="68" y="1010" class="b">agents/ 七个人格文件 · agents-contract 门</text>
+  <text x="68" y="1030" class="b">registry.json · 顶层 loops/ · 人格模型配置</text>
+  <text x="68" y="1050" class="s">派活规则改写成技能步骤；审查独立性由“新上下文”保证</text>
+
+  <!-- ============ CENTER: execution ============ -->
+  <rect x="542" y="116" width="544" height="964" rx="14" class="panel" filter="url(#shadow)"/>
+  <text x="566" y="150" class="panel-title">② 剧本执行层 · 角色触发，步骤可验</text>
+  <text x="566" y="172" class="s">命令是入口，PLAYBOOK 是路线，SKILL 是每一步的判据</text>
+
+  <!-- role chips -->
+  <rect x="566" y="190" width="76" height="34" rx="17" class="chip"/><text x="592" y="212" class="chip-text">地勤</text>
+  <rect x="652" y="190" width="76" height="34" rx="17" class="chip"/><text x="678" y="212" class="chip-text">塔台</text>
+  <rect x="738" y="190" width="76" height="34" rx="17" class="chip"/><text x="764" y="212" class="chip-text">机长</text>
+  <rect x="824" y="190" width="88" height="34" rx="17" class="chip"/><text x="842" y="212" class="chip-text">副机长</text>
+  <rect x="922" y="190" width="100" height="34" rx="17" class="chip"/><text x="938" y="212" class="chip-text">王牌飞行员</text>
+  <text x="566" y="246" class="s">口令 → 加载对应角色技能；不自动拉起任何其他角色</text>
+
+  <line x1="814" y1="256" x2="814" y2="276" class="line-teal" marker-end="url(#arrowTeal)"/>
+
+  <rect x="566" y="280" width="496" height="142" rx="10" class="card-accent"/>
+  <text x="584" y="306" class="h">airport / PLAYBOOK.md</text>
+  <text x="584" y="330" class="b">① 判据正本：loop 技能内的 protocol（随装，不再靠仓外文件）</text>
+  <text x="584" y="350" class="b">② 角色技能：每个角色一份可执行清单（触发 → 步骤 → 收场）</text>
+  <text x="584" y="370" class="b">③ 命令：只做“读取并执行”，长规则只住技能一处</text>
+  <text x="584" y="394" class="s">记录面仍是四件：日表 · Issue · 分支提交 · 日报</text>
+  <text x="584" y="412" class="s">红线与停点只在正本写一次，其余全是指针</text>
+
+  <line x1="814" y1="422" x2="814" y2="444" class="line-teal" marker-end="url(#arrowTeal)"/>
+
+  <!-- stepper -->
+  <rect x="566" y="448" width="496" height="56" rx="9" class="step"/>
+  <text x="582" y="472" class="step-num">1 · 取票</text>
+  <text x="700" y="472" class="b">读日表 / ace-queue；表外票不开工</text>
+  <text x="582" y="492" class="s">过线：票面有 AC、允许修改面、验证命令</text>
+
+  <line x1="814" y1="504" x2="814" y2="516" class="line" marker-end="url(#arrow)"/>
+
+  <rect x="566" y="520" width="496" height="56" rx="9" class="step"/>
+  <text x="582" y="544" class="step-num">2 · 开工</text>
+  <text x="700" y="544" class="b">开工评论 ＋ 车道工作树 ＋ 分支</text>
+  <text x="582" y="564" class="s">过线：可死性三件齐（评论 / 首笔提交 / 独占槽位）</text>
+
+  <line x1="814" y1="576" x2="814" y2="588" class="line" marker-end="url(#arrow)"/>
+
+  <rect x="566" y="592" width="496" height="56" rx="9" class="step"/>
+  <text x="582" y="616" class="step-num">3 · 施工</text>
+  <text x="700" y="616" class="b">新上下文子代理；方法按票情自选</text>
+  <text x="582" y="636" class="s">过线：增量提交 ＋ 回执有 commit / 证据 / 读数</text>
+
+  <line x1="814" y1="648" x2="814" y2="660" class="line" marker-end="url(#arrow)"/>
+
+  <rect x="566" y="664" width="496" height="56" rx="9" class="step"/>
+  <text x="582" y="688" class="step-num">4 · 审查</text>
+  <text x="700" y="688" class="b">另一段新上下文，只读，逐条对 AC</text>
+  <text x="582" y="708" class="s">过线：verdict 首行 ＋ ac 计数 ＋ 证据可点开</text>
+
+  <line x1="814" y1="720" x2="814" y2="732" class="line" marker-end="url(#arrow)"/>
+
+  <rect x="566" y="736" width="496" height="56" rx="9" class="step"/>
+  <text x="582" y="760" class="step-num">5 · 判词</text>
+  <text x="700" y="760" class="b">pass → 待发货；fail → 修一次再审</text>
+  <text x="582" y="780" class="s">过线：pass 即释放执行名额，滚动取下一张</text>
+
+  <line x1="814" y1="792" x2="814" y2="804" class="line" marker-end="url(#arrow)"/>
+
+  <rect x="566" y="808" width="496" height="56" rx="9" class="step"/>
+  <text x="582" y="832" class="step-num">6 · 塔台发货</text>
+  <text x="700" y="832" class="b">合并 → 收尾门 → 一次 push → 关票</text>
+  <text x="582" y="852" class="s">过线：门有读数；超时或门自身成本不算被审对象的红</text>
+
+  <line x1="814" y1="864" x2="814" y2="876" class="line" marker-end="url(#arrow)"/>
+
+  <rect x="566" y="880" width="496" height="56" rx="9" class="card-amber"/>
+  <text x="582" y="904" class="step-num" fill="#b45309">7 · 收场</text>
+  <text x="700" y="904" class="b">落续跑指针；树与工位归位</text>
+  <text x="582" y="924" class="s">过线：等什么 / 下一步 / 在飞面 / 验证命令，四件齐全</text>
+
+  <rect x="566" y="956" width="496" height="104" rx="10" class="card-muted"/>
+  <text x="584" y="982" class="h">记录面（谁写谁，不互相代账）</text>
+  <text x="584" y="1006" class="b">日表＝塔台 / 王牌自己写　·　票状态＝机长写 Issue</text>
+  <text x="584" y="1026" class="b">代码＝施工子代理写分支　·　发货＝塔台独占 push</text>
+  <text x="584" y="1048" class="s">人格文件退役后，这些边界仍由技能正文与门禁执行</text>
+
+  <!-- ============ RIGHT: hosts and gates ============ -->
+  <rect x="1102" y="116" width="466" height="964" rx="14" class="panel" filter="url(#shadow)"/>
+  <text x="1126" y="150" class="panel-title">③ 宿主与门 · 两条腿先走</text>
+  <text x="1126" y="172" class="s">同一份插件目录，按宿主落命令与技能</text>
+
+  <rect x="1122" y="190" width="426" height="112" rx="10" class="card"/>
+  <text x="1138" y="216" class="h">Claude Code</text>
+  <text x="1138" y="240" class="b">装：插件目录（marketplace）或中央库技能副本</text>
+  <text x="1138" y="260" class="b">放：项目 .claude/ · 全局 CLAUDE_CONFIG_DIR</text>
+  <text x="1138" y="280" class="s">叫：/airport:pilot 或插件命令名；子代理用宿主原生</text>
+
+  <rect x="1122" y="316" width="426" height="112" rx="10" class="card-accent"/>
+  <text x="1138" y="342" class="h">Qoder（本轮重点，已查官方文档）</text>
+  <text x="1138" y="366" class="b">装：同一插件目录；读 .qoder-plugin/plugin.json</text>
+  <text x="1138" y="386" class="b">放：.qoder/skills/&lt;名&gt;/SKILL.md（项目级）</text>
+  <text x="1138" y="406" class="s">叫：角色提示词 / 子代理；--with-claude-config 可兼容</text>
+
+  <rect x="1122" y="442" width="426" height="82" rx="10" class="card-muted"/>
+  <text x="1138" y="468" class="h">Codex · OpenCode（骨架）</text>
+  <text x="1138" y="492" class="b">只补“技能从哪读、角色怎么起”两行</text>
+  <text x="1138" y="512" class="s">未实测的 flag 不写进正本</text>
+
+  <rect x="1122" y="540" width="426" height="150" rx="10" class="gate"/>
+  <text x="1138" y="566" class="h">自动体检（KWP 的做法）</text>
+  <text x="1138" y="590" class="b">plugin-check：清单 ↔ 目录 ↔ 版本 ↔ 摘要 ↔ 档位</text>
+  <text x="1138" y="610" class="b">doctor：frontmatter · 安装同步 · 字节预算 · 引用自足</text>
+  <text x="1138" y="630" class="b">CI：每次改动跑同一套体检，红即停</text>
+  <text x="1138" y="654" class="s">版本钉死＝plugin.json 的 version；漂移由 --bump 刷新</text>
+  <text x="1138" y="674" class="s">sha 同款：内容摘要不一致就红，不静默</text>
+
+  <rect x="1122" y="706" width="426" height="130" rx="10" class="card-amber"/>
+  <text x="1138" y="732" class="h">治理票吸收进正本的四处</text>
+  <text x="1138" y="756" class="b">① 一车道一树：main / deputy / ace / push 工位</text>
+  <text x="1138" y="776" class="b">② 王牌无对照道；日表归属认 -ace.md</text>
+  <text x="1138" y="796" class="b">③ 热修提交带 H-日期-序号，可被 push 门解析</text>
+  <text x="1138" y="816" class="s">④ 塔台起手禁全历史普查；临时树登记式回收</text>
+
+  <rect x="1122" y="852" width="426" height="96" rx="10" class="card-retired"/>
+  <text x="1138" y="878" class="h" fill="#b91c1c">不吸收的 KWP 内容</text>
+  <text x="1138" y="902" class="b">18 个业务插件 · MCP 连接器内容 · 记忆与任务看板</text>
+  <text x="1138" y="922" class="b">tech-debt（已有 harness-audit + 开票）</text>
+  <text x="1138" y="940" class="b">testing-strategy（已有 tdd + 审查门）</text>
+
+  <rect x="1122" y="964" width="426" height="96" rx="10" class="card-muted"/>
+  <text x="1138" y="990" class="h">落地顺序</text>
+  <text x="1138" y="1014" class="b">框架定稿 → ADR → 建插件 → 迁技能 → 改门禁</text>
+  <text x="1138" y="1034" class="b">→ 体检全绿 → dev 提交（不 push）</text>
+  <text x="1138" y="1054" class="s">项目仓一个字节不动；镜像同步留作下一棒</text>
+
+  <!-- connectors between panels -->
+  <path d="M528 369 C 540 369, 548 207, 560 207" class="line-teal" marker-end="url(#arrowTeal)"/>
+  <text x="532" y="300" class="label" transform="rotate(-90 532 300)">加载</text>
+  <path d="M1086 350 C 1096 350, 1098 246, 1112 246" class="line-dash" marker-end="url(#arrow)"/>
+  <text x="1090" y="300" class="label" transform="rotate(-90 1090 300)">落到宿主</text>
+</svg>

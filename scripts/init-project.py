@@ -11,10 +11,9 @@
   python scripts/init-project.py --repo <目标仓> --answers a.json   # 机器填（CI/批处理）
   python scripts/init-project.py --repo <目标仓> --dry-run     # 只打印结果不写盘
 
-十一问（顺序固定，缺一不可）：
+十问（顺序固定，缺一不可）：
   1 项目名 2 票源 3 仓库 slug 4 日表目录 5 交接目录 6 想法目录
   7 ADR 目录 8 宿主 9 收工门禁脚本 10 想法池汇总票号
-  11 子代理模型（逐人格，可留空＝宿主默认）
 """
 
 from __future__ import annotations
@@ -98,78 +97,28 @@ def build_answers(repo: str, a, yes: bool) -> dict:
             return json.load(f)
     auto_slug = guess_slug(repo)
     return {
-        "project": ask("1/11 项目名", os.path.basename(os.path.abspath(repo)), yes),
-        "ticket_source": ask("2/11 票源（github / none）", "github", yes),
-        "repo_slug": ask("3/11 仓库 slug（owner/name，none 可留空）", auto_slug, yes),
-        "day_tables_dir": ask("4/11 日表目录", ".ai/tasks", yes),
-        "handoff_dir": ask("5/11 交接目录", "handoff", yes),
-        "ideas_dir": ask("6/11 想法目录", "ideas", yes),
-        "adr_dir": ask("7/11 ADR 目录", "docs/adr", yes),
-        "host": ask("8/11 宿主（qoder / codex / opencode / claude / copilot / cursor）— 回车＝本机当前宿主，不确定就填你实际在用的那一个", "", yes),
-        "preflight_gate": ask("9/11 收工门禁脚本（相对仓根；本项目没有就回车留 null，别抄别仓的门名）",
+        "project": ask("1/10 项目名", os.path.basename(os.path.abspath(repo)), yes),
+        "ticket_source": ask("2/10 票源（github / none）", "github", yes),
+        "repo_slug": ask("3/10 仓库 slug（owner/name，none 可留空）", auto_slug, yes),
+        "day_tables_dir": ask("4/10 日表目录", ".ai/tasks", yes),
+        "handoff_dir": ask("5/10 交接目录", "handoff", yes),
+        "ideas_dir": ask("6/10 想法目录", "ideas", yes),
+        "adr_dir": ask("7/10 ADR 目录", "docs/adr", yes),
+        "host": ask("8/10 宿主（qoder / codex / opencode / claude / copilot / cursor）— 回车＝本机当前宿主，不确定就填你实际在用的那一个", "", yes),
+        "preflight_gate": ask("9/10 收工门禁脚本（相对仓根；本项目没有就回车留 null，别抄别仓的门名）",
                              "", yes),
-        "boom_summary_ticket": ask("10/11 想法池汇总票号（可留空）", "", yes),
-        "agent_models": ask_models(yes),
+        "boom_summary_ticket": ask("10/10 想法池汇总票号（可留空）", "", yes),
     }
 
 
 def discover_personas() -> list:
-    """人格名从 agents/*.md 派生（排除 README/dispatch），不写第二份名单。"""
+    """人格名从 agents/*.md 派生（排除 README/dispatch），不写第二份名单。
+    人格层已退役（无 agents/）时返回空表；保留函数供旧仓兼容。"""
     d = os.path.join(ROOT, "agents")
     if not os.path.isdir(d):
         return []
     return sorted(fn[:-3] for fn in os.listdir(d)
                   if fn.endswith(".md") and fn not in ("README.md", "dispatch.md"))
-
-
-def norm_model(v):
-    """''／默认／inherit／宿主默认 → None（不写 model）；其余去掉首尾空白原样保留。"""
-    if v is None:
-        return None
-    s = str(v).strip()
-    if not s or s.lower() in ("inherit", "default", "none", "null", "默认", "宿主默认"):
-        return None
-    return s
-
-
-def ask_models(yes: bool):
-    """第 11 问：返回 None（全部人格用宿主默认）｜模型名字符串（全部同值）｜{人格: 模型|None}。"""
-    names = discover_personas()
-    if yes or not names:
-        return None
-    print(f"11/11 子代理模型：{' / '.join(names)}")
-    print("     回车 = 六个都用宿主默认（不写 model）｜输入一个模型名 = 六个都用｜输入 n = 逐个填")
-    v = ask("     选", "", False)
-    if v.strip().lower() in ("n", "no", "逐个"):
-        out = {}
-        for n in names:
-            out[n] = norm_model(ask(f"     {n} 模型（回车=宿主默认）", "", False))
-        return out
-    return norm_model(v)
-
-
-def apply_models(cfg: dict, ans: dict) -> list:
-    """把第 11 问的答案落成 models.agents（模板 _note 保留）。返回被忽略的多余人格键。"""
-    names = discover_personas()
-    if not names:
-        return []
-    raw = ans.get("agent_models")
-    extra = []
-    if isinstance(raw, dict):
-        per = {n: norm_model(raw.get(n)) for n in names}
-        extra = sorted(k for k in raw if k not in names)
-    elif raw is None or raw == "":
-        per = {n: None for n in names}
-    else:
-        m = norm_model(raw)
-        per = {n: m for n in names}
-    note = (cfg.get("models") or {}).get("_note")
-    models = {}
-    if note:
-        models["_note"] = note
-    models["agents"] = {n: {"model": per[n]} for n in names}
-    cfg["models"] = models
-    return extra
 
 
 def drop_placeholders(node, path=""):
@@ -282,9 +231,6 @@ def apply(cfg: dict, ans: dict) -> dict:
     issue["boom_summary_ticket"] = ticket or None
     if ans.get("host"):
         cfg.setdefault("host", {})["adapter"] = ans["host"]
-    extra = apply_models(cfg, ans)
-    if extra:
-        print("忽略未知人格键（不在 agents/ 里）：" + "、".join(extra))
     return cfg
 
 
@@ -438,8 +384,6 @@ def main() -> int:
             print(f"  paths.{k} = {v}")
     print(f"  registry.adrs.dir = {(cfg.get('registry') or {}).get('adrs', {}).get('dir')}")
     print(f"  gates.captain_preflight = {cfg.get('gates', {}).get('captain_preflight')}")
-    for k, v in ((cfg.get("models") or {}).get("agents") or {}).items():
-        print(f"  models.agents.{k}.model = {(v or {}).get('model')}")
 
     if a.dry_run:
         print("\n（dry-run，未写盘）")

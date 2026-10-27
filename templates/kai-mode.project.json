@@ -61,33 +61,7 @@
     "dashboard": null,
     "state_dir": ".git/kai-mode"
   },
-  "models": {
-    "_note": "③子代理模型：只按人格配，没有档位、没有 default、没有角色槽。键＝agents/<人格>.md 的文件名；model=null 表示不写 model、用宿主默认（inherit）。写者＝项目初始化器；读者＝装机 agent 按宿主适配说明投影。本文件禁止出现任何模型 slug（doctor 拦）。",
-    "agents": {
-      "adjudicator": {
-        "model": null
-      },
-      "explorer": {
-        "model": null
-      },
-      "librarian": {
-        "model": null
-      },
-      "planner": {
-        "model": null
-      },
-      "reviewer": {
-        "model": null
-      },
-      "visual-designer": {
-        "model": null
-      },
-      "worker": {
-        "model": null
-      }
-    }
-  },
-  "runtime": {
+    "runtime": {
     "_note": "④运行时环境三项＝发现方式，不是机器路径。main_tree＝由 git worktree 公共目录反推主树正本，任意 worktree 内都能解析回主树；backend_python 优先环境变量 KAI_BACKEND_PYTHON，退回主树相对路径；依赖一律在各自 worktree 离线装，绝不 junction/软链主树 node_modules 后跑包管理器。discover 取值：env | main_tree。",
     "backend_python": {
       "discover": "env",

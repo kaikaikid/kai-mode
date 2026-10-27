@@ -442,7 +442,7 @@ def add_layout(root, *, handoff_files=None, exclude_dirs=None, config_from=None)
         "schema": "kai-mode-package-layout/1",
         "repo_only": ["docs/"],
         "host_payload": {
-            "source": "registry.json#install:auto",
+            "source": ".claude-plugin/marketplace.json#plugin-skills",
             "exclude_dirs": exclude_dirs or ["tests", "__pycache__", ".pytest_cache"],
             "exclude_suffixes": [".pyc"],
         },
@@ -807,7 +807,12 @@ def test_command_surface_shape_edge_cases(tmp_path):
 
 
 def test_persona_count_hardcoded_is_red(tmp_path):
-    """人格**个数**不许抄第二份：加一格就会把别处旧数留成假话（第七人格落地时实测三处）。"""
+    """人格**个数**不许抄第二份：加一格就会把别处旧数留成假话（第七人格落地时实测三处）。
+    人格层已从 CHECKS 退役，这里直接调 chk_agents（保留函数供旧仓自测）。"""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("kai_doctor_direct", DOCTOR)
+    doc = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(doc)
     root = make_repo(tmp_path)
     (root / "agents").mkdir()
     (root / "agents" / "worker.md").write_text(
@@ -819,11 +824,145 @@ def test_persona_count_hardcoded_is_red(tmp_path):
         "一个岗位可拉起多个人格，一个人格从不排班。\n", encoding="utf-8")
     p = root / "skills" / "alpha" / "SKILL.md"
     p.write_text(p.read_text(encoding="utf-8") + "\n子代理层：6 个人格。\n", encoding="utf-8")
-    rc, data = run_doctor(root)
-    assert rc == 1 and status_of(data, "agents-contract") == "fail"
-    assert "写死了人格计数" in detail_of(data, "agents-contract")
+    status, detail = doc.chk_agents(str(root), None)
+    assert status == "fail" and "写死了人格计数" in detail
     # 「× 7」式写法与 prose「一个人格从不排班」「可派全部人格」都不是计数，不该炸
     p.write_text(SKILL_MD.format(name="alpha") + "\n一个岗位可拉起多个人格，一个人格从不排班；主代理可派全部人格。\n",
                  encoding="utf-8")
+    status, detail = doc.chk_agents(str(root), None)
+    assert "写死了人格计数" not in detail, detail
+
+
+def test_marketplace_layout_registry_file_check(tmp_path):
+    """测试市场清单的注册表文件检查"""
+    root = tmp_path / "repo"
+    root.mkdir()
+
+    # Create marketplace.json
+    marketplace = {
+        "name": "kai-mode",
+        "plugins": [
+            {
+                "name": "airport",
+                "source": "./airport",
+                "description": "五岗位机场剧本"
+            },
+            {
+                "name": "core",
+                "source": "./core",
+                "description": "统一入口、装机"
+            }
+        ]
+    }
+    (root / ".claude-plugin").mkdir()
+    with open(root / ".claude-plugin" / "marketplace.json", "w", encoding="utf-8") as f:
+        json.dump(marketplace, f, ensure_ascii=False)
+
+    # Create plugin manifests
+    for plugin in ["airport", "core"]:
+        plugin_dir = root / plugin
+        plugin_dir.mkdir()
+        (plugin_dir / ".claude-plugin").mkdir()
+
+        manifest = {
+            "name": plugin,
+            "version": "1.0.0",
+            "description": f"{plugin} 描述"
+        }
+        with open(plugin_dir / ".claude-plugin" / "plugin.json", "w", encoding="utf-8") as f:
+            json.dump(manifest, f, ensure_ascii=False)
+
     rc, data = run_doctor(root)
-    assert "写死了人格计数" not in detail_of(data, "agents-contract"), detail_of(data, "agents-contract")
+    assert status_of(data, "registry-file") == "ok"
+    assert "marketplace.json" in detail_of(data, "registry-file")
+
+
+def test_marketplace_layout_skills_registered_correctly(tmp_path):
+    """测试市场布局中技能正确登记"""
+    root = tmp_path / "repo"
+    root.mkdir()
+
+    # Create marketplace.json
+    marketplace = {
+        "name": "kai-mode",
+        "plugins": [
+            {
+                "name": "core",
+                "source": "./core",
+                "description": "统一入口、装机"
+            }
+        ]
+    }
+    (root / ".claude-plugin").mkdir()
+    with open(root / ".claude-plugin" / "marketplace.json", "w", encoding="utf-8") as f:
+        json.dump(marketplace, f, ensure_ascii=False)
+
+    # Create plugin manifest
+    plugin_dir = root / "core"
+    plugin_dir.mkdir()
+    (plugin_dir / ".claude-plugin").mkdir()
+
+    manifest = {
+        "name": "core",
+        "version": "1.0.0",
+        "description": "核心插件"
+    }
+    with open(plugin_dir / ".claude-plugin" / "plugin.json", "w", encoding="utf-8") as f:
+        json.dump(manifest, f, ensure_ascii=False)
+
+    # Create skills in core plugin
+    skills_dir = plugin_dir / "skills"
+    skills_dir.mkdir()
+
+    # Create skill
+    skill_dir = skills_dir / "test-skill"
+    skill_dir.mkdir()
+    with open(skill_dir / "SKILL.md", "w", encoding="utf-8") as f:
+        f.write("---\nname: test-skill\nstatus: active\napproved_by: human:test\napproved: 2026-10-27\nsources:\n  - resource: \"test\"\n    note: \"test\"\ndescription: >\n  Test skill.\nversion: 1.0.0\nupdated: 2026-10-27\n---\n\n# Test Skill\n\n正文。\n")
+
+    rc, data = run_doctor(root)
+    assert status_of(data, "unregistered-skill") == "ok"
+    assert "市场布局中 1 个技能都登记了" in detail_of(data, "unregistered-skill")
+
+
+def test_marketplace_layout_agents_check_skip(tmp_path):
+    """测试没有 agents/ 目录时 agents-contract 检查被跳过"""
+    root = tmp_path / "repo"
+    root.mkdir()
+
+    # Create minimal valid repo
+    (root / "skills").mkdir()
+    with open(root / "registry.json", "w", encoding="utf-8") as f:
+        json.dump({"schema": "kai-mode-registry/1", "version": 1, "skills": []}, f, ensure_ascii=False)
+    (root / "VERSION").write_text("1.0.0\n", encoding="utf-8")
+    (root / "README.md").write_text("# Test\n", encoding="utf-8")
+    (root / ".gitattributes").write_text("* text=auto\n", encoding="utf-8")
+
+    rc, data = run_doctor(root)
+    # agents-contract should be skipped since there's no agents/ directory
+    agent_contract_check = next((c for c in data["checks"] if c["id"] == "agents-contract"), None)
+    assert agent_contract_check is None or agent_contract_check["status"] == "skip"
+
+
+def test_marketplace_layout_payload_budget_paths(tmp_path):
+    """测试市场布局的 payload 预算路径"""
+    root = tmp_path / "repo"
+    root.mkdir()
+
+    # Create files for new layout
+    (root / "airport" / "skills" / "loop" / "references").mkdir(parents=True)
+    (root / "airport" / "skills" / "loop" / "references" / "protocol.md").write_text("x\n", encoding="utf-8")
+
+    (root / "adapters").mkdir()
+    (root / "adapters" / "README.md").write_text("x\n", encoding="utf-8")
+
+    # Create some skills
+    for plugin in ["airport", "core"]:
+        (root / plugin / "skills").mkdir(parents=True, exist_ok=True)
+        for skill in ["test-skill-1", "test-skill-2"]:
+            (root / plugin / "skills" / skill).mkdir(exist_ok=True)
+            with open(root / plugin / "skills" / skill / "SKILL.md", "w", encoding="utf-8") as f:
+                f.write("---\nname: test-skill\n---\n# Test Skill\n")
+
+    rc, data = run_doctor(root)
+    assert status_of(data, "payload-budget") == "ok" or status_of(data, "payload-budget") == "note"

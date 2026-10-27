@@ -1,10 +1,10 @@
 {
   "schema": "kai-mode-install-profiles/1",
-  "version": 1,
-  "_note": "安装档位正本（ADR-0009）。只列 install:auto 条目；core 是最小闭环，full 是当前全部自动件。手动件（harness-audit 等）不在此表，按需单独装。",
+  "version": 2,
+  "_note": "安装档位正本。只列 install:auto 条目；core 是最小闭环，full 是当前全部自动件。手动件（harness-audit）不在此表，按需单独装。技能清单由 marketplace 的插件目录派生，本文件只写档位成员。",
   "profiles": {
     "core": {
-      "description": "最小闭环：入口/安装/协议/五岗位/交接；不含原则、想法池与看板。",
+      "description": "最小闭环：入口/安装/协议/五岗位/交接；不含原则、想法池、看板与运维剧本。",
       "skills": [
         "kai-mode",
         "set-kai-mode",
@@ -18,7 +18,7 @@
       ]
     },
     "full": {
-      "description": "core ＋ 六个原则 ＋ BOOM 想法池 ＋ 看板展示层。",
+      "description": "core ＋ 六个原则 ＋ BOOM 想法池 ＋ 看板 ＋ 事故与运维剧本。",
       "skills": [
         "kai-mode",
         "set-kai-mode",
@@ -36,7 +36,9 @@
         "principle-report-missing-parts",
         "principle-visible-and-redline-only",
         "kai-boom-idea-log",
-        "flight-info"
+        "flight-info",
+        "incident-response",
+        "runbook"
       ]
     }
   }

@@ -10,7 +10,7 @@ kai-mode 框架仓 doctor（单一校验入口）
 
 仓根默认＝脚本上溯一级（`<仓根>/scripts/doctor.py` → `<仓根>`），`--root` 可指到别的根（假仓自测用）。
 只读：除 pytest 自己的缓存外不写盘；只用标准库，不装任何东西。
-注册表口径只有一份：本仓 `skills/set-kai-mode/scripts/magpie-sync.py` 里的注册表读写与装机集派生，
+注册表口径只有一份：本仓 `core/skills/set-kai-mode/scripts/magpie-sync.py` 里的注册表读写与装机集派生，
 这里 import 那个模块来比，不复制第二份逻辑。
 第 13 项 `install-sync` 依赖宿主状态（中央库在不在、装没装）：库定位不到 ⇒ 跳过，不是红。
 """
@@ -38,7 +38,7 @@ sys.dont_write_bytecode = True
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OWN_ROOT = os.path.abspath(os.path.join(HERE, ".."))
-MAGPIE_SYNC = os.path.join(OWN_ROOT, "skills", "set-kai-mode", "scripts", "magpie-sync.py")
+MAGPIE_SYNC = os.path.join(OWN_ROOT, "core", "skills", "set-kai-mode", "scripts", "magpie-sync.py")
 
 FRONTMATTER_ORDER = ("name", "status", "approved_by", "approved", "sources", "description", "version", "updated")
 TEXT_EXT = (".md", ".py", ".bat", ".cmd", ".ps1", ".json", ".yml", ".yaml", ".txt", ".cfg", ".ini", ".sh")
@@ -54,7 +54,7 @@ LINK_RE = re.compile(r"\[[^\]]*\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
 ALLOW_MARK = "# doctor:allow-machine-path"
 
 # ── 14 解耦门（ADR-0004「代价与迁移」）：项目硬路径不许回流进框架正本 ──────────
-DECOUPLE_DIRS = ("skills", "loops", "templates")
+DECOUPLE_DIRS = ("airport", "core", "board", "intake", "ops", "templates")
 DECOUPLE_EXT = (".md", ".py", ".json", ".bat", ".tsv")
 # 模式按 ADR 判据的 grep 口径（大小写敏感）；命中行报「文件:行号:模式」。
 DECOUPLE_PATTERNS = ("kai-vass", ".ai/router", ".ai/tasks", "docs/artifacts/adrs", ".ai/scope", "kai-vass-v2")
@@ -121,17 +121,75 @@ def parse_frontmatter(path: str):
 
 
 def chk_registry_file(root, ms):
-    """01 registry.json 存在、schema 认识、version 是整数。"""
-    path = os.path.join(root, "registry.json")
-    if not os.path.isfile(path):
-        return "fail", f"注册表不存在：{path}"
-    data, err = registry(root, ms)
-    if data is None:
-        return "fail", err
-    ver = data.get("version")
-    if not isinstance(ver, int) or isinstance(ver, bool):
-        return "fail", f"version 不是整数：{ver!r}"
-    return "ok", f"schema={data.get('schema')}，version={ver}，条目 {len(data.get('skills') or [])} 条"
+    """01 registry.json 或 .claude-plugin/marketplace.json 存在、schema 认识、version 是整数。"""
+    registry_path = os.path.join(root, "registry.json")
+    marketplace_path = os.path.join(root, ".claude-plugin", "marketplace.json")
+
+    # Check legacy registry.json first
+    if os.path.isfile(registry_path):
+        data, err = registry(root, ms)
+        if data is None:
+            return "fail", err
+        ver = data.get("version")
+        if not isinstance(ver, int) or isinstance(ver, bool):
+            return "fail", f"version 不是整数：{ver!r}"
+        return "ok", f"registry.json schema={data.get('schema')}，version={ver}，条目 {len(data.get('skills') or [])} 条"
+
+    # Check marketplace.json
+    if os.path.isfile(marketplace_path):
+        try:
+            with open(marketplace_path, encoding="utf-8") as f:
+                marketplace = json.load(f)
+        except (OSError, ValueError) as exc:
+            return "fail", f"市场清单 JSON 解析失败：{exc}"
+
+        if not isinstance(marketplace, dict) or "plugins" not in marketplace:
+            return "fail", "市场清单格式错误：缺少 'plugins' 键"
+
+        plugins = marketplace.get("plugins", [])
+        if not isinstance(plugins, list) or not plugins:
+            return "fail", "市场清单 plugins 为空"
+
+        # Validate each plugin
+        for plugin in plugins:
+            if not isinstance(plugin, dict):
+                return "fail", f"插件不是对象：{plugin}"
+
+            if "name" not in plugin or "source" not in plugin or "description" not in plugin:
+                return "fail", f"插件缺少必要字段：{plugin}"
+
+            plugin_name = plugin.get("name")
+            plugin_source = plugin.get("source")
+
+            if not isinstance(plugin_name, str) or not isinstance(plugin_source, str):
+                return "fail", f"插件 name/source 不是字符串：{plugin}"
+
+            # Check local plugin directory
+            plugin_dir = os.path.normpath(os.path.join(root, plugin_source))
+            if not os.path.isdir(plugin_dir):
+                return "fail", f"插件目录不存在：{plugin_dir}"
+
+            # Check plugin manifest
+            manifest_path = os.path.join(plugin_dir, ".claude-plugin", "plugin.json")
+            if not os.path.isfile(manifest_path):
+                return "fail", f"插件清单不存在：{manifest_path}"
+
+            try:
+                with open(manifest_path, encoding="utf-8") as f:
+                    manifest = json.load(f)
+            except (OSError, ValueError) as exc:
+                return "fail", f"插件清单 JSON 解析失败：{manifest_path} ({exc})"
+
+            if not isinstance(manifest, dict) or manifest.get("name") != plugin_name:
+                return "fail", f"插件清单 name 不匹配：{manifest_path}"
+
+            version = manifest.get("version")
+            if not isinstance(version, str) or not re.match(r"^\d+\.\d+\.\d+(-[a-zA-Z0-9-]+)?$", version):
+                return "fail", f"插件版本格式错误：{version}"
+
+        return "ok", f"marketplace.json plugins={len(plugins)} 个，插件清单与版本格式正确"
+
+    return "fail", f"注册表不存在：{registry_path} 且市场清单不存在：{marketplace_path}"
 
 
 def chk_registry_fields(root, ms):
@@ -186,21 +244,61 @@ def chk_frontmatter(root, ms):
 
 
 def chk_unregistered(root, ms):
-    """04 盘上有技能目录但没登记 ⇒ 红（以后还会塞个人 skill，这道闸最要紧）。"""
-    skills_dir = os.path.join(root, "skills")
-    if not os.path.isdir(skills_dir):
-        return "skip", "没有 skills/ 目录"
+    """04 盘上有技能目录但没登记 ⇒ 红；插件目录没进市场清单也红。"""
     data, _ = registry(root, ms)
-    registered = set()
+    inventory = set()
     for entry in (data or {}).get("skills") or []:
         if isinstance(entry, dict) and entry.get("path"):
-            registered.add(str(entry["path"]).replace("\\", "/").strip("/"))
-    on_disk = [n for n in sorted(os.listdir(skills_dir))
-                if os.path.isfile(os.path.join(skills_dir, n, "SKILL.md"))]
-    unregistered = [n for n in on_disk if f"skills/{n}" not in registered]
-    if unregistered:
-        return "fail", f"盘上有技能目录没登记：{'、'.join(unregistered)}（补 registry.json 一行）"
-    return "ok", f"盘上 {len(on_disk)} 个技能目录都登记了"
+            inventory.add(str(entry["path"]).replace("\\", "/").strip("/"))
+
+    # 旧布局：仓根 skills/<名>/SKILL.md 必须登记
+    legacy = os.path.join(root, "skills")
+    legacy_on_disk = {f"skills/{n}" for n in sorted(os.listdir(legacy))
+                      if os.path.isfile(os.path.join(legacy, n, "SKILL.md"))} if os.path.isdir(legacy) else set()
+    if legacy_on_disk:
+        on_disk = legacy_on_disk
+        extra = sorted(on_disk - inventory)
+        if extra:
+            return "fail", f"盘上有技能目录没登记：{'、'.join(extra)}（补市场清单/插件目录）"
+        return "ok", f"skills/ 上 {len(on_disk)} 个技能目录都登记了"
+
+    # 插件布局：市场清单里的每个插件 skills/* 必须在清单里；有 plugin.json 却没进市场的目录也红
+    market = os.path.join(root, ".claude-plugin", "marketplace.json")
+    if not os.path.isfile(market):
+        return "skip", "没有 skills/ 也没有市场清单"
+    try:
+        with open(market, encoding="utf-8") as f:
+            m = json.load(f)
+    except (OSError, ValueError):
+        return "skip", "市场清单 JSON 解析失败"
+    plugins = [x for x in (m.get("plugins") or []) if isinstance(x, dict)]
+    names = {x.get("name") for x in plugins if isinstance(x.get("name"), str)}
+    on_disk = set()
+    for plugin in plugins:
+        name, src = plugin.get("name"), plugin.get("source")
+        if not isinstance(name, str) or not isinstance(src, str):
+            continue
+        if src.startswith(("http://", "https://", "git@", "github.com", "gitlab.com")):
+            continue
+        sd = os.path.join(root, *src.replace("\\", "/").split("/"), "skills")
+        if os.path.isdir(sd):
+            for sk in os.listdir(sd):
+                if os.path.isfile(os.path.join(sd, sk, "SKILL.md")):
+                    on_disk.add(f"{name}/skills/{sk}")
+    extra = sorted(on_disk - inventory)
+    if extra:
+        return "fail", f"盘上有技能目录没登记：{'、'.join(extra)}（补市场清单/插件目录）"
+    # 有 plugin.json 却没进市场清单的顶层目录
+    orphans = []
+    for d in sorted(os.listdir(root)):
+        pd = os.path.join(root, d)
+        if d.startswith(".") or not os.path.isdir(pd):
+            continue
+        if os.path.isfile(os.path.join(pd, ".claude-plugin", "plugin.json")) and d not in names:
+            orphans.append(d)
+    if orphans:
+        return "fail", f"插件目录没进市场清单：{'、'.join(orphans)}（补 .claude-plugin/marketplace.json）"
+    return "ok", f"市场布局中 {len(on_disk)} 个技能都登记了；市场插件 {len(names)} 个"
 
 
 def chk_missing_path(root, ms):
@@ -467,12 +565,23 @@ def chk_skill_tests(root, ms):
     仓级测试是 doctor 自己的回归网，pytest 不可用即如实报红，不静默跳过。"""
     skills_dir = os.path.join(root, "skills")
     targets = []
+    seen = set()
+    # 新布局：按清单里每个技能的路径找自带测试；老布局：skills/<名> 平铺
+    data, _ = registry(root, ms)
+    skill_dirs = []
+    for entry in (data or {}).get("skills") or []:
+        rel = str((entry or {}).get("path") or "")
+        if rel:
+            skill_dirs.append((str(entry.get("name") or rel), os.path.join(root, *rel.split("/"))))
     if os.path.isdir(skills_dir):
         for name in sorted(os.listdir(skills_dir)):
-            for sub in ("scripts/tests", "tests"):
-                d = os.path.join(skills_dir, name, *sub.split("/"))
-                if os.path.isdir(d):
-                    targets.append((name, d))
+            skill_dirs.append((name, os.path.join(skills_dir, name)))
+    for name, skill_dir in skill_dirs:
+        for sub in ("scripts/tests", "tests"):
+            d = os.path.join(skill_dir, *sub.split("/"))
+            if os.path.isdir(d) and d not in seen:
+                seen.add(d)
+                targets.append((name, d))
     repo_tests = os.path.join(root, "scripts", "tests")
     has_repo_tests = os.path.isdir(repo_tests)
     if not targets and not has_repo_tests:
@@ -517,7 +626,7 @@ def chk_install_sync(root, ms):
     lib = ms.find_library()
     if not lib or not os.path.isdir(lib):
         return "skip", f"中央库定位不到（{getattr(ms, 'LIBRARY_ENV', 'KAI_MAGPIE_LIBRARY')} 未设，~/*/skills/kai-mode 没有指向库的链接）"
-    fix = (f"python skills/set-kai-mode/scripts/magpie-sync.py apply --root {root} --library {lib}")
+    fix = (f"python core/skills/set-kai-mode/scripts/magpie-sync.py apply --root {root} --library {lib}")
     try:
         plan = ms.install_plan(root)
     except SystemExit as exc:
@@ -735,8 +844,8 @@ def chk_package_layout(root: str, ms):
             or not all(isinstance(x, str) and x for x in repo_only)):
         problems.append("repo_only 必须是非空字符串数组")
     hp = data.get("host_payload") if isinstance(data.get("host_payload"), dict) else {}
-    if hp.get("source") != "registry.json#install:auto":
-        problems.append("host_payload.source 必须指向 registry.json#install:auto（名单不另抄一份）")
+    if hp.get("source") != ".claude-plugin/marketplace.json#plugin-skills":
+        problems.append("host_payload.source 必须指向 .claude-plugin/marketplace.json#plugin-skills（名单不另抄一份）")
     dirs = hp.get("exclude_dirs")
     sufs = hp.get("exclude_suffixes")
     need_dirs = {"tests", "__pycache__", ".pytest_cache"}
@@ -1078,11 +1187,14 @@ def _decouple_whitelisted(rel: str) -> bool:
 
 def _template_models_problems(tpl, personas=()) -> list:
     """schema 3/4 配置模板的 models 子检查（ADR-0008 D3）：只许 {_note, agents}；
-    `agents.<人格>.model` 只许 null（框架不写死模型）；键集与盘上人格双向一致。"""
+    `agents.<人格>.model` 只许 null（框架不写死模型）；键集与盘上人格双向一致。
+    models 段已被移除（schema 4+），只检查当它存在时。"""
     problems = []
     models = tpl.get("models")
+    if not models:
+        return []  # models 段已退役，不报错
     if not isinstance(models, dict):
-        return ["models 段缺失或不是对象（模型配置必须有家）"]
+        return ["models 段不是对象（模型配置必须有家）"]
     for k in ("tiers", "default", "roles"):
         if k in models:
             problems.append(f"models.{k} 已退役（六档词表已退役，ADR-0008 D3）——模型只按人格配")
@@ -1122,7 +1234,7 @@ def chk_decoupling(root, ms):
     子检查：配置模板 schema==3 时，models 段只许按人格配、值只许 null（ADR-0008 D3）。"""
     bases = [os.path.join(root, d) for d in DECOUPLE_DIRS if os.path.isdir(os.path.join(root, d))]
     if not bases:
-        return "skip", "没有 skills/、loops/、templates/ 目录（不适用）"
+        return "skip", "没有插件目录或 templates/（不适用）"
     hits, scanned = [], 0
     for base in bases:
         for b, dirs, files in os.walk(base):
@@ -1462,7 +1574,7 @@ def chk_agents(root, ms):
     """17 agents 层契约：字段合规、零外链、README 表两向一致、handoff persona 有家。"""
     d = os.path.join(root, "agents")
     if not os.path.isdir(d):
-        return "skip", "没有 agents/ 目录（不适用）"
+        return "skip", "人格层已退役（无 agents/）"
     personas = _agent_personas(root)
     if not personas:
         return "fail", "agents/ 下没有 <人格>.md 文件"
@@ -1653,7 +1765,7 @@ def chk_canon(root, ms):
 
 # ── 19 vendor 漂移（ADR-0008 D7）：vendor/ 必须进 git；有本机镜像时与源一致 ─────────
 # ── 20 宿主中立（ADR-0008）：宿主专有 token 只许住 adapters/ ─────────────────
-HOST_NEUTRAL_DIRS = ("skills", "loops", "agents")
+HOST_NEUTRAL_DIRS = ("airport", "core", "board", "intake", "ops", "skills")
 HOST_TOKENS = (
     (re.compile(r"\$\{?CLAUDE_"), "CLAUDE_*"),
     (re.compile(r"\$\{?ARGUMENTS\}?"), "$ARGUMENTS"),
@@ -1680,7 +1792,7 @@ def chk_host_neutral(root: str, ms):
         if not os.path.isdir(base):
             continue
         for b, dirs, files in os.walk(base):
-            dirs[:] = [x for x in dirs if x not in ("__pycache__", ".pytest_cache")]
+            dirs[:] = [x for x in dirs if x not in ("__pycache__", ".pytest_cache", "commands")]
             for fn in sorted(files):
                 if not fn.lower().endswith(TEXT_EXT):
                     continue
@@ -1702,7 +1814,7 @@ def chk_host_neutral(root: str, ms):
         return "fail", ("宿主专有 token 进正本： " + "；".join(hits[:6])
                         + ("（共 %d 处）" % len(hits) if len(hits) > 6 else "")
                         + "。修法：宿主细节移入 adapters/<宿主>.md，本处留指针")
-    return "ok", f"skills/loops/agents 扫了 {scanned} 份文本文件，宿主专有 token 0 命中"
+    return "ok", f"插件目录（commands/ 是宿主面，豁免）扫了 {scanned} 份文本文件，宿主专有 token 0 命中"
 
 
 def _frontmatter_yaml_problems(text: str) -> list:
@@ -1848,12 +1960,14 @@ def chk_command_surface(root: str, ms=None):
     """技能自己声明要跑的命令，工具面没登记 ⇒ 到会硬拦白名单的宿主上就是一步步弹审批、停下来问人。
     `Bash(*)`、`Bash(<命令>:*)`、`Bash(<命令>:<子>:*)` 与裸 `Bash` 都算覆盖；
     不认为该命令由本技能跑的，把它移出 ```bash 块。"""
-    d = os.path.join(root, "skills")
-    if not os.path.isdir(d):
-        return "skip", "没有 skills/ 目录（不适用）"
+    data, err = registry(root, ms)
+    if data is None:
+        return "skip", f"技能清单不可用（01 已报）：{err}"
     bad, scanned, cmds = [], 0, 0
-    for name in sorted(x for x in os.listdir(d) if os.path.isdir(os.path.join(d, x))):
-        md = os.path.join(d, name, "SKILL.md")
+    for entry in sorted((e for e in data.get("skills") or [] if isinstance(e, dict)),
+                        key=lambda e: str(e.get("name"))):
+        name = str(entry.get("name") or "?")
+        md = os.path.join(root, *str(entry.get("path") or "").split("/"), "SKILL.md")
         if not os.path.isfile(md):
             continue
         try:
@@ -1913,10 +2027,10 @@ def chk_vendor(root, ms):
 
 BUDGETS = (  # 层 → (glob 列表, 上限字节)。与项目仓治理体量的上限同尺，项目可更严、不可更松
     ("AGENTS.md", ("AGENTS.md",), 12 * 1024),
-    ("协议正本", ("loops/*.md",), 40 * 1024),
+    ("协议正本", ("airport/skills/loop/references/*.md", "loops/*.md"), 40 * 1024),
     ("适配说明", ("adapters/*.md",), 16 * 1024),
-    ("安装面 SKILL.md", ("skills/*/SKILL.md",), 40 * 1024),
-    ("技能内其它 md", ("skills/**/*.md",), 64 * 1024),
+    ("安装面 SKILL.md", ("*/skills/*/SKILL.md", "skills/*/SKILL.md"), 40 * 1024),
+    ("技能内其它 md", ("*/skills/**/*.md", "skills/**/*.md"), 64 * 1024),
 )
 
 
@@ -1949,9 +2063,26 @@ def chk_payload_budget(root: str, ms=None):
     return "ok", "；".join(lines) + f"（合计 {total / 1024:.0f}KB）"
 
 
+def chk_plugin_manifest(root: str, ms=None):
+    """29 插件清单与版本锁：调用 scripts/plugin-check.py，清单/版本/摘要/档位不一致即红。"""
+    script = os.path.join(root, "scripts", "plugin-check.py")
+    if not os.path.isfile(script):
+        return "skip", "没有 scripts/plugin-check.py（旧仓不适用）"
+    try:
+        p = subprocess.run([sys.executable, script, "--root", root], cwd=root,
+                           capture_output=True, text=True, encoding="utf-8", errors="replace")
+    except (OSError, ValueError) as exc:
+        return "fail", f"跑不动 plugin-check：{exc}"
+    out = " ".join(x.strip() for x in ((p.stdout or "") + (p.stderr or "")).splitlines() if x.strip())
+    if p.returncode != 0:
+        return "fail", f"plugin-check rc={p.returncode}：{out[:600]}"
+    return "ok", out.split("总结：")[-1][:300] if "总结：" in out else out[:300]
+
+
 CHECKS = (
     ("registry-file", "注册表文件", chk_registry_file),
     ("registry-fields", "注册表字段", chk_registry_fields),
+    ("plugin-manifest", "插件清单与版本锁", chk_plugin_manifest),
     ("skill-frontmatter", "frontmatter 与 name 三处一致", chk_frontmatter),
     ("frontmatter-yaml", "frontmatter YAML 形状", chk_frontmatter_yaml),
     ("unregistered-skill", "盘上技能都登记了", chk_unregistered),
@@ -1974,8 +2105,7 @@ CHECKS = (
     ("handoff-slots", "交接文档分类（槽位/命名/归位）", chk_handoff),
     ("skill-spec", "技能格式对齐 Agent Skills 1.2", chk_skill_spec),
     ("command-surface", "技能声明的命令在自己工具面里", chk_command_surface),
-    ("agents-contract", "子代理人格层契约", chk_agents),
-    ("canon-dup", "判据一个家（退役词/平行正本）", chk_canon),
+        ("canon-dup", "判据一个家（退役词/平行正本）", chk_canon),
     ("vendor-sync", "辅助技能原样副本（跟踪/漂移）", chk_vendor),
     ("payload-budget", "安装面字节预算（分层反膨胀）", chk_payload_budget),
 )

@@ -8,8 +8,8 @@
 
 | 层 | 内容 | 去哪 | 谁写 |
 |---|---|---|---|
-| 本仓开发件 | `docs/`（ADR、agent 文档、canon）、`handoff/` 历史、`scripts/`、`agents/`、`adapters/`、`loops/`、`schemas/`、`vendor/`、`CHANGELOG`／`VERSION`／`AGENTS.md`、技能自带 `tests/` | 只留本仓 | 维护者 |
-| 宿主安装件 | `registry.json` 里 `install:auto` 的技能目录（`SKILL.md` ＋ 运行所需 `scripts/`、`templates/`、`schema/`；看板脚本随 `kai-handoff` 安装） | Magpie 中央库 → 各宿主 `<家>/skills/<名>` | `magpie-sync.py` |
+| 本仓开发件 | `docs/`（ADR、canon、设计图）、`handoff/` 历史、`scripts/`、`adapters/`、`schemas/`、`vendor/`、`manifests/`、`CHANGELOG`／`VERSION`／`AGENTS.md`、技能自带 `tests/` | 只留本仓 | 维护者 |
+| 宿主安装件 | `marketplace.json` 列出的每个插件的 `skills/*`（`SKILL.md` ＋ 运行所需 `scripts/`、`templates/`、`references/`、`schema/`）＋ `commands/`、`PLAYBOOK.md`、`CONNECTORS.md`、两份 `plugin.json` | Magpie 中央库 → 各宿主 `<家>/skills/<名>` 与命令目录 | `magpie-sync.py` |
 | 项目生成件 | `.ai/kai-mode.project.json`、`handoff/` 八槽与规范／模板、`GLOSSARY.md`、空 `docs/adr/` | 用户项目 | `init-project.py` |
 
 ## 硬规矩
@@ -21,13 +21,13 @@
 
 ## 用户实际会得到什么
 
-- 宿主技能库里：运行所需技能（实测 37 件），没有本仓测试与缓存，也没有本仓的 ADR 编号与死链。
+- 宿主技能库里：20 个技能及其命令与剧本说明，没有本仓测试与缓存，也没有本仓的 ADR 编号与死链。
 - 用户项目里：配置实例、交接骨架（含两份模板）、`GLOSSARY.md` 骨架、空 `docs/adr/`。
 - 不会得到：本仓的 ADR、交接／评审历史、看板卡片、开发脚本、测试。
 
 ## GitHub 上的仓库可见面
 
-外部用户 clone 到的应当只有**方法论 + 安装包**：技能与人格正本、协议、适配说明、ADR、规范与模板、
+外部用户 clone 到的应当只有**方法论 + 安装包**：插件、技能、命令、协议、适配说明、ADR、规范与模板、
 安装／初始化脚本。本仓开发期间的流水不进 git：
 
 - `handoff/<槽>/YYYY-MM/`、`handoff/60-board/<状态>/*.md`：交接、评审、归档、看板工单 ⇒ 忽略。
@@ -38,7 +38,7 @@
 
 ## 技能里的维护侧引用怎么写
 
-安装面里要指维护侧正本，写成**名称＋路径**（例：框架仓 `loops/loop-protocol.md`），不给 URL、不给 ADR 编号，
+安装面里要指维护侧正本，写成**名称＋路径**（例：框架仓 `airport/skills/loop/references/loop-protocol.md`），不给 URL、不给 ADR 编号，
 并在使用处说明「不随技能安装」。技能内部与兄弟技能之间用相对链接（同在一个安装库里）。
 `sources` frontmatter 只指随装件；框架侧出处一律从安装面删除，出处留在本仓 ADR 与 CHANGELOG。
 
@@ -55,5 +55,5 @@ python scripts/doctor.py --with-tests   # 项数看汇总行；package-layout �
 ```
 
 `package-layout` 红通常只有三种：安装面混进被排除文件、骨架源越界／缺失、实跑生成集合与清单不一致。
-`payload-refs` 红有三类：安装面出现框架仓 URL 或 `ADR-NNNN`／`docs/adr/NNNN-…` 引用；把维护者门禁 `doctor.py` 写成验收步骤；Markdown 相对链接指向装不走的本仓开发件。
+`payload-refs` 红有三类：安装面出现框架仓 URL 或 `ADR-NNNN`／`docs/adr/NNNN-…` 引用；把维护者门禁 `doctor.py` 写成验收步骤；Markdown 相对链接越出插件技能目录。
 `tracked-cache` 红有两种：被跟踪的缓存／运行数据产物；被跟踪的本仓 `handoff/` 流水（规范与模板除外）。

@@ -1,0 +1,8 @@
+{
+  "name": "core",
+  "version": "1.0.0",
+  "description": "统一入口、装机、交接与六条原则；不含岗位流程。",
+  "author": {
+    "name": "kaikaikid"
+  }
+}

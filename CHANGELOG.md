@@ -2,6 +2,28 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.27.0 — 2026-10-27
+
+- **插件化剧本（KWP 形态）**：仓根改为市场清单 `.claude-plugin/marketplace.json`，五个剧本各是一个插件目录
+  （`airport`／`core`／`board`／`intake`／`ops`）；每个插件带两份 `plugin.json`（Claude Code／Qoder）、
+  `PLAYBOOK.md`、`CONNECTORS.md`、`commands/` 与 `skills/`。**剧本＝插件，角色＝命令，步骤＝技能**。
+  - **人格层退役**：`agents/` 七个人格文件、`agents-contract` 门、实例 `models.agents` 与初始化第 11 问全部移除；
+    派活规则迁入协议同目录 `dispatch.md`，裁决形状迁入 `adjudication.md`；审查独立性由「另一段新上下文」保证。
+  - **注册表退役**：`registry.json` 删除；安装器从市场清单＋插件目录现场派生技能清单（内存兼容形状，不落第二份文件）。
+  - **判据正本随技能安装**：`loops/loop-protocol.md` 迁入 `airport/skills/loop/references/loop-protocol.md`，
+    顶层 `loops/` 退役；项目仓若保留镜像，按新路径复制并核对哈希。
+  - **协议 v9**：工作树改「一车道一棵」（`lane-main`／`lane-deputy`／`lane-ace`＋登记式推送工位，一票一树废止）；
+    王牌车道写清「无对照道」与热修提交标识 `H-<日期>-<序号>`；门的自身成本（超时／全历史普查）不再冒充被审对象的红；
+    塔台起手禁止每轮跑全历史普查，推送工位用完即拆。
+  - **新增 `ops` 剧本**：`incident-response`（分级／时间线／复盘→补票）与 `runbook`（可重复运维步骤、失败分支、回滚）。
+    `tech-debt` 与 `testing-strategy` 不吸收（已有 `harness-audit`／`tdd`／审查门），理由见 ADR-0021。
+  - **分发体检**：新增 `scripts/plugin-check.py`（市场↔插件↔版本↔摘要锁↔档位）与 `.github/workflows/plugin-check.yml`；
+    `manifests/plugins.lock.json` 钉版本与内容摘要，漂移即红，`--bump` 刷新。
+  - **宿主**：Claude Code 与 Qoder 落到「装什么／放哪／叫什么都」；Qoder 技能落 `.qoder/skills/<名>/SKILL.md`，
+    插件清单用 `.qoder-plugin/plugin.json`，旧 `qoder_cron` 标注为运行时观测、非公开 API；Codex／OpenCode 留骨架。
+  - **顺带清既有两红**：安装面 ADR 引用（`payload-refs`）与项目硬路径（`decoupling-gate`）。
+  - 项目仓 `Kai-vass-Control` **零字节改动**；镜像同步与项目侧门禁适配留作下一棒。
+
 ## 0.26.1 — 2026-10-27
 
 - **loop v5.6.0 ＋ 协议 v8.1「契约式委托」**：方法技能从「环节硬绑定」（施工＝`tdd`｜审查＝`code-review`｜

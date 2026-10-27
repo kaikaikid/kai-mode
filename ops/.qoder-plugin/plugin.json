@@ -1,0 +1,8 @@
+{
+  "name": "ops",
+  "version": "1.0.0",
+  "description": "事故分级、时间线、复盘补票；可重复运维步骤与回滚。",
+  "author": {
+    "name": "kaikaikid"
+  }
+}

@@ -1,5 +1,5 @@
 {
-  "_note": "判据归属正本（ADR-0007 D2／ADR-0008 D6／ADR-0016 F5）。doctor 的 canon-dup 项消费：退役词命中 scan_roots 即红；canon_keys 的 pattern 出现在自己 forbidden 目录即红（平行正本）。docs/adr 与 handoff 是历史记录，豁免。可调数值判据（在飞名额、日表行数区间）已登记；接口字面（如 verdict=pass）不登记——它是审查与适配之间的字面契约，不是可调数值。新平行正本一律先登记此处。",
+  "_note": "判据归属正本。doctor 的 canon-dup 项消费：退役词命中 scan_roots 即红；canon_keys 的 pattern 出现在自己 forbidden 目录即红（平行正本）。docs/adr 与 handoff 是历史记录，豁免。可调数值判据（在飞名额、日表行数区间）已登记；接口字面（如 verdict=pass）不登记——它是审查与适配之间的字面契约，不是可调数值。新平行正本一律先登记此处。",
   "retired_terms": [
     "租约",
     "班次",
@@ -13,11 +13,14 @@
     "档位核对"
   ],
   "scan_roots": [
-    "skills",
-    "agents",
+    "airport",
+    "core",
+    "board",
+    "intake",
+    "ops",
     "adapters",
-    "loops",
     "templates",
+    "manifests",
     "docs",
     "README.md",
     "AGENTS.md"
@@ -30,71 +33,92 @@
   "canon_keys": [
     {
       "key": "receipt-max-lines",
-      "home": "loops/loop-protocol.md",
+      "home": "airport/skills/loop/references/loop-protocol.md",
       "pattern": "回执\\s*[≤<]\\s*\\d+\\s*行",
       "forbidden": [
-        "skills/kai-mode",
-        "skills/loop",
-        "skills/pilot",
-        "skills/copilot",
-        "skills/principle-ceremony-collapses-with-scale",
-        "agents",
+        "airport/skills/pilot",
+        "airport/skills/copilot",
+        "airport/skills/ace",
+        "airport/skills/tower",
+        "airport/skills/ground-crew",
+        "airport/skills/loop/SKILL.md",
+        "core/skills",
         "README.md"
       ],
       "why": "2026-10 曾出现 25 行 / 40 行两套口径并存"
     },
     {
       "key": "fail-retry-times",
-      "home": "loops/loop-protocol.md",
+      "home": "airport/skills/loop/references/loop-protocol.md",
       "pattern": "(失败|重试)[^。\\n]{0,6}\\d+\\s*次",
       "forbidden": [
-        "skills/kai-mode",
-        "agents"
+        "airport/skills/pilot",
+        "airport/skills/copilot",
+        "airport/skills/ace",
+        "airport/skills/tower",
+        "airport/skills/ground-crew",
+        "airport/skills/loop/SKILL.md",
+        "core/skills",
+        "board/skills",
+        "intake/skills",
+        "ops/skills"
       ],
       "why": "曾出现 1 次 / 2 次 / 3 次 / 最多 3 轮四套口径"
     },
     {
       "key": "subagent-depth",
-      "home": "agents/dispatch.md",
+      "home": "airport/skills/loop/references/dispatch.md",
       "pattern": "派生深度|嵌套深度|代际上限",
       "forbidden": [
-        "skills",
-        "loops",
+        "airport/skills",
+        "core/skills",
+        "board/skills",
+        "intake/skills",
+        "ops/skills",
         "adapters"
       ],
-      "why": "深度是人格层权限判据（宿主侧不给派生工具），协议、技能与宿主适配只许指过来"
+      "why": "深度是派活判据，只住 dispatch；协议、技能与宿主适配只许指过来"
     },
     {
       "key": "wake-fence",
       "home": "docs/adr/0010-role-wake-fence.md",
       "pattern": "拉起继任机长|拉起继任副机长|自行判断拉起角色|自动拉起角色|自动唤醒继任",
       "forbidden": [
-        "skills",
-        "agents",
+        "airport/skills",
+        "core/skills",
+        "board/skills",
+        "intake/skills",
+        "ops/skills",
         "README.md"
       ],
-      "why": "角色之间不互相拉起/唤醒；只有人工与定时器（仅塔台）能唤醒角色（ADR-0010）"
+      "why": "角色之间不互相拉起/唤醒；只有人工与定时器（仅塔台）能唤醒角色"
     },
     {
       "key": "pilot-wip",
-      "home": "loops/loop-protocol.md",
+      "home": "airport/skills/loop/references/loop-protocol.md",
       "pattern": "(最多|各|只能)\\s*2\\s*张|2\\s*张在飞|各\\s*2\\s*张|合计\\s*4\\s*张",
       "forbidden": [
-        "skills",
-        "agents",
+        "airport/skills",
+        "core/skills",
+        "board/skills",
+        "intake/skills",
+        "ops/skills",
         "adapters",
         "README.md",
         "AGENTS.md"
       ],
-      "why": "在飞名额是协议数值（§一 角色、名额与隔离）；技能、人格与说明只许指过来"
+      "why": "执行名额是协议数值（§一 角色、名额与隔离）；技能、适配与说明只许指过来"
     },
     {
       "key": "day-table-rows",
-      "home": "loops/loop-protocol.md",
+      "home": "airport/skills/loop/references/loop-protocol.md",
       "pattern": "5\\s*[–—\\-~～]\\s*10\\s*(行|条)",
       "forbidden": [
-        "skills",
-        "agents",
+        "airport/skills",
+        "core/skills",
+        "board/skills",
+        "intake/skills",
+        "ops/skills",
         "adapters",
         "README.md",
         "AGENTS.md"
@@ -103,47 +127,58 @@
     },
     {
       "key": "stoppoint-closed-set",
-      "home": "loops/loop-protocol.md",
+      "home": "airport/skills/loop/references/loop-protocol.md",
       "pattern": "同错早停.{0,40}日表跑空|五类之外不许停",
       "forbidden": [
-        "agents",
+        "airport/skills",
+        "core/skills",
+        "board/skills",
+        "intake/skills",
+        "ops/skills",
         "adapters",
         "templates",
         "README.md",
         "AGENTS.md"
       ],
-      "why": "停点闭集（§七／ADR-0017 D3）。`skills/pilot` 允许留一份可执行副本：安装面只装技能，读不到 loops/（ADR-0013）；第三份不许出现。"
+      "why": "停点闭集（§七）。`airport/skills/pilot` 允许留一份可执行副本的旧口径已收窄：pilot 只留指针。"
     },
     {
       "key": "leap-window-open",
-      "home": "skills/pilot/SKILL.md",
+      "home": "airport/skills/pilot/SKILL.md",
       "pattern": "跑到清空别打扰|开窗＝|出窗＝",
       "forbidden": [
-        "loops",
-        "agents",
-        "adapters",
-        "templates",
-        "README.md",
-        "AGENTS.md",
-        "skills/copilot",
-        "skills/tower",
-        "skills/kai-mode"
-      ],
-      "why": "跃迁窗口开窗／出窗判据的家在安装面（pilot「跃迁窗口」节），ADR-0018 D1 是裁决依据；副机长与塔台只指过来。"
-    },
-    {
-      "key": "ruling-shape",
-      "home": "agents/adjudicator.md",
-      "pattern": "ruling=a|争点／判据／所选",
-      "forbidden": [
-        "skills",
-        "loops",
+        "airport/skills/loop",
+        "airport/skills/copilot",
+        "airport/skills/tower",
+        "airport/skills/ace",
+        "airport/skills/ground-crew",
+        "core/skills",
+        "board/skills",
+        "intake/skills",
+        "ops/skills",
         "adapters",
         "templates",
         "README.md",
         "AGENTS.md"
       ],
-      "why": "裁决三值与四件形状只住人格的输出契约；协议与技能只用 marker 名 `ruling=`。"
+      "why": "跃迁窗口开窗／出窗判据的家在安装面（pilot），别处只指过来。"
+    },
+    {
+      "key": "ruling-shape",
+      "home": "airport/skills/loop/references/adjudication.md",
+      "pattern": "ruling=a|争点／判据／所选",
+      "forbidden": [
+        "airport/skills",
+        "core/skills",
+        "board/skills",
+        "intake/skills",
+        "ops/skills",
+        "adapters",
+        "templates",
+        "README.md",
+        "AGENTS.md"
+      ],
+      "why": "裁决三值与四件形状只住 adjudication；协议与技能只用 marker 名 `ruling=`。"
     }
   ]
 }
