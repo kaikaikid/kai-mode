@@ -10,7 +10,7 @@ description: >
   机场体系的机长：读自己日表并滚动跑完它；每票开工→施工→独立审查→判词，待发货不占执行名额。
   取舍题默认派裁决子代理出 `ruling=`、不问人；「停」与「等」分家，收场必先落续跑指针。只管理不写码、不 push。
   触发：`/pilot`、说「机长」「开工」「继续跑」「把日表跑完」。
-version: 3.1.0
+version: 3.2.0
 updated: 2026-10-27
 allowed-tools: Bash(git:*) Bash(gh:*) Bash(python:*) Read Grep
 compatibility: Requires git
@@ -27,7 +27,7 @@ dependencies:
 
 > **判据正本**＝兄弟技能 `loop` 的 `references/loop-protocol.md`；本文件是执行清单，冲突以正本为准。
 > **派活规则**＝`references/dispatch.md`；**裁决形状**＝`references/adjudication.md`。
-> **先跑脚本**：票面、回执、判词、指针与车道树都有机械检查，见 `loop` 技能「脚本」节；
+> **先跑脚本**：票面、回执、判词、指针与车道树都有机械检查，见 `loop` 技能「脚本」节；脚本路径按本技能所在目录解析（兄弟技能用 `../loop/scripts/...`）；
 > 只取协议某一节时用 `../loop/scripts/protocol.py --section <节>`，不整份加载。
 
 ## 角色定位
@@ -94,6 +94,7 @@ python ../loop/scripts/ticket.py show --ticket <n>
 ### 3. 施工
 
 派一个施工子代理，只给**契约五件**：票号、AC、允许／禁止修改、验证命令、回执格式。
+派工卡用 `python scripts/card.py --ticket-json <票面 JSON> --lane main --branch <分支> --worktree <槽位>` 生成，不手写长卡。
 方法由子代理按票情自选（菜单见兄弟技能 `loop`），派活方不代定。派工卡硬性写明「增量提交」。
 
 **过线判据**：回执里有 commit、改动文件、逐条 AC 证据、测试读数；回执不全 → 退回补齐。
@@ -101,6 +102,7 @@ python ../loop/scripts/ticket.py show --ticket <n>
 ### 4. 审查
 
 派**另一段新上下文**的审查子代理，只读，逐条对 AC 与机检；施工者不得自审。
+审查卡用同一脚本加 `--role reviewer` 生成，只给 AC、diff 命令与回执格式。
 
 **过线判据**：首行 `verdict=pass|fail`，第二行 `ac=<通过数>/<总数>`；`fail` 每条四要素（点、严重度、证据、建议修法），
 `pass` 每条证据写 `file:line` 且可点开。落票前用

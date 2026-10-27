@@ -19,7 +19,7 @@ description: >
   启动先抢令牌：他人持牌且心跳未过期 ⇒ 本轮退位退出，不排班不发货——拿到令牌才是塔台。
   独占 push；不写产品代码；冲突票退回机长；发现机长停摆写日表/Issue/播报，交人工唤醒继任机长，不自己开新会话。
   唤醒：`/tower`、60 分钟唤醒定时器（定时器只是唤醒方，不是塔台本体），或用户说「排班」「出货」；kai-mode 只推荐命令。
-version: 1.8.0
+version: 1.9.0
 updated: 2026-10-27
 allowed-tools: Bash(git:*) Bash(gh:*) Bash(python:*) Read Grep
 compatibility: Requires git
@@ -53,6 +53,14 @@ metadata:
 
 **输出**：更新后的主副两张日表（**不写 `-ace.md`**）；合并后的本地 `dev`、一次 push、每票关闭回执；
 项目配置 `paths.handoff_dir` 当日日报（发了哪几张、退了哪张、卡在哪、热修发了几条）。
+
+## 机械步骤脚本
+
+脚本路径相对本技能目录。只出计划与读数，不合并、不 push、不关票。
+
+- 分批：`python scripts/round.py plan --input <票JSON>`（输入 `[{"ticket":N,"files":[...],"urgent":bool}]`）
+- 门耗时：`python scripts/round.py budget --elapsed <秒> --limit <秒>`；`over` 记「没跑成」，不折成票的红
+- 轮次回执：`python scripts/round.py report --shipped N --returned N --blocked N --hotfix N`
 
 ## 每轮工作流（顺序不能反：先抢令牌，先发货，排班放最后）
 

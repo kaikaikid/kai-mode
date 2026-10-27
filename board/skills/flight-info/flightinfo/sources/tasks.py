@@ -121,8 +121,8 @@ def collect(cfg: dict, ctx: dict) -> dict:
         return {"flights": [], "schedules": [], "status": "absent",
                 "detail": f"日表目录不存在：{rel}"}
 
-    patterns = cfg.get("include") or ["*-main.md", "*-deputy.md", "*-copilot.md", "*-ace.md"]
-    lanes_cfg = cfg.get("lanes") or ctx["paths"].get("lanes") or ["main", "deputy", "copilot", "ace"]
+    patterns = cfg.get("include") or ["*-main.md", "*-deputy.md", "*-ace.md"]
+    lanes_cfg = cfg.get("lanes") or ctx["paths"].get("lanes") or ["main", "deputy", "ace"]
 
     schedules, flights, seen = [], [], set()
     for fn in sorted(os.listdir(base)):

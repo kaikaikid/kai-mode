@@ -2,6 +2,18 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.29.0 — 2026-10-27
+
+- **单票闭环 P1 脚本化**：`pilot/scripts/card.py`（从票面 JSON 生成派工卡五件）、
+  `tower/scripts/round.py`（待发货分批计划、轮次回执、门耗时判级）、
+  `ground-crew/scripts/ticket-lint.py`（开票前六件套自检）。角色技能改为先跑脚本再读正文。
+- **看板适配车道模型**：`tasks-table` 默认读 `*-main.md`／`*-deputy.md`／`*-ace.md`，
+  车道默认 `main`／`deputy`／`ace`（原 `copilot` 是旧名，已改）；`git-worktrees` 支持
+  `branch_prefixes`（默认 `exec/`、`land/`，`hotfix/` 不在此源）；示例配置补 `role_labels.ace`
+  与 `view.urgent`；schema 注释补王牌。flight-info 测试 72 条全绿。
+- 版本：`pilot` 3.2.0、`tower` 1.9.0、`ground-crew` 1.5.0、`flight-info` 1.3.0、
+  `airport` 3.2.0、`board` 1.1.0；新增脚本测试 7 条并入 `skill-tests`；doctor 28 项全绿。
+
 ## 0.28.0 — 2026-10-27
 
 - **单票闭环脚本化（P0）**：`loop` 技能新增三枚脚本，把机械判断从自然语言推理下沉成小 JSON——

@@ -1,6 +1,6 @@
 # kai-mode —— 机场体系的技能与通用剧本仓库
 
-> **状态：0.28.0（2026-10-27 插件化剧本＋单票闭环脚本化：KWP 形态——剧本＝插件、角色＝命令、步骤＝技能；`airport`／`core`／`board`／`intake`／`ops` 五个插件；人格层与 `registry.json` 退役，协议 v9 一车道一树；新增 `incident-response`／`runbook` 与 `plugin-check`；`loop` 补 ticket／protocol／worktree 三枚脚本，协议按节取用；见 [ADR-0021](docs/adr/0021-plugin-playbooks-and-persona-retirement.md)）。**
+> **状态：0.29.0（2026-10-27 插件化剧本＋闭环 P0/P1 脚本化＋看板车道适配：KWP 形态——剧本＝插件、角色＝命令、步骤＝技能；`airport`／`core`／`board`／`intake`／`ops` 五个插件；人格层与 `registry.json` 退役，协议 v9 一车道一树；新增 `incident-response`／`runbook` 与 `plugin-check`；`loop` 补 ticket／protocol／worktree，角色补 card／round／ticket-lint；看板日表源改认 main／deputy／ace；见 [ADR-0021](docs/adr/0021-plugin-playbooks-and-persona-retirement.md)）。**
 > （[0003：四角色＋1 小时唤醒塔台](docs/adr/0003-airport-rebuild-four-roles.md)；[0020：王牌飞行员加急车道](docs/adr/0020-ace-pilot-expedited-lane.md)）；**本仓是宿主装机正本**（`magpie-sync apply --root <本仓>`，
 > 按市场清单的插件目录装齐，当前 19 条自动件），项目仓那份技能副本只作镜像。
 > 旧五角色（Tower/Ground/Coordinator/Group-A/B）、租约、班次、handoff 按铃那套已随机场体系重做退役（本仓 [0003](docs/adr/0003-airport-rebuild-four-roles.md)）<!-- canon:allow-retired -->

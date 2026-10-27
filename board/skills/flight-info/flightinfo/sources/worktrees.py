@@ -69,14 +69,17 @@ def _branch_dates(repo_root: str) -> dict[str, str]:
 
 def collect(cfg: dict, ctx: dict) -> dict:
     repo_root = ctx["repo_root"]
-    prefix = cfg.get("branch_prefix") or "exec/"
+    raw = cfg.get("branch_prefixes")
+    if raw is None:
+        raw = cfg.get("branch_prefix") or "exec/"
+    prefixes = [raw] if isinstance(raw, str) else [str(x) for x in raw]
     names = set(_worktrees(repo_root)) | set(_local_branches(repo_root))
     if not names:
         return {"flights": [], "schedules": [], "status": "fail",
                 "detail": "git 不可用或读不到分支（该源只在本地生效）"}
     dates = _branch_dates(repo_root)
 
-    hit = [b for b in sorted(names) if b.startswith(prefix)]
+    hit = [b for b in sorted(names) if any(b.startswith(x) for x in prefixes)]
     flights = []
     for b in hit:
         m = EXEC.match(b)

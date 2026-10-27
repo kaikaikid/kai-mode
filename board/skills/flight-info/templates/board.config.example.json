@@ -9,34 +9,130 @@
     "root": "boards"
   },
   "sources": [
-    { "id": "cards", "type": "board-cards" },
-    { "id": "tasks", "type": "tasks-table", "include": ["*-main.md", "*-copilot.md"] },
-    { "id": "worktrees", "type": "git-worktrees", "branch_prefix": "exec/" },
-    { "id": "issues", "type": "github-issues", "state": "open", "limit": 200 }
+    {
+      "id": "cards",
+      "type": "board-cards"
+    },
+    {
+      "id": "tasks",
+      "type": "tasks-table",
+      "include": [
+        "*-main.md",
+        "*-deputy.md",
+        "*-ace.md"
+      ]
+    },
+    {
+      "id": "worktrees",
+      "type": "git-worktrees",
+      "branch_prefix": "exec/",
+      "branch_prefixes": [
+        "exec/",
+        "land/"
+      ]
+    },
+    {
+      "id": "issues",
+      "type": "github-issues",
+      "state": "open",
+      "limit": 200
+    }
   ],
   "stages": [
-    { "key": "queued", "label": "排队" },
-    { "key": "flying", "label": "在飞" },
-    { "key": "review", "label": "审查" },
-    { "key": "to_ship", "label": "待发货" },
-    { "key": "closed", "label": "已收尾" }
+    {
+      "key": "queued",
+      "label": "排队"
+    },
+    {
+      "key": "flying",
+      "label": "在飞"
+    },
+    {
+      "key": "review",
+      "label": "审查"
+    },
+    {
+      "key": "to_ship",
+      "label": "待发货"
+    },
+    {
+      "key": "closed",
+      "label": "已收尾"
+    }
   ],
   "off_chain_stages": [
-    { "key": "ready", "label": "可领" },
-    { "key": "hold", "label": "挡住" }
+    {
+      "key": "ready",
+      "label": "可领"
+    },
+    {
+      "key": "hold",
+      "label": "挡住"
+    }
   ],
   "stage_rules": [
-    { "when": "state_closed", "stage": "closed" },
-    { "when": "label_equals", "value": "hold", "stage": "hold", "why": "标签：hold" },
-    { "when": "label_equals", "value": "blocked", "stage": "hold", "why": "卡片：blocked" },
-    { "when": "comment_contains", "value": "待发货", "stage": "to_ship", "why": "评论：待发货" },
-    { "when": "comment_contains", "value": "审查(通过|完成)|施工完成", "stage": "review", "why": "评论：审查/施工完成" },
-    { "when": "comment_contains", "value": "卡点|退票|阻塞|blocked by", "stage": "hold", "why": "评论：卡点", "ignore_case": true },
-    { "when": "branch_exists", "stage": "flying", "why": "分支 {branch}" },
-    { "when": "table_note_contains", "value": "在制|在飞|施工中", "stage": "flying", "why": "日表：{note}" },
-    { "when": "label_equals", "value": "ready-for-agent", "stage": "ready", "why": "标签：可领" },
-    { "when": "assignee_exists", "stage": "flying", "why": "已指派 {assignee}" },
-    { "when": "else", "stage": "queued", "why": "" }
+    {
+      "when": "state_closed",
+      "stage": "closed"
+    },
+    {
+      "when": "label_equals",
+      "value": "hold",
+      "stage": "hold",
+      "why": "标签：hold"
+    },
+    {
+      "when": "label_equals",
+      "value": "blocked",
+      "stage": "hold",
+      "why": "卡片：blocked"
+    },
+    {
+      "when": "comment_contains",
+      "value": "待发货",
+      "stage": "to_ship",
+      "why": "评论：待发货"
+    },
+    {
+      "when": "comment_contains",
+      "value": "审查(通过|完成)|施工完成",
+      "stage": "review",
+      "why": "评论：审查/施工完成"
+    },
+    {
+      "when": "comment_contains",
+      "value": "卡点|退票|阻塞|blocked by",
+      "stage": "hold",
+      "why": "评论：卡点",
+      "ignore_case": true
+    },
+    {
+      "when": "branch_exists",
+      "stage": "flying",
+      "why": "分支 {branch}"
+    },
+    {
+      "when": "table_note_contains",
+      "value": "在制|在飞|施工中",
+      "stage": "flying",
+      "why": "日表：{note}"
+    },
+    {
+      "when": "label_equals",
+      "value": "ready-for-agent",
+      "stage": "ready",
+      "why": "标签：可领"
+    },
+    {
+      "when": "assignee_exists",
+      "stage": "flying",
+      "why": "已指派 {assignee}"
+    },
+    {
+      "when": "else",
+      "stage": "queued",
+      "why": ""
+    }
   ],
   "next_text": {
     "queued": "等排班",
@@ -50,20 +146,43 @@
   "role_labels": {
     "main": "主机长",
     "copilot": "副机长",
-    "tower": "塔台"
+    "tower": "塔台",
+    "ace": "王牌飞行员"
   },
   "direction": {
     "template": "下一轮：先发货 {to_ship} 张，再给日表补位。",
     "variants": [
-      { "when": "to_ship", "template": "下一轮：先发货 {to_ship} 张待发货票，再给日表补位。" },
-      { "when": "no_to_ship", "template": "当前没有待发货；在飞 {in_flight} 张，按审查判词推进。" }
+      {
+        "when": "to_ship",
+        "template": "下一轮：先发货 {to_ship} 张待发货票，再给日表补位。"
+      },
+      {
+        "when": "no_to_ship",
+        "template": "当前没有待发货；在飞 {in_flight} 张，按审查判词推进。"
+      }
     ]
   },
   "summary": {
     "max_flights": 20,
     "max_bytes": 25600,
-    "flight_stages": ["to_ship", "flying", "review", "hold", "ready"],
-    "flight_fields": ["ticket", "title", "stage", "stage_label", "next_label", "owner", "why", "updated_at", "milestone"],
+    "flight_stages": [
+      "to_ship",
+      "flying",
+      "review",
+      "hold",
+      "ready"
+    ],
+    "flight_fields": [
+      "ticket",
+      "title",
+      "stage",
+      "stage_label",
+      "next_label",
+      "owner",
+      "why",
+      "updated_at",
+      "milestone"
+    ],
     "max_schedule_rows": 20
   },
   "view": {
@@ -72,6 +191,12 @@
     "labels": {
       "tickets": "TICKETS",
       "roster": "ROSTER"
+    },
+    "urgent": {
+      "lanes": [
+        "ace"
+      ],
+      "label": "ace-queue"
     }
   }
 }

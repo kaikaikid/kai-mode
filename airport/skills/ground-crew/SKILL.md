@@ -16,7 +16,7 @@ description: >
   开票后给用户三选一：现在拉起王牌 / 进王牌队列 / 等塔台；前两项只打 `ace-queue` 标签，不写王牌日表。
   不写产品代码、不 push、不派施工。触发：`/ground-crew`、用户要规划 / 开票 / 记想法，
   或 `/kai-mode` 把需求交给地勤。
-version: 1.4.0
+version: 1.5.0
 updated: 2026-10-27
 allowed-tools: Bash(gh:*) Read Grep WebFetch
 compatibility: Requires git, gh CLI
@@ -72,7 +72,7 @@ dependencies:
    - 有价值但未成形 → 落 BOOM（汇总票贴简述，全文进项目配置 `paths.ideas_dir`）。方法与模板正本：[`skills/kai-boom-idea-log/`](../../../intake/skills/kai-boom-idea-log/SKILL.md)。
    - 可执行 → 开 Issue。
    - 只改治理 / 流程 → 先落 ADR 或问用户，不硬开施工票。
-4. **写票面（六件套）**：
+4. **写票面（六件套）**（落票前跑 `python scripts/ticket-lint.py --body-file <票面草稿> --labels ready-for-agent --require-label ready-for-agent`，缺件先补、不打标）：
    - 标题与一句话目标；
    - 里程碑（必须是开放里程碑；没有就先建或问用户）；
    - 标签 `ready-for-agent`；

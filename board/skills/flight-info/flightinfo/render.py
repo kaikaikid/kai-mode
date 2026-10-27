@@ -947,7 +947,7 @@ def _urgent_section(payload: dict, cfg: dict) -> str:
                          + (' · ' + _esc(tk.get("owner")) if tk.get("owner") else "")
                          + '</em></li>')
         body = ('<div class="urgent-box"><div class="hd"><b>'
-                + _esc(role_labels.get("ace") or "王牌机长") + '</b><span>'
+                + _esc(role_labels.get("ace") or "王牌飞行员") + '</b><span>'
                 + str(total) + ' 张 · 加急</span></div><ol>' + "".join(items) + "</ol></div>")
     return ('<details class="sect urgent" id="s-urgent" open><summary><h2>紧急任务</h2>'
             + head + '<span class="arw">收起</span></summary>'

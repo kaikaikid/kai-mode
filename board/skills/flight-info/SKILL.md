@@ -14,8 +14,8 @@ description: >
   模块化：db / stage / sources / collect / render / config 单向依赖，源按类型插件式增删。
   刷新靠 git 钩子打脏标记 ＋ 有脏才刷，零 token、跨 agent；任一源失败只降级点名，不整页崩。
   触发：/航班信息、刷新航班信息板、看现在在飞什么、给这个仓装一块板。
-version: 1.2.0
-updated: 2026-10-26
+version: 1.3.0
+updated: 2026-10-27
 allowed-tools: Bash(python:*) Bash(git:*) Read Write
 compatibility: Requires python3 (stdlib only), git
 metadata:
@@ -76,7 +76,7 @@ metadata:
 | `summary.ai_note_chars` | 否 | AI 面排班备注截断（默认 160）。实测一条备注能到 2 千字，占 board.json 65% 预算、把航班挤到只剩 2 条。 |
 | `summary.ai_label_max` | 否 | AI 面每票标签上限（默认 6，超出折成「…共 N 枚」）。 |
 | `sources[].lanes` | 否 | **书写顺序＝页面上车道块的左右顺序**（如 `["main","deputy","ace"]` ⇒ 主机长在左）。以前按字母排，`deputy` 天然压到 `main` 前面，把"主道优先"读反了 |
-| `view.urgent` | 否 | 加急腿（王牌机长）：`{"lanes":["ace"],"label":"ace-queue"}`。两条信号**任一成立**即上「紧急任务」段——① 该车道的日表行；② 开放票带该标签。ace 车道的排班行**不进**「塔台排班」（免得挤占 20 行额度）。协议同刻只许 1 张，超了段头直接报「超编」。空态自带亮起方式，不许一片空白让人以为坏了（D-05） |
+| `view.urgent` | 否 | 加急腿（王牌飞行员）：`{"lanes":["ace"],"label":"ace-queue"}`。两条信号**任一成立**即上「紧急任务」段——① 该车道的日表行；② 开放票带该标签。ace 车道的排班行**不进**「塔台排班」（免得挤占 20 行额度）。协议同刻只许 1 张，超了段头直接报「超编」。空态自带亮起方式，不许一片空白让人以为坏了（D-05） |
 | `view.focal_stage` | 否 | 哪一段着赭色，默认 `to_ship`；该段为 0 张时**不亮** |
 | `view.font_source` | 否 | `system`（默认，零网络）/ `web`（引 Google Fonts） |
 | `view.metrics[]` | 否 | `{key,label}` 次级读数；不写＝航班总数 / 今日收尾 / 今日排班 |
@@ -88,8 +88,8 @@ metadata:
 | type | 参数 | 读什么 |
 |---|---|---|
 | `board-cards` | `path`（缺省 `paths.handoff_dir`） | `handoff/60-board/{open,claimed,done}/` 卡片的 frontmatter |
-| `tasks-table` | `path`（缺省 `paths.day_tables_dir`）/ `include` / `lanes` | 日表 markdown：列表行 `- [ ] #12 事 \| 备注`，或表格 `\| 序 \| 票号 \| 里程碑 \| 一句话 \| 备注 \|`（两种都认，可混用） |
-| `git-worktrees` | `branch_prefix`（默认 `exec/`） | 本地 worktree/分支 → 在飞证据 |
+| `tasks-table` | `path`（缺省 `paths.day_tables_dir`）/ `include`（默认 `*-main.md`／`*-deputy.md`／`*-ace.md`）/ `lanes`（默认 `main`／`deputy`／`ace`） | 日表 markdown：列表行 `- [ ] #12 事 \| 备注`，或表格 `\| 序 \| 票号 \| 里程碑 \| 一句话 \| 备注 \|`（两种都认，可混用） |
+| `git-worktrees` | `branch_prefixes`（默认 `["exec/","land/"]`；也认单个 `branch_prefix`；`hotfix/` 不在此源，走王牌日表） | 本地 worktree/分支 → 在飞证据 |
 | `github-issues` | `repo` / `state`（`open`\|`closed`\|`none`）/ `limit` / `include_closed`＋`closed_limit` | 票面（`gh` 不可用则降级）。`include_closed: true` 顺带拉已关票——残留 `exec/` 分支只有靠「已关」才能归到已收尾 |
 | `handoff-index` | `path`（缺省 `paths.handoff_dir`）/ `slots` / `limit`（默认 8） | 交接日报索引：只读 `handoff/<槽>/<YYYY-MM>/*.md` 的文件名＋首行标题，**不搬正文**；渲染成可点相对链接的「交接日报索引」区 | **文件名日期两种写法都认**：`YYYY-MM-DD-*.md` 与跨角色件常用的 `HANDOFF-YYYYMMDD-*.md`；解析不到日期会沉到月初、被 `limit` 挤掉（2026-10-27 实测：两份 HANDOFF-* 在板上完全隐形）。月/日做合法性校验，`12345678.md` 一类不当日期 |
 

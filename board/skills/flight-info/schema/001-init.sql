@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS flight (
     title       TEXT NOT NULL,
     stage       TEXT NOT NULL,            -- 阶段 key（板配置 stages[].key）
     stage_label TEXT,
-    owner       TEXT,                     -- 掌机：地勤/塔台/机长/副机长
+    owner       TEXT,                     -- 掌机：地勤/塔台/机长/副机长/王牌
     persona     TEXT,                     -- 人格（委派能力）：worker/...
     milestone   TEXT,
     planned     INTEGER NOT NULL DEFAULT 0,   -- 是否已进日表
