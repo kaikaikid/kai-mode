@@ -22,11 +22,12 @@ import os
 import re
 
 LINE = re.compile(r"^\s*[-*]\s*(?:\[(?P<box>[ xX])\]\s*)?(?P<body>.+?)\s*$")
-TICKET = re.compile(r"^#?(\d+|H-\d{8}-\d+)\b")
+TICKET = re.compile(r"^(#(\d+)|H-\d{8}-\d+)\b")
 DATE = re.compile(r"(\d{4}-\d{2}-\d{2})")
 PIPE = re.compile(r"^\s*\|.*\|\s*$")
 SEP = re.compile(r"^\s*\|[\s:|-]+\|\s*$")
-TICKET_CELL = re.compile(r"^#?(\d+|H-\d{8}-\d+)$")
+# 裸数字不是票号——日表第一列就是「序」。必须带 # 或 H- 前缀。
+TICKET_CELL = re.compile(r"^(#(\d+)|H-\d{8}-\d+)$")
 
 # 表格列名：表头里精确命中优先，其次包含
 COLUMNS = {
@@ -41,13 +42,18 @@ def _parse_line(body: str) -> tuple[str | None, str, str]:
     """→ (ticket, summary, note)"""
     body = body.strip()
     m = TICKET.match(body)
-    num = m.group(1) if m else None
+    num = _num(m) if m else None
     text = body[m.end():].strip() if m else body
     note = ""
     if "|" in text:
         text, note = text.split("|", 1)
         text, note = text.strip(), note.strip()
     return (f"#{num}" if num else None), text, note
+
+
+def _num(m) -> str:
+    """匹配到的票号格子 → 号码本体（H- 热修号保留原形，不带 #）。"""
+    return m.group(2) or m.group(1)
 
 
 def _cells(raw: str) -> list[str]:
@@ -78,11 +84,11 @@ def _parse_pipe_row(cells: list[str], hmap: dict[str, int]
     idx = hmap.get("ticket")
     num = None
     if idx is not None and idx < len(cells) and TICKET_CELL.match(cells[idx]):
-        num = TICKET_CELL.match(cells[idx]).group(1)
+        num = _num(TICKET_CELL.match(cells[idx]))
     else:
-        for i, c in enumerate(cells):
+        for i, c in enumerate(cells):   # 回退扫描：同样只认带 # 或 H- 的格子
             if TICKET_CELL.match(c):
-                num, idx = TICKET_CELL.match(c).group(1), i
+                num, idx = _num(TICKET_CELL.match(c)), i
                 break
     if not num:
         return None
@@ -98,6 +104,9 @@ def _parse_pipe_row(cells: list[str], hmap: dict[str, int]
         summary = rest[0] if rest else ""
     if not note and len(cells) > (idx or 0) + 2 and cells[-1] not in (summary, milestone):
         note = cells[-1]
+    # 注意：H- 热修号也带 # 前缀（#H-20261027-1）——这是 2026-10-27 另一会话
+    # 已立的契约（TestTasks.test_ace_hotfix_row），本文件不单方面改形。
+    # 页面侧靠"只有 #纯数字 才配 GitHub 链接"避免死链，见 render._urgent_section。
     return f"#{num}", summary, note, milestone
 
 
@@ -145,7 +154,8 @@ def collect(cfg: dict, ctx: dict) -> dict:
                 ticket, summary, note, milestone = parsed
                 done = False
             else:
-                hmap = {}
+                # 不清 hmap：塔台正文里的裸 `|` 会把一行表格撑破成几行正文，
+                # 那是数据脏；清掉映射会让后面每一行都退回"扫第一格"，把「序」读成票号。
                 m = LINE.match(raw)
                 if not m:
                     continue

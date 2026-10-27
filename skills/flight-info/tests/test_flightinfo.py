@@ -726,5 +726,101 @@ class TestUrgentLane(unittest.TestCase):
 
 
 
+class TestDayTableRobustness(unittest.TestCase):
+    """Kai-vass 2026-10-27 实测事故回归：塔台备注里的裸 `|` 撑破一行表格，
+    解析器把列映射冲掉 ⇒ 「序」3/4/5/10 被当成票号 ⇒ 板库多出 4 张不存在的票。"""
+
+    def _repo(self, body):
+        d = tempfile.mkdtemp()
+        self.addCleanup(__import__("shutil").rmtree, d, True)
+        os.makedirs(os.path.join(d, "tasks"))
+        with open(os.path.join(d, "tasks", "2026-10-27-main.md"), "w",
+                  encoding="utf-8") as f:
+            f.write(body)
+        return d
+
+    def test_bare_sequence_number_is_not_a_ticket(self):
+        """「序」列是裸数字，永远不该变成票号。"""
+        d = self._repo("# 任务表 · 主机长 · 2026-10-27\n\n"
+                       "| 序 | 票号 | 里程碑 | 一句话 | 塔台备注 |\n"
+                       "|---|---|---|---|---|\n"
+                       "| 1 | #1512 | ② 记忆网络 | 质疑功能 | 在飞 |\n")
+        res = tasks.collect({"include": ["*-main.md"], "lanes": ["main"]},
+                            {"repo_root": d, "paths": {"day_tables_dir": "tasks"}})
+        self.assertEqual([f["ticket"] for f in res["flights"]], ["#1512"])
+        self.assertNotIn("#1", [f["ticket"] for f in res["flights"]])
+
+    def test_broken_row_does_not_poison_later_rows(self):
+        """备注含裸 `|` ⇒ 该行溢出成正文 ⇒ 后面的行仍要按表头列取票号。"""
+        d = self._repo("# 任务表 · 副机长 · 2026-10-24\n\n"
+                       "| 序 | 票号 | 里程碑 | 一句话 | 塔台备注 |\n"
+                       "|---|---|---|---|---|\n"
+                       "| 1 | #1512 | ② 记忆网络 | 质疑 | **票面与** 标签是 |\n"
+                       "eady-for-human＋hold」，实际标签是\n"
+                       "eady-for-agent 无 hold ⇒ 归地勤订正\n"
+                       "| 3 | #1887 | ② 记忆网络 | 读侧挑作品 | 备用 |\n"
+                       "| 4 | #1879 | ① 资源管理 | 写库失败被吞 | 备用 |\n")
+        res = tasks.collect({"include": ["*-main.md"], "lanes": ["main"]},
+                            {"repo_root": d, "paths": {"day_tables_dir": "tasks"}})
+        got = [f["ticket"] for f in res["flights"]]
+        self.assertIn("#1887", got)
+        self.assertIn("#1879", got)
+        self.assertNotIn("#3", got)          # 事故现场：这两个就是被造出来的假票
+        self.assertNotIn("#4", got)
+        by = {f["ticket"]: f for f in res["flights"]}
+        self.assertEqual(by["#1887"]["milestone"], "② 记忆网络")   # 列映射没丢
+        self.assertEqual(by["#1887"]["title"], "读侧挑作品")
+
+    def test_hotfix_ticket_number_keeps_shape(self):
+        """无票热修号 H-YYYYMMDD-N 不是 bug，要照常收，且不被拼成 #H-。"""
+        d = self._repo("# 任务表 · 王牌飞行员 · 2026-10-27\n\n"
+                       "| 序 | 票号 | 里程碑 | 一句话 | 备注 |\n"
+                       "|---|---|---|---|---|\n"
+                       "| 1 | H-20261027-1 | 无票热修 | 板不自动更新 | 施工中 |\n")
+        res = tasks.collect({"include": ["*-main.md"], "lanes": ["main"]},
+                            {"repo_root": d, "paths": {"day_tables_dir": "tasks"}})
+        # 沿用既有契约：H- 号也带 # 前缀（见 TestTasks.test_ace_hotfix_row）
+        self.assertEqual([f["ticket"] for f in res["flights"]], ["#H-20261027-1"])
+
+
+class TestOpenCountReconciliation(unittest.TestCase):
+    """未收尾数必须能自证：GitHub 有票面的 ＋ 没票面的（残留分支／热修号）。"""
+
+    def _cfg(self):
+        return {"name": "t", "output": {"root": "boards"},
+                "stages": [{"key": "flying", "label": "在飞"},
+                           {"key": "queued", "label": "排队"}],
+                "off_chain_stages": [{"key": "unresolved", "label": "残留分支"}],
+                "sources": [{"id": "tasks", "type": "tasks-table", "lanes": ["main"]}],
+                "stage_rules": [{"when": "else", "stage": "queued"}]}
+
+    def test_split_by_ticket_face(self):
+        with tempfile.TemporaryDirectory() as d:
+            conn = db.connect(db.db_path(d))
+            db.migrate(conn, os.path.join(SKILL_ROOT, "schema"))
+            db.record_source(conn, "r1", "tasks", "tasks-table", "ok", 3, "测例")
+            db.upsert_flight(conn, {"uid": "issue:1", "ticket": "#1", "title": "有票面",
+                                    "stage": "queued", "open": 1,
+                                    "url": "https://x/1"}, "r1")
+            db.upsert_flight(conn, {"uid": "issue:2", "ticket": "#2", "title": "残留分支",
+                                    "stage": "unresolved", "open": 1, "url": ""}, "r1")
+            db.commit(conn)
+            payload = render.build_summary(conn, self._cfg(), d)
+            conn.close()
+        k = payload["kpi"]
+        self.assertEqual(k["open"], 2)
+        self.assertEqual(k["open_with_face"], 1)
+        self.assertEqual(k["open_no_face"], 1)
+        html = render.render_html(dict(payload, title="T", direction="", run_id="r1",
+                                       degraded=[], trend=[], milestones=[], handoffs=[],
+                                       sources={}, blocked=[], urgent={"rows": [], "tickets": [],
+                                                                      "label": "ace-queue"},
+                                       schedules=[], counts=payload["counts"],
+                                       kpi=k), self._cfg())
+        self.assertIn("有票面 1", html)
+        self.assertIn("无票面 1", html)
+
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -64,6 +64,10 @@ def compute_kpi(flights: list[dict]) -> dict:
         "stale": by_stage.get("stale", 0),
         "unresolved": by_stage.get("unresolved", 0),
         "closed": by_stage.get("closed", 0),
+        # 未收尾拆两半：有票面的（＝GitHub open 里能对上）与没票面的（残留分支／无票热修）。
+        # 不拆的话"板上 57 vs GitHub 52"这种差额只能靠人来问、来猜。
+        "open_with_face": sum(1 for f in flights if f.get("open") and (f.get("url") or "")),
+        "open_no_face": sum(1 for f in flights if f.get("open") and not (f.get("url") or "")),
         "closed_today": sum(1 for f in flights
                             if (f.get("closed_at") or "").startswith(today)),
         "planned": sum(1 for f in flights if f.get("planned")),
@@ -826,7 +830,10 @@ def _sidebar(cfg: dict, payload: dict, kpi: dict) -> str:
         '在飞＝日表在飞段 或 分支近期有提交；有指派人／只有残留分支<b>不算在飞</b>。<br>'
         '停滞＝在飞证据超过阈值没动（阈值按阶段分档，写在板配置里）。<br>'
         '掌机带「推」＝按协议推断，不是有人认领。<br>'
-        '库 board.db · 人面未收尾全量不截断。</p></details></aside>')
+        '库 board.db · 人面未收尾全量不截断。<br>'
+        '未收尾＝有票面（能在 GitHub 对上）＋无票面（残留分支、无票热修）'
+        '⇒ 它会比 GitHub 的 open 数大，差额是本地在飞的残留，不是漏抓。'
+        '</p></details></aside>')
 
 
 def _bento(payload: dict, kpi: dict, cfg: dict) -> str:
@@ -1112,7 +1119,9 @@ def render_html(payload: dict, cfg: dict) -> str:
     <h1>{_esc(payload['title'])}</h1>
     <span class="read" id="stamp">快照 <b>{_esc(gen)}</b> ·
       <span id="age" data-ts="{ts_ms}">刚刚</span></span>
-    <span class="read"><b>{kpi['open']}</b> 张未收尾 · <b>{kpi['closed']}</b> 张已收尾</span>
+    <span class="read"><b>{kpi['open']}</b> 张未收尾
+      （有票面 {kpi['open_with_face']} · 无票面 {kpi['open_no_face']}）·
+      <b>{kpi['closed']}</b> 张已收尾</span>
   </header>
   <div class="tools">
     <button class="tbtn" id="qbtn" title="搜索（Ctrl+K）">搜索<span class="k">Ctrl K</span></button>
