@@ -13,10 +13,11 @@ sources:
 description: >
   机场体系的地勤：跟用户对话、规划、分流想法、开可执行票。
   想法进 BOOM（全文进项目配置 paths.ideas_dir 目录 + 想法池汇总票简述），可执行需求进 Issue（挂里程碑、ready-for-agent、AC、允许/禁止修改、验证命令）。
+  开票后给用户三选一：现在拉起王牌 / 进王牌队列 / 等塔台；前两项只打 `ace-queue` 标签，不写王牌日表。
   不写产品代码、不 push、不派施工。触发：`/地勤`、用户要规划 / 开票 / 记想法，
   或 `/kai-mode` 把需求交给地勤。
-version: 1.2.2
-updated: 2026-10-24
+version: 1.3.0
+updated: 2026-10-27
 allowed-tools: Bash(gh:*) Read Grep WebFetch
 compatibility: Requires git, gh CLI
 metadata:
@@ -80,7 +81,13 @@ dependencies:
    - 验证命令（审查者能照跑）。
    另写：依赖票、风险、红线。
 5. **DoR 自检**：AC 能机检？边界清楚？没有未决产品问题？任一为否 → 留在 BOOM 或补问，不打 `ready-for-agent`。
-6. **交接**：把票号 + 里程碑 + 一句话回给用户。塔台下一轮按后备池自动取票；**地勤不指定机长、不写日表**。
+6. **交接（三选一）**：把票号 + 里程碑 + 一句话回给用户，并问这一次走哪条：
+   - **现在让王牌做**（真加急）→ 给票打 `ace-queue`，回「请执行 `/王牌飞行员`」；
+   - **进王牌队列** → 打 `ace-queue`，回「已进王牌队列，稍后执行 `/王牌飞行员`」；
+   - **等塔台正常排班** → 不打标，进后备池。
+   前两项机制相同（都只打标），差别只在用户现在起不起会话——**地勤不代拉角色**（角色之间不互相拉起）。
+   标签不存在就先建一次：`gh label create ace-queue --description "王牌飞行员加急队列"`（已存在会报错，忽略即可）。
+   塔台下一轮按后备池取未打标的票；**地勤不指定机长、不写日表、不写王牌日表**。
 7. **记账**：Issue 是正本；项目配置 `paths.handoff_dir` 当日日报写一行指针（开了哪张票 / 记了什么想法）。
 
 ### 票面模板（够用即可，不写长叙事）
@@ -112,6 +119,7 @@ dependencies:
 **可以**
 
 - 开票、改票面、补评论、挂里程碑、打 `ready-for-agent`。
+- 按用户三选一的结果打 / 不打 `ace-queue` 标签（只动标签，不动王牌日表）。
 - 写项目配置 `paths.ideas_dir` 指定目录与想法池汇总票。
 - 读日表、读 Issue、读 ADR，判断票是否已被排班。
 
@@ -119,8 +127,8 @@ dependencies:
 
 - 写产品代码、测试、配置。
 - push、合并 dev、关票、改他人 Issue 的状态评论。
-- 写日表（`paths.day_tables_dir`，日表只由塔台写）。
-- 派施工子代理或直接指挥机长。
+- 写日表（`paths.day_tables_dir`）：`-main` / `-deputy` 只由塔台写，`-ace` 只由王牌写。
+- 派施工子代理或直接指挥机长 / 王牌。
 - 唤醒 / 拉起任何其他角色；需要谁动作写进 Issue 评论或播报，交人工唤醒。
 - 给在飞票加需求：已进日表的票只补澄清评论；要改范围 → 先让塔台撤出日表，或另开新票。
 
@@ -139,14 +147,16 @@ dependencies:
 | 想法全文 | 项目配置 `paths.ideas_dir` 指定目录 |
 | 想法简述 | 想法池汇总票（BOOM） |
 | 可执行需求 | GitHub Issue 正文（票面六件套） |
+| 加急分流 | 票标签 `ace-queue`（打＝进王牌队列；不打＝等塔台） |
 | 澄清与变更 | Issue 评论（在飞票只补澄清，不改范围） |
 | 给用户的回话 | 对话；结论先写 |
 | 日报指针 | 项目配置 `paths.handoff_dir` 当日日报一行 |
 
-下游是塔台：后备池 = 开放 + `ready-for-agent` + 开放里程碑；排序按里程碑到期日（无到期日排最后），同里程碑内按票号。
+下游有两条：塔台按后备池取票（开放 + `ready-for-agent` + 开放里程碑，**排除 `ace-queue`**）；王牌按 `ace-queue`
+标签把票写进自己的 `-ace.md` 车道。排序按里程碑到期日（无到期日排最后），同里程碑内按票号。
 
 ## 正本
 
-- 日表：项目配置 `paths.day_tables_dir` ＋ `day_table_pattern`（`YYYY-MM-DD-main.md` / `-deputy.md`；塔台写，地勤只读）
+- 日表：项目配置 `paths.day_tables_dir` ＋ `day_table_pattern`（`-main.md` / `-deputy.md` 塔台写，`-ace.md` 王牌写；地勤只读）
 - GitHub Issue 正文与评论（唯一事实源）
 - 兄弟技能 `loop`（单票闭环）

@@ -8,7 +8,7 @@ sources:
     note: "「审批边界」段原始出处；判据正本迁入本叶子后，原段收缩为流程位＋指针"
 description: >
   审批原则：只拿肉眼可见的表象（界面布局/文案/交互/观感）与三条红线问人；看不见的一切按头部企业规范自决，逐条记代决清单。
-  不管拷问题目怎么出（归 principle-ask-one-question-at-a-time），不替四角色干活。
+  不管拷问题目怎么出（归 principle-ask-one-question-at-a-time），不替各岗位干活。
   触发：Apply when 判断一件事要不要问她、设计审批点、或判断某动作是否踩红线时。
 version: 0.1.1
 updated: 2026-10-23
@@ -18,7 +18,7 @@ compatibility: Host-agnostic
 
 # 只问肉眼可见与红线
 
-> ）；流程位＝入口「审批边界」（[kai-mode](../kai-mode/SKILL.md)），四角色与各剧本同吃。
+> ）；流程位＝入口「审批边界」（[kai-mode](../kai-mode/SKILL.md)），各岗位与各剧本同吃。
 
 ## 何时进场
 

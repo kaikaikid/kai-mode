@@ -4,7 +4,7 @@
   "_note": "安装档位正本（ADR-0009）。只列 install:auto 条目；core 是最小闭环，full 是当前全部自动件。手动件（harness-audit 等）不在此表，按需单独装。",
   "profiles": {
     "core": {
-      "description": "最小闭环：入口/安装/协议/四岗位/交接；不含原则、想法池与看板。",
+      "description": "最小闭环：入口/安装/协议/五岗位/交接；不含原则、想法池与看板。",
       "skills": [
         "kai-mode",
         "set-kai-mode",
@@ -13,6 +13,7 @@
         "tower",
         "pilot",
         "copilot",
+        "ace-pilot",
         "kai-handoff"
       ]
     },
@@ -26,6 +27,7 @@
         "tower",
         "pilot",
         "copilot",
+        "ace-pilot",
         "kai-handoff",
         "principle-ask-one-question-at-a-time",
         "principle-ceremony-collapses-with-scale",

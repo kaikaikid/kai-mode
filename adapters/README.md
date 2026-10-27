@@ -1,7 +1,7 @@
 # adapters —— 宿主适配总则
 
 > 本目录回答两件事，别混：
-> **① 怎么在宿主上跑一个「岗位」**（地勤/塔台/机长/副机长）→ 各自 `<宿主>.md`（Claude Code 见 [claude.md](claude.md)）；
+> **① 怎么在宿主上跑一个「岗位」**（地勤/塔台/机长/副机长/王牌飞行员）→ 各自 `<宿主>.md`（Claude Code 见 [claude.md](claude.md)）；
 > **② 怎么把「人格」落成宿主原生的子代理文件**（权限/模型/派生）→ 本文件。
 > 人格正本＝[`agents/`](../agents/README.md)，模型值正本＝项目实例 `models.agents.<人格>.model`。
 

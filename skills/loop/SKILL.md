@@ -5,10 +5,10 @@ approved_by: human:kaikaikid
 approved: 2026-10-21
 sources: []
 description: >
-  机长 / 副机长共用的单票闭环（不是用户入口）。判据与本技能冲突时以协议正本为准。
-  触发：由 `/机长`、`/副机长` 自动带入；「loop」不是口令。
-version: 5.4.0
-updated: 2026-10-26
+  机长 / 副机长 / 王牌飞行员共用的单票闭环（不是用户入口）。判据与本技能冲突时以协议正本为准。
+  触发：由 `/机长`、`/副机长`、`/王牌飞行员` 自动带入；「loop」不是口令。
+version: 5.5.0
+updated: 2026-10-27
 allowed-tools: Read Grep Bash(python:*)
 compatibility: Host-agnostic
 dependencies:
@@ -42,7 +42,7 @@ dependencies:
 `gates.captain_preflight` 读（`null` 或缺配置 → 报缺件，不猜路径）：
 
 ```bash
-python <gates.captain_preflight> --lane main|deputy
+python <gates.captain_preflight> --lane main|deputy|ace
 ```
 
 判定：`decision=STOP` 才能停；`REVIEW` 判完确实没活、加 `--ack-review` 才能停；`CONTINUE` 不许停——
@@ -55,6 +55,7 @@ python <gates.captain_preflight> --lane main|deputy
 |---|---|---|
 | 机长 | `-main.md` | [`../pilot/SKILL.md`](../pilot/SKILL.md) |
 | 副机长 | `-deputy.md` | [`../copilot/SKILL.md`](../copilot/SKILL.md) |
+| 王牌飞行员 | `-ace.md` | [`../ace-pilot/SKILL.md`](../ace-pilot/SKILL.md) |
 
 ## 派活用哪个方法技能
 
@@ -70,5 +71,5 @@ python <gates.captain_preflight> --lane main|deputy
 ## 验证命令
 
 ```bash
-python <gates.captain_preflight> --lane main    # 项目仓收工门禁（在项目仓根跑）
+python <gates.captain_preflight> --lane main    # 项目仓收工门禁（在项目仓根跑；副机长 deputy / 王牌 ace）
 ```

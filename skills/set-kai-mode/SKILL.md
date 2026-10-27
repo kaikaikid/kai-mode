@@ -6,13 +6,13 @@ approved: 2026-10-21
 sources:
   - resource: "skills/kai-mode/SKILL.md"
     note: "入口本体；本技能只装它脚下的东西，不改它的流程"
-  - resource: "skills/{ground-crew,tower,pilot,copilot}/SKILL.md"
-    note: "四岗位技能正本；本技能负责把它们装到宿主"
+  - resource: "skills/{ground-crew,tower,pilot,copilot,ace-pilot}/SKILL.md"
+    note: "五岗位技能正本；本技能负责把它们装到宿主"
   - resource: "skills/set-kai-mode/scripts/magpie-sync.py"
     note: "技能正本 → Magpie 中央库 → 各家宿主链接的回写口"
 description: >
   kai-mode 的初始化安装入口（不是日常施工）：**先看缺什么、列出推荐清单跟用户确认，再只装缺的**，
-  避免重复安装。覆盖：注入方法论与技能、把四角色技能装到宿主（Magpie / Qoder 或其它宿主）、
+  避免重复安装。覆盖：注入方法论与技能、把岗位技能装到宿主（Magpie / Qoder 或其它宿主）、
   装 60 分钟唤醒定时器（只唤醒塔台）、worktree 环境自检（主树正本解释器绝对路径、node、依赖三项）、
   项目配置实例生成/校验/迁移（schema 2→3→4）与装机回执「模型核对」格、按项目生成技能骨架（首例验收/验证）、
   doctor、缺件如实登记。触发：新 agent 接手装配、换宿主、装/改定时器、修技能落点、
@@ -88,7 +88,7 @@ python scripts/init-project.py --repo <目标仓> --answers a.json   # 机器填
 |---|---|---|
 | 0 | **缺口扫描（只读，先看缺什么）** | 出一张缺口清单：每项标「已就位/跳过」或「需处理（原因）」，先念给用户 |
 | 1 | 注入方法论与技能（仓库内正本） | 16 个技能文件在位（以注册表 `install:auto` 为准），入口/角色/协议互指一致 |
-| 2 | 装技能到宿主（四角色 ＋ 入口/安装/协议技能） | 宿主技能列表里能看见，内容与正本同哈希 |
+| 2 | 装技能到宿主（岗位技能 ＋ 入口/安装/协议技能） | 宿主技能列表里能看见，内容与正本同哈希 |
 | 3 | 装 60 分钟唤醒定时器 | `list` 回读 `enabled=true`、周期 1 小时 |
 | 4 | worktree 环境自检（三项） | 解释器 / node / 依赖三项都有明确读数 |
 | 5 | doctor | 项目仓 `ready.py` 与 `env-doctor` 全绿或如实点红 |
@@ -121,7 +121,7 @@ python scripts/init-project.py --repo <目标仓> --answers a.json   # 机器填
 - 正本全部住在仓库里（中立层），任何宿主一进仓库即生效：
   - 入口：`skills/kai-mode/SKILL.md`
   - 安装：`skills/set-kai-mode/SKILL.md`（本文）
-  - 四角色：`skills/{ground-crew,tower,pilot,copilot}/SKILL.md`
+  - 岗位技能：`skills/{ground-crew,tower,pilot,copilot,ace-pilot}/SKILL.md`
   - 单票闭环：`skills/loop/SKILL.md` ＋ `loops/loop-protocol.md`
   - 看板展示层：`skills/flight-info/SKILL.md`（SQLite 落库 ＋ 模块化采集/判据/渲染；装配与刷新都在它的 `scripts/`；板库根＝板配置 `output.root`，相对项目仓根）
 - 项目仓落点从项目配置实例读：项目技能目录 `registry.skills.project_skills_dir`、单票闭环目录 `registry.skills.loop_dir`；
@@ -149,9 +149,9 @@ python $S apply --profile core             # 正本 → 库 → 各家链接；�
   落点必须项目级，不装全局。
 - 要装/更新的技能（装机清单＝仓根 `registry.json` 里 `install:auto` 的条目；`magpie-sync.py` 从注册表派生，
   没有 registry.json 的老根目录回落内置清单）：
-  `kai-mode`、`set-kai-mode`、`loop`、`ground-crew`、`tower`、`pilot`、`copilot`、`kai-handoff`、`kai-boom-idea-log`、
+  `kai-mode`、`set-kai-mode`、`loop`、`ground-crew`、`tower`、`pilot`、`copilot`、`ace-pilot`、`kai-handoff`、`kai-boom-idea-log`、
   `flight-info` 与六个 `principle-*`。
-- **安装档位**：`manifests/install-profiles.json` 定两档——`core`（8 条最小闭环：入口/安装/协议/四岗位/交接）、
+- **安装档位**：`manifests/install-profiles.json` 定两档——`core`（9 条最小闭环：入口/安装/协议/五岗位/交接）、
   `full`（16 条自动件全部）。`apply/check --profile core|full`；缺省读库根回执里的档位，无回执＝`full`。
 - **安装回执**：库根 `.kai-mode-source.json` 记来源根、HEAD、档位、技能清单与每技能哈希；
   `doctor` 的 `install-receipt` 项校验。写库前整包备份到 `<库根>/.backups/`（保留 5 份），失败自动还原。
@@ -334,7 +334,7 @@ python scripts/framework-gate.py --selftest   # 推前框架门自证
 
 | 可调项 | 正本住在哪 | 改完跑什么 |
 |---|---|---|
-| 四角色职责与权限 | 四岗位技能正文 | `grep -rn "地勤\|塔台" skills/` 逐处认，出现第二本定义即返工 |
+| 岗位职责与权限 | 岗位技能正文 | `grep -rn "地勤\|塔台" skills/` 逐处认，出现第二本定义即返工 |
 | 并发、名额与隔离 | 机长/副机长技能正文 ＋ 子代理无编制上限 | 机长/副机长技能里的「2 张 issue」与技能正文一致；子代理数只受宿主容量约束，不得写死个数 |
 | 任务表格式与领取方式 | 塔台技能正文 ＋ 项目配置 `paths.day_tables_dir` | 日表行数见协议正本、只由塔台写 |
 | 一轮流程（排班→施工→审查→发货） | 塔台与机长技能正文 | 用一张真票走通全链路 |
@@ -370,7 +370,7 @@ python scripts/framework-gate.py --selftest   # 推前框架门自证
 | 你要的 | 去哪 |
 |---|---|
 | 怎么提需求、拷问、定稿、路由 | [`skills/kai-mode/SKILL.md`](../kai-mode/SKILL.md) |
-| 四岗位各自怎么干 | [`ground-crew`](../ground-crew/SKILL.md)／[`tower`](../tower/SKILL.md)／[`pilot`](../pilot/SKILL.md)／[`copilot`](../copilot/SKILL.md) |
+| 五岗位各自怎么干 | [`ground-crew`](../ground-crew/SKILL.md)／[`tower`](../tower/SKILL.md)／[`pilot`](../pilot/SKILL.md)／[`copilot`](../copilot/SKILL.md)／[`ace-pilot`](../ace-pilot/SKILL.md) |
 | 单票闭环怎么跑 | [`skills/loop/SKILL.md`](../loop/SKILL.md) ＋ `loops/loop-protocol.md` |
 | 本机环境事实（解释器、node、坑） | 本机 `agents.local.md`（不入库，每台一份） |
 | 改了技能正本怎么让各家吃到 | 本技能「2. 装技能到宿主」＋ `magpie-sync.py` |

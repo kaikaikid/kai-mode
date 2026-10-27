@@ -22,11 +22,11 @@ import os
 import re
 
 LINE = re.compile(r"^\s*[-*]\s*(?:\[(?P<box>[ xX])\]\s*)?(?P<body>.+?)\s*$")
-TICKET = re.compile(r"^#?(\d+)\b")
+TICKET = re.compile(r"^#?(\d+|H-\d{8}-\d+)\b")
 DATE = re.compile(r"(\d{4}-\d{2}-\d{2})")
 PIPE = re.compile(r"^\s*\|.*\|\s*$")
 SEP = re.compile(r"^\s*\|[\s:|-]+\|\s*$")
-TICKET_CELL = re.compile(r"^#?(\d+)$")
+TICKET_CELL = re.compile(r"^#?(\d+|H-\d{8}-\d+)$")
 
 # 表格列名：表头里精确命中优先，其次包含
 COLUMNS = {
@@ -112,8 +112,8 @@ def collect(cfg: dict, ctx: dict) -> dict:
         return {"flights": [], "schedules": [], "status": "absent",
                 "detail": f"日表目录不存在：{rel}"}
 
-    patterns = cfg.get("include") or ["*-main.md", "*-copilot.md"]
-    lanes_cfg = cfg.get("lanes") or ctx["paths"].get("lanes") or ["main", "copilot"]
+    patterns = cfg.get("include") or ["*-main.md", "*-deputy.md", "*-copilot.md", "*-ace.md"]
+    lanes_cfg = cfg.get("lanes") or ctx["paths"].get("lanes") or ["main", "deputy", "copilot", "ace"]
 
     schedules, flights, seen = [], [], set()
     for fn in sorted(os.listdir(base)):

@@ -116,6 +116,23 @@ class TestTasks(unittest.TestCase):
                              ("#1711", "云模型通道接线", "② 记忆网络", "main"))
             self.assertEqual(res["schedules"][0]["note"], "**在制**：别关")
 
+    def test_ace_hotfix_row(self):
+        """王牌热修行（H-日期-序号）也要进板，不能当无票号的杂活丢掉。"""
+        self.assertEqual(tasks._parse_line("H-20261027-1 修文案 | 施工中"),
+                         ("#H-20261027-1", "修文案", "施工中"))
+        with tempfile.TemporaryDirectory() as repo:
+            d = os.path.join(repo, "tasks")
+            os.makedirs(d)
+            with open(os.path.join(d, "2026-10-27-ace.md"), "w", encoding="utf-8") as f:
+                f.write("| 序 | 票号 | 里程碑 | 一句话 | 王牌备注 |\n"
+                        "|---|---|---|---|---|\n"
+                        "| 1 | H-20261027-1 | 加急通道 | 修文案 | 施工中 |\n")
+            res = tasks.collect({"include": ["*-ace.md"], "lanes": ["ace"]},
+                                {"repo_root": repo, "paths": {"day_tables_dir": "tasks"}})
+            self.assertEqual(res["detail"], "1 行排班 / 1 张票")
+            self.assertEqual(res["flights"][0]["ticket"], "#H-20261027-1")
+            self.assertEqual(res["flights"][0]["owner"], "ace")
+
     def test_list_line_still_works(self):
         """老写法不许因为加了表格支持而退化。"""
         with tempfile.TemporaryDirectory() as repo:

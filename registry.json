@@ -117,6 +117,18 @@
       "since": "0.2.0"
     },
     {
+      "name": "ace-pilot",
+      "path": "skills/ace-pilot",
+      "kind": "framework",
+      "scope": "global",
+      "install": "auto",
+      "summary": "机场体系的王牌飞行员：用户直连的加急通道，读 ace-queue 标签票、写自己的 -ace.md，同刻 1 张；简单免票热修、复杂自补票；不 push、不合并、不关票。",
+      "tags": [
+        "role"
+      ],
+      "since": "0.26.0"
+    },
+    {
       "name": "principle-ask-one-question-at-a-time",
       "path": "skills/principle-ask-one-question-at-a-time",
       "kind": "framework",

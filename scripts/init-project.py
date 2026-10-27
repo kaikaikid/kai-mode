@@ -268,7 +268,7 @@ def apply(cfg: dict, ans: dict) -> dict:
     paths = cfg.setdefault("paths", {})
     paths["day_tables_dir"] = ans.get("day_tables_dir") or ".ai/tasks"
     paths["day_table_pattern"] = "YYYY-MM-DD-{lane}.md"
-    paths["lanes"] = ["main", "deputy"]
+    paths["lanes"] = ["main", "deputy", "ace"]
     paths["handoff_dir"] = ans.get("handoff_dir") or "handoff"
     paths["ideas_dir"] = ans.get("ideas_dir") or "ideas"
     gates = cfg.setdefault("gates", {})
