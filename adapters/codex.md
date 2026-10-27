@@ -1,6 +1,6 @@
 # Codex 适配器（付费档备胎）
 
-> 本文只讲**怎么在这个宿主上起岗位**。Codex 没有 per-agent 文件，人格怎么落见 [README.md](README.md) §2。
+> 本文只讲**怎么在这个宿主上起岗位**。人格文件已退役；新上下文用独立 `codex exec` 进程。
 
 > 适用：Qoder 子会话不可用、opencode 不可用，或编排层明确要求 Codex。
 > **付费档**：必须显式授权（如 `KAI_WATCHDOG_ALLOW_PAID=1`）；没有授权不许起。
@@ -15,7 +15,7 @@ codex --version          # 本机实测 0.164.0-alpha.11.1
 
 没有入口 ⇒ 本档不可用，缺件如实登记（`no-launcher`）。
 
-## 宿主工具探测（schema 2 `execution.host_tools` 契约迁入，[0004](../docs/adr/0004-project-config-schema.md) D6）
+## 宿主工具探测
 
 - **Builder（施工）**：`codex exec -s workspace-write`（沙箱给写权）；探测不到 `codex` 入口 ⇒ 本档不可用，缺件如实登记。
 - **Reviewer（评审）**：`codex exec -s read-only`，**另起一次调用**（新上下文）；复用施工会话 ⇒ 不算独立验收。
@@ -24,11 +24,11 @@ codex --version          # 本机实测 0.164.0-alpha.11.1
 
 ## 起角色（可写，仅人工执行）
 
-> 任何角色不得自动调用 `codex exec` 起另一个角色（[ADR-0010](../docs/adr/0010-role-wake-fence.md)）。
+> 任何角色不得自动调用 `codex exec` 起另一个角色（唤醒围栏）。
 
 ```bash
 codex exec -C <仓库根> -s workspace-write --json -o <回执文件> \
-  "读取并执行 skills/<角色>/SKILL.md 全文；你的角色是 codex-<角色>-<时间戳>；只做该文件写的动作。"
+  "读取并执行 airport/skills/<角色>/SKILL.md 全文；你的角色是 codex-<角色>-<时间戳>；只做该文件写的动作。"
 ```
 
 ## 只读评审
@@ -41,7 +41,7 @@ codex exec -C <仓库根> -s read-only --json -o <回执文件> \
 ## 执行三职
 
 - **Researcher**：`codex exec -s read-only`，产出 `research-<票>.md`；不写实现。
-- **Implementer**（＝施工子代理）：`codex exec -s workspace-write`；必带派工卡（票号/AC/允许禁止修改/验证命令/环境口径）；独立 worktree 与分支；不 push、不合并。
+- **Implementer**（＝施工子代理）：`codex exec -s workspace-write`；必带派工卡（票号/AC/允许禁止修改/验证命令/环境口径）；车道工作树与票分支；不 push、不合并。
 - **Reviewer**（＝审查子代理）：`codex exec -s read-only`，**另起一次调用**（新上下文）；只拿 AC/diff/证据，输出 `verdict=pass|fail` ＋逐条证据；不得复用施工会话。
 - 缺 reviewer 或 `reviewer==implementer` ⇒ 不算独立验收。
 

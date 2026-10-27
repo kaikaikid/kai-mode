@@ -1,41 +1,42 @@
 # adapters —— 宿主适配总则
 
-> 本目录回答两件事，别混：
-> **① 怎么在宿主上跑一个「岗位」**（地勤/塔台/机长/副机长/王牌飞行员）→ 各自 `<宿主>.md`（Claude Code 见 [claude.md](claude.md)）；
-> **② 怎么把「人格」落成宿主原生的子代理文件**（权限/模型/派生）→ 本文件。
-> 人格正本＝[`agents/`](../agents/README.md)，模型值正本＝项目实例 `models.agents.<人格>.model`。
+> 本目录回答三件事：
+> **① 怎么把插件/技能/命令装到宿主**（`<宿主>.md`）；
+> **② 怎么在宿主上起一段新上下文**（子代理／独立进程／新会话）；
+> **③ 缺什么怎么登记**（三格，不猜）。
+> 人格文件已退役：框架不再定义 per-agent 人格；派活规则住 `airport/skills/loop/references/dispatch.md`。
 
 ## 0. 三层分工
 
 | 层 | 谁写 | 写在哪 |
 |---|---|---|
-| 权限 | 人格 | `metadata.access: readonly\|write`（唯一机读字段） |
-| 模型 | 用户 | 项目实例 `models.agents.<人格>.model`（`null`＝不写，用宿主默认） |
-| 落法 | 装机 agent | 本文 §2 表 + 现场实测；不写回人格、不写回实例 |
+| 插件与技能 | 框架 | `.claude-plugin/marketplace.json` ＋ `<plugin>/skills/<名>/SKILL.md` |
+| 命令 | 框架 | `<plugin>/commands/<role>.md`（只做加载） |
+| 落法 | 装机 agent | 本文 §2 表 + 现场实测；不写回框架正文 |
 
-**框架仓不保存任何宿主的 agent 产物**（那是每台机器现场生成的），也不发明模型 slug。
+**框架仓不保存任何宿主产物**（那是每台机器现场生成的），也不发明模型 slug。
 
 ## 1. 四步探测（读数当场测，不许抄本文）
 
 | 步骤 | 测什么 | 怎么测 |
 |---|---|---|
 | ① 入口 | 有没有可执行入口与版本 | `command -v <host>` / `Get-Command <host>` + `--version` |
-| ② 子代理口 | 能否建**独立上下文**；落盘目录与单文件格式 | 查宿主文档 + 建一个空 agent 看会不会被识别 |
-| ③ 权限口 | 有没有**硬机制**（工具白名单/沙箱/权限对象） | 起一个只读 agent，**真去写一次**，看是否被拒 |
-| ④ 模型口 | 有没有 model 字段或 `-m` 参数 | 填一个明显不存在的模型名，看是否报错（报错＝有口） |
+| ② 新上下文口 | 能否起**独立上下文**；落盘目录与格式 | 起一个子代理／独立进程／新会话，看是否真的隔离 |
+| ③ 权限口 | 有没有**硬机制**（工具白名单/沙箱/权限对象） | 起一个只读上下文，**真去写一次**，看是否被拒 |
+| ④ 定时口 | 有没有定时任务或外部调度 | 创建一条 1 分钟后执行的任务，回读 `enabled`/`nextRun` |
 
 四步任何一步没结论 ⇒ 按 §6 登记，不许「看起来应该行」。
 
-## 2. 六家落法对照（装机前必须按 §1 复核，宿主会改）
+## 2. 宿主落法对照（装机前必须按 §1 复核，宿主会改）
 
-| 宿主 | 人格落点 | 只读怎么写 | 禁派生 | 模型 |
-|---|---|---|---|---|
-| Claude Code | `.claude/agents/<名>.md`（frontmatter `name`/`description`/`tools`/`model`） | `tools` 里只给读类工具 | 子代理本身不再给 Task | `model` 写实例值，缺省 `inherit`；起岗位见 [claude.md](claude.md) |
-| OpenCode | `.opencode/agents/<名>.md`（`description`/`mode: subagent`/`permission`） | `permission: {edit: deny, bash: deny}` | `permission: {task: deny}` | `model` 字段 |
-| Codex | **无 per-agent 文件**；靠 `AGENTS.md` + 启动参数 | `-s read-only` | 单次 exec 无派生 | `-m <模型>` |
-| Qoder | 无 per-agent 文件；用子会话 + 提示词 | 只读 prompt（**软约束**，必须登记） | 不开 `create_chat_session` | 会话创建时指定 |
-| Copilot | `.github/agents/<名>.agent.md` | `tools` 列表 | 不列 agent 类工具 | 不支持或走设置 |
-| Cursor | `.cursor/agents/<名>.md` | `tools` 列表 | 不列 agent 类工具 | 视版本 |
+| 宿主 | 插件清单 | 技能落点 | 命令 | 新上下文 | 定时口 |
+|---|---|---|---|---|---|
+| Claude Code | `.claude-plugin/marketplace.json` | `.claude/skills/<名>/SKILL.md` 或中央库副本 | `<plugin>/commands/<role>.md` | 原生子代理（`.claude/agents/` 可选，宿主自有格式） | 无内置；人工或外部调度 |
+| Qoder | `.qoder-plugin/plugin.json` | `.qoder/skills/<名>/SKILL.md`（项目）／`~/.qoder/skills/`（用户） | 角色提示词；CLI 可用 `--with-claude-config` 读 Claude 命令 | 原生 subagent `.qoder/agents/<名>.md` 或新会话 | CLI `.qoder/scheduled_tasks.json`／`/loop`；IDE Automations |
+| Codex | 无 | 项目技能目录；`codex exec` 读 `SKILL.md` | 无；用 prompt 指向技能 | 独立 `codex exec -s read-only` 进程 | 无 |
+| OpenCode | 无 | 项目技能目录（`registry.skills.project_skills_dir`） | 无；用 prompt | 独立 `opencode run` 进程 | 无 |
+| Copilot | 无 | `.github/agents/<名>.agent.md`（宿主自有） | 无 | 宿主 agent | 视版本 |
+| Cursor | 无 | `.cursor/agents/<名>.md`（宿主自有） | 无 | 宿主 agent | 视版本 |
 
 不在表里的宿主：按 §1 四步自测，然后在本表补一行。
 
@@ -45,20 +46,22 @@
 2. **工具白名单**（不给写类工具）：次好，工具层面拿不到手。
 3. **只读 prompt**：最弱，模型可以违背。
 
-降到第 3 级必须①在该人格的装机回执里标「软约束」②按 §6 登记 `soft-permission-only`。**默不作声地降级＝造假。**
+降到第 3 级必须①在装机回执里标「软约束」②按 §6 登记 `soft-permission-only`。**默不作声地降级＝造假。**
 
-## 4. 模型怎么落
+## 4. 模型与新上下文
 
-读实例 `models.agents.<人格>.model`：
-
-- `null` ⇒ 不写 model 字段，用宿主默认（推荐起点；Claude Code 与 OmO 都以 inherit 为默认）。
-- 非 null ⇒ 写进 §2 该宿主的模型格；宿主无模型口（如 Copilot）⇒ 登记 `no-model-field`，**不偷偷换模型**。
-- 用户没配 ⇒ 保持 `null`，不要替他选。
+- 框架不再有 `models.agents.<人格>`：人格文件退役，模型用宿主默认。
+- 项目实例若仍保留旧 `models` 段，按迁移腿删除；不把模型 slug 写进框架正文。
+- **审查独立性看「另一段新上下文」**，不看人格文件名：
+  Claude Code 原生子代理／Qoder subagent／Codex 独立进程／OpenCode 独立进程。
+- 起不了新上下文 ⇒ 审查腿登记 `no-new-context`，**不许记「已审查」**。
 
 ## 5. 派生与并发
 
-判据住 [`agents/dispatch.md`](../agents/dispatch.md) §3/§6（深度 1 层、谁能派谁、写串行）。
-本文只负责**在宿主上怎么禁掉派生**（§2「禁派生」列）。
+- 派生固定一层：子代理不再派子代理。
+- 写默认串行；同一文件域同一时刻只一个写者。
+- 工作树按车道：`lane-main`／`lane-deputy`／`lane-ace` 各一棵，票在树里换分支；推送用登记式临时工位。
+  宿主不支持工作树时减少并行写入，不硬上。
 
 ## 6. 缺件登记（三格）
 
@@ -69,20 +72,21 @@
 missing: <kind>
 ```
 
-`kind` 取值：`no-launcher`｜`no-subagent-slot`｜`no-model-field`｜`soft-permission-only`｜`paid-not-authorized`｜`launch-failed`｜`missing-instance`。
+`kind` 取值：`no-launcher`｜`no-new-context`｜`no-timer`｜`no-model-field`｜`soft-permission-only`｜`paid-not-authorized`｜`launch-failed`｜`missing-instance`。
 机器只认 `missing:` 这一行，其余是给人看的。
 
 ## 7. 装完自证（不实测不算通过）
 
-1. 起一个 `readonly` 人格，让它写一个临时文件 → **必须被拒**；被写入＝权限没落住。
-2. 起 `worker` 做一次最小可回滚写 → 通过即说明可写侧也通。
-3. 模型：写实际值，或明说「宿主默认」。
+1. 起一个只读上下文，让它写一个临时文件 → **必须被拒**；被写入＝权限没落住。
+2. 起一个可写上下文做一次最小可回滚写 → 通过即说明可写侧也通。
+3. 角色命令能从技能目录读到 `SKILL.md`，且命令本身不含长规则。
 4. 回执写实测读数；做不到的写「未测」，不算完成。
 
 ## 8. 边界
 
-- 不把人格正文复制进宿主文件后手改（两份会漂）。
-- 落点**必须项目级**（`.opencode/agents/`、`.claude/agents/` 等），**不装全局**：人格名是裸名，装了全局会和用户其它框架的同名 agent 打架。
-- **全局非项目数据**（CLI 配置/认证/会话/日志/缓存）统一按 [docs/agent-data-layout.md](../docs/agent-data-layout.md) 放 `KAI_AGENT_DATA_ROOT`；项目级 agent 文件仍由项目仓自管。
-- 宿主字段名不回写人格、不回写实例。
-- 加一个宿主＝加一个 `<宿主>.md`（起岗位）＋ 本文 §2 一行（落人格），不新增脚本。
+- 不把技能正文复制进宿主文件后手改（两份会漂）。
+- 落点**必须项目级**，不装全局：全局同名技能会和用户其它框架打架。
+- **全局非项目数据**统一按 [docs/agent-data-layout.md](../docs/agent-data-layout.md) 放 `KAI_AGENT_DATA_ROOT`；
+  项目级技能与命令仍由项目仓自管。
+- 宿主字段名不回写插件清单、不回写技能正文。
+- 加一个宿主＝加一个 `<宿主>.md` ＋ 本文 §2 一行，不新增脚本。

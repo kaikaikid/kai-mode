@@ -1,0 +1,56 @@
+{
+  "schema": "kai-mode-plugins-lock/1",
+  "_note": "版本钉死：由 scripts/plugin-check.py --bump 生成，不手改。digest 是插件安装面的内容摘要。",
+  "plugins": {
+    "airport": {
+      "version": "3.2.0",
+      "digest": "fad88e23f6038751f7516247fe2dec0492edae072e4502dfeb9b9fdf6291b795",
+      "skills": {
+        "ace": "1.1.0",
+        "copilot": "3.0.0",
+        "ground-crew": "1.5.0",
+        "loop": "6.1.0",
+        "pilot": "3.2.0",
+        "tower": "1.9.0"
+      }
+    },
+    "board": {
+      "version": "1.1.0",
+      "digest": "357bc0d5d69c7fd2ff10f50139c3729f124ff2b31dc3e91af8c701363214dba8",
+      "skills": {
+        "flight-info": "1.3.0"
+      }
+    },
+    "core": {
+      "version": "1.0.0",
+      "digest": "8c8810404e60dbb2aa41f7302685fae80f59241e38fcd2c31b5e7873e94687d4",
+      "skills": {
+        "harness-audit": "0.2.0",
+        "kai-handoff": "0.3.5",
+        "kai-mode": "3.0.0",
+        "principle-ask-one-question-at-a-time": "0.1.1",
+        "principle-ceremony-collapses-with-scale": "0.1.2",
+        "principle-measure-dont-ask": "0.1.1",
+        "principle-one-semantics-one-home": "0.1.3",
+        "principle-report-missing-parts": "0.1.1",
+        "principle-visible-and-redline-only": "0.1.1",
+        "set-kai-mode": "5.0.0"
+      }
+    },
+    "intake": {
+      "version": "1.0.0",
+      "digest": "e7ee1febc45bfecf356997ae273173203bbe6aaf99f3120123f97335523c573d",
+      "skills": {
+        "kai-boom-idea-log": "0.1.3"
+      }
+    },
+    "ops": {
+      "version": "1.0.0",
+      "digest": "7309e84a731eaa4320608dc3717891b7064650224cee17eb91bfbb3a61622a5c",
+      "skills": {
+        "incident-response": "0.1.0",
+        "runbook": "0.1.0"
+      }
+    }
+  }
+}

@@ -245,7 +245,7 @@
       "last_diff": "2026-10-24",
       "next_diff_due": "2026-11-23",
       "status": "dropped",
-      "reason": "薄壳，内容＝按票实现→tdd→code-review；loops/loop-protocol.md §二 已写死同样顺序",
+      "reason": "薄壳，内容＝按票实现→tdd→code-review；airport/skills/loop/references/loop-protocol.md §二 已写死同样顺序",
       "deltas": [],
       "inherited": []
     },
