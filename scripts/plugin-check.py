@@ -40,12 +40,12 @@ def read_json(path: str):
 
 
 def sha256_file(path: str) -> str:
+    """内容摘要：先把 CRLF 归一成 LF，保证 Windows 与 Linux 检出算同一个值。"""
     h = hashlib.sha256()
     with open(path, "rb") as f:
         for chunk in iter(lambda: f.read(65536), b""):
-            h.update(chunk)
+            h.update(chunk.replace(bytes((13, 10)), bytes((10,))))
     return h.hexdigest()
-
 
 def plugin_digest(plugin_dir: str) -> str:
     """插件安装面的内容摘要：排除 tests/缓存，按相对路径排序。"""

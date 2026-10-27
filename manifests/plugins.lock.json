@@ -4,7 +4,7 @@
   "plugins": {
     "airport": {
       "version": "3.2.0",
-      "digest": "9eafa6e4d12d388713dcc18d8c4c7c7195393134657d0b47b82c6d811cda83de",
+      "digest": "fad88e23f6038751f7516247fe2dec0492edae072e4502dfeb9b9fdf6291b795",
       "skills": {
         "ace": "1.1.0",
         "copilot": "3.0.0",
@@ -16,14 +16,14 @@
     },
     "board": {
       "version": "1.1.0",
-      "digest": "db4d7be7771732ef471ee2410183e91372319c07242659645d7bfff180557534",
+      "digest": "357bc0d5d69c7fd2ff10f50139c3729f124ff2b31dc3e91af8c701363214dba8",
       "skills": {
         "flight-info": "1.3.0"
       }
     },
     "core": {
       "version": "1.0.0",
-      "digest": "eb1206f6701506ea96282b5187409ec12a3c9dba269a699ec90b73e1bd12f0be",
+      "digest": "8c8810404e60dbb2aa41f7302685fae80f59241e38fcd2c31b5e7873e94687d4",
       "skills": {
         "harness-audit": "0.2.0",
         "kai-handoff": "0.3.5",
@@ -39,14 +39,14 @@
     },
     "intake": {
       "version": "1.0.0",
-      "digest": "1f1b101c7e5fa6731cfba67d69e6fecbc42f2ac42bcbae349dc066a0f80f6040",
+      "digest": "e7ee1febc45bfecf356997ae273173203bbe6aaf99f3120123f97335523c573d",
       "skills": {
         "kai-boom-idea-log": "0.1.3"
       }
     },
     "ops": {
       "version": "1.0.0",
-      "digest": "dd20ee2212427d9b45f1eb4cef7a1b4af1bac8718458d648a7bdfdbcf8671679",
+      "digest": "7309e84a731eaa4320608dc3717891b7064650224cee17eb91bfbb3a61622a5c",
       "skills": {
         "incident-response": "0.1.0",
         "runbook": "0.1.0"
