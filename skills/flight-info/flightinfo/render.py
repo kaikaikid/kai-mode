@@ -901,7 +901,8 @@ def _urgent_section(payload: dict, cfg: dict) -> str:
     label = u.get("label") or "ace-queue"
     total = len({(r.get("ticket") or "") for r in rows} | {(t.get("ticket") or "") for t in tickets})
     over = total - 1 if total > 1 else 0
-    head = ('<span class="hint">王牌机长 · 用户直连加急通道 · 协议同刻只许 1 张</span>')
+    ace_name = role_labels.get("ace") or "王牌"   # 叫法跟配置与术语表走，不在代码里另立一名
+    head = (f'<span class="hint">{_esc(ace_name)} · 用户直连加急通道 · 协议同刻只许 1 张</span>')
     if over:
         head = (f'<span class="hint is-over">超编：同刻 {total} 张（协议只许 1 张）</span>')
     if not total:
