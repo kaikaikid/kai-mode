@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="860" viewBox="0 0 1200 860" font-family="Segoe UI, Microsoft YaHei, PingFang SC, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8"/>
+    </marker>
+    <marker id="arrowBack" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#16a34a"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="860" fill="#fbfaf7"/>
+  <text x="60" y="52" font-size="26" font-weight="700" fill="#1f2937">kai-mode：岗位 / 工种 / 子代理 三层</text>
+  <text x="60" y="80" font-size="14" fill="#6b7280">角色＝组长（长期会话，拥有车道或工坊）　·　子代理＝worker（一次性，按权限分 4 类，深度固定 1 层）</text>
+
+  <!-- 层 0 人工 -->
+  <rect x="60" y="104" width="1080" height="56" rx="10" fill="#fef3c7" stroke="#f59e0b"/>
+  <text x="80" y="128" font-size="15" font-weight="700" fill="#92400e">人工</text>
+  <text x="80" y="148" font-size="13" fill="#92400e">唤醒角色 · 拍板（G0/G2/G3/G5）· 红线 · 不直接派子代理</text>
+
+  <!-- 层 1 岗位 -->
+  <rect x="60" y="184" width="1080" height="150" rx="10" fill="#eff6ff" stroke="#3b82f6"/>
+  <text x="80" y="208" font-size="15" font-weight="700" fill="#1d4ed8">① 岗位层 ＝ 角色 ＝ 组长</text>
+  <text x="80" y="228" font-size="12.5" fill="#1e40af">一个命令 = 一个技能 = 一段长期会话；拥有自己的车道／工坊与记录面</text>
+
+  <rect x="80" y="242" width="500" height="78" rx="8" fill="#ffffff" stroke="#93c5fd"/>
+  <text x="96" y="264" font-size="13.5" font-weight="700" fill="#1d4ed8">工程线（机场）</text>
+  <text x="96" y="286" font-size="12.5" fill="#334155">地勤（开票）· 塔台（排班发货）</text>
+  <text x="96" y="306" font-size="12.5" fill="#334155">机长 / 副机长 / 二副 / 王牌（施工车道的组长）</text>
+
+  <rect x="600" y="242" width="520" height="78" rx="8" fill="#ffffff" stroke="#93c5fd"/>
+  <text x="616" y="264" font-size="13.5" font-weight="700" fill="#1d4ed8">创作线（三坊两台）</text>
+  <text x="616" y="286" font-size="12.5" fill="#334155">制片台（协调）· 视觉坊 / 文字坊 / 时间坊（各坊组长）</text>
+  <text x="616" y="306" font-size="12.5" fill="#334155">审片台（独立验收）· 艺术工坊＝跨坊项目里被指定为主创的那一坊</text>
+
+  <!-- 层 2 工种 -->
+  <rect x="60" y="354" width="1080" height="118" rx="10" fill="#f5f3ff" stroke="#8b5cf6"/>
+  <text x="80" y="378" font-size="15" font-weight="700" fill="#6d28d9">② 工种层 ＝ 模式（不是独立 agent）</text>
+  <text x="80" y="398" font-size="12.5" fill="#5b21b6">同一岗位内的分工，是技能里的一个开关；不新增人格文件（ADR-0021 同一条判据）</text>
+  <rect x="80" y="412" width="330" height="44" rx="8" fill="#ffffff" stroke="#c4b5fd"/>
+  <text x="96" y="439" font-size="12.5" fill="#4c1d95"><tspan font-weight="700">--lead</tspan>　美术指导 / 主编 / 导演　→ 定风格、定终稿</text>
+  <rect x="430" y="412" width="330" height="44" rx="8" fill="#ffffff" stroke="#c4b5fd"/>
+  <text x="446" y="439" font-size="12.5" fill="#4c1d95"><tspan font-weight="700">--make</tspan>　插画 / 编剧 / 动画　→ 按规格产出</text>
+  <rect x="780" y="412" width="340" height="44" rx="8" fill="#faf5ff" stroke="#c4b5fd" stroke-dasharray="4 3"/>
+  <text x="796" y="439" font-size="12.5" fill="#6d28d9">机场侧无此层：机长本身就是 lead</text>
+
+  <!-- 层 3 子代理 -->
+  <rect x="60" y="492" width="1080" height="150" rx="10" fill="#ecfdf5" stroke="#10b981"/>
+  <text x="80" y="516" font-size="15" font-weight="700" fill="#047857">③ 子代理层 ＝ worker（只按「权限 + 交付物」分，不按能力分）</text>
+
+  <rect x="80" y="530" width="248" height="94" rx="8" fill="#ffffff" stroke="#6ee7b7"/>
+  <text x="94" y="552" font-size="13" font-weight="700" fill="#047857">施工 · 可写</text>
+  <text x="94" y="574" font-size="12" fill="#334155">指定路径可写 · TDD</text>
+  <text x="94" y="594" font-size="12" fill="#334155">交付：代码 + 回执</text>
+  <text x="94" y="614" font-size="12" fill="#64748b">同一文件域只一个写手</text>
+
+  <rect x="344" y="530" width="248" height="94" rx="8" fill="#ffffff" stroke="#6ee7b7"/>
+  <text x="358" y="552" font-size="13" font-weight="700" fill="#047857">审查 · 只读 · 新上下文</text>
+  <text x="358" y="574" font-size="12" fill="#334155">逐条对 AC + 机检</text>
+  <text x="358" y="594" font-size="12" fill="#334155">交付：verdict=pass|fail</text>
+  <text x="358" y="614" font-size="12" fill="#64748b">施工者不得自审</text>
+
+  <rect x="608" y="530" width="248" height="94" rx="8" fill="#ffffff" stroke="#6ee7b7"/>
+  <text x="622" y="552" font-size="13" font-weight="700" fill="#047857">裁决 · 只读 · 新上下文</text>
+  <text x="622" y="574" font-size="12" fill="#334155">取舍题二选一</text>
+  <text x="622" y="594" font-size="12" fill="#334155">交付：ruling=a|b|defer</text>
+  <text x="622" y="614" font-size="12" fill="#64748b">不裁红线</text>
+
+  <rect x="872" y="530" width="248" height="94" rx="8" fill="#ffffff" stroke="#6ee7b7"/>
+  <text x="886" y="552" font-size="13" font-weight="700" fill="#047857">调查 / 量具 · 只读</text>
+  <text x="886" y="574" font-size="12" fill="#334155">检索、普查、跑读数</text>
+  <text x="886" y="594" font-size="12" fill="#334155">交付：结论 + 证据</text>
+  <text x="886" y="614" font-size="12" fill="#64748b">可并行，最便宜的一档</text>
+
+  <!-- 层 4 模型 -->
+  <rect x="60" y="666" width="1080" height="104" rx="10" fill="#fff7ed" stroke="#f97316"/>
+  <text x="80" y="690" font-size="15" font-weight="700" fill="#c2410c">④ 模型档位（挂在工种与子代理上，不挂在岗位上）</text>
+  <rect x="80" y="702" width="200" height="52" rx="8" fill="#ffffff" stroke="#fdba74"/>
+  <text x="94" y="724" font-size="12.5" font-weight="700" fill="#9a3412">role-impl · high</text>
+  <text x="94" y="742" font-size="11.5" fill="#64748b">施工 / 时间坊 make</text>
+  <rect x="292" y="702" width="200" height="52" rx="8" fill="#ffffff" stroke="#fdba74"/>
+  <text x="306" y="724" font-size="12.5" font-weight="700" fill="#9a3412">role-review · max</text>
+  <text x="306" y="742" font-size="11.5" fill="#64748b">审查 / 裁决 / 审片 / lead</text>
+  <rect x="504" y="702" width="200" height="52" rx="8" fill="#ffffff" stroke="#fdba74"/>
+  <text x="518" y="724" font-size="12.5" font-weight="700" fill="#9a3412">role-research · low</text>
+  <text x="518" y="742" font-size="11.5" fill="#64748b">调查 / 量具 / 制片</text>
+  <rect x="716" y="702" width="200" height="52" rx="8" fill="#ffffff" stroke="#fdba74"/>
+  <text x="730" y="724" font-size="12.5" font-weight="700" fill="#9a3412">role-visual</text>
+  <text x="730" y="742" font-size="11.5" fill="#64748b">视觉坊（唯一有视觉的档）</text>
+  <rect x="928" y="702" width="192" height="52" rx="8" fill="#ffffff" stroke="#fdba74"/>
+  <text x="942" y="724" font-size="12.5" font-weight="700" fill="#9a3412">role-text</text>
+  <text x="942" y="742" font-size="11.5" fill="#64748b">文字坊（长文语感）</text>
+
+  <!-- 连接线 -->
+  <line x1="600" y1="160" x2="600" y2="184" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="600" y1="334" x2="600" y2="354" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="600" y1="472" x2="600" y2="492" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="600" y1="642" x2="600" y2="666" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <text x="612" y="350" font-size="11.5" fill="#94a3b8">派活</text>
+  <text x="612" y="488" font-size="11.5" fill="#94a3b8">派活（按权限挑）</text>
+  <text x="612" y="662" font-size="11.5" fill="#94a3b8">选档</text>
+
+  <!-- 回执箭头 -->
+  <path d="M 340 492 C 300 470, 300 470, 330 470" fill="none" stroke="#16a34a" stroke-width="1.5" marker-end="url(#arrowBack)"/>
+  <text x="330" y="462" font-size="11.5" fill="#16a34a">回执 / 判词 / ruling（只回结论，不回传全文）</text>
+
+  <!-- 底部约束 -->
+  <rect x="60" y="790" width="1080" height="48" rx="10" fill="#f1f5f9" stroke="#cbd5e1"/>
+  <text x="80" y="812" font-size="12.5" fill="#334155"><tspan font-weight="700">三条硬约束</tspan>　① 子代理不派子代理（深度固定 1 层）　② 子代理不继承主上下文，只拿派工卡五件　③ 角色文件（若建）只写 model/tools，不写判据</text>
+  <text x="80" y="830" font-size="11.5" fill="#64748b">模型档位只挂在「工种（lead/make）」与「子代理权限类型」上；岗位换模型不影响分工，分工换模型不影响岗位。</text>
+</svg>

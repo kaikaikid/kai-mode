@@ -1,0 +1,217 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1420" viewBox="0 0 1800 1420" font-family="Segoe UI, Microsoft YaHei, PingFang SC, sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8"/>
+    </marker>
+  </defs>
+  <rect width="1800" height="1420" fill="#fbfaf7"/>
+
+  <text x="60" y="54" font-size="28" font-weight="700" fill="#1f2937">kai-mode 完整结构（2026-10-28 定稿版）</text>
+  <text x="60" y="84" font-size="13.5" fill="#6b7280">两个体系 · 三层结构 · 技能按「流程 / 手法」分家 · 4 类子代理 · 5 个模型组　｜　对齐 Anthropic 官方插件形态（lead＝会话，worker＝子代理）</text>
+
+  <!-- 人工 -->
+  <rect x="60" y="104" width="1680" height="54" rx="10" fill="#fef3c7" stroke="#f59e0b"/>
+  <text x="80" y="126" font-size="14.5" font-weight="700" fill="#92400e">人工（你）</text>
+  <text x="170" y="126" font-size="12.5" fill="#92400e">只在这五处出现：红线 · 肉眼可见的取舍（观感/文案/布局）· 阶段门拍板 · 卡点 · 唤醒角色</text>
+  <text x="80" y="147" font-size="11.5" fill="#b45309">看不见的一切自决，逐条记「代决清单」；审批只认可见表象与红线，其余不问</text>
+
+  <!-- ① 机场 -->
+  <rect x="60" y="200" width="810" height="390" rx="10" fill="#eff6ff" stroke="#3b82f6"/>
+  <text x="80" y="226" font-size="17" font-weight="700" fill="#1d4ed8">① 机场体系 · 工程（票制）</text>
+  <text x="330" y="226" font-size="11.5" fill="#3b82f6">6 个岗位 · 塔台独占 push 与关票</text>
+
+  <rect x="80" y="238" width="240" height="92" rx="8" fill="#ffffff" stroke="#93c5fd"/>
+  <text x="94" y="260" font-size="13" font-weight="700" fill="#1d4ed8">地勤 /ground-crew</text>
+  <text x="94" y="280" font-size="11.5" fill="#334155">对话、规划、开票</text>
+  <text x="94" y="298" font-size="11.5" fill="#334155">开票后给 2–3 个方案让你挑</text>
+  <text x="94" y="318" font-size="11" fill="#64748b">不写码、不派施工</text>
+
+  <rect x="340" y="238" width="240" height="92" rx="8" fill="#ffffff" stroke="#93c5fd"/>
+  <text x="354" y="260" font-size="13" font-weight="700" fill="#1d4ed8">塔台 /tower</text>
+  <text x="354" y="280" font-size="11.5" fill="#334155">定时唤醒 → 抢令牌 → 发货 → 排班</text>
+  <text x="354" y="298" font-size="11.5" fill="#334155">排班住 references/scheduling.md</text>
+  <text x="354" y="318" font-size="11" fill="#64748b">独占 push／合并／关票</text>
+
+  <rect x="80" y="346" width="240" height="108" rx="8" fill="#ffffff" stroke="#93c5fd"/>
+  <text x="94" y="368" font-size="13" font-weight="700" fill="#1d4ed8">机长 / 副机长 / 二副</text>
+  <text x="94" y="388" font-size="11.5" fill="#334155">各读一张日表，滚动消费到空</text>
+  <text x="94" y="406" font-size="11.5" fill="#334155">每票 1 施工 + 1 审查</text>
+  <text x="94" y="424" font-size="11.5" fill="#334155">取舍默认派裁决，不问人</text>
+  <text x="94" y="444" font-size="11" fill="#64748b">只管理不写码、不 push</text>
+
+  <rect x="340" y="346" width="240" height="108" rx="8" fill="#ffffff" stroke="#93c5fd"/>
+  <text x="354" y="368" font-size="13" font-weight="700" fill="#1d4ed8">王牌 /ace</text>
+  <text x="354" y="388" font-size="11.5" fill="#334155">加急道，读 -ace.md</text>
+  <text x="354" y="406" font-size="11.5" fill="#334155">免票热修须过热修 lint</text>
+  <text x="354" y="424" font-size="11.5" fill="#334155">执行帽口径见协议 §一</text>
+  <text x="354" y="444" font-size="11" fill="#64748b">不 push、不合并、不关票</text>
+
+  <rect x="600" y="238" width="250" height="216" rx="8" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="614" y="260" font-size="12.5" font-weight="700" fill="#334155">流程</text>
+  <text x="614" y="284" font-size="11.5" fill="#475569">开票 → 排班 → 施工</text>
+  <text x="614" y="304" font-size="11.5" fill="#475569">→ 审查 → 待发货 → 发货</text>
+  <text x="614" y="332" font-size="12.5" font-weight="700" fill="#334155">门</text>
+  <text x="614" y="354" font-size="11.5" fill="#475569">开票三选一 · 红线 · 卡点</text>
+  <text x="614" y="380" font-size="12.5" font-weight="700" fill="#334155">账本</text>
+  <text x="614" y="402" font-size="11.5" fill="#475569">Issue 评论（唯一状态源）</text>
+  <text x="614" y="420" font-size="11.5" fill="#475569">三张日表 · handoff/</text>
+  <text x="614" y="440" font-size="11" fill="#64748b">ship-queue 只做派生</text>
+
+  <rect x="80" y="470" width="770" height="48" rx="8" fill="#dbeafe" stroke="#93c5fd"/>
+  <text x="94" y="492" font-size="11.5" fill="#1e3a8a">每个岗位＝一段长期会话（组长）；它不亲自写码，只派活、收证据、下判断。</text>
+  <text x="94" y="510" font-size="11" fill="#1e40af">会话模型走 magpie 档位映射（opus→重活 / sonnet→日常 / haiku→快）</text>
+
+  <!-- ② 文娱集团 -->
+  <rect x="930" y="200" width="810" height="390" rx="10" fill="#f5f3ff" stroke="#8b5cf6"/>
+  <text x="950" y="226" font-size="17" font-weight="700" fill="#6d28d9">② 文娱集团 · 创作（项目制）</text>
+  <text x="1230" y="226" font-size="11.5" fill="#7c3aed">六岗位（原 5 部门 ＋ 终审） · 部门是常设产能，项目是临时编制</text>
+
+  <rect x="950" y="238" width="230" height="92" rx="8" fill="#ffffff" stroke="#c4b5fd"/>
+  <text x="964" y="260" font-size="13" font-weight="700" fill="#6d28d9">企划</text>
+  <text x="964" y="280" font-size="11.5" fill="#334155">立项、IP、预算、排期</text>
+  <text x="964" y="298" font-size="11.5" fill="#334155">指派项目负责人</text>
+  <text x="964" y="318" font-size="11" fill="#64748b">签 G0 / G5</text>
+
+  <rect x="1200" y="238" width="230" height="92" rx="8" fill="#faf5ff" stroke="#8b5cf6" stroke-dasharray="5 3"/>
+  <text x="1214" y="260" font-size="13" font-weight="700" fill="#6d28d9">终审（横向）</text>
+  <text x="1214" y="280" font-size="11.5" fill="#334155">独立验收，新上下文</text>
+  <text x="1214" y="298" font-size="11.5" fill="#334155">逐条对 brief 与清单</text>
+  <text x="1214" y="318" font-size="11" fill="#64748b">只判不修，签 G4</text>
+
+  <rect x="1450" y="238" width="270" height="92" rx="8" fill="#ffffff" stroke="#c4b5fd"/>
+  <text x="1464" y="260" font-size="13" font-weight="700" fill="#6d28d9">宣发</text>
+  <text x="1464" y="280" font-size="11.5" fill="#334155">渠道、投放、物料分发</text>
+  <text x="1464" y="298" font-size="11.5" fill="#334155">数据回收（G2 后即进场）</text>
+  <text x="1464" y="318" font-size="11" fill="#64748b">先只你一人，需要再拆</text>
+
+  <rect x="950" y="346" width="230" height="108" rx="8" fill="#ffffff" stroke="#c4b5fd"/>
+  <text x="964" y="368" font-size="13" font-weight="700" fill="#6d28d9">主笔</text>
+  <text x="964" y="388" font-size="11.5" fill="#334155">故事、剧本、台词、文案</text>
+  <text x="964" y="406" font-size="11.5" fill="#334155">lead＝主笔</text>
+  <text x="964" y="424" font-size="11.5" fill="#334155">产出：voice-guide / draft</text>
+  <text x="964" y="444" font-size="11" fill="#64748b">不定色、不排版</text>
+
+  <rect x="1200" y="346" width="230" height="108" rx="8" fill="#ffffff" stroke="#c4b5fd"/>
+  <text x="1214" y="368" font-size="13" font-weight="700" fill="#6d28d9">主美</text>
+  <text x="1214" y="388" font-size="11.5" fill="#334155">角色、插画、版式、物料</text>
+  <text x="1214" y="406" font-size="11.5" fill="#334155">lead＝主美</text>
+  <text x="1214" y="424" font-size="11.5" fill="#334155">产出：style-bible / final</text>
+  <text x="1214" y="444" font-size="11" fill="#64748b">不改故事结构</text>
+
+  <rect x="1450" y="346" width="270" height="108" rx="8" fill="#ffffff" stroke="#c4b5fd"/>
+  <text x="1464" y="368" font-size="13" font-weight="700" fill="#6d28d9">导演</text>
+  <text x="1464" y="388" font-size="11.5" fill="#334155">分镜、动画、剪辑、配音</text>
+  <text x="1464" y="406" font-size="11.5" fill="#334155">lead＝导演（职级＝音像编辑）</text>
+  <text x="1464" y="424" font-size="11.5" fill="#334155">产出：board / animatic / cut</text>
+  <text x="1464" y="444" font-size="11" fill="#64748b">不改文字定稿</text>
+
+  <rect x="950" y="470" width="770" height="48" rx="8" fill="#ede9fe" stroke="#c4b5fd"/>
+  <text x="964" y="490" font-size="11.5" fill="#4c1d95">主流程：文 → 图 → 音像 → 宣发（文字定稿后，图与音像<b>并行</b>；宣发在 G2 后即进场做物料）</text>
+  <text x="964" y="510" font-size="11" fill="#6d28d9">门：G0 选题★ → G1 方向 → G2 风格★ → G3 初稿★ → G4 终审 → G5 上线★　｜　账本：brief / decisions / delivery / 各线记录</text>
+
+  <!-- ③ 技能归属 -->
+  <rect x="60" y="610" width="1680" height="190" rx="10" fill="#f0f9ff" stroke="#0ea5e9"/>
+  <text x="80" y="636" font-size="16" font-weight="700" fill="#0369a1">③ 技能归属：按「流程 / 手法」分家，不按岗位分发</text>
+  <text x="720" y="636" font-size="11.5" fill="#0284c7">一个技能只归一个家；子代理不继承上下文，要用的技能必须显式给</text>
+
+  <rect x="80" y="650" width="520" height="134" rx="8" fill="#ffffff" stroke="#7dd3fc"/>
+  <text x="94" y="672" font-size="13" font-weight="700" fill="#0369a1">岗位技能（流程＋判据）→ 只给会话</text>
+  <text x="94" y="694" font-size="11.5" fill="#334155">机场：pilot / tower / ace / ground-crew</text>
+  <text x="94" y="714" font-size="11.5" fill="#334155">集团：企划 / 主笔 / 主美 / 导演 / 终审 / 宣发的岗位流程</text>
+  <text x="94" y="734" font-size="11.5" fill="#334155">判据：loop-protocol · dispatch · 阶段门</text>
+  <text x="94" y="758" font-size="11" fill="#b91c1c">子代理拿到它会以为自己是组长，开始派活——所以不传</text>
+
+  <rect x="620" y="650" width="520" height="134" rx="8" fill="#ffffff" stroke="#7dd3fc"/>
+  <text x="634" y="672" font-size="13" font-weight="700" fill="#0369a1">方法技能（手法）→ 给子代理</text>
+  <text x="634" y="694" font-size="11.5" fill="#334155">工程：tdd · code-review · diagnosing-bugs · security-audit</text>
+  <text x="634" y="714" font-size="11.5" fill="#334155">创作：插画技法 · 文案套路 · 分镜方法</text>
+  <text x="634" y="734" font-size="11.5" fill="#334155">传法：派工卡点名 ＋ agent 文件 skills: 预加载</text>
+  <text x="634" y="758" font-size="11" fill="#64748b">预加载上限 32 个，每个都占上下文——只给这次真用的</text>
+
+  <rect x="1160" y="650" width="560" height="134" rx="8" fill="#ffffff" stroke="#7dd3fc"/>
+  <text x="1174" y="672" font-size="13" font-weight="700" fill="#0369a1">判据技能 ＋ 专项 → 例外通道</text>
+  <text x="1174" y="694" font-size="11.5" fill="#334155">adjudication → 裁决子代理（它的活就是判，判据必须给）</text>
+  <text x="1174" y="714" font-size="11.5" fill="#334155">审查清单 → 审查子代理（只读，出 verdict）</text>
+  <text x="1174" y="734" font-size="11.5" fill="#334155">security-audit → 仅明确要求安全审计时</text>
+  <text x="1174" y="758" font-size="11" fill="#64748b">同一技能不许两处住家；方法技能原样引用上游，不 fork</text>
+
+  <!-- ④ 子代理 -->
+  <rect x="60" y="820" width="1680" height="200" rx="10" fill="#ecfdf5" stroke="#10b981"/>
+  <text x="80" y="846" font-size="16" font-weight="700" fill="#047857">④ 子代理：4 类自建 ＋ 3 个预设同名覆盖；只按「权限 + 交付物」分，深度固定 1 层</text>
+  <text x="800" y="846" font-size="11.5" fill="#059669">触发看「要不要写盘 / 要不要独立判断 / 要不要读大量资料」，与任务大小无关；拿不准就降级（按只读派）</text>
+
+  <rect x="80" y="858" width="400" height="104" rx="8" fill="#ffffff" stroke="#6ee7b7"/>
+  <text x="94" y="880" font-size="13" font-weight="700" fill="#047857">施工 · 可写</text>
+  <text x="94" y="902" font-size="11" fill="#334155">触发：要改文件　｜　交付：产物 + 回执</text>
+  <text x="94" y="922" font-size="11" fill="#334155">同文件域只一个写手；model/effort/maxTurns 写在 agent 文件</text>
+  <text x="94" y="946" font-size="12" font-weight="700" fill="#b45309">→ role-impl · high</text>
+
+  <rect x="500" y="858" width="400" height="104" rx="8" fill="#ffffff" stroke="#6ee7b7"/>
+  <text x="514" y="880" font-size="13" font-weight="700" fill="#047857">审查 · 只读 · 新上下文</text>
+  <text x="514" y="902" font-size="11" fill="#334155">触发：施工完 / 交付前　｜　交付：verdict + 逐条证据</text>
+  <text x="514" y="922" font-size="11" fill="#334155">施工者不得自审；预加载审查清单</text>
+  <text x="514" y="946" font-size="12" font-weight="700" fill="#b45309">→ role-review · max</text>
+
+  <rect x="920" y="858" width="400" height="104" rx="8" fill="#ffffff" stroke="#6ee7b7"/>
+  <text x="934" y="880" font-size="13" font-weight="700" fill="#047857">裁决 · 只读 · 新上下文</text>
+  <text x="934" y="902" font-size="11" fill="#334155">触发：两条路都能走、你不在　｜　交付：ruling + 四件</text>
+  <text x="934" y="922" font-size="11" fill="#334155">不裁红线、不裁观感；预加载 adjudication（必给）</text>
+  <text x="934" y="946" font-size="12" font-weight="700" fill="#b45309">→ role-review · max</text>
+
+  <rect x="1340" y="858" width="380" height="104" rx="8" fill="#ffffff" stroke="#6ee7b7"/>
+  <text x="1354" y="880" font-size="13" font-weight="700" fill="#047857">调查 / 量具 · 只读</text>
+  <text x="1354" y="902" font-size="11" fill="#334155">触发：只读且量大　｜　交付：结论 + 证据指针</text>
+  <text x="1354" y="922" font-size="11" fill="#334155">小活角色自己干，不派；可并行</text>
+  <text x="1354" y="946" font-size="12" font-weight="700" fill="#b45309">→ role-research · low</text>
+
+  <rect x="80" y="972" width="1640" height="36" rx="8" fill="#d1fae5" stroke="#34d399"/>
+  <text x="94" y="995" font-size="11.5" fill="#065f46"><tspan font-weight="700">预设三件＝同名覆盖</tspan>（必须拷到项目 .claude/agents/ 才生效；插件里带命名空间盖不掉）：Explore → haiku/low · Plan → opus/high（计划卡五段）· general-purpose → sonnet/high（禁 Agent）</text>
+
+  <!-- ⑤ 模型组 -->
+  <rect x="60" y="1040" width="1680" height="180" rx="10" fill="#fff7ed" stroke="#f97316"/>
+  <text x="80" y="1066" font-size="16" font-weight="700" fill="#c2410c">⑤ 模型组：挂在工种与子代理上，不挂在岗位上</text>
+  <text x="800" y="1066" font-size="11.5" fill="#9a3412">子代理用 agent 文件的 model: 别名；会话用 magpie 档位映射（opus / sonnet / haiku → 组）</text>
+
+  <rect x="80" y="1080" width="300" height="122" rx="8" fill="#ffffff" stroke="#fdba74"/>
+  <text x="94" y="1102" font-size="13" font-weight="700" fill="#9a3412">role-impl · high</text>
+  <text x="94" y="1124" font-size="11.5" fill="#334155">服务：施工 / 导演 make</text>
+  <text x="94" y="1144" font-size="11.5" fill="#334155">GLM-5.3-Flash → deepseek-v4.1</text>
+  <text x="94" y="1164" font-size="11.5" fill="#334155">上下文 1M</text>
+  <text x="94" y="1186" font-size="11" fill="#64748b">剔除 free 与 MiniMax</text>
+
+  <rect x="420" y="1080" width="300" height="122" rx="8" fill="#ffffff" stroke="#fdba74"/>
+  <text x="434" y="1102" font-size="13" font-weight="700" fill="#9a3412">role-review · max</text>
+  <text x="434" y="1124" font-size="11.5" fill="#334155">服务：审查 / 裁决 / 终审 / 各 lead</text>
+  <text x="434" y="1144" font-size="11.5" fill="#334155">kimi-k3 → zaicoding_glm-5.3</text>
+  <text x="434" y="1164" font-size="11.5" fill="#334155">上下文 1M</text>
+  <text x="434" y="1186" font-size="11" fill="#64748b">唯一支持 max 的强档，别省</text>
+
+  <rect x="760" y="1080" width="300" height="122" rx="8" fill="#ffffff" stroke="#fdba74"/>
+  <text x="774" y="1102" font-size="13" font-weight="700" fill="#9a3412">role-research · low</text>
+  <text x="774" y="1124" font-size="11.5" fill="#334155">服务：调查 / 量具 / 企划 / 宣发</text>
+  <text x="774" y="1144" font-size="11.5" fill="#334155">GLM-5.3-Flash → beam-free</text>
+  <text x="774" y="1164" font-size="11.5" fill="#334155">上下文 1M（剔除 200k 成员）</text>
+  <text x="774" y="1186" font-size="11" fill="#64748b">省钱省在这里</text>
+
+  <rect x="1100" y="1080" width="300" height="122" rx="8" fill="#ffffff" stroke="#fdba74"/>
+  <text x="1114" y="1102" font-size="13" font-weight="700" fill="#9a3412">role-visual</text>
+  <text x="1114" y="1124" font-size="11.5" fill="#334155">服务：主美 lead + make</text>
+  <text x="1114" y="1144" font-size="11.5" fill="#334155">gemini-3.8-flash → glm-4.6v</text>
+  <text x="1114" y="1164" font-size="11.5" fill="#334155">1M / 128k</text>
+  <text x="1114" y="1186" font-size="11" fill="#64748b">池内唯一带视觉的档</text>
+
+  <rect x="1440" y="1080" width="300" height="122" rx="8" fill="#ffffff" stroke="#fdba74"/>
+  <text x="1454" y="1102" font-size="13" font-weight="700" fill="#9a3412">role-text</text>
+  <text x="1454" y="1124" font-size="11.5" fill="#334155">服务：主笔 lead + make</text>
+  <text x="1454" y="1144" font-size="11.5" fill="#334155">kimi-k3 → gemini-3.8-flash</text>
+  <text x="1454" y="1164" font-size="11.5" fill="#334155">上下文 1M（长稿）</text>
+  <text x="1454" y="1186" font-size="11" fill="#64748b">语感比速度重要</text>
+
+  <!-- 硬约束 -->
+  <rect x="60" y="1240" width="1680" height="140" rx="10" fill="#f1f5f9" stroke="#cbd5e1"/>
+  <text x="80" y="1266" font-size="15" font-weight="700" fill="#334155">六条硬约束</text>
+  <text x="80" y="1292" font-size="12" fill="#334155">① 子代理不派子代理：宿主默认允许 3 层，靠不给 Agent 工具锁死在 1 层　② 子代理不继承上下文，只拿派工卡五件（目标/范围/权限/验收/交付）</text>
+  <text x="80" y="1314" font-size="12" fill="#334155">③ agent 文件只写 model / tools / skills / maxTurns，不写判据　④ 不开 SUBAGENT_MODEL_FORCE 与全局 EFFORT（会压平分档）</text>
+  <text x="80" y="1336" font-size="12" fill="#334155">⑤ 角色之间不互相唤醒；跨部门走项目负责人 + 接口卡，子代理不跨部门串联　⑥ 判据一个家：方法技能原样引用上游，不 fork、不改名</text>
+  <text x="80" y="1360" font-size="11.5" fill="#64748b">成本口径：单 agent ≈ 4× 对话 token，多 agent ≈ 15×；省钱靠「调查走便宜档 + 会话锁缓存」，不靠把活拆细</text>
+</svg>
