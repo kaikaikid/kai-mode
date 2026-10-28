@@ -56,14 +56,26 @@ Qoder 没有 Claude Code 那种 `/plugin:command` 命名空间。角色用两种
 ```text
 Qoder CLI 定时任务（每 60 分钟，enabled）
   ├─ cwd：项目仓根
-  ├─ prompt 薄壳：读取并执行 airport/skills/tower/SKILL.md 全文
+  ├─ prompt 薄壳：先跑 tower/scripts/wake-gate.py；rc=10 收场，rc=0 才读 airport/skills/tower/SKILL.md 全文
   └─ 任务名：kai-tower-<日期>-<时分>
 ```
 
 - 落点：`<项目>/.qoder/scheduled_tasks.json`；也可用 `/loop` 把间隔语法转成 cron。
+- 任务字段（从 `set-kai-mode` 下沉到这里，2026-10-28 体检 M2）：
+  - **执行模式** `outputMode=independent`（独立会话，不占当前回合）；
+  - **授权档** `executionAuthorization=true`（Full Access，与既有定时任务同档；不擅自提权）；
+  - cwd ＝ 主树绝对路径；周期 `0 * * * *`（默认 1 小时，周期只改这一处）。
+- **prompt 用门卫薄壳**（同 `adapters/claude.md` §定时口）：先跑 `scripts/wake-gate.py`，
+  `rc=10` 只回一行即结束、不读技能；`rc=0` 才读塔台技能全文。没活或上一轮还在跑时零模型调用。
 - 建完必回读：`/crontab` 或任务列表看 `enabled` 与下次执行时间；`pauseReason=manual` ＝ 有人手动停，别自动重开。
 - IDE 用户可用「Automations」建同样的 60 分钟任务；它没有公开的 cron 表达式语法，按 UI 填。
 - **只唤醒塔台**；角色之间不互相拉起（唤醒围栏）。
+
+## 内置子代理
+
+- 公开文档没有内置子代理清单 ⇒ **按「无内置可覆盖」处理**：七个模板一律按**自建**装到 `.qoder/agents/<名>.md`，
+  名字保持（`Explore`／`Plan`／`general-purpose` 也可用，只是不覆盖任何东西）。
+- frontmatter 至少 `name`／`description`；`model`／`effort`／`maxTurns` 认不认按当机版本实测，不认就把该字段去掉并登记。
 
 ## 4. 新上下文（审查腿）
 

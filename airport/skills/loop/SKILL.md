@@ -5,9 +5,9 @@ approved_by: human:kaikaikid
 approved: 2026-10-21
 sources: []
 description: >
-  机长 / 副机长 / 王牌飞行员共用的单票闭环（不是用户入口）。判据以协议正本为准。
-  触发：由 `/pilot`、`/copilot`、`/ace` 自动带入；「loop」不是口令。
-version: 6.1.0
+  机长 / 副机长 / 二副 / 王牌飞行员共用的单票闭环（不是用户入口）。判据以协议正本为准。
+  触发：由 `/pilot`、`/copilot`、`/second-officer`、`/ace` 自动带入；「loop」不是口令。
+version: 6.3.0
 updated: 2026-10-27
 allowed-tools: Read Grep Bash(python:*)
 compatibility: Host-agnostic
@@ -67,7 +67,7 @@ dependencies:
 `gates.captain_preflight` 读（`null` 或缺配置 → 报缺件，不猜路径）：
 
 ```bash
-python <gates.captain_preflight> --lane main|deputy|ace
+python <gates.captain_preflight> --lane main|deputy|second|ace
 ```
 
 判定：`decision=STOP` 才能停；`REVIEW` 判完确实没活、加 `--ack-review` 才能停；`CONTINUE` 不许停——
@@ -82,6 +82,7 @@ python <gates.captain_preflight> --lane main|deputy|ace
 |---|---|---|---|
 | 机长 | `-main.md` | [`../pilot/SKILL.md`](../pilot/SKILL.md) | `/pilot` |
 | 副机长 | `-deputy.md` | [`../copilot/SKILL.md`](../copilot/SKILL.md) | `/copilot` |
+| 二副 | `-second.md` | [`../second-officer/SKILL.md`](../second-officer/SKILL.md) | `/second-officer` |
 | 王牌飞行员 | `-ace.md` | [`../ace/SKILL.md`](../ace/SKILL.md) | `/ace` |
 
 ## 派活：契约写死，方法自选
@@ -99,5 +100,5 @@ python <gates.captain_preflight> --lane main|deputy|ace
 ## 验证命令
 
 ```bash
-python <gates.captain_preflight> --lane main    # 项目仓收工门禁（副机长 deputy / 王牌 ace）
+python <gates.captain_preflight> --lane main    # 项目仓收工门禁（副机长 deputy / 二副 second / 王牌 ace）
 ```

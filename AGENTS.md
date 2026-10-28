@@ -11,18 +11,20 @@ every change — the 总结 line prints the check count; red means `rc=1`.
 |---|---|
 | New skill | `python scripts/new-skill.py <name> --summary "..."` (skeleton + frontmatter + registry in one go) |
 | Handoff doc | copy `handoff/templates/HANDOFF-template.md` → land in `handoff/<slot>/<YYYY-MM>/` |
-| New persona | follow `agents/README.md`, land in `agents/<name>.md` (bare name — the `kai-` prefix is for `skills/` only, it guards against `magpie-sync` overwriting the central library) |
 | Cross-agent task | `python scripts/handoff-board.py new \| claim \| close \| archive` |
 
 Five hard rules (reasons live in the pointers below, they are **not** repeated here — this file
 stays short on purpose, it is read every session):
 
-1. frontmatter: fixed fields in fixed order — skill 8 / handoff 6 / persona 4 (`name` `description`
-   `version` `metadata`); persona `metadata` holds **one key** (`access`), never new top keys
+1. frontmatter: fixed fields in fixed order — skill 8 / handoff 6; never new top keys
 2. Paths are always repo-root relative; **no drive-letter absolute paths**
 3. Terse, conclusion-first; no marketing words
 4. One rule has one home — everywhere else, leave a pointer only
 5. `python scripts/doctor.py` green before you stop
+
+## Communication
+
+Explain professional problems in plain language — no jargon without explanation, use everyday analogies when possible. If a term is unavoidable, explain it first before using it.
 
 ## Red lines (the only hard stops; everything else is a default)
 
@@ -54,9 +56,9 @@ tools. Subagents within a ticket are not role sessions. Source of truth:
 | Kind | Only home | Elsewhere |
 |---|---|---|
 | Non-negotiable constraints (red lines) | this file | pointer |
-| Ticket-level protocol (slots, fail/retry counts, receipt, shipping) | `loops/loop-protocol.md` | pointer |
-| Out-of-ticket dispatch (when not to delegate, who may dispatch whom, concurrency, context budget) | `agents/dispatch.md` | pointer |
-| Method (how to explore / review / plan / implement) | `agents/<persona>.md` | pointer |
+| Ticket-level protocol (slots, fail/retry counts, receipt, shipping) | `airport/skills/loop/references/loop-protocol.md` | pointer |
+| Out-of-ticket dispatch (when not to delegate, who may dispatch whom, concurrency, context budget) | `airport/skills/loop/references/dispatch.md` | pointer |
+| Method (how to explore / review / plan / implement) | `airport/skills/<role>/SKILL.md`（each role skill carries its own method） | pointer |
 | Host differences (launcher per role, how a persona becomes a native agent file, permissions, model) | `adapters/README.md` + `adapters/<host>.md` | pointer |
 | Artifact packaging (dev records vs host payload vs project scaffold) | `manifests/package-layout.json` + `docs/package-layout.md` | pointer |
 | Agent global data layout (non-project data root, per-agent override, project boundary) | `docs/agent-data-layout.md` | pointer in adapters |
@@ -64,10 +66,10 @@ tools. Subagents within a ticket are not role sessions. Source of truth:
 | Project config instance: default-value policy | `docs/adr/0014-config-instance-no-invented-values.md` + `templates/kai-mode.project.json` | pointer |
 | Role wake permissions (who may wake whom) | `docs/adr/0010-role-wake-fence.md` | pointer in role skills |
 | Runtime mechanics (retry, timeout, circuit breaker, budget, TTL) | **not in docs** — belongs to the host runtime | — |
-| Project instance values (thresholds, paths, ticket ids, **agent models** `models.agents.<persona>.model`) | project config instance | template only |
+| Project instance values (thresholds, paths, ticket ids) | project config instance | template only |
 
-Dependency direction is one-way: project layer may point at the persona layer, `agents/<persona>.md`
-must never point back. `docs/canon.json` + doctor's `canon-dup` check enforce both directions
+Dependency direction is one-way: project config may point at framework skills; installed skills
+must never point back at the project. `docs/canon.json` + doctor's `canon-dup` check enforce this
 mechanically. To write about a retired mechanism on purpose, mark that line `canon:allow-retired`.
 
 ## Where the rules actually live
@@ -76,19 +78,31 @@ mechanically. To write about a retired mechanism on purpose, mark that line `can
 |---|---|
 | Skill layout & frontmatter contract | `docs/skill-layout.md` |
 | Writing a SKILL / AGENTS doc | external skill `writing-for-agents` (not forked; list in `docs/skill-sources/workflow-skills.md`) |
-| Sub-agent persona contract | `agents/README.md` |
+| Sub-agent dispatch contract (depth, context budget, who may dispatch whom) | `airport/skills/loop/references/dispatch.md` |
 | Handoff docs & cross-agent board | `handoff/README.md` · `handoff/60-board/README.md` |
 | External skills kept as reference material | `docs/skill-sources/README.md` |
 | Architecture decisions | `docs/adr/` |
-| Single-ticket loop | `loops/loop-protocol.md` |
+| Single-ticket loop | `airport/skills/loop/references/loop-protocol.md` |
 
 ## Issue tracker
 
 Issues live in GitHub Issues, driven by the `gh` CLI. See `docs/agents/issue-tracker.md`.
 
+**开票归属**：本仓 Issue 只收框架自身问题，项目票一律开到项目仓。`gh issue create` / `gh pr create`
+必须显式带 `--repo <owner/name>`，**不得靠 cwd 推断**——cwd 在项目仓时 `gh` 会自动落到项目仓，
+这就是「票开错仓」的常见成因。目标仓从项目配置实例或 `git remote -v` 读；读不到就停手问人。
+
+**能否杜绝**：只写在 AGENTS.md **不能**机械杜绝，模型仍可能不带 `--repo` 直接跑。真正的拦截靠宿主
+hook（PreToolUse 拦 `gh issue create|gh pr create`，缺 `--repo` 即拒）：脚本 `issue-guard.py`、
+接法与验收住 `adapters/claude.md`「开票归属钩子」，**只能由 `set-kai-mode` 第 6 步探到缺口并问过用户后安装**。
+**本仓当前未装该 hook ⇒ 状态＝规则约束、未机械拦截**；装好后把这句改成「已机械拦截」并写 hook 落点。
+
 ## Triage labels
 
-The five canonical role labels, used as-is. See `docs/agents/triage-labels.md`.
+The five canonical role labels, used as-is. See `docs/agents/triage-labels.md` — reference
+material mapping the external mattpocock/skills roles onto this repo's labels (those external
+skills are **not** installed in this repo; the live lane labels live in the ground-crew/tower
+skills).
 
 ## Domain docs
 

@@ -3,38 +3,39 @@
   "_note": "版本钉死：由 scripts/plugin-check.py --bump 生成，不手改。digest 是插件安装面的内容摘要。",
   "plugins": {
     "airport": {
-      "version": "3.2.0",
-      "digest": "db925515334eb46398a56d39b76c549dc192906f0de7d20946a984d75868bda5",
+      "version": "3.3.0",
+      "digest": "9b4e65bff0f36fa25d5d6a1c8860b7fa997c19054d3c34f336e0bec46a6ecf03",
       "skills": {
-        "ace": "1.2.0",
-        "copilot": "3.0.0",
-        "ground-crew": "1.5.0",
-        "loop": "6.1.0",
-        "pilot": "3.2.0",
-        "tower": "1.9.0"
+        "ace": "1.4.0",
+        "copilot": "3.1.0",
+        "ground-crew": "1.6.0",
+        "loop": "6.3.0",
+        "pilot": "3.4.0",
+        "second-officer": "1.0.0",
+        "tower": "2.3.0"
       }
     },
     "board": {
-      "version": "1.1.0",
-      "digest": "357bc0d5d69c7fd2ff10f50139c3729f124ff2b31dc3e91af8c701363214dba8",
+      "version": "1.2.0",
+      "digest": "650eca40cf0de529704348adf5abd0aee1007bdfbee5807cabcd62dadd07815f",
       "skills": {
-        "flight-info": "1.3.0"
+        "flight-info": "1.5.0"
       }
     },
     "core": {
       "version": "1.0.0",
-      "digest": "8c8810404e60dbb2aa41f7302685fae80f59241e38fcd2c31b5e7873e94687d4",
+      "digest": "f999dac23f746d8a8bbda1023d17b530e15ff1b63e7b15eacf9d092ddbbd2398",
       "skills": {
         "harness-audit": "0.2.0",
         "kai-handoff": "0.3.5",
-        "kai-mode": "3.0.0",
+        "kai-mode": "3.1.0",
         "principle-ask-one-question-at-a-time": "0.1.1",
         "principle-ceremony-collapses-with-scale": "0.1.2",
         "principle-measure-dont-ask": "0.1.1",
         "principle-one-semantics-one-home": "0.1.3",
         "principle-report-missing-parts": "0.1.1",
         "principle-visible-and-redline-only": "0.1.1",
-        "set-kai-mode": "5.0.0"
+        "set-kai-mode": "5.8.0"
       }
     },
     "intake": {
@@ -46,10 +47,23 @@
     },
     "ops": {
       "version": "1.0.0",
-      "digest": "7309e84a731eaa4320608dc3717891b7064650224cee17eb91bfbb3a61622a5c",
+      "digest": "0aa9e120b15ebf170c6795116595e4b7fdad6fab90411dc1079121262ff62023",
       "skills": {
         "incident-response": "0.1.0",
         "runbook": "0.1.0"
+      }
+    },
+    "studio": {
+      "version": "1.0.0",
+      "digest": "ee4d994b50eecc6f7ccffff536a301358bb4c8873398adfb0f2bfa1971c236dd",
+      "skills": {
+        "director": "1.0.0",
+        "final-review": "1.0.0",
+        "lead-artist": "1.0.0",
+        "lead-writer": "1.0.0",
+        "marketing": "1.0.0",
+        "producer": "1.0.0",
+        "studio": "1.2.0"
       }
     }
   }

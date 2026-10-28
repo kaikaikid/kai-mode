@@ -7,8 +7,8 @@
 |---|---|---|---|
 | 源代码管理 | `~~source control` | git；分支与工作树 | 没有 git ⇒ 该票停，登记 `no-source-control` |
 | 票与 Issue | `~~issue tracker` | `gh` CLI 读写 GitHub Issues | 读不到 ⇒ `BLOCKED`，写卡点，不猜票面 |
-| 新上下文 | `~~session` | Claude Code 原生子代理／Qoder subagent／独立进程 | 起不了新上下文 ⇒ 审查腿登记 `no-new-context`，不许记「已审查」 |
-| 定时唤醒 | `~~timer` | Qoder CLI 定时任务／宿主定时口；只有塔台可被定时唤醒 | 没有定时口 ⇒ 人工 `/tower`，登记 `no-timer` |
+| 新上下文 | `~~session` | 宿主原生子代理／独立进程（具体形态见装包 `adapters/<宿主>.md`） | 起不了新上下文 ⇒ 审查腿登记 `no-new-context`，不许记「已审查」 |
+| 定时唤醒 | `~~timer` | 宿主定时口（落法见装包 `adapters/<宿主>.md`）；只有塔台可被定时唤醒 | 没有定时口 ⇒ 人工 `/tower`，登记 `no-timer` |
 | 文件系统 | `~~filesystem` | 项目级 `.ai/`、`handoff/`、`.worktrees/` | 不可写 ⇒ 停发货，登记路径与权限 |
 | 通知／播报 | `~~chat` | 会话内播报；可选外部消息连接器 | 没有 ⇒ 只写 Issue／日报，不假装通知到人 |
 

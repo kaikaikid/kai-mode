@@ -19,7 +19,14 @@
       "include": [
         "*-main.md",
         "*-deputy.md",
+        "*-second.md",
         "*-ace.md"
+      ],
+      "lanes": [
+        "main",
+        "deputy",
+        "second",
+        "ace"
       ]
     },
     {
@@ -36,6 +43,14 @@
       "type": "github-issues",
       "state": "open",
       "limit": 200
+    },
+    {
+      "id": "ship-queue",
+      "type": "ship-queue"
+    },
+    {
+      "id": "tower",
+      "type": "tower-token"
     }
   ],
   "stages": [
@@ -68,6 +83,18 @@
     {
       "key": "hold",
       "label": "挡住"
+    },
+    {
+      "key": "stale",
+      "label": "停滞"
+    },
+    {
+      "key": "assigned",
+      "label": "已派未动"
+    },
+    {
+      "key": "unresolved",
+      "label": "残留分支"
     }
   ],
   "stage_rules": [
@@ -107,15 +134,34 @@
       "ignore_case": true
     },
     {
-      "when": "branch_exists",
-      "stage": "flying",
-      "why": "分支 {branch}"
+      "when": "table_note_contains",
+      "value": "卡点|退票|阻塞|挡住",
+      "stage": "hold",
+      "why": "日表：{note}",
+      "ignore_case": true
+    },
+    {
+      "when": "table_note_contains",
+      "value": "已发货|待发货|verdict=pass",
+      "stage": "to_ship",
+      "why": "日表：{note}",
+      "ignore_case": true
     },
     {
       "when": "table_note_contains",
       "value": "在制|在飞|施工中",
       "stage": "flying",
       "why": "日表：{note}"
+    },
+    {
+      "when": "no_issue",
+      "stage": "unresolved",
+      "why": "分支 {branch} 无对应票面（GitHub 认不到）"
+    },
+    {
+      "when": "branch_exists",
+      "stage": "flying",
+      "why": "分支 {branch}"
     },
     {
       "when": "label_equals",
@@ -125,8 +171,8 @@
     },
     {
       "when": "assignee_exists",
-      "stage": "flying",
-      "why": "已指派 {assignee}"
+      "stage": "assigned",
+      "why": "已指派 {assignee}（无在飞证据）"
     },
     {
       "when": "else",
@@ -145,7 +191,8 @@
   },
   "role_labels": {
     "main": "主机长",
-    "copilot": "副机长",
+    "deputy": "副机长",
+    "second": "二副",
     "tower": "塔台",
     "ace": "王牌飞行员"
   },
@@ -196,7 +243,14 @@
       "lanes": [
         "ace"
       ],
-      "label": "ace-queue"
+      "label": "ace-queue",
+      "max": 1
     }
+  },
+  "stale_after": {
+    "flying": 3,
+    "review": 2,
+    "to_ship": 1,
+    "_to": "stale"
   }
 }

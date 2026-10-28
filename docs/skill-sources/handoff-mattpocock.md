@@ -9,7 +9,7 @@
 | 上游 | mattpocock/skills（社区技能集，workbuddy 已装） |
 | 本机用户级 | `~/.workbuddy/skills/handoff/SKILL.md` |
 | 中央库 | `<magpie>/data/library/skills/handoff/SKILL.md` |
-| 本仓特化版 | `skills/kai-handoff/SKILL.md`（registry 第 16 条，install: auto） |
+| 本仓特化版 | `core/skills/kai-handoff/SKILL.md`（插件 core，install: auto） |
 | 规模 | 17 行 |
 | 指纹 | `7c62de97…`（首次记录 2026-10-24） |
 
@@ -36,7 +36,7 @@
 
 1. `python scripts/source-check.py` → 看指纹是否变了
 2. 读 `~/.workbuddy/skills/handoff/SKILL.md`，与上一版 diff
-3. 新约定并入 `skills/kai-handoff/SKILL.md`；与本项目口径冲突的，**以 `handoff/README.md` 为准**
+3. 新约定并入 `core/skills/kai-handoff/SKILL.md`；与本项目口径冲突的，**以 `handoff/README.md` 为准**
 4. 升 `version`，跑 `python scripts/doctor.py` 到绿
 5. 重跑 magpie 入库（**只推特化版，源件依旧不入库**）
 6. 更新 `sources.json` 的 `sha256` / `last_diff` / `next_diff_due`

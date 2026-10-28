@@ -63,6 +63,11 @@ def render(name, title, summary, source, today):
                 "  触发：<触发口令或自然语言关键词>。")
     text = text.replace(old_desc,
                         f"description: >\n  {summary}\n  触发：<触发口令或自然语言关键词>。")
+    # 精确串替换遇模板改措辞会静默 no-op（体检 L13）：落盘前验一次，替换没生效就停。
+    if "<技能名>" in text or "<YYYY-MM-DD>" in text or summary not in text:
+        raise SystemExit("骨架模板改过措辞，render() 的替换没生效：先对 templates/skill/SKILL.md 修本脚本")
+    if source and res.strip() not in text:
+        raise SystemExit("sources 段没写进去：模板里那段默认 sources 文本变了，先修 render()")
     return text
 
 
@@ -91,8 +96,11 @@ def main() -> int:
     rel = f"{a.plugin}/skills/{a.name}/SKILL.md"
     if not a.dry_run:
         os.makedirs(dest, exist_ok=True)
-        with open(os.path.join(dest, "SKILL.md"), "w", encoding="utf-8") as f:
+        path = os.path.join(dest, "SKILL.md")
+        tmp = path + ".tmp"          # 先写临时文件再 replace：中断不留半截 SKILL.md（体检 M18）
+        with open(tmp, "w", encoding="utf-8", newline="\n") as f:
             f.write(body)
+        os.replace(tmp, path)
 
     print(f"已生成 {rel}（frontmatter 八字段已填，approved/updated={today}）")
     print("\n下一步：")

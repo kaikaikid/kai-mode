@@ -28,7 +28,7 @@ ECC 同日实测有 311 个技能目录、71 个子代理、97 个命令、122 �
 
 ### D2 安装档位 + 安装回执 + 写前备份
 
-- 档位正本＝`manifests/install-profiles.json`，只做两档：`core`（8 条最小闭环）与 `full`（16 条自动件）。
+- 档位正本＝`manifests/install-profiles.json`，只做两档：`core`（10 条最小闭环）与 `full`（20 条自动件；2026-10-28 按现行清单核对）。
   档位只能引用 `install:auto` 条目；`core ⊆ full`。
 - `magpie-sync install_plan(root, profile)` / `check` / `apply` 支持 `--profile`；缺省读库根回执里的档位，无回执＝full。
 - 安装回执＝库根 `.kai-mode-source.json` 的扩展字段：来源根、HEAD、档位、技能清单、每技能 `tree_digest`。
@@ -48,7 +48,7 @@ ECC 同日实测有 311 个技能目录、71 个子代理、97 个命令、122 �
 
 ### D4 宿主中立 lint + frontmatter YAML 形状
 
-- doctor 增 `host-neutral`：扫 `skills/ loops/ agents/`，宿主专有 token（`CLAUDE_`、`qoder_cron`、
+- doctor 增 `host-neutral`：扫插件 `skills/`（airport/core/board/intake/ops），宿主专有 token（`CLAUDE_`、`qoder_cron`、
   `create_chat_session`、`.claude/`、`.opencode/`、`.codex/`、`codex exec`、`opencode run`、`mcp__*` 等）即红；
   宿主细节移入 `adapters/<宿主>.md`。退役目录不扫。
 - doctor 增 `frontmatter-yaml`：拦未加引号值里的 `': '` 与 `@`/反引号开头的值；只做标准库可判的形状，不引 YAML 依赖。
@@ -78,8 +78,8 @@ ECC 同日实测有 311 个技能目录、71 个子代理、97 个命令、122 �
 ## 验证（判据级）
 
 - `python scripts/doctor.py --with-tests` 23 项全绿（中央库未同步时 `install-sync` 红是预期，需先 `apply`）。
-- `python -m pytest scripts/tests -q` 全绿；`python skills/harness-audit/scripts/tests -q` 全绿。
-- `python skills/set-kai-mode/scripts/magpie-sync.py --selftest` 通过。
-- 档位：临时仓 `install_plan(root, "core")` 只含 8 条；`full` 含 16 条；未知档位/引用非 auto 条目退出非 0。
+- `python -m pytest scripts/tests -q` 全绿；`python -m pytest core/skills/harness-audit/scripts/tests -q` 全绿。
+- `python core/skills/set-kai-mode/scripts/magpie-sync.py --selftest` 通过。
+- 档位：临时仓 `install_plan(root, "core")` 只含 10 条；`full` 含 20 条；未知档位/引用非 auto 条目退出非 0。
 - 回执：apply 后 `.kai-mode-source.json` 有 profile/skill_names/hashes；备份目录存在；人为破坏库文件后 `install-receipt` 红。
 - 审计首跑：对当前树至少报出已知的 40 行/周期/过期路径/schemas 退役词/缺模板中的若干项；报全绿即审计器坏。

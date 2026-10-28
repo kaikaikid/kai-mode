@@ -4,7 +4,7 @@
 
 用法：
   python worktree.py list [--root <repo>] [--json]
-  python worktree.py status --lane main|deputy|ace [--root <repo>] [--json]
+  python worktree.py status --lane main|deputy|second|ace [--root <repo>] [--json]
 
 只读：不建树、不切分支、不删树。缺槽位就如实报，不猜。
 退出码：0 槽位存在；1 槽位缺失；2 git 起不来。
@@ -22,7 +22,7 @@ try:
 except Exception:
     pass
 
-LANES = ("main", "deputy", "ace")
+LANES = ("main", "deputy", "second", "ace")
 
 
 def git(root: str, *args: str):

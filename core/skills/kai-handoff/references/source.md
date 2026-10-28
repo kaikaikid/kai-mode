@@ -13,7 +13,7 @@
 | 中央库 | `<magpie>/data/library/skills/handoff/SKILL.md` |
 | 素材库摘要 | `docs/skill-sources/handoff-mattpocock.md` |
 | 结构化索引 | `docs/skill-sources/sources.json`（`id: handoff-mattpocock`） |
-| 本仓特化版 | `skills/kai-handoff/SKILL.md` |
+| 本仓特化版 | `core/skills/kai-handoff/SKILL.md` |
 
 ## 三处差异（相对源件）
 

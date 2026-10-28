@@ -1,6 +1,6 @@
 {
   "schema": 4,
-  "_note_0": "kai-mode 项目差异层实例模板（schema 4）。落点：<项目仓根>/.ai/kai-mode.project.json（tracked）。唯一项目差异事实源：技能运行时读它拿路径/宿主/平台；读不到 rc!=0 报缺件，永不猜路径。schema 4 的准入判据＝活契约真按名读这个键（ADR-0015）；没被问答填到的字段一律 null，本仓的门名/包管理命令/宿主偏好不得作缺省写进用户实例。写者＝scripts/init-project.py（由 set-kai-mode 驱动十一问）；_note_* 键与注释值读取端忽略；字段语义写在对应段的 _note 里。",
+  "_note_0": "kai-mode 项目差异层实例模板（schema 4）。落点：<项目仓根>/.ai/kai-mode.project.json（tracked）。唯一项目差异事实源：技能运行时读它拿路径/宿主/平台；读不到 rc!=0 报缺件，永不猜路径。schema 4 的准入判据＝活契约真按名读这个键（ADR-0015）；没被问答填到的字段一律 null，本仓的门名/包管理命令/宿主偏好不得作缺省写进用户实例。写者＝scripts/init-project.py（由 set-kai-mode 驱动十问）；_note_* 键与注释值读取端忽略；字段语义写在对应段的 _note 里。",
   "project": "<project-name>",
   "ship_mode": "tower",
   "host": {
@@ -20,13 +20,19 @@
         "name": "pilot",
         "trigger": "/机长",
         "route": "pilot",
-        "notes": "读 -main 日表，同时最多 2 张"
+        "notes": "读 -main 日表；执行帽口径见协议 §一（worker 预算）"
       },
       {
         "name": "copilot",
         "trigger": "/副机长",
         "route": "copilot",
         "notes": "同一条 loop 的另一分支，读 -deputy 日表"
+      },
+      {
+        "name": "second-officer",
+        "trigger": "/second-officer",
+        "route": "second-officer",
+        "notes": "同一条 loop 的第三条机长道，读 -second 日表"
       },
       {
         "name": "ground-crew",
@@ -52,7 +58,9 @@
     "day_table_pattern": "YYYY-MM-DD-{lane}.md",
     "lanes": [
       "main",
-      "deputy"
+      "deputy",
+      "second",
+      "ace"
     ],
     "handoff_dir": "handoff",
     "ideas_dir": "ideas",

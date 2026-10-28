@@ -6,7 +6,7 @@
 """
 from __future__ import annotations
 
-from . import board_cards, handoff, issues, tasks, worktrees
+from . import board_cards, handoff, issues, tasks, tower_state, worktrees
 
 REGISTRY = {
     "board-cards": board_cards,
@@ -14,7 +14,11 @@ REGISTRY = {
     "git-worktrees": worktrees,
     "github-issues": issues,
     "handoff-index": handoff,
+    "ship-queue": tower_state,
 }
+
+# tower-token 与 ship-queue 共用一个模块、两个入口：注册表按类型名分开指向
+REGISTRY["tower-token"] = tower_state
 
 TYPES = tuple(REGISTRY)
 
@@ -24,3 +28,13 @@ def get(type_: str):
     if mod is None:
         raise KeyError(f"未知源类型 {type_!r}（只许 {'/'.join(TYPES)}）")
     return mod
+
+
+def collect(type_: str, cfg: dict, ctx: dict) -> dict:
+    """按类型名调对应采集函数：ship-queue / tower-token 同模块不同入口。"""
+    mod = get(type_)
+    if mod is tower_state:
+        if type_ == "tower-token":
+            return mod.collect_token(cfg, ctx)
+        return mod.collect(cfg, ctx)
+    return mod.collect(cfg, ctx)

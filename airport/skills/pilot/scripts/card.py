@@ -5,7 +5,7 @@
 输入：`python ../loop/scripts/ticket.py show --ticket N --json > ticket.json`
 用法：
   python card.py --ticket-json ticket.json [--role builder|reviewer]
-                 [--lane main|deputy|ace] [--branch <分支>] [--worktree <路径>]
+                 [--lane main|deputy|second|ace] [--branch <分支>] [--worktree <路径>]
                  [--method <方法技能>] [--json]
 
 输出：一段可直接贴给子代理的派工卡；不写实现方案，不替子代理选方法。
@@ -93,7 +93,7 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="从票面 JSON 生成派工卡")
     ap.add_argument("--ticket-json", required=True)
     ap.add_argument("--role", choices=("builder", "reviewer"), default="builder")
-    ap.add_argument("--lane", choices=("main", "deputy", "ace"), default="main")
+    ap.add_argument("--lane", choices=("main", "deputy", "second", "ace"), default="main")
     ap.add_argument("--branch")
     ap.add_argument("--worktree")
     ap.add_argument("--method")

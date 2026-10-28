@@ -46,7 +46,7 @@ frontmatter `sources[].resource` 只写同技能文件或兄弟技能（安装�
 
 `set-kai-mode` 可以也应该指框架仓脚本（`scripts/init-project.py`、`magpie-sync.py`、`setup-agent-data.ps1`）——那是安装动作本身，
 用户是 clone 了框架仓才装的。禁的只有维护者的门（`doctor.py`）与被当作验收的框架内部件。
-项目侧验收口径写「按配置实例 `paths.preflight_gate` 跑项目门禁」，不写我们仓的命令。
+项目侧验收口径写「按配置实例 `gates.captain_preflight` 跑项目门禁」，不写我们仓的命令。
 
 ## 冲突表（旧口径住哪、怎么处置）
 

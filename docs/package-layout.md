@@ -8,7 +8,7 @@
 
 | 层 | 内容 | 去哪 | 谁写 |
 |---|---|---|---|
-| 本仓开发件 | `docs/`（ADR、canon、设计图）、`handoff/` 历史、`scripts/`、`adapters/`、`schemas/`、`vendor/`、`manifests/`、`CHANGELOG`／`VERSION`／`AGENTS.md`、技能自带 `tests/` | 只留本仓 | 维护者 |
+| 本仓开发件 | `docs/`（ADR、canon、设计图）、`handoff/` 历史、`scripts/`、`adapters/`、`vendor/`、`manifests/`、`CHANGELOG`／`VERSION`／`AGENTS.md`、技能自带 `tests/` | 只留本仓 | 维护者 |
 | 宿主安装件 | `marketplace.json` 列出的每个插件的 `skills/*`（`SKILL.md` ＋ 运行所需 `scripts/`、`templates/`、`references/`、`schema/`）＋ `commands/`、`PLAYBOOK.md`、`CONNECTORS.md`、两份 `plugin.json` | Magpie 中央库 → 各宿主 `<家>/skills/<名>` 与命令目录 | `magpie-sync.py` |
 | 项目生成件 | `.ai/kai-mode.project.json`、`handoff/` 八槽与规范／模板、`GLOSSARY.md`、空 `docs/adr/` | 用户项目 | `init-project.py` |
 

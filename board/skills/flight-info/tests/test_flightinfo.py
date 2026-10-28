@@ -133,6 +133,20 @@ class TestTasks(unittest.TestCase):
             self.assertEqual(res["flights"][0]["ticket"], "#H-20261027-1")
             self.assertEqual(res["flights"][0]["owner"], "ace")
 
+    def test_second_lane_in_defaults(self):
+        """二副日表必须被默认 include / lanes 接住，不能掉出看板。"""
+        with tempfile.TemporaryDirectory() as repo:
+            d = os.path.join(repo, "tasks")
+            os.makedirs(d)
+            with open(os.path.join(d, "2026-10-27-second.md"), "w", encoding="utf-8") as f:
+                f.write("| 序 | 票号 | 里程碑 | 一句话 | 塔台备注 |\n"
+                        "|---|---|---|---|---|\n"
+                        "| 1 | #1900 | 二副道 | 跑第三条机长道 | 新派·可开工 |\n")
+            res = tasks.collect({}, {"repo_root": repo, "paths": {"day_tables_dir": "tasks"}})
+            self.assertEqual(res["detail"], "1 行排班 / 1 张票")
+            self.assertEqual(res["flights"][0]["owner"], "second")
+            self.assertEqual(res["schedules"][0]["lane"], "second")
+
     def test_list_line_still_works(self):
         """老写法不许因为加了表格支持而退化。"""
         with tempfile.TemporaryDirectory() as repo:
@@ -648,11 +662,12 @@ class TestLaneOrder(unittest.TestCase):
                 "role_labels": {"main": "主机长", "deputy": "副机长", "tower": "塔台"},
                 "stages": [{"key": "queued", "label": "排队"}],
                 "sources": [{"id": "tasks", "type": "tasks-table",
-                             "lanes": ["main", "deputy", "ace"]}],
+                             "lanes": ["main", "deputy", "second", "ace"]}],
                 "stage_rules": [{"when": "else", "stage": "queued"}]}
 
     def test_order_follows_config(self):
-        self.assertEqual(render._lane_order(self._cfg()), ["main", "deputy", "ace"])
+        self.assertEqual(render._lane_order(self._cfg()),
+                         ["main", "deputy", "second", "ace"])
 
     def test_main_renders_left_of_deputy(self):
         sched = [{"lane": "deputy", "ticket": "#2", "summary": "副道活", "note": "",
@@ -661,6 +676,14 @@ class TestLaneOrder(unittest.TestCase):
                   "table_date": "2026-10-27"}]
         html = render._shift_section({"schedules": sched}, self._cfg())
         self.assertLess(html.index("主机长"), html.index("副机长"))
+
+    def test_second_renders_after_deputy(self):
+        sched = [{"lane": "second", "ticket": "#3", "summary": "二副道活", "note": "",
+                  "table_date": "2026-10-27"},
+                 {"lane": "deputy", "ticket": "#2", "summary": "副道活", "note": "",
+                  "table_date": "2026-10-27"}]
+        self.assertLess(render._shift_section({"schedules": sched}, self._cfg()).index("副机长"),
+                        render._shift_section({"schedules": sched}, self._cfg()).index("二副"))
 
     def test_unknown_lane_still_shows_after_known(self):
         self.assertEqual(render._ordered_lanes({"zed", "main"}, ["main", "deputy"]),
@@ -678,7 +701,7 @@ class TestUrgentLane(unittest.TestCase):
                            {"key": "flying", "label": "在飞"}],
                 "off_chain_stages": [{"key": "hold", "label": "挡住"}],
                 "sources": [{"id": "tasks", "type": "tasks-table",
-                             "lanes": ["main", "deputy", "ace"]}],
+                             "lanes": ["main", "deputy", "second", "ace"]}],
                 "stage_rules": [{"when": "else", "stage": "queued"}],
                 "view": {"urgent": {"lanes": ["ace"], "label": "ace-queue"}}}
 

@@ -2,6 +2,116 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.33.0 — 2026-10-28
+
+- **新插件 `studio`（文娱集团）**：六个岗位技能——`producer` 企划、`lead-writer` 主笔、`lead-artist` 主美、
+  `director` 导演、`final-review` 终审、`marketing` 宣发；共享协议住 `skills/studio/SKILL.md`
+  （六道门 G0–G5、记录面 `studio/`、接口卡、主创部门与项目负责人、派活与停点）。
+  三坊两台改名落地，`--lead/--make` 模式废止：**make 降为子代理**，lead 独占会话。
+- **四个薄子代理模板**：住装机技能 `core/skills/set-kai-mode/templates/agents/`（四自建
+  `implementer`（sonnet/high/80）、`reviewer`（opus/max/40）、`adjudicator`（opus/max/20）、
+  `researcher`（haiku/low/40）＋三内置覆盖 `Explore`/`Plan`/`general-purpose`），
+  只写 model/effort/maxTurns/tools，不写判据（adjudicator 的裁决契约指针化，正本住 loop 的
+  adjudication）；模板故意不给 `Agent` 工具，锁死深度 1 层。
+- **技能归属定型**：岗位技能（流程＋判据）只给会话；方法技能（手法）给子代理，派工卡点名；
+  判据技能走例外通道（裁决必须带 adjudication）。这条写进 `studio` 协议与模板 README。
+- **登记**：marketplace 六插件；`full` 档 27 条自动件；`manifests/package-layout.json` 收 `studio/`。
+- **子代理改为「4 自建 ＋ 3 预设覆盖」**：新增 `Explore.md`（haiku/low）、`Plan.md`（opus/high，计划卡五段）、
+  `general-purpose.md`（sonnet/high，禁 `Agent`），三者用**同名覆盖**盖掉宿主内置并固定档位（官方文档确认：
+  项目 `.claude/agents/` 同名定义会覆盖内置且保留自己的 `model`）；删除自建 `planner.md`，策划交给 `Plan`。
+  插件里的 agent 带命名空间盖不掉内置 ⇒ 必须由装机拷到项目目录。
+- **装机按宿主适配内置子代理**：`set-kai-mode` 5.8.0 把装法改成四步——① 读 `adapters/<宿主>.md`「内置子代理」节
+  探名单与档位命名；② 按该宿主档位替换 `model:`（映射不出就三格登记，不瞎填）；③ 有同名内置就做同名覆盖、
+  没有就按自建装；④ 宿主无 agent 文件则登记 `no-agent-surface` 并走降级腿。回执记「覆盖了哪些／自建了哪些／跳过了哪些」。
+  `adapters/claude.md` 补「内置子代理与同名覆盖」节（含优先级与禁用开关），qoder／codex／opencode 各补一节。
+- **装机纳入子代理**：`set-kai-mode` 5.5.0——缺口扫描加第 11 项（项目 `.claude/agents/` 四个薄文件是否在位），
+  第 2 步加「拷四个模板 + 在项目指令文件写一行『派活优先用这四个』」；不加那行宿主仍派内置 agent，等于白装。
+  同时写明别开 `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` 与 `CLAUDE_CODE_EFFORT_LEVEL`（会压平分档）。
+
+## 0.32.0 — 2026-10-28
+
+- **体检修复（全量体检报告 13 条高危）**：AGENTS.md 死指针与人格局残留清退；协议版本三方统一
+  v11；`source-check.py` 退出码按「需处理数」返回；`handoff-board.py` 包装器指向
+  `core/skills/kai-handoff/scripts/`；CI 装 pytest 并跑 `--with-tests`（补分支过滤与
+  concurrency）；doctor 补「正文指针可解析性」与机器路径扫描面（0 文件即红）；模板退役名额句改指针；
+  set-kai-mode 删手抄技能计数；harness-audit 改新布局路径。
+- **一件判据一个家**：王牌执行帽数值与扩容条件收口协议 §一，ace／PLAYBOOK／kai-mode／flight-info
+  只留指针；canon 新增 `ace-cap` 键。红线计数去数字：principle 两件不再自称「三条」。
+- **退役与收编**：`schemas/` 三件零消费者，整体退役（README／打包清单／kai-mode 指针同步清）；
+  双 `verification-skill` 模板收编为 `core/skills/set-kai-mode/templates/` 一份（升 schema 4 口径）；
+  仓根 `skills/flight-info/scripts/refresh.vbs` 重复副本删除；人格层残留（`chk_agents`、
+  `agents-contract` 假覆盖测试、`_agent_personas`）整体清除，ADR-0018 D2/D3 补订正注。
+- **第二波（同日续修）**：doctor 硬化——例句豁免改显式标记、真硬编码的盘符反斜杠路径不再被当转义字面量放行、
+  框架仓 URL 从 marketplace 派生、handoff 收件箱滞留改提示不判红、payload-refs 单次读盘；
+  `host-neutral` 补自然语言宿主词；写盘统一 tmp+replace（init-project／plugin-check／new-skill／vendor-sync）；
+  `vendor/manifest.json` 记上游溯源（repo／sha／license），`--check` 无本机镜像时按 manifest 哈希校验。
+- **判据收口**：canon 新增 `redline-count`／`polling-rounds`／`lane-labels`，`wake-fence` 补否定句式并把 home
+  迁到协议 §一（ADR-0010 留理由）；协议 §七 新增「收工门禁四值契约」；车道标签正本＝地勤「车道分流」；
+  pilot／copilot／二副补可死性三件；触发词去重（开工／记想法／派活）。
+- **新 ADR**：0025 塔台两把机械判据（ship-queue 派生队列 ＋ wake-gate 门卫）。
+- **第三波（结构刀）**：塔台排班算法搬到 `airport/skills/tower/references/scheduling.md`（正文只留「本轮最后一步」＋指针，
+  description 六行压三行）；`set-kai-mode` 的宿主 flag（`outputMode`／`executionAuthorization`／CLI 探测名／钩子字段）
+  全部下沉 `adapters/<宿主>.md`，正文只留指针。
+- **两把新机检**：`pilot/scripts/restore-guard.py`（stale 桶 restore 前验「内容在 dev 历史里逐字存在」，
+  四态 clean／safe／not-in-history／missing）与 `ace/scripts/hotfix-lint.py`（分支名／提交标识／日表行三件），
+  各带 6 条测试；pilot 3.4.0、ace 1.4.0、tower 2.3.0。
+- **ADR 卫生**：0007／0008 补 Status 与取代横幅，0009 数字与扫描面订正，0013 键名，0016 状态，0005 退役注。
+- **指针全绿**：docs/skill-sources 与 kai-handoff 的旧布局路径改现行插件路径；adapters 的宿主落点、
+  项目仓脚本与已知缺件（`inflight-budget.py`）进显式豁免表，不再靠「扫不到」装绿。
+
+## 0.31.0 — 2026-10-27
+
+- **塔台待发货探测**：新增 `airport/skills/tower/scripts/ship-queue.py`——从 Issue 判词
+  （`verdict=pass`＋`ac=n/m`）派生待发货队列，不新增记录面：只拉 `updated_at` 变化的 issue
+  与其评论（`since=` 带 60 秒重叠）、写前日志后再推进 cursor、凭「票已关／sha 已进
+  `origin/dev`」自动退役；`peek` 零票时塔台只读一行即走轻量轮。探测失败 `rc=3` 明确不等于
+  零票，调用方退回全量扫评论。机长等角色不写账本，只有持牌塔台写 `paths.state_dir/ship-queue.json`。
+  测试 18 条并入 `skill-tests`。`tower` 2.1.0。
+- **worker 预算加档**：每车道子代理限额 3→5（主、副、二副合计 15），用户拍板直接生效、
+  不经 7 天升档梯；升档梯基线随之上移（升 6，全断回落一档到 4／3），机检改 `--per-lane 5`。
+  P1–P3 触面互斥、可死性三件与王牌保守默认不变，规划权仍在机长；见 ADR-0024。
+  `loop` 协议升 v11、`loop` 6.3.0。
+- **唤醒门卫（治定时器空跑）**：新增 `airport/skills/tower/scripts/wake-gate.py`——定时任务 prompt
+  改成门卫薄壳：上一轮还在跑（令牌心跳新于 `interval+5` 分钟）或零待发货且三张正常日表都在下限以上
+  ⇒ `rc=10` 只回一行、**不加载技能正文**；有活才 `rc=0` 放行。探测失败按放行处理（失败不等于零活），
+  自身异常也放行（宁可跑一轮，不可漏活）。门卫内部转调 `ship-queue.py peek`，不另写判据。
+  **首个适配宿主＝Claude Code**（`adapters/claude.md` §定时唤醒塔台），Qoder 与 `set-kai-mode`
+  的薄壳同步改写。测试 10 条并入 `skill-tests`。`tower` 2.2.0、`set-kai-mode` 5.2.0。
+- **航班信息板换骨（KWP 皮肤 ＋ 看板列）**：`board/skills/flight-info` 升 1.5.0——
+  - 视觉换成 KWP（`anthropics/knowledge-work-plugins`）暖白陶橙皮肤；表体改「列＝阶段、卡＝票」
+    的看板，另留「看板／列表」视图切换；旧版信息架构（Bento 读数、紧急任务、三车道排班、
+    里程碑、交接、趋势、状态条）全部保留。
+  - 新增两个源：`ship-queue`（读塔台待发货队列）与 `tower-token`（持牌人／心跳龄），
+    板子上多出「待发货队列」段和状态条塔台灯；运行态落 `runtime_state` 表（只留近 20 轮）。
+  - 配置补 P0 正确性缺口：`stale_after` 写进样例、`no_issue → unresolved` 前置、
+    `assigned/unresolved` 链外阶段、`view.urgent.max` 字段化、日表备注三条判据补回。
+  - 自动更新：钩子扩到三枚（`post-commit`／`post-merge`／`post-checkout`）且认 `core.hooksPath`；
+    定时任务默认 30 分钟、全链路 `wscript`（零黑窗、零 token），
+    `refresh_if_dirty --max-age` 兜底「GitHub 更新了但没有本地提交」。
+  - 页面自刷新：http 下每 60 秒比对 `generated_at` 变了就重载，另有手动刷新按钮与「距今」时间戳。
+  - 测试 +11 条（钩子三件套、max-age、无黑窗入口、运行态保留、两个新源），flight-info 共 85 条。
+- **初始化同名技能抉择**：`magpie-sync.py check --json` 新增 `conflicts[]`（同名但库/宿主副本与正本
+  内容不同），`apply --skip <名,...>` 支持用户选「保留现有的」——不写库、不建链、不进注册档；
+  `set-kai-mode` §0 缺口扫描新增第 9 项，冲突必须逐条问用户去留，默认推荐保留，**不再静默覆盖**。
+  测试 3 条并入仓级测试。`set-kai-mode` 5.3.0。
+- **开票归属守卫（只备不装）**：新增 `core/skills/set-kai-mode/scripts/issue-guard.py`——
+  宿主 PreToolUse 钩子里拒掉缺 `--repo`／`-R` 的 `gh issue create`／`gh pr create`，仓库从项目配置
+  实例 `issue.repo` 读，读不到仍要求显式 `--repo`；stdin 读 `tool_input.command`，取不到即放行。
+  接法与两条验收住 `adapters/claude.md`，安装步骤住 `set-kai-mode` §6（缺口扫描第 10 项），
+  **本次只写方法论与脚本、不写任何宿主 settings**。测试 9 条并入仓级测试。
+
+
+- **二副车道**：新增 `second-officer` 技能与 `/second-officer` 命令（二副／第二副机长）——
+  与机长、副机长同权同流程，独立 `-second.md` 日表与 `lane-second`，不新增权限；`loop` 协议升 v10，
+  三张正常日表的 worker 预算各 3、合计 9，王牌车道不并入。
+- **排班与看板**：塔台排班扩到三张正常日表，显式车道标签优先于亲和与均衡；`flight-info` 默认读
+  `*-second.md`，车道顺序 `main`→`deputy`→`second`→`ace`，`role_labels` 增 `second`。
+- **Issue 车道标签**：四条排队标签成为规范——`main-queue`／`deputy-queue`／`second-queue`／`ace-queue`；
+  `ace-queue` 语义不变，其余三条为显式钉车道。
+- 版本：`second-officer` 1.0.0、`pilot` 3.3.0、`copilot` 3.1.0、`ace` 1.3.0、`loop` 6.2.0、
+  `tower` 2.0.0、`ground-crew` 1.6.0、`kai-mode` 3.1.0、`set-kai-mode` 5.1.0、`flight-info` 1.4.0、
+  `airport` 3.3.0、`board` 1.2.0。
+
 ## 0.29.0 — 2026-10-27
 
 - **单票闭环 P1 脚本化**：`pilot/scripts/card.py`（从票面 JSON 生成派工卡五件）、

@@ -49,7 +49,7 @@ python scripts/source-check.py --json   # 机器读
 
 1. 摘要文件写进本目录（`<源名>.md`）
 2. `sources.json` 加一条（照抄字段，别漏 `sha256`）
-3. 若已特化，在特化技能的 `references/source.md` 里**只放指针**，指回本目录（不复制摘要）
+3. 若已特化，在特化技能的 references 目录下放一份 `source.md`，**只放指针**，指回本目录（不复制摘要）
 
 ## 6. 命名避让与 fork 判据
 

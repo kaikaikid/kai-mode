@@ -4,7 +4,7 @@
 kai-mode 框架仓 doctor（单一校验入口）
 =====================================
 用法：
-    python scripts/doctor.py                # 逐项检查（25 项）
+    python scripts/doctor.py                # 逐项检查（29 项）
     python scripts/doctor.py --with-tests   # 追加跑各技能自己的 pytest
     python scripts/doctor.py --json         # 机器可读：{"ok":bool,"checks":[{id,status,detail}]}
 
@@ -49,7 +49,8 @@ MACHINE_RE = (
     (re.compile(r"/home/"), "other"),
     (re.compile(r"%USERPROFILE%"), "other"),
 )
-EXAMPLE_RE = re.compile(r"例|示例|example", re.IGNORECASE)
+# 用法例句豁免要显式标记：早期版本只认一个「例」字，正文里「例外」「比例」也会整行放行（体检 M8）。
+EXAMPLE_RE = re.compile(r"示例|例如[：:]|例句|用法[:：]|e\.g\.|\bexample\b", re.IGNORECASE)
 LINK_RE = re.compile(r"\[[^\]]*\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
 ALLOW_MARK = "# doctor:allow-machine-path"
 
@@ -251,20 +252,22 @@ def chk_unregistered(root, ms):
         if isinstance(entry, dict) and entry.get("path"):
             inventory.add(str(entry["path"]).replace("\\", "/").strip("/"))
 
-    # 旧布局：仓根 skills/<名>/SKILL.md 必须登记
+    # 旧布局：仓根 skills/<名>/SKILL.md 必须登记。
+    # 2026-10-28：旧布局命中不再 early-return——否则后面插件布局与市场孤儿检查会被静默遮蔽
+    # （skills/ 下只要出现一个带 SKILL.md 的目录，孤儿插件检查就再也不跑）。三类问题合并上报。
     legacy = os.path.join(root, "skills")
     legacy_on_disk = {f"skills/{n}" for n in sorted(os.listdir(legacy))
                       if os.path.isfile(os.path.join(legacy, n, "SKILL.md"))} if os.path.isdir(legacy) else set()
-    if legacy_on_disk:
-        on_disk = legacy_on_disk
-        extra = sorted(on_disk - inventory)
-        if extra:
-            return "fail", f"盘上有技能目录没登记：{'、'.join(extra)}（补市场清单/插件目录）"
-        return "ok", f"skills/ 上 {len(on_disk)} 个技能目录都登记了"
+    legacy_extra = sorted(legacy_on_disk - inventory)
+    problems = []
+    if legacy_extra:
+        problems.append(f"盘上有技能目录没登记：{'、'.join(legacy_extra)}（补市场清单/插件目录）")
 
     # 插件布局：市场清单里的每个插件 skills/* 必须在清单里；有 plugin.json 却没进市场的目录也红
     market = os.path.join(root, ".claude-plugin", "marketplace.json")
     if not os.path.isfile(market):
+        if problems:
+            return "fail", "；".join(problems)
         return "skip", "没有 skills/ 也没有市场清单"
     try:
         with open(market, encoding="utf-8") as f:
@@ -287,7 +290,7 @@ def chk_unregistered(root, ms):
                     on_disk.add(f"{name}/skills/{sk}")
     extra = sorted(on_disk - inventory)
     if extra:
-        return "fail", f"盘上有技能目录没登记：{'、'.join(extra)}（补市场清单/插件目录）"
+        problems.append(f"盘上有技能目录没登记：{'、'.join(extra)}（补市场清单/插件目录）")
     # 有 plugin.json 却没进市场清单的顶层目录
     orphans = []
     for d in sorted(os.listdir(root)):
@@ -297,8 +300,13 @@ def chk_unregistered(root, ms):
         if os.path.isfile(os.path.join(pd, ".claude-plugin", "plugin.json")) and d not in names:
             orphans.append(d)
     if orphans:
-        return "fail", f"插件目录没进市场清单：{'、'.join(orphans)}（补 .claude-plugin/marketplace.json）"
-    return "ok", f"市场布局中 {len(on_disk)} 个技能都登记了；市场插件 {len(names)} 个"
+        problems.append(f"插件目录没进市场清单：{'、'.join(orphans)}（补 .claude-plugin/marketplace.json）")
+    if problems:
+        return "fail", "；".join(problems)
+    msg = f"市场布局中 {len(on_disk)} 个技能都登记了；市场插件 {len(names)} 个"
+    if legacy_on_disk:
+        msg += f"；skills/ 旧布局 {len(legacy_on_disk)} 个都登记了"
+    return "ok", msg
 
 
 def chk_missing_path(root, ms):
@@ -339,46 +347,56 @@ def chk_machine_path(root, ms):
             allow_files = {str(x).replace("\\", "/") for x in (raw or [])}
         except (OSError, ValueError):
             allow_files = set()
-    skills_dir = os.path.join(root, "skills")
-    if not os.path.isdir(skills_dir):
+    # 2026-10-28：扫描面从根 skills/ 扩到插件 skills×5 ＋ templates/adapters/manifests。
+    # 旧扫描面在本仓只含一个 .vbs（不在 TEXT_EXT）——循环 0 次执行、构造性恒绿（体检 H5）。
+    scan_roots = [os.path.join(root, "skills")]
+    scan_roots += [os.path.join(root, p, "skills") for p in ("airport", "core", "board", "intake", "ops")]
+    scan_roots += [os.path.join(root, d) for d in ("templates", "adapters", "manifests")]
+    scan_roots = [d for d in scan_roots if os.path.isdir(d)]
+    if not scan_roots:
         return "skip", "没有 skills/ 目录"
+    scan_files = []
+    for skills_dir in scan_roots:
+        for base, dirs, files in os.walk(skills_dir):
+            dirs[:] = [d for d in dirs if d != "__pycache__"]
+            scan_files.extend(os.path.join(base, fn) for fn in files if fn.lower().endswith(TEXT_EXT))
     hits, exempt = [], []
-    for base, dirs, files in os.walk(skills_dir):
-        dirs[:] = [d for d in dirs if d != "__pycache__"]
-        for fn in files:
-            if not fn.lower().endswith(TEXT_EXT):
+    for p in scan_files:
+        rel = os.path.relpath(p, root).replace("\\", "/")
+        if rel in allow_files:
+            exempt.append(f"{rel}（allowlist）")
+            continue
+        try:
+            with open(p, encoding="utf-8") as f:
+                lines = f.read().splitlines()
+        except (OSError, UnicodeDecodeError):
+            continue
+        for i, line in enumerate(lines, 1):
+            if ALLOW_MARK in line:
                 continue
-            p = os.path.join(base, fn)
-            rel = os.path.relpath(p, root).replace("\\", "/")
-            if rel in allow_files:
-                exempt.append(f"{rel}（allowlist）")
-                continue
-            try:
-                with open(p, encoding="utf-8") as f:
-                    lines = f.read().splitlines()
-            except (OSError, UnicodeDecodeError):
-                continue
-            for i, line in enumerate(lines, 1):
-                if ALLOW_MARK in line:
-                    continue
-                real, escaped = [], False
-                for rx, kind in MACHINE_RE:
-                    for m in rx.finditer(line):
-                        if kind == "drive" and m.end() < len(line) and line[m.end()] == "\\":
-                            escaped = True  # 转义字面量，不是路径
+            real, escaped = [], False
+            for rx, kind in MACHINE_RE:
+                for m in rx.finditer(line):
+                    # 转义字面量＝`"D:\\"` 这种描述转义本身的写法；`Path("D:\\data")` 是真硬编码，
+                    # 早期版本只要盘符后跟反斜杠就放行，等于给真路径开了后门（体检 M8）。
+                    if kind == "drive" and line.startswith("\\\\", m.end()):
+                        if line[m.end() + 2:].strip()[:1] in ("", '"', "'", ")"):
+                            escaped = True
                             continue
-                        real.append(m)
-                if real:
-                    if EXAMPLE_RE.search(line):
-                        exempt.append(f"{rel}:{i}（用法例句）")
-                    else:
-                        hits.append(f"{rel}:{i}：{line.strip()[:80]}")
-                elif escaped:
-                    exempt.append(f"{rel}:{i}（转义字面量）")
+                    real.append(m)
+            if real:
+                if EXAMPLE_RE.search(line):
+                    exempt.append(f"{rel}:{i}（用法例句）")
+                else:
+                    hits.append(f"{rel}:{i}：{line.strip()[:80]}")
+            elif escaped:
+                exempt.append(f"{rel}:{i}（转义字面量）")
+    if not scan_files:
+        return "fail", "扫描面为空（0 个文件被量）——machine-path 的尺是瞎的，先修扫描面"
     if hits:
         return "fail", "；".join(hits[:6]) + (f"（共 {len(hits)} 处）" if len(hits) > 6 else "")
     tail = f"，豁免 {len(exempt)} 处" if exempt else ""
-    return "ok", f"没有机器绝对路径{tail}"
+    return "ok", f"没有机器绝对路径（量了 {len(scan_files)} 个文件{tail}）"
 
 
 RESOURCE_RE = re.compile(r'^\s*-\s*resource:\s*["\']?([^"\'\n]+?)["\']?\s*$', re.M)
@@ -491,9 +509,19 @@ def _tracked_dev_records(root, paths):
     return out
 
 
+def _in_git_repo(root):
+    """linked worktree 的 .git 是文件不是目录——isdir 会误判；以 git rev-parse 为准（体检 M6）。"""
+    try:
+        p = subprocess.run(["git", "-C", root, "rev-parse", "--git-dir"],
+                           capture_output=True, text=True, encoding="utf-8", errors="replace")
+        return p.returncode == 0
+    except (OSError, ValueError):
+        return False
+
+
 def chk_tracked_cache(root, ms):
     """08 git 跟踪的文件里出现缓存、运行数据或本仓开发流水 ⇒ 红。"""
-    if not os.path.isdir(os.path.join(root, ".git")):
+    if not _in_git_repo(root):
         return "skip", "不是 git 仓（不适用）"
     try:
         p = subprocess.run(["git", "-C", root, "ls-files"], capture_output=True, text=True,
@@ -554,9 +582,27 @@ def chk_version_readme(root, ms):
         return "fail", f"没有 README.md：{rf}"
     with open(rf, encoding="utf-8") as f:
         text = f.read()
-    if ver in text:
-        return "ok", f"VERSION={ver} 出现在 README.md"
-    return "fail", f"VERSION={ver} 没出现在 README.md（两处版本口径不一致）"
+    if ver not in text:
+        return "fail", f"VERSION={ver} 没出现在 README.md（两处版本口径不一致）"
+    # 协议版本号三方核对（体检 H2：README v9 ↔ 正本标题 v10 ↔ 正文 v11 曾并存）。
+    # 正本标题的（vN）与 README 里 `loop-protocol.md`（vN）的引用必须一致，否则角色照旧版名额施工。
+    proto_ver = "无标题版本"
+    proto = os.path.join(root, "airport", "skills", "loop", "references", "loop-protocol.md")
+    if os.path.isfile(proto):
+        try:
+            with open(proto, encoding="utf-8") as f:
+                first_line = f.readline()
+        except OSError:
+            first_line = ""
+        m_title = re.search(r"（v(\d+)）", first_line)
+        if m_title:
+            title_ver = m_title.group(1)
+            proto_ver = "v" + title_ver
+            readme_vers = sorted(set(re.findall(r"loop-protocol\.md`?（v(\d+)）", text)))
+            if readme_vers and set(readme_vers) != {title_ver}:
+                return "fail", (f"协议版本漂移：正本标题 v{title_ver}，"
+                                f"README 引用 {'、'.join('v' + v for v in readme_vers)}")
+    return "ok", f"VERSION={ver} 出现在 README.md；协议版本 {proto_ver} 与 README 一致"
 
 
 def chk_skill_tests(root, ms):
@@ -1088,15 +1134,32 @@ def chk_config_instance(root: str, ms):
         if problems:
             return "fail", "；".join(problems[:5]) + (f"（共 {len(problems)} 处）"
                                                     if len(problems) > 5 else "")
+        gates_live = [k for k in (got.get("gates") or {}) if not k.startswith("_")]  # 注释键不算门
         return "ok", ("实跑生成实例通过：%d 个叶子键与模板一致，零占位、零机器路径；"
-                      "gates %d 键里只有问答过的非 null" % (len(gkeys), len(got.get("gates") or {}) - 1))
+                      "gates %d 键里只有问答过的非 null" % (len(gkeys), len(gates_live)))
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
 
 PAYLOAD_TEXT_SUFFIXES = (".md", ".py", ".json", ".ps1", ".sh", ".sql", ".yaml", ".yml", ".txt")
+
+
+def _framework_url_rx(root: str):
+    """框架仓 URL 的匹配式从市场清单派生（owner + name），换组织不用改代码（体检 L9）。
+    清单读不出来就不查这一条——宁可少一条，不写死一个会过期的地址。"""
+    try:
+        with open(os.path.join(root, ".claude-plugin", "marketplace.json"), encoding="utf-8") as f:
+            m = json.load(f)
+    except (OSError, ValueError):
+        return None
+    owner = (m.get("owner") or {}).get("name") if isinstance(m.get("owner"), dict) else None
+    name = m.get("name")
+    if not (isinstance(owner, str) and isinstance(name, str) and owner and name):
+        return None
+    return re.compile(r"github\.com/" + re.escape(owner) + r"/" + re.escape(name), re.IGNORECASE)
+
+
 PAYLOAD_FORBIDDEN = (
-    ("框架仓 URL", re.compile(r"github\.com/kaikaikid/kai-mode")),
     ("框架 ADR 文件名", re.compile(r"docs/adr/0\d{3}")),
     ("框架 ADR 编号", re.compile(r"ADR-?\s?0\d{3}")),
     ("维护者门禁命令", re.compile(r"(?<!env-)doctor\.py")),
@@ -1122,6 +1185,8 @@ def chk_payload_refs(root: str, ms):
         if rel:
             active.append((entry.get("name"), rel))
     allowed = [rel for _name, rel in active]
+    url_rx = _framework_url_rx(root)
+    rules_all = ([("框架仓 URL", url_rx)] if url_rx else []) + list(PAYLOAD_FORBIDDEN)
     scanned, bad = 0, []
     for name, rel in active:
         src = os.path.join(root, *rel.split("/"))
@@ -1132,16 +1197,14 @@ def chk_payload_refs(root: str, ms):
                 continue
             scanned += 1
             with open(path, encoding="utf-8", errors="replace") as f:
-                lines = f.read().splitlines()
+                lines = f.read().splitlines()  # 只读一遍：早期版本 md 被读两次（体检 L13）
             where = f"{name}/{os.path.relpath(path, src)}"
-            for label, rx in PAYLOAD_FORBIDDEN:
+            for label, rx in rules_all:
                 for lineno, line in enumerate(lines, 1):
                     if rx.search(line):
                         bad.append(f"{where}:{lineno} → {label}「{line.strip()[:40]}」")
             if not path.endswith(".md"):
                 continue
-            with open(path, encoding="utf-8", errors="replace") as f:
-                lines = f.read().splitlines()
             fenced = False
             for lineno, line in enumerate(lines, 1):
                 stripped = line.lstrip()
@@ -1273,14 +1336,14 @@ def chk_decoupling(root, ms):
             problems.append(f"{CONFIG_TEMPLATE_REL} 不是合法 JSON：{exc}")
         else:
             if tpl.get("schema") in (3, 4):
-                problems.extend(_template_models_problems(tpl, _agent_personas(root)))
+                problems.extend(_template_models_problems(tpl))
             else:
                 tpl_note = f"；配置模板 schema={tpl.get('schema')!r}，models 子检查只对 schema 3/4 生效"
     else:
         tpl_note = "；配置模板不在，models 子检查跳过"
     if problems:
         return "fail", "；".join(problems) + "。" + DECOUPLE_FIX
-    return "ok", (f"skills/loops/templates 扫了 {scanned} 份文本文件，六种硬路径 0 命中；"
+    return "ok", (f"{'/'.join(DECOUPLE_DIRS)} 扫了 {scanned} 份文本文件，六种硬路径 0 命中；"
                   f"配置模板 models 只按人格配、无模型 slug{tpl_note}")
 
 
@@ -1350,7 +1413,7 @@ def chk_handoff(root, ms):
     hd = os.path.join(root, "handoff")
     if not os.path.isdir(hd):
         return "fail", "没有 handoff/（交接文档唯一落点，规范见 handoff/README.md）"
-    bad = []
+    bad, warns = [], []
     for slot in HANDOFF_SLOTS:
         if not os.path.isdir(os.path.join(hd, slot)):
             bad.append(f"缺槽位 handoff/{slot}/")
@@ -1394,7 +1457,8 @@ def chk_handoff(root, ms):
             elif sub != f"{m.group(1)}-{m.group(2)}":
                 bad.append(f"{rel}：文件名年月 {m.group(1)}-{m.group(2)} 与所在目录 {sub}/ 不符")
         if slot == "00-inbox" and (today - filedate).days > INBOX_TTL_DAYS:
-            bad.append(f"{rel}：收件箱滞留 {(today - filedate).days} 天（>{INBOX_TTL_DAYS} 天必须归位）")
+            # 提示不判红：滞留天数随日期自己变，判红会把「停机前必须绿」变成跨天时间弹（体检 L8）
+            warns.append(f"{rel} 收件箱滞留 {(today - filedate).days} 天（>{INBOX_TTL_DAYS} 天该归位）")
 
         # 归档区保留原件：类型词与 frontmatter 的 slot 都按原槽留痕，只校验命名与年月。
         if slot == "90-archive":
@@ -1431,7 +1495,8 @@ def chk_handoff(root, ms):
                 continue
             for rx, kind in MACHINE_RE:
                 hit = rx.search(line)
-                if hit and not (kind == "drive" and hit.end() < len(line) and line[hit.end()] == "\\"):
+                if hit and not (kind == "drive" and line.startswith("\\\\", hit.end())
+                                and line[hit.end() + 2:].strip()[:1] in ("", '"', "'", ")")):
                     bad.append(f"{rel}:{i}：机器绝对路径（应写相对仓根）")
                     break
 
@@ -1441,7 +1506,8 @@ def chk_handoff(root, ms):
 
     if bad:
         return "fail", "；".join(bad[:6]) + (f"（共 {len(bad)} 处）" if len(bad) > 6 else "")
-    return "ok", f"handoff/ 八槽齐全，{len(files)} 份文档两级路径·命名·frontmatter 均合规"
+    tail = ("；提示：" + "；".join(warns[:3])) if warns else ""
+    return "ok", f"handoff/ 八槽齐全，{len(files)} 份文档两级路径·命名·frontmatter 均合规{tail}"
 
 
 # ── 16 技能格式对齐 Agent Skills 规范 1.2（Anthropic 开放标准，Claude/Codex/Cursor/Copilot 采纳）──
@@ -1505,202 +1571,6 @@ def chk_skill_spec(root, ms):
         return "fail", "；".join(bad[:6]) + (f"（共 {len(bad)} 处）" if len(bad) > 6 else "")
     return "ok", f"{scanned} 份 SKILL.md 对齐规范 1.2（version/description/行数/name）{tail}"
 
-
-# ── 17 agents 层契约（ADR-0007 / ADR-0008）──────────────────────────────────
-# 对齐 Agent Skills 开放标准：顶层只许标准字段（自有语义一律进 metadata）、name==文件名、
-# description ≤1024、metadata 只许 access、正文 <500 行 / 零外链 / 零 slug。
-AGENT_TOP_KEYS = ("name", "description", "version", "license", "compatibility", "metadata")
-AGENT_META = {"access": ("readonly", "write")}
-AGENT_MAX_LINES = 500
-AGENT_DESC_MAX = 1024
-AGENT_NON_PERSONA = ("README.md", "dispatch.md")
-
-
-def _agent_frontmatter(text: str):
-    """解析人格 frontmatter：返回 ((顶层键顺序, 顶层值, metadata 值, 正文行), None) 或 (None, 错误)。
-
-    只认本层固定形状（顶层 key + metadata 缩进块 + description 折叠块），不引 yaml。
-    """
-    lines = text.splitlines()
-    if not lines or lines[0].strip() != "---":
-        return None, "没有 frontmatter"
-    end = None
-    for i in range(1, len(lines)):
-        if lines[i].strip() == "---":
-            end = i
-            break
-    if end is None:
-        return None, "frontmatter 没闭合"
-    order, top, meta, cur, buf = [], {}, {}, None, []
-
-    def flush():
-        nonlocal buf
-        if cur is not None and buf:
-            top[cur] = " ".join(x.strip() for x in buf if x.strip())
-        buf = []
-
-    for raw in lines[1:end]:
-        if not raw.strip() or raw.lstrip().startswith("#"):
-            continue
-        m = re.match(r"^([A-Za-z_][A-Za-z0-9_-]*):(.*)$", raw)
-        if m:
-            flush()
-            key, val = m.group(1), m.group(2).strip()
-            order.append(key)
-            cur = key
-            if key == "metadata" or val in ("", ">", "|", ">-", "|-"):
-                top[key] = ""
-            else:
-                top[key] = val.strip('"').strip("'")
-            continue
-        m2 = re.match(r"^\s+([A-Za-z_][A-Za-z0-9_-]*):\s*(.*)$", raw)
-        if m2 and cur == "metadata":
-            meta[m2.group(1)] = m2.group(2).strip().strip('"').strip("'")
-            continue
-        buf.append(raw)
-    flush()
-    return (order, top, meta, lines[end + 1:]), None
-
-
-def _agent_personas(root: str) -> list:
-    d = os.path.join(root, "agents")
-    if not os.path.isdir(d):
-        return []
-    return sorted(fn[:-3] for fn in os.listdir(d)
-                  if fn.endswith(".md") and fn not in AGENT_NON_PERSONA)
-
-
-def chk_agents(root, ms):
-    """17 agents 层契约：字段合规、零外链、README 表两向一致、handoff persona 有家。"""
-    d = os.path.join(root, "agents")
-    if not os.path.isdir(d):
-        return "skip", "人格层已退役（无 agents/）"
-    personas = _agent_personas(root)
-    if not personas:
-        return "fail", "agents/ 下没有 <人格>.md 文件"
-    bad = []
-    for stem in personas:
-        fn = stem + ".md"
-        p = os.path.join(d, fn)
-        try:
-            with open(p, encoding="utf-8") as f:
-                text = f.read()
-        except (OSError, UnicodeDecodeError) as exc:
-            bad.append(f"{fn}：读不出来 {exc!r}")
-            continue
-        parsed, err = _agent_frontmatter(text)
-        if err:
-            bad.append(f"{fn}：{err}")
-            continue
-        order, top, meta, body = parsed
-        extra = [k for k in order if k not in AGENT_TOP_KEYS]
-        if extra:
-            bad.append(f"{fn}：非标准顶层字段 {', '.join(extra)}（自有语义进 metadata）")
-        for k in ("name", "description", "version"):
-            if not top.get(k):
-                bad.append(f"{fn}：缺 {k}")
-        if "metadata" not in order:
-            bad.append(f"{fn}：缺 metadata")
-        seq = [k for k in order if k in ("name", "description", "version", "metadata")]
-        want = ["name", "description", "version", "metadata"]
-        if seq != want:
-            bad.append(f"{fn}：必填字段顺序应为 {' < '.join(want)}，实际 {' < '.join(seq) or '无'}")
-        if top.get("name") and top["name"] != stem:
-            bad.append(f"{fn}：name={top['name']!r} 与文件名不一致")
-        if not KEBAB_RE.match(top.get("name") or ""):
-            bad.append(f"{fn}：name 不是 kebab-case")
-        if top.get("version") and not SEMVER_RE.match(top["version"]):
-            bad.append(f"{fn}：version 不是 semver（{top['version']}）")
-        if len(top.get("description") or "") > AGENT_DESC_MAX:
-            bad.append(f"{fn}：description 超 {AGENT_DESC_MAX} 字符")
-        junk = sorted(k for k in meta if k not in AGENT_META)
-        if junk:
-            bad.append(f"{fn}：metadata 多余键 {', '.join(junk)}（只许 access）")
-        for k, allowed in AGENT_META.items():
-            v = meta.get(k)
-            if not v:
-                bad.append(f"{fn}：metadata 缺 {k}")
-            elif v not in allowed:
-                bad.append(f"{fn}：metadata.{k}={v!r} 不在枚举 {'/'.join(allowed)}")
-        body_text = "\n".join(body)
-        nlines = len([x for x in body if x.strip()])
-        if nlines > AGENT_MAX_LINES:
-            bad.append(f"{fn}：正文 {nlines} 行 > {AGENT_MAX_LINES}")
-        for target in LINK_RE.findall(body_text):
-            if target.startswith(("http://", "https://", "#", "mailto:")):
-                continue
-            if os.path.dirname(target) not in ("", "."):
-                bad.append(f"{fn}：外链 {target}（人格只许指 agents/ 内同级文件）")
-        low = body_text.lower()
-        for mark in SLUG_MARKS:
-            if mark in low:
-                bad.append(f"{fn}：正文出现模型 slug 片段 {mark!r}")
-        if any(rx.search(body_text) for rx, _ in MACHINE_RE):
-            bad.append(f"{fn}：正文出现机器绝对路径")
-    # README 人格表 ↔ 盘上文件 双向一致
-    rp = os.path.join(d, "README.md")
-    listed = set()
-    if os.path.isfile(rp):
-        with open(rp, encoding="utf-8") as f:
-            for ln in f:
-                m = re.match(r"^\|\s*\[([a-z0-9-]+)\]\(([a-z0-9-]+)\.md\)", ln)
-                if m:
-                    listed.add(m.group(1))
-    else:
-        bad.append("agents/README.md 不存在")
-    missing = sorted(set(personas) - listed)
-    ghost = sorted(listed - set(personas))
-    if missing:
-        bad.append(f"README 表缺：{', '.join(missing)}")
-    if ghost:
-        bad.append(f"README 表多出无文件条目：{', '.join(ghost)}")
-    # handoff frontmatter 的 persona 取值必须有家
-    ok_ids = set(personas) | {"-"}
-    hd = os.path.join(root, "handoff")
-    if os.path.isdir(hd):
-        for dirpath, dirs, names in os.walk(hd):
-            dirs[:] = [x for x in dirs if x not in ("__pycache__",)]
-            for fn in sorted(names):
-                if not fn.endswith(".md"):
-                    continue
-                fp = os.path.join(dirpath, fn)
-                try:
-                    with open(fp, encoding="utf-8") as f:
-                        head = f.read(3000)
-                except (OSError, UnicodeDecodeError):
-                    continue
-                m = re.search(r"^persona:\s*(\S+)\s*$", head, re.M)
-                if m:
-                    v = m.group(1).strip('"').strip("'")
-                    if v.startswith("<") or v.startswith("{{"):
-                        continue  # 模板占位符，不判
-                    if v not in ok_ids:
-                        bad.append(f"{os.path.relpath(fp, root).replace(chr(92), '/')}：persona={v} 不在人格集内")
-    # 人格**计数**不许写死：加一格就会把别处的旧数留成假话（第七人格落地时实测三处残留）
-    PERSONA_COUNT_RX = re.compile(r"[0-9]+\s*(?:个|种)\s*(?:子代理)?人格"
-                                  r"|全部\s*(?:[0-9]+|[一二两三四五六七八九十])\s*个")
-    count_files = [os.path.join(root, x) for x in ("README.md", "AGENTS.md")
-                   if os.path.isfile(os.path.join(root, x))]
-    for cd in ("skills", "loops", "templates", "agents", "adapters"):
-        cbase = os.path.join(root, cd)
-        if os.path.isdir(cbase):
-            for dirpath, dirs, names in os.walk(cbase):
-                dirs[:] = [x for x in dirs if x not in ("__pycache__", ".pytest_cache")]
-                count_files += [os.path.join(dirpath, x) for x in names if x.endswith(TEXT_EXT)]
-    for fp in count_files:
-        try:
-            with open(fp, encoding="utf-8") as f:
-                ftext = f.read()
-        except (OSError, UnicodeDecodeError):
-            continue
-        for i, ln in enumerate(ftext.splitlines(), 1):
-            cm = PERSONA_COUNT_RX.search(ln)
-            if cm:
-                bad.append("%s:%d 写死了人格计数「%s」（改指针，名单由 agents/ 实量派生）"
-                           % (os.path.relpath(fp, root).replace("\\", "/"), i, cm.group(0).strip()))
-    if bad:
-        return "fail", "；".join(bad[:6]) + (f"（共 {len(bad)} 处）" if len(bad) > 6 else "")
-    return "ok", f"{len(personas)} 个格：字段·零外链·零 slug·README 两向一致·persona 有家·计数未写死"
 
 
 # ── 18 判据归属门（ADR-0007）：一条判据一个家，退役词与平行正本都要红 ──────────
@@ -1778,7 +1648,15 @@ HOST_TOKENS = (
     (re.compile(r"\bcodex exec\b"), "codex exec"),
     (re.compile(r"\bopencode run\b"), "opencode run"),
     (re.compile(r"\bmcp__[A-Za-z0-9_]+"), "mcp__*"),
+    # 自然语言点名宿主（体检 M2）：字面 token 黑名单抓不到「Claude Code / Qoder」这类正文措辞。
+    # 大小写敏感是有意的——CSS 的 `cursor:pointer` 不能算命中。
+    (re.compile(r"\bClaude Code\b"), "Claude Code"),
+    (re.compile(r"\bQoder\b"), "Qoder"),
+    (re.compile(r"\bCodex\b"), "Codex"),
+    (re.compile(r"\bOpenCode\b"), "OpenCode"),
 )
+# 安装器按宿主分腿，点名宿主是它的职责（各宿主 flag 仍应下沉 adapters，见体检 M2 未完成项）
+HOST_NEUTRAL_ALLOW = ("core/skills/set-kai-mode/",)
 # ── 21 frontmatter YAML 形状（skills / agents）：不引 PyYAML，只拦最常见的粘连 ──
 YAML_RESERVED_START = ("@", "`")
 
@@ -1798,6 +1676,8 @@ def chk_host_neutral(root: str, ms):
                     continue
                 p = os.path.join(b, fn)
                 rel = os.path.relpath(p, root).replace("\\", "/")
+                if rel.startswith(HOST_NEUTRAL_ALLOW):
+                    continue
                 try:
                     with open(p, encoding="utf-8") as f:
                         lines = f.read().splitlines()
@@ -1846,7 +1726,7 @@ def _frontmatter_yaml_problems(text: str) -> list:
 
 
 def chk_frontmatter_yaml(root: str, ms):
-    """skills/ 已登记 SKILL.md 与 agents/*.md 的 frontmatter YAML 形状。"""
+    """已登记 SKILL.md 的 frontmatter YAML 形状（agents/ 人格层已退役，不再扫）。"""
     targets = []
     data, err = registry(root, ms)
     if data is not None:
@@ -1855,11 +1735,6 @@ def chk_frontmatter_yaml(root: str, ms):
                 p = os.path.join(root, *str(entry["path"]).split("/"), "SKILL.md")
                 if os.path.isfile(p):
                     targets.append(p)
-    ad = os.path.join(root, "agents")
-    if os.path.isdir(ad):
-        for fn in sorted(os.listdir(ad)):
-            if fn.endswith(".md") and fn not in AGENT_NON_PERSONA:
-                targets.append(os.path.join(ad, fn))
     bad, scanned = [], 0
     for p in targets:
         try:
@@ -2001,7 +1876,7 @@ def chk_vendor(root, ms):
     """19 vendor/：未纳入 git ⇒ 红（克隆不可复原）；本机无镜像 ⇒ skip；有镜像则跑 --check 比漂移。"""
     if not os.path.isdir(os.path.join(root, VENDOR_REL)):
         return "skip", "没有 vendor/（不适用）"
-    if os.path.isdir(os.path.join(root, ".git")):
+    if _in_git_repo(root):
         try:
             p = subprocess.run(["git", "-C", root, "ls-files", "--", VENDOR_REL],
                                capture_output=True, text=True, encoding="utf-8", errors="replace")
@@ -2027,7 +1902,7 @@ def chk_vendor(root, ms):
 
 BUDGETS = (  # 层 → (glob 列表, 上限字节)。与项目仓治理体量的上限同尺，项目可更严、不可更松
     ("AGENTS.md", ("AGENTS.md",), 12 * 1024),
-    ("协议正本", ("airport/skills/loop/references/*.md", "loops/*.md"), 40 * 1024),
+    ("协议正本", ("airport/skills/loop/references/*.md",), 40 * 1024),  # loops/*.md 已死路径，2026-10-28 清（M7）
     ("适配说明", ("adapters/*.md",), 16 * 1024),
     ("安装面 SKILL.md", ("*/skills/*/SKILL.md", "skills/*/SKILL.md"), 40 * 1024),
     ("技能内其它 md", ("*/skills/**/*.md", "skills/**/*.md"), 64 * 1024),
@@ -2079,6 +1954,95 @@ def chk_plugin_manifest(root: str, ms=None):
     return "ok", out.split("总结：")[-1][:300] if "总结：" in out else out[:300]
 
 
+# ── 指针可解析性（2026-10-28 体检新增）：正文引用的仓内路径必须真实存在 ──────────
+POINTER_PATH_RE = re.compile(
+    r"^[A-Za-z0-9._][A-Za-z0-9._-]*(?:/[A-Za-z0-9._-]+)*\.(?:md|py|json|ya?ml|txt|ps1|vbs|sh|bat|cmd|cfg|ini)$")
+PY_SCRIPT_RE = re.compile(r"\bpython3?\s+((?:[A-Za-z0-9._-]+/)*[A-Za-z0-9._-]+\.py)")
+PS1_SCRIPT_RE = re.compile(r"-File\s+((?:[A-Za-z0-9._-]+/)*[A-Za-z0-9._-]+\.ps1)")
+FENCE_RE = re.compile(r"```[^\n]*\n(.*?)```", re.S)
+BACKTICK_RE = re.compile(r"`([^`\n]+)`")
+# 条件提及（路径在本仓不存在是正当的）：宿主侧落点、项目仓脚本、已知缺件
+POINTER_ALLOW = {
+    "loops/loop-protocol.md",       # 协议正本头部：项目仓旧镜像位（条件提及）
+    ".ai/kai-mode.project.json",    # 项目侧配置实例，不进本仓
+    "set-kai-mode/scripts/issue-guard.py",  # adapters 按「宿主技能目录」相对引用，装机后存在
+    # 宿主侧落点：adapters 描述的是装到宿主机器上的文件，本仓没有
+    ".claude/settings.json",
+    ".claude/agents/Explore.md",   # 子代理模板：装到项目 agent 目录后才存在
+    ".claude/agents/Plan.md",
+    ".claude/agents/general-purpose.md",
+    ".qoder-plugin/plugin.json",
+    ".qoder/scheduled_tasks.json",
+    "tower/scripts/wake-gate.py",
+    "scripts/wake-gate.py",
+    # 项目仓脚本：技能正文明写「脚本在项目仓」，框架仓不提供
+    "scripts/env-doctor.py",
+    "scripts/framework-gate.py",
+    "scripts/ready.py",
+    "scripts/main-tree-residue-census.py",
+    # 已知缺件（体检 H3）：量具只住项目仓，协议已降级为「约定（无门）」
+    "scripts/inflight-budget.py",
+}
+
+
+def chk_pointer_targets(root, ms):
+    """?? 正文（md）里的仓内路径指针必须可解析——反引号路径与 bash 块里的脚本路径都要真实存在。
+    broken-link 只查 markdown 链接与 sources；反引号与代码块里的死命令（体检 H3/H8/H12 类）此前全放行。
+    三级解析：仓根 → 所在文件目录 → 上一级目录（references/ 内引用技能目录件）。
+    含 <占位>/~/*/http 的 token 与 docs/adr、docs/design、handoff（历史与前瞻）豁免。"""
+    canon_path = os.path.join(root, CANON_REL)
+    if not os.path.isfile(canon_path):
+        return "skip", "缺 canon.json（扫描面无从派生）"
+    try:
+        with open(canon_path, encoding="utf-8") as f:
+            cfg = json.load(f)
+    except (OSError, ValueError):
+        return "skip", "canon.json 读不出来"
+    exempt = tuple(cfg.get("exempt") or ()) + ("docs/design",)
+    files = []
+    for rel in cfg.get("scan_roots") or []:
+        p = os.path.join(root, rel)
+        if os.path.isfile(p):
+            files.append(p)
+        elif os.path.isdir(p):
+            for dirpath, dirs, names in os.walk(p):
+                dirs[:] = [x for x in dirs if x not in ("__pycache__", ".pytest_cache")]
+                files.extend(os.path.join(dirpath, fn) for fn in names if fn.endswith(".md"))
+    missing, scanned = [], 0
+    for fp in files:
+        relf = os.path.relpath(fp, root).replace("\\", "/")
+        if any(relf == e or relf.startswith(e.rstrip("/") + "/") for e in exempt):
+            continue
+        try:
+            with open(fp, encoding="utf-8") as f:
+                text = f.read()
+        except (OSError, UnicodeDecodeError):
+            continue
+        scanned += 1
+        tokens = {m.group(1).strip() for m in BACKTICK_RE.finditer(text)}
+        for fb in FENCE_RE.finditer(text):
+            for line in fb.group(1).splitlines():
+                for rx in (PY_SCRIPT_RE, PS1_SCRIPT_RE):
+                    tokens.update(m.group(1) for m in rx.finditer(line))
+        base_dir = os.path.dirname(fp)
+        bases = (root, base_dir, os.path.dirname(base_dir))
+        for tok in sorted(tokens):
+            if (tok in POINTER_ALLOW or tok.startswith("paths.")  # 配置键（paths.state_dir/…），不是仓内文件
+                    or "/" not in tok or any(c in tok for c in "<>*~${(")):
+                continue
+            if not POINTER_PATH_RE.match(tok):
+                continue
+            if any(os.path.isfile(os.path.join(b, *tok.split("/"))) for b in bases):
+                continue
+            missing.append(f"{relf} → {tok}")
+    if missing:
+        uniq = sorted(set(missing))
+        return "fail", "指针断了：" + "；".join(uniq[:6]) + (f"（共 {len(uniq)} 处）" if len(uniq) > 6 else "")
+    if scanned == 0:
+        return "skip", "扫描面为空"
+    return "ok", f"{scanned} 份正文的仓内路径指针都可解析"
+
+
 CHECKS = (
     ("registry-file", "市场清单/注册表", chk_registry_file),
     ("registry-fields", "注册表字段", chk_registry_fields),
@@ -2089,6 +2053,7 @@ CHECKS = (
     ("missing-skill-path", "注册条目路径都在", chk_missing_path),
     ("machine-path", "没有机器绝对路径", chk_machine_path),
     ("broken-link", "SKILL.md 相对链接都在", chk_broken_link),
+    ("pointer-targets", "正文指针指向的仓内文件都在", chk_pointer_targets),
     ("tracked-cache", "git 跟踪文件无缓存/运行数据/开发流水", chk_tracked_cache),
     ("gitattributes-bat", ".gitattributes 钉住 .bat 行尾", chk_gitattributes),
     ("install-set-match", "装机集合与注册表一致", chk_install_set),
@@ -2105,7 +2070,7 @@ CHECKS = (
     ("handoff-slots", "交接文档分类（槽位/命名/归位）", chk_handoff),
     ("skill-spec", "技能格式对齐 Agent Skills 1.2", chk_skill_spec),
     ("command-surface", "技能声明的命令在自己工具面里", chk_command_surface),
-        ("canon-dup", "判据一个家（退役词/平行正本）", chk_canon),
+    ("canon-dup", "判据一个家（退役词/平行正本）", chk_canon),
     ("vendor-sync", "辅助技能原样副本（跟踪/漂移）", chk_vendor),
     ("payload-budget", "安装面字节预算（分层反膨胀）", chk_payload_budget),
 )

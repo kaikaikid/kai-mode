@@ -12,9 +12,10 @@ description: >
   看板展示形态（Flight Information）：一块板 = 一个 SQLite 库 ＋ 一份板配置 ＋ 两个产物。
   采集各源 → 归一化落库 → 判阶段 → 出 board.json（AI 只读，≤25KB）与 index.html（人读）。
   模块化：db / stage / sources / collect / render / config 单向依赖，源按类型插件式增删。
-  刷新靠 git 钩子打脏标记 ＋ 有脏才刷，零 token、跨 agent；任一源失败只降级点名，不整页崩。
+  刷新靠 git 钩子打脏标记 ＋ 30 分钟脚本定时任务（`--max-age` 兜底 GitHub 侧更新）＋ 页面自刷新，
+  零 token、跨 agent；任一源失败只降级点名，不整页崩。
   触发：/航班信息、刷新航班信息板、看现在在飞什么、给这个仓装一块板。
-version: 1.3.0
+version: 1.5.0
 updated: 2026-10-27
 allowed-tools: Bash(python:*) Bash(git:*) Read Write
 compatibility: Requires python3 (stdlib only), git
@@ -49,7 +50,7 @@ metadata:
 | `flightinfo/config.py` | 板配置加载 / 校验 / 定位落点 | 不许写盘 |
 | `schema/*.sql` | 表结构正本（可重复执行） | — |
 
-加一个**航班形态**的源（产出 `flights`/`schedules`）＝在 `sources/` 放一个实现 `collect(cfg, ctx)` 的模块 ＋ 在 `sources/__init__.py` 的 `REGISTRY` 加一行。**其他文件一个字都不用改。**
+加一个**航班形态**的源（产出 `flights`/`schedules`）＝在 `sources/` 放一个实现 `collect(cfg, ctx)` 的模块 ＋ 在 `flightinfo/sources/__init__.py` 的 `REGISTRY` 加一行。**其他文件一个字都不用改。**
 
 加一个**非航班形态**的源（如 `handoff-index`，产出 `handoffs` 这类自定义键）要四件事：源模块返回该键 → `collect.run_sources` 汇总该键并调 `db.replace_*` 落库 → `db.py` 加读函数 ＋ `schema/00X-*.sql` 建表 → `render.py` 加段落。`run_sources` 是显式按键名取的（不是自动透传），所以键名要和落库/渲染函数对齐。
 
@@ -75,8 +76,8 @@ metadata:
 | `summary.ai_why_chars` | 否 | AI 面判据截断（默认 160）。全文在人面展开行里。 |
 | `summary.ai_note_chars` | 否 | AI 面排班备注截断（默认 160）。实测一条备注能到 2 千字，占 board.json 65% 预算、把航班挤到只剩 2 条。 |
 | `summary.ai_label_max` | 否 | AI 面每票标签上限（默认 6，超出折成「…共 N 枚」）。 |
-| `sources[].lanes` | 否 | **书写顺序＝页面上车道块的左右顺序**（如 `["main","deputy","ace"]` ⇒ 主机长在左）。以前按字母排，`deputy` 天然压到 `main` 前面，把"主道优先"读反了 |
-| `view.urgent` | 否 | 加急腿（王牌飞行员）：`{"lanes":["ace"],"label":"ace-queue"}`。两条信号**任一成立**即上「紧急任务」段——① 该车道的日表行；② 开放票带该标签。ace 车道的排班行**不进**「塔台排班」（免得挤占 20 行额度）。协议同刻只许 1 张，超了段头直接报「超编」。空态自带亮起方式，不许一片空白让人以为坏了（D-05） |
+| `sources[].lanes` | 否 | **书写顺序＝页面上车道块的左右顺序**（如 `["main","deputy","second","ace"]` ⇒ 主机长在左）。以前按字母排，`deputy` 天然压到 `main` 前面，把"主道优先"读反了 |
+| `view.urgent` | 否 | 加急腿（王牌飞行员）：`{"lanes":["ace"],"label":"ace-queue"}`。两条信号**任一成立**即上「紧急任务」段——① 该车道的日表行；② 开放票带该标签。ace 车道的排班行**不进**「塔台排班」（免得挤占排班行数额度，额度见协议 §零）。王牌执行帽口径见协议 §一，按该口径判「超编」（授权并行后以人工核对为准）。空态自带亮起方式，不许一片空白让人以为坏了（D-05） |
 | `view.focal_stage` | 否 | 哪一段着赭色，默认 `to_ship`；该段为 0 张时**不亮** |
 | `view.font_source` | 否 | `system`（默认，零网络）/ `web`（引 Google Fonts） |
 | `view.metrics[]` | 否 | `{key,label}` 次级读数；不写＝航班总数 / 今日收尾 / 今日排班 |
@@ -88,10 +89,12 @@ metadata:
 | type | 参数 | 读什么 |
 |---|---|---|
 | `board-cards` | `path`（缺省 `paths.handoff_dir`） | `handoff/60-board/{open,claimed,done}/` 卡片的 frontmatter |
-| `tasks-table` | `path`（缺省 `paths.day_tables_dir`）/ `include`（默认 `*-main.md`／`*-deputy.md`／`*-ace.md`）/ `lanes`（默认 `main`／`deputy`／`ace`） | 日表 markdown：列表行 `- [ ] #12 事 \| 备注`，或表格 `\| 序 \| 票号 \| 里程碑 \| 一句话 \| 备注 \|`（两种都认，可混用） |
+| `tasks-table` | `path`（缺省 `paths.day_tables_dir`）/ `include`（默认 `*-main.md`／`*-deputy.md`／`*-second.md`／`*-ace.md`）/ `lanes`（默认 `main`／`deputy`／`second`／`ace`） | 日表 markdown：列表行 `- [ ] #12 事 \| 备注`，或表格 `\| 序 \| 票号 \| 里程碑 \| 一句话 \| 备注 \|`（两种都认，可混用） |
 | `git-worktrees` | `branch_prefixes`（默认 `["exec/","land/"]`；也认单个 `branch_prefix`；`hotfix/` 不在此源，走王牌日表） | 本地 worktree/分支 → 在飞证据 |
 | `github-issues` | `repo` / `state`（`open`\|`closed`\|`none`）/ `limit` / `include_closed`＋`closed_limit` | 票面（`gh` 不可用则降级）。`include_closed: true` 顺带拉已关票——残留 `exec/` 分支只有靠「已关」才能归到已收尾 |
 | `handoff-index` | `path`（缺省 `paths.handoff_dir`）/ `slots` / `limit`（默认 8） | 交接日报索引：只读 `handoff/<槽>/<YYYY-MM>/*.md` 的文件名＋首行标题，**不搬正文**；渲染成可点相对链接的「交接日报索引」区 | **文件名日期两种写法都认**：`YYYY-MM-DD-*.md` 与跨角色件常用的 `HANDOFF-YYYYMMDD-*.md`；解析不到日期会沉到月初、被 `limit` 挤掉（2026-10-27 实测：两份 HANDOFF-* 在板上完全隐形）。月/日做合法性校验，`12345678.md` 一类不当日期 |
+| `ship-queue` | 无（读 `paths.state_dir`） | **塔台待发货队列**：读 `.git/<框架>/ship-queue.json`（正本写者＝塔台 `ship-queue.py sync`），出 pending/hotfix/invalid 计数与逐票行；文件不在 ⇒ `absent`（「塔台还没跑过 sync」），不猜。不产生航班记录，只供「待发货队列」区块 |
+| `tower-token` | 无（读 `paths.state_dir`） | **塔台令牌**：读同目录 `tower-token.json`，出持牌人／心跳龄／是否已被判死；只做状态条的一枚灯，不改任何阶段判据 |
 
 **`stage_rules.when` 取值**：`state_closed` `label_equals` `comment_contains` `branch_exists` `table_note_contains` `assignee_exists` `no_issue` `else`。
 `no_issue`＝有 `exec/` 分支但 GitHub 认不到这张票（`url` 空）⇒ 判「残留分支」。
@@ -103,30 +106,29 @@ metadata:
 
 ## 4. 版式（`index.html`）
 
-皮肤＝本仓 Soft UI 设计系统正本（`soft-design-system/tokens/tokens.css`），**不是**外来 editorial 灰纸。
-2026-10-26 刀 2 换骨：壳层＋左侧纯导航＋Bento 读数＋折叠段。改皮肤只改 `flightinfo/render.py`
-顶部的 `CSS` 常量（`:root` 与暗档块），不动逻辑。
+皮肤＝**KWP 看板皮肤**（`anthropics/knowledge-work-plugins`：`data/skills/build-dashboard` 的
+KPI 卡／图表／页脚时间戳方法论 ＋ `productivity/skills/dashboard.html` 的暖白陶橙配色与看板列）。
+参考副本在框架仓外 `tools/kwp-reference/`（只作比对，不入库）。
+2026-10-28 换骨：壳层＋左侧纯导航＋Bento 读数＋**看板列（列＝阶段、卡＝票）**＋列表视图。
+改皮肤只改 `flightinfo/render.py` 顶部的 `CSS` 常量（`:root` 与暗档块），不动逻辑。
 
 | 件 | 规格 | 撞了算谁的 |
 |---|---|---|
-| 色 | 全用 `--soft-*` token：页 `--soft-bg` #FFF ／ 壳画布 `--soft-canvas` #F8F8F8 ／ 面板 `--soft-white` ／ 内嵌 `--soft-inset`（由 `--soft-surface` 派生）／ 品牌 `--soft-accent` 暖黄 #F4D06F（暗档翻 #A594C8）／ danger #F25C54。**使用面禁硬编码色值**，要透明度用 `color-mix()` 从 token 派生 | D-03／D-S03 |
-| 暗档 | `html[data-theme="dark"]` 整块覆盖，起手跟随 `prefers-color-scheme`；实测暗档 0 字不达 AA（最低 4.94:1） | — |
-| 圆角 | 侧栏与主区 R4 24（壳成员档）、段卡 R3 20、行与导航项 R2 16、标签 R1 12、计数与胶囊 pill | D-S08／2.2.64 封顶 |
-| 壳几何 | 外留白 8 · 栏间 8 · 栏内衬 16 · 侧栏 216（`--soft-sidebar-width`）· 核心区内容上限 1120 · **成员之间零分割线**（靠 canvas↔white 反差＋留白） | D-S06 |
-| 左侧栏 | **纯导航**：品牌行 → 段导航（排班／航班表／里程碑／日报）→ 按阶段筛（全部／在飞／停滞／待发货／卡点／可领／排队／残留）→ 栏底口径折叠。行间隔 `--soft-nav-gap` 6、行档 28、选中＝内嵌灰一档＋计数徽章转暖黄（E5a，全屏只一枚）。**读数、源灯、搜索框不许进侧栏**；侧栏禁独立滚动（D-11） | 用户令 |
-| 主区次序 | 页面级标题 h1 24/700 ＋ 一句读数 → 工具排 → Bento → **紧急任务（加急优先，最前）** → **塔台排班（主左副右）** → 航班信息表（居中）→ 里程碑 → 已收尾 → 日报 → 趋势线 | D-S12／用户令 |
-| Bento | 4 枚 1×1（待发货／停滞／卡点／在飞，**可点＝套筛选**）＋ 2 枚 2×1（下一轮方向／今日排班）。比例只准 B-01 四档、一卡一任务、内容卡 ≤R3 20 | B-01／B-05 |
-| 工具排 | 搜索钮（⌘K 开浮层，不做常驻输入框）· 展开细节 · 外观 · 刷新。**功能件 ≤6、带底件 ≤1 枚**（名额给唯一主行动） | D-S09／D-22 |
-| 航班表 | 四列：票号（有 `url` 就出链）／标题·徽章·判据／阶段链＋掌机（推断带「推」）／**距今**。细节全在展开行（`tabindex=0`＋Enter 可达） | D-07 |
-| 紧急任务段 | 暖黄左描边（`box-shadow: inset 3px 0 0 --soft-accent`）——加急属"有事做"不属"坏"，**不用红**（D-S03 色语义）；侧栏导航第一项就是它 |
-| 告警色 | **小字不许直接染红**：danger #F25C54 对白底只有 3.26:1，够 28px 大数字与图形、不够 12px 正文。停滞的告警交给红点，快照过期交给红下划条 | WCAG AA／D-S11 |
-| 状态条 | 底部 28px，源健康灯（`backdrop-filter` 是 D-S01 两枚受控落点之一），只放读数不装按钮 | D-S01 |
-| 降级旗 | 任一源非 `ok` ⇒ 方向句下方一条红边横块点名（`role="alert"`）；全绿不占位 | D-06 |
-| 窄档 | ≤1080 Bento 两列；≤860 侧栏转横带（只留一条内容前横带）；≤560 导航段走单行横向滚动＋藏条（正本逃生阀） | D-16／D-17／D-20 |
-| 零网络 | 默认 `font_source: system`：不外链字体与任何资源，离线可看；`localStorage` 零使用（筛选态走 URL hash） | — |
-
-**实测基线**（2026-10-26，Kai-vass 板）：侧栏 216px 无独立滚动、h1 起始线 24px、工具排 4 件带底 1 枚、
-航班 68 行全量、亮档与暗档不达 AA 的字数均为 **0**、使用面硬编码色值 **0**、外链资源 **0**。
+| 色 | 全用 token：纸底 `--bg-primary` #faf9f5 ／ 次层 `--bg-secondary` #F5F4EF ／ 卡片白 ／ 文字 #141413 / #5c5c5a / #8c8c8a ／ 强调（陶橙）`--accent` #D97757 ／ 线 `--border` #e5e4df ／ 告警 `--negative` #C4553F。**使用面禁硬编码色值** | KWP 皮肤 |
+| 暗档 | `html[data-theme="dark"]` 整块覆盖，起手跟随 `prefers-color-scheme` | — |
+| 圆角 | 列 12 / 卡 10 / 段卡 10 / 面板 14 / 胶囊 pill | — |
+| 壳几何 | 外留白 12 · 栏间 16 · 侧栏 216 · 内容上限 1400 · 卡片各自描边（KWP 用 1px 边框而非阴影分层） | — |
+| 左侧栏 | **纯导航**：品牌行 → 段导航 → 按阶段筛 → 栏底口径折叠。读数、源灯、搜索框不许进侧栏 | 用户令 |
+| 主区次序 | 页头（眉标＋h1＋快照龄＋未收尾读数）→ 工具排 → 降级旗 → Bento → **紧急任务（最前）** → **塔台排班（三车道，主左副中二副右）** → **待发货队列** → 航班（看板列／列表）→ 里程碑 → 交接日报 → 趋势 | 用户令 |
+| 看板列 | 列＝阶段链（排队／在飞／审查／待发货／已收尾）；链外阶段（停滞／卡点／可领／已派／残留）**只有真有票才成列**。列宽 280–340、列内滚动、列头带计数徽章；**卡只读不可拖**（板不改状态） | 用户令 |
+| 卡片 | 票号（有 `url` 出链）＋标题＋徽章 → 掌机＋阶段标签＋里程碑＋距今 → 判据一行（截 110 字） | — |
+| 视图切换 | 工具排「看板／列表」两档，选择存 `localStorage`；列表档＝旧四列表格（含展开行） | KWP `.view-toggle` |
+| 工具排 | 搜索（⌘K）· 看板/列表 · 展开细节 · 外观 · 刷新。**带底件只 1 枚** | — |
+| 待发货队列 | 读 `paths.state_dir/ship-queue.json`（塔台写）；每行＝票号／ac／sha／分支／挂起原因。读不到明说读不到，不装空 | 用户令 |
+| 状态条 | 底部固定：源健康灯 ＋ **塔台灯**（持牌人＋心跳龄，读 `paths.state_dir/tower-token.json`）＋「只读各源」 | — |
+| 告警色 | 小字不直接染红（#C4553F 对白底不足 4.5:1）：停滞交给红点，快照过期交给下划条 | WCAG AA |
+| 自刷新 | 三档：① http 下每 60 秒比对 `board.json.generated_at`，变了就重载；② 手动「刷新」按钮重读磁盘；③ 重建由钩子/定时器/`refresh.vbs` 触发。页头常驻「快照 … · N 分钟前」，超 15 分钟加下划条 | 用户令 |
+| 零网络 | 默认 `font_source: system`：不外链字体与任何资源，离线可看；筛选态走 URL hash；只有「看板/列表」视图偏好写 `localStorage`（读取失败不影响功能） | — |
 
 ## 5. 命令
 
@@ -140,11 +142,11 @@ python scripts/refresh.py --repo-root <仓根> --config <板目录>/board.config
 # 装有脏才刷的 git 钩子（默认干跑，--apply 才落盘）
 python scripts/install_hook.py --repo-root <仓根> [--apply] [--remove --apply]
 
-# 一键接上自动更新（钩子 ＋ 定时任务 ＋ 人工入口；见第 5.5 节）
-python scripts/install_auto.py --repo-root <仓根> --config <板配置> [--interval 15] [--apply] [--remove --apply]
+# 一键接上自动更新（三钩子 ＋ 30 分钟脚本定时任务 ＋ 人工入口；见第 5.5 节）
+python scripts/install_auto.py --repo-root <仓根> --config <板配置> [--interval 30] [--apply] [--remove --apply]
 
-# 给闹钟/人工用的幂等刷新（无脏直接跳过）
-python scripts/refresh_if_dirty.py --repo-root <仓根> --config <板配置> [--force]
+# 给闹钟/人工用的幂等刷新（无脏且板龄未超限就跳过）
+python scripts/refresh_if_dirty.py --repo-root <仓根> --config <板配置> [--force] [--max-age <分钟>]
 ```
 
 产物落 `板目录/`：`board.db`（库）｜`board.json`（AI 面，有字节预算）｜`index.html`（人面，未收尾全量不截断）｜`history.jsonl`（每轮一行 KPI，趋势线的正本；同一 `run_id` 幂等，只留一行）。
@@ -153,39 +155,29 @@ python scripts/refresh_if_dirty.py --repo-root <仓根> --config <板配置> [--
 
 板默认是**手动**刷的。要自动更新，跑 `install_auto.py --apply` 会收齐三层：
 
-1. **git 钩子**（`post-commit` / `post-merge`）：写进仓的**有效** `core.hooksPath`
-   （本仓是 `.githooks`，不是 `.git/hooks`）。钩子只往 `.git/flight-info-dirty` 写时间戳，
-   **不同步刷、不阻塞 git**（退出码恒 0，fail-open）。
-2. **人工入口** `refresh.vbs`（复制到板目录）：页面右上角「刷新」按钮指向它，双击也能跑。
-   `start "" /min` 隐藏窗口，无黑窗；它强制重生成一次（无视脏标记）。
-   ⚠️ 页面是静态 `file://` HTML，浏览器**不能**从按钮直接执行本地 vbs；按钮目前做
-   `location.reload()` 重读磁盘上的最新页面。真·重建点按钮后会滞后一轮定时/钩子，
-   想立刻重建就用双击 `refresh.vbs`。
-3. **定时任务**（`schtasks`，仅登录时运行、隐藏窗口，每 `interval` 分钟）：消费脏标记、调
-   `refresh_if_dirty`。**无 token**：用当前用户上下文、`/RP` 不写（不存密码）；
-   代价＝登出/关机时不刷。
+1. **git 钩子**（`post-commit` / `post-merge` / `post-checkout`）：写进仓的**有效**
+   `core.hooksPath`（本仓是 `.githooks`，不是 `.git/hooks`；两个安装器用同一把尺）。
+   钩子只往 `.git/flight-info-dirty` 写时间戳，**不同步刷、不阻塞 git**（退出码恒 0，fail-open）。
+2. **人工入口** `refresh.vbs`（复制到板目录）：双击强制重建一次（无视脏标记）。
+   页面「刷新」按钮做 `location.reload()` 重读磁盘；真正重建走 vbs 或定时器。
+3. **定时任务**（`schtasks`，仅登录时运行，默认每 **30** 分钟）：`refresh_task.bat`
+   → `wscript //B refresh_tick.vbs` → `refresh_if_dirty.py --max-age <interval>`。
+   - **零黑窗**：全链路 wscript（GUI 子系统）＋ `sh.Run cmd, 0, True`；
+     不用 `start /min python`（仍会闪控制台）。
+   - **零 token**：纯脚本，不起 AI 会话；用当前用户上下文、不写 `/RP`（不存密码）。
+   - **`--max-age` 兜底**：GitHub 的评论/标签更新**不产生本地提交**，钩子永远看不见；
+     板龄超过 interval 就强制刷一次，治「GitHub 早更新了、板上还是旧的」。
 
 > **本机实测**：部分 Windows 安全策略禁止 `schtasks /Create`（报错 `Access is denied`），
 > 此时第 ③ 层建不出——`install_auto.py` 把它降级成告警、不阻断整次安装；
 > 钩子与手动刷新仍可用。要周期刷新，在能建任务的环境重跑即可。
 >
-> 另外：定时任务用系统账号跑时 `gh` 读不到你的 GitHub 登录态（票面源降级）；
-> 用当前用户 ＋ 仅登录时 ＝ `gh` 正常、又无 token。两全。
+> 定时任务用系统账号跑时 `gh` 读不到你的 GitHub 登录态（票面源降级）；
+> 用当前用户 ＋ 仅登录时 ＝ `gh` 正常、又无 token。
 >
-> **⚠ 2026-10-27 口径更正（同日两拍，以后一拍为准）**
-> 本文件一度记成"用户拍板：不建闹钟、长期手动刷"——**那一版作废**。用户随后确认：
-> **自动重建是需要的**，此事已作为加急任务由王牌飞行员热修中：
-> 票 `H-20261027-1`「航班信息板提交后不自动更新：钩子只打脏标记、无人消费」，
-> 分支 `hotfix/ace-20261027-1-board-autorebuild`，口径＝用户对王牌会话当面指令「你直接热修」。
-> ⇒ **不要再拿"已拍板接受手动刷"答复后续会话**；实现方案以那张热修票的落地为准，落定后回写本行。
->
-> 仍然成立的两条事实与一条判否（热修方案请一并读）：
-> · 本机实测 `schtasks /Create` 直接 `Access is denied`（普通用户权限建不了，非脚本 bug）——
->   这是热修必须绕过的硬约束，不是"算了不修"的理由。
-> · 钩子只打标记、页面「刷新」只重读磁盘、双击 `refresh.vbs` 才立刻重建——现状三腿都还在，
->   页头带快照时间与"距今 N 分钟"，过期看得见、不骗人。
-> · **判否**：把板子挂到本仓已有的 15 分钟产品运维轮询（`KaiVass-OpsPoll15` / `ops/ops-poll.py`）
->   上顺手消费——那是产品运维面的腿，治理看板塞进去＝混职责，且要改别的票地盘的文件。
+> **平台边界（体检 L12）**：第 ②③ 层（`refresh.vbs`／`schtasks`／`wscript`）目前只有 Windows 实现。
+> 「跨 agent」指不依赖某个 AI 宿主，**不是跨 OS**——非 Windows 环境用第 ① 层钩子 ＋ 手动
+> `python refresh.py`（或自建 cron 调 `refresh_if_dirty.py`），`--max-age` 兜底仍然成立。
 
 ## 6. 退出码与降级
 
@@ -213,7 +205,7 @@ python scripts/refresh_if_dirty.py --repo-root <仓根> --config <板配置> [--
 ## 8. 验证命令
 
 ```bash
-python -m unittest discover -s tests -v          # 33 项单元测试（含端到端）
+python -m unittest discover -s tests -v          # 单元测试（含端到端；项数以实际收集为准，不写死）
 python scripts/init_board.py --repo-root <临时仓>  # 自证：装完能用
 python scripts/refresh.py --repo-root <临时仓> --config <板配置> --no-network
 ```

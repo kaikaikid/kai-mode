@@ -21,9 +21,9 @@
     "handoff/",
     "scripts/",
     "adapters/",
-    "schemas/",
     "vendor/",
-    "manifests/"
+    "manifests/",
+    "studio/"
   ],
   "_repo_only_note": "插件目录下的 skills/ 与 commands/ 是安装件；PLAYBOOK.md、CONNECTORS.md、plugin.json 也随插件走。handoff/ 里只有 project_scaffold.handoff.files 列出的 4 件规范/模板可作生成源；其余（日期目录、评审件、归档、看板工单）都是本仓开发记录——既不能当源，也不入库（.gitignore 屏蔽，doctor 的 tracked-cache 拦被跟踪的）。docs/ 任何内容都不得复制进用户项目。",
   "host_payload": {

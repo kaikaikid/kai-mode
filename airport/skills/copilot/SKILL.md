@@ -12,7 +12,7 @@ description: >
   机场体系的副机长：与机长同权限、同一套流程（滚动消费自己那张日表、待发货不占执行名额、
   取舍题默认派裁决子代理不提问、收场必先落续跑指针），独立日表 `-deputy.md`。
   触发：`/copilot`、说「副机长」「副班开工」「跑副机长的表」。
-version: 3.0.0
+version: 3.1.0
 updated: 2026-10-27
 allowed-tools: Bash(git:*) Bash(gh:*) Bash(python:*) Read Grep
 compatibility: Requires git
@@ -53,8 +53,7 @@ dependencies:
 python <gates.captain_preflight> --lane deputy
 ```
 
-`CONTINUE` 继续补下一张（表的判据只算未完工票，已 `pass` 进待发货的不占你名额）；
-`REVIEW` 判完确实没活加 `--ack-review`；`STOP` 才停；`BLOCKED` 写卡点，不得当空表。
+四值语义见协议 §七「收工门禁四值契约」。补位前同机长：须先过可死性三件（协议 §一）。
 
 ## 验证命令
 
@@ -72,7 +71,7 @@ python <gates.captain_preflight> --lane deputy
 
 ## 隔离（硬）
 
-- 不读、不写 `-main.md`；不碰机长的票、分支、工作树。
+- 不读、不写 `-main.md` / `-second.md`；不碰机长、二副、王牌的票、分支、工作树。
 - 机长停摆时不自动接管，等塔台改日表。
 - **不唤醒任何其他角色**：需要塔台写进交付／播报，交人工或定时器处理。
 - 其余围栏、自决、断点与机长完全相同。
