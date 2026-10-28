@@ -34,14 +34,29 @@ def fixture(repo, data):
 
 
 def run(repo, action, *args, fx=None, as_json=False):
+    p = run_streams(repo, action, *args, fx=fx, as_json=as_json)
+    return p.returncode, (p.stdout or "") + (p.stderr or "")
+
+
+def run_streams(repo, action, *args, fx=None, as_json=False):
+    """要分头看 stdout／stderr 时用这条（stdout 有 ≤20 行契约，告警不该占它）。"""
     cmd = [sys.executable, SCRIPT, action, "--repo", repo]
     if fx:
         cmd += ["--fixture", fx]
     if as_json:
         cmd.append("--json")
     cmd += list(args)
-    p = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
-    return p.returncode, (p.stdout or "") + (p.stderr or "")
+    return subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+
+
+def load_script():
+    """直调生产函数用。崩溃实际发生在 read_hotfixes，而它只在 fetch_live 成功之后才被调用
+    （临时仓没有 gh/git 远端，夹具腿走的是 parse_fixture_ace）⇒ 只加夹具用例，报的那条路等于没测。"""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("ship_queue_under_test", SCRIPT)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
 
 
 def issue(n, body="- [ ] a\n- [ ] b", updated="2026-10-27T08:00:00Z", **kw):
@@ -242,3 +257,68 @@ def test_probe_failure_never_reports_zero_pending():
     assert rc == 3
     assert "ERROR" in out
     assert "pending=0" not in out
+
+
+# ---------- 取值口径：真实日表把 sha/分支写在反引号里 ----------
+
+
+def test_read_hotfixes_from_disk_reads_backticked_sha():
+    """生产路径直调：王牌日表把热修写成 `` commit=`sha` `` 时，探测必须照常出条目并取对值。"""
+    repo = make_repo()
+    os.makedirs(os.path.join(repo, "tables"))
+    row = ("| 1 | H-20261027-1 | 无票热修 | 钩子只打脏标记 | **加急·待发货**："
+           "branch=`hotfix/ace-20261027-1-board` commit=`7d5e1035e`（四笔）verdict=pass ac=1/1 |\n")
+    with open(os.path.join(repo, "tables", "2026-10-27-ace.md"), "w", encoding="utf-8") as f:
+        f.write(row)
+    rows = load_script().read_hotfixes(repo, {"paths": {"day_tables_dir": "tables"}})
+    assert [r["id"] for r in rows] == ["H-20261027-1"]
+    assert rows[0]["sha"] == "7d5e1035e"
+    assert rows[0]["branch"] == "hotfix/ace-20261027-1-board"
+
+
+def test_backticked_hotfix_row_keeps_the_queue():
+    repo = make_repo()
+    ace = ("| 1 | H-20261028-1 | 无票热修 | 一句话 | branch=`hotfix/ace-20261028-1` "
+           "commit=`7d5e1035e` verdict=pass ac=1/1 |")
+    fx = fixture(repo, {"issues": [], "comments": {}, "commits": ["7d5e1035e"], "ace_text": ace})
+    rc, out = run(repo, "peek", fx=fx)
+    assert rc == 0, out
+    assert "hotfix=1" in out and "sha=7d5e1035e" in out and "verified=yes" in out
+
+
+def test_backticked_sha_and_branch_in_verdict_comment():
+    """判词评论同样吃引号写法：这条走的是 Issue 收集腿，坏了照样打死整轮。"""
+    repo = make_repo()
+    c = {"id": 1, "body": "verdict=pass\nac=2/2\nbranch=`feat/x`\ncommit=`abc1234`"}
+    fx = fixture(repo, {"issues": [issue(1877)], "comments": {"1877": [c]}, "commits": ["abc1234"]})
+    rc, out = run(repo, "peek", fx=fx)
+    assert rc == 0, out
+    assert "pending=1" in out and "sha=abc1234" in out and "branch=feat/x" in out
+    assert "verified=yes" in out
+
+
+def test_unlabelled_hotfix_row_does_not_mistake_the_date_for_a_sha():
+    """`H-20261028-1` 里的日期段全落在十六进制字符集内：没有标签时它必须冒充不了 sha。"""
+    repo = make_repo()
+    ace = "| 1 | H-20261028-1 | 无票热修 | 一行记录 | verdict=pass ac=1/1 |"
+    fx = fixture(repo, {"issues": [], "comments": {}, "commits": [], "ace_text": ace})
+    rc, out = run(repo, "peek", fx=fx)
+    assert rc == 0, out
+    assert "hotfix=1" in out and "sha=-" in out and "verified=no-sha" in out
+    assert "sha=20261028" not in out
+
+
+def test_one_unreadable_hotfix_row_does_not_kill_the_probe():
+    """一条读不成的记录＝点名这条，不是整轮探测没了。"""
+    repo = make_repo()
+    ace = ("H-20261028-1 verdict=pass commit=aaa1111\n"
+           "H-20261028-2 verdict=pass 这行没给号\n"
+           "H-20261028-3 verdict=pass commit=bbb2222")
+    fx = fixture(repo, {"issues": [], "comments": {}, "commits": ["aaa1111", "bbb2222"],
+                        "ace_text": ace})
+    p = run_streams(repo, "peek", fx=fx)
+    assert p.returncode == 0, p.stdout + p.stderr
+    out = p.stdout + p.stderr
+    assert "hotfix=3" in out and "sha=aaa1111" in out and "sha=bbb2222" in out
+    assert "没读成" in p.stderr and "这行没给号" in p.stderr
+    assert "没读成" not in p.stdout, "告警不占 stdout ≤20 行契约"

@@ -4,7 +4,7 @@
   "plugins": {
     "airport": {
       "version": "3.3.0",
-      "digest": "66fd36ad16776cb1b71fb50ca1e2807cb26e846c7fe5d1a6854d52a176f80025",
+      "digest": "9b4e65bff0f36fa25d5d6a1c8860b7fa997c19054d3c34f336e0bec46a6ecf03",
       "skills": {
         "ace": "1.4.0",
         "copilot": "3.1.0",

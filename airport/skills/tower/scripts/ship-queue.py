@@ -45,7 +45,12 @@ STATE_NAME = "ship-queue.json"
 OVERLAP = timedelta(seconds=60)
 MAX_LINES = 20
 
-SHA_RE = re.compile(r"(?<![0-9a-fA-F])[0-9a-f]{7,40}(?![0-9a-fA-F])")
+SHA_RE = re.compile(r"(?<![0-9a-fA-F])([0-9a-f]{7,40})(?![0-9a-fA-F])")
+# 日表与判词常把 sha／分支写成 markdown 反引号或引号包裹。标签腿必须吃这种写法：
+# 落进裸 hex 兜底等于猜（那行往往先撞上别处十六进制形状的串）。
+_QUOTE_CLASS = "[`'\"“”]"
+SHA_LABEL_RE = re.compile(r"(?:commit|sha|提交)\s*[=:：]\s*" + _QUOTE_CLASS + r"?\s*([0-9a-f]{7,40})", re.I)
+BRANCH_LABEL_RE = re.compile(r"(?:branch|分支)\s*[=:：]\s*" + _QUOTE_CLASS + r"?\s*([A-Za-z0-9._/\-]+)")
 AC_LINE_RE = re.compile(r"^\s*ac=(\d+)\s*/\s*(\d+)\s*$")
 AC_ITEM_RE = re.compile(r"^\s*[-*]\s*\[[ xX]\]\s+\S")
 HOTFIX_RE = re.compile(r"H-\d{8}-\d+")
@@ -153,15 +158,18 @@ def parse_verdict(comments: list) -> dict | None:
 
 
 def extract_sha(body: str) -> str | None:
-    m = re.search(r"(?:commit|sha|提交)\s*[=:：]\s*([0-9a-f]{7,40})", body or "", re.I)
+    """标签腿优先，裸 hex 只兜底。兜底前先摘掉 `H-` 热修号：`H-20261028-1` 的日期段
+    全落在十六进制字符集内、前后是 `-` 会混过查断言，不摘就被当成 sha。"""
+    text = body or ""
+    m = SHA_LABEL_RE.search(text)
     if m:
         return m.group(1)
-    m = SHA_RE.search(body or "")
+    m = SHA_RE.search(HOTFIX_RE.sub(" ", text))
     return m.group(1) if m else None
 
 
 def extract_branch(body: str) -> str | None:
-    m = re.search(r"(?:branch|分支)\s*[=:：]\s*([A-Za-z0-9._/\-]+)", body or "")
+    m = BRANCH_LABEL_RE.search(body or "")
     return m.group(1) if m else None
 
 
@@ -285,6 +293,27 @@ def issue_closed(repo: str, slug: str, ticket: int) -> bool:
     return gh_text(repo, f"repos/{slug}/issues/{ticket}", ".state") == "closed"
 
 
+def collect_hotfix_rows(lines) -> list:
+    """`*-ace.md` 行 → 热修条目（读盘与夹具两条腿共用的唯一口径）。
+
+    一行取值取不到＝这行没读成：条目照样入列（sha 留空，塔台看得见这个洞）、原文打到 stderr
+    点名，绝不中断整轮探测——一条脏记录不该把发货门打死。告警走 stderr 是因为 stdout 有 ≤20 行契约。
+    """
+    out, seen = [], set()
+    for line in lines:
+        if "verdict=pass" not in line:
+            continue
+        hm = HOTFIX_RE.search(line)
+        if not hm or hm.group(0) in seen:
+            continue
+        seen.add(hm.group(0))
+        sha = extract_sha(line)
+        if not sha:
+            print(f"[热修行没读成] 取不到 sha，原文：{line.strip()}", file=sys.stderr)
+        out.append({"id": hm.group(0), "sha": sha, "branch": extract_branch(line)})
+    return out
+
+
 def read_hotfixes(repo: str, cfg: dict) -> list:
     """读最新 `*-ace.md` 里带 H- 且 verdict=pass 的行；读不到就返回空（不阻塞发货）。"""
     tables = ((cfg.get("paths") or {}).get("day_tables_dir") or "").strip()
@@ -298,22 +327,12 @@ def read_hotfixes(repo: str, cfg: dict) -> list:
         path = found[-1] if found else None
     if path is None:
         return []
-    out, seen = [], set()
     try:
         with open(path, encoding="utf-8") as f:
             lines = f.readlines()
     except OSError:
         return []
-    for line in lines:
-        if "verdict=pass" not in line:
-            continue
-        hm = HOTFIX_RE.search(line)
-        if not hm or hm.group(0) in seen:
-            continue
-        seen.add(hm.group(0))
-        out.append({"id": hm.group(0), "sha": extract_sha(line),
-                    "branch": extract_branch(line)})
-    return out
+    return collect_hotfix_rows(lines)
 
 
 # ---------- 队列计算 ----------
@@ -493,17 +512,7 @@ def load_fixture(path: str) -> dict:
 
 
 def parse_fixture_ace(text: str) -> list:
-    out, seen = [], set()
-    for line in text.splitlines():
-        if "verdict=pass" not in line:
-            continue
-        hm = HOTFIX_RE.search(line)
-        if not hm or hm.group(0) in seen:
-            continue
-        seen.add(hm.group(0))
-        out.append({"id": hm.group(0), "sha": extract_sha(line),
-                    "branch": extract_branch(line)})
-    return out
+    return collect_hotfix_rows(text.splitlines())
 
 
 def cmd_done(args, state: dict) -> int:
