@@ -28,6 +28,11 @@ accepted —— 2026-10-26 用户令（#6）：「我需要跃迁模式下能够
 
 窗内遇到「没定论的取舍」（技术取向之外的方案选择、口径归并、优先级、边界宽严）⇒ 派第七人格 `adjudicator`（新上下文、只读、模型读项目实例 `models.agents.adjudicator.model`）出裁决，机长按裁决执行并在票面留痕。**窗内不为取舍向用户提问。** 技术怎么实现仍按 §十一 自决，不需要裁决子代理。
 
+> **订正（2026-10-28 体检 M13）**：人格文件层已整体退役——`agents/adjudicator.md` 不存在，「第七人格」是历史叫法。
+> 现行落点：裁决子代理的判据与输出契约住 `airport/skills/loop/references/adjudication.md`（随技能安装）；
+> 模型从项目配置实例的模型档读，不再有 per-persona 的 `models.agents.*` 键。
+> 下面 D3 提到的 `agents/adjudicator.md`「输出契约」同此订正；doctor 的 `agents-contract` 检查已随人格层删除（不再是门）。
+
 ### D3 裁决形状
 
 首行 `ruling=`，四件：争点（两种过法各一句）／判据（指针或实测读数，不写感觉）／所选与理由／撤销路径与改判条件。正本住 `agents/adjudicator.md`「输出契约」，协议与技能只留 marker 名与指针。`ruling=defer`（延后那一刀、继续别的活）是合法答案，**不许把 defer 包装成提问**。

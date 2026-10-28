@@ -62,7 +62,7 @@ dependencies:
 | 机长 | `/pilot` | goal 模式读 `-main` 日表并滚到跑空（在飞名额按协议正本，待发货不占位）；取舍默认派裁决子代理 | [`airport/skills/pilot/SKILL.md`](../../../airport/skills/pilot/SKILL.md) |
 | 副机长 | `/copilot` | 同一条 loop 的另一分支，读 `-deputy` 日表 | [`airport/skills/copilot/SKILL.md`](../../../airport/skills/copilot/SKILL.md) |
 | 二副 | `/second-officer` | 同一条 loop 的第三条机长道，读 `-second` 日表 | [`airport/skills/second-officer/SKILL.md`](../../../airport/skills/second-officer/SKILL.md) |
-| 王牌飞行员 | `/ace` | 用户直连的加急通道；读 `ace-queue` 标签票，在自己的 `-ace.md` 车道滚动消费，同刻 1 张；简单免票热修、复杂自补票 | [`airport/skills/ace/SKILL.md`](../../../airport/skills/ace/SKILL.md) |
+| 王牌飞行员 | `/ace` | 用户直连的加急通道；读加急队列标签票（标签字符串见地勤技能），在自己的 `-ace.md` 车道滚动消费（执行帽口径见协议 §一）；简单免票热修、复杂自补票 | [`airport/skills/ace/SKILL.md`](../../../airport/skills/ace/SKILL.md) |
 
 **权限硬线**：塔台独占 push 与关票；机长/副机长/二副/王牌只管理不写码（王牌热修是受控例外）、不 push；地勤只开票不施工；kai-mode 只做入口。
 
@@ -91,7 +91,7 @@ dependencies:
 |---|---|---|
 | 需要开票 / 改票面 | 地勤 | Issue（挂里程碑、`ready-for-agent`、AC 与禁区） |
 | 有票要执行 | 机长 / 副机长 / 二副 | 按日表开工；每票 1 施工 + 1 审查 |
-| 临时加急 / 用户直连 | 王牌飞行员 | `ace-queue` 标签票或自补票；热修四件记录；发货仍归塔台 |
+| 临时加急 / 用户直连 | 王牌飞行员 | 加急队列标签票或自补票；热修四件记录；发货仍归塔台 |
 | 要排班 / 发货 / 关票 | 塔台 | 日表、一次合并 push、关票回执 |
 | 不属于这些岗位 | 对应剧本 | 登记行收进项目配置实例 `registry.playbooks[]` |
 | 要全景 / 看进度 | **看板**（三层：数据 ＋ 展示 ＋ 触发） | 数据层 `handoff/60-board/` 卡片；展示层 [`flight-info`](../../../board/skills/flight-info/SKILL.md)（口令 `/航班信息`）的 `board.json`（AI 读）与 `index.html`（人读） |
@@ -100,7 +100,7 @@ dependencies:
 **不调用会话创建口，不自动起角色**。宿主缺能力时写进
 `/set-kai-mode` 的缺件登记，不猜路径、不硬起。
 **唤醒塔台的人名单（现阶段）**：人工口令、60 分钟唤醒定时器两路；
-kai-mode 只推荐命令，不在唤醒名单；**机长/副机长/二副/王牌也不得唤醒塔台**（后续可评审放开）——
+kai-mode 只推荐命令，不在唤醒名单；唤醒围栏见协议 §一（后续可评审放开）——
 它们需要塔台时写进交付/播报，由人工或定时器处理。
 
 ## 正本地图（入口不复述判据，只给路径）
@@ -110,13 +110,12 @@ kai-mode 只推荐命令，不在唤醒名单；**机长/副机长/二副/王牌
 | 要判什么 | 正本 |
 |---|---|
 | 一张票从领到发、名额、审查门、回执、红线 | 兄弟技能 `loop` |
-| 派子代理：何时不派、谁能派谁、并发、上下文纪律 | 兄弟技能 `loop` 的 `references/dispatch.md` |
+| 派子代理：何时不派、谁能派谁、并发、上下文纪律 | 兄弟技能 `loop` 的 `dispatch.md` |
 | 六个岗位与角色命令 | 机场剧本 `airport/PLAYBOOK.md` |
 | 开票与 Definition of Ready | 地勤技能 ＋ 项目仓的 issue 读取口径 |
 | 交接文档与跨 agent 看板 | 项目 `handoff/README.md`（装机骨架自带） |
 | 技能目录与字段契约 | 框架仓 `docs/skill-layout.md` |
 | 宿主差异：怎么装插件、技能放哪、角色命令怎么起 | 框架仓 `adapters/README.md` |
-| 事件、任务、验收的机器可读形状 | 框架仓 `schemas/` |
 
 > 「框架仓」那几行指 clone 里的正本，不随技能安装；技能正文已写全现行判据，读不到那些文件不影响执行。
 
@@ -141,7 +140,7 @@ kai-mode 只推荐命令，不在唤醒名单；**机长/副机长/二副/王牌
 - **传指针不传全文**：给子代理文件路径与票号，不粘正文；回收只收回执上限内的结论（见协议正本 §五）。
 - **仪式随规模塌缩**：判据见 [`principle-ceremony-collapses-with-scale`](../principle-ceremony-collapses-with-scale/SKILL.md)。
 - **默认往前走**：判据见 [`principle-measure-dont-ask`](../principle-measure-dont-ask/SKILL.md)。
-- **不搬**并行舰队那套机器（与  的单写手/隔离口径相反）。
+- **不搬**并行舰队那套机器（与「单写手／隔离」那套并行舰队口径相反）。
 
 ## 历史
 

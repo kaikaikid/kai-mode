@@ -11,7 +11,7 @@ sources:
 description: >
   把当前会话压缩成一份交接文档落 `handoff/`，供下一个 agent 续接；跨 agent 派活走项目自己的派活面（有 60-board 就走卡片脚本，没有就用该仓的 Issue／lane 文件）。
   不做：不复制 issue/ADR/spec/diff 内容（只给路径）、不写机器绝对路径、不当长期账本（建议 15 天内归档）。
-  触发：「写交接」「handoff」「交接文档」「下一棒」「派活」「认领」。
+  触发：「写交接」「handoff」「交接文档」「下一棒」。（「派活」是 loop 的子代理语义、「认领」是看板卡片语义，都不归本技能）
 version: 0.3.5
 updated: 2026-10-26
 allowed-tools: Read Write Edit Bash(python:*)

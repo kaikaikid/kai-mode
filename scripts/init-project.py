@@ -37,6 +37,15 @@ LAYOUT = os.path.join(ROOT, "manifests", "package-layout.json")
 LAYOUT_SCHEMA = "kai-mode-package-layout/1"
 
 
+def write_atomic(path: str, text: str) -> None:
+    """同目录临时文件＋os.replace：中途断掉不留半截 JSON（体检 M18）。
+    实例是门禁的输入，半截文件会被下游读成「配置坏了」而不是「没写完」。"""
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8", newline="") as f:
+        f.write(text)
+    os.replace(tmp, path)
+
+
 def load_layout() -> dict:
     """项目骨架面的唯一清单：生成什么、从哪份源复制，只认 manifests/package-layout.json。"""
     try:
@@ -380,9 +389,7 @@ def main() -> int:
         return 0
 
     os.makedirs(os.path.dirname(out), exist_ok=True)
-    with open(out, "w", encoding="utf-8", newline="") as f:
-        json.dump(cfg, f, ensure_ascii=False, indent=2)
-        f.write("\n")
+    write_atomic(out, json.dumps(cfg, ensure_ascii=False, indent=2) + "\n")
     files = gen_handoff(repo, ans, layout) + gen_docs(repo, ans, layout)
 
     print(f"\n已写 {os.path.relpath(out, repo)}（{len(files)} 个组件文件）")

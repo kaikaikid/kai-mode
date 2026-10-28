@@ -1,5 +1,11 @@
 # 子代理人格层：一源多投影 + 判据归属门禁
 
+## Status
+
+accepted（2026-10-24）——**载体形态已由 [0021](0021-plugin-playbooks-and-persona-retirement.md) 取代**：
+人格文件层（`agents/`）整体退役，`chk_agents` 随之删除。本 ADR 保留的判据：审查独立靠新上下文、
+只读/可写分层、「一条判据一个家」——后者由 `docs/canon.json` ＋ `canon-dup` 门继续执行。
+
 现状（2026-10 前）是「契约写在文档、机制一根没接」：`agents/README.md` 三处承诺 tier→模型解析住 adapters，三个 adapter 里 tier 表数量为 0；承诺 spawn 时传人格全文，实际传的是角色技能；`doctor.py` 零扫描 `agents/`，导致 7 份人格文件里的断句、指向已删目录的出处表、与 `ADR-0004` 漂移的档位映射全部一路全绿。同时 `skills/kai-mode/playbooks/` 七件与 `loops/loop-protocol.md` 长期并存两套口径（回执 25 行 vs 40 行、fail 3 轮 vs 1 次、租约/五角色等已退役机制）。
 
 根因不是文件写错，是**没有任何机制保证「一条判据一个家」**：横幅注释不是退役机制，原则条文不是校验。

@@ -114,6 +114,24 @@ Claude 桌面端/Code 的定时任务每轮**都会拉起一次模型会话**，
 - 落点：用户级 `<本机数据根>/claude/settings.json`（全局拦）或项目级 `.claude/settings.json`（只拦本仓）；
   `set-kai-mode` 按缺口清单问过再写，写前备份。
 
+## 内置子代理与同名覆盖
+
+宿主自带这几类子代理，**装自定义 agent 不会替换它们**——除非用同名文件覆盖：
+
+| 内置 | 干什么 | 默认模型 |
+|---|---|---|
+| `Explore` | 只读搜索（找文件、找符号） | 继承主会话 |
+| `Plan` | 出实现计划 | 继承主会话（认 `CLAUDE_CODE_SUBAGENT_MODEL`） |
+| `general-purpose` | 兜底通用，全工具 | `CLAUDE_CODE_SUBAGENT_MODEL`，没设就继承主会话 |
+| `statusline-setup` / `claude-code-guide` | 状态栏配置 / 宿主用法问答 | 工具类，不覆盖 |
+
+- **同名覆盖**：项目 `.claude/agents/` 下放一个与内置**同名**的定义（例如把内置 `Explore` 覆盖掉），会盖掉内置，并**保留文件自己的 `model` / `effort`**。
+  优先级（高→低）：managed settings → `--agents` → 项目 `.claude/agents/` → `~/.claude/agents/` → 插件 `agents/`。
+  **插件里的 agent 带命名空间**（`studio:Plan`），盖不掉内置——所以覆盖件必须由装机拷到**项目目录**。
+- **只想禁用**：`permissions.deny: ["Agent(Explore)"]`；或 `CLAUDE_CODE_DISABLE_EXPLORE_PLAN_AGENTS=1`（Explore＋Plan 一起去掉）。
+- **档位命名**：`sonnet` / `opus` / `haiku` / `fable`，或 `inherit`；`effort` 与 `maxTurns` 只对自定义定义生效。
+- 别开 `CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1` 与 `CLAUDE_CODE_EFFORT_LEVEL`：会把每个 agent 的分档压平。
+
 ## 新上下文与执行三职
 
 - **Researcher**：只读工具集，产出 `research-<票>.md`；不写实现。

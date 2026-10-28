@@ -115,7 +115,8 @@ gh issue list --search "incident" --state all   # 复盘行动项是否都有票
 
 ## 交接与记录落点
 
-- 事故卡与复盘：项目配置 `paths.handoff_dir` 下的当日目录，文件名带日期与 `incident`。
+- 事故卡与复盘：项目 `paths.handoff_dir` 下 `40-review/<YYYY-MM>/`，文件名带日期、类型词用
+  `postmortem`（复盘归 40-review 槽，别用自造词；`handoff/` 八槽与类型词闭集见 handoff README）。
 - 票：项目 Issue；行动项挂原票或新票。
 - 日报：一行「事故：级别／影响面／是否已复盘」。
 

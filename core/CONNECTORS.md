@@ -3,8 +3,8 @@
 | 类别 | 占位符 | 本仓默认 | 缺件时 |
 |---|---|---|---|
 | 源代码管理 | `~~source control` | git | 登记 `no-source-control`，不装 |
-| 宿主配置 | `~~host config` | Claude Code `CLAUDE_CONFIG_DIR`；Qoder `~/.qoder` | 登记 `no-host-home`，不猜 |
-| 定时任务 | `~~timer` | Qoder CLI `scheduled_tasks.json`／宿主定时口 | 只剩人工唤醒，登记 `no-timer` |
+| 宿主配置 | `~~host config` | 宿主自己的配置目录（探测与落法见装包 `adapters/<宿主>.md`） | 登记 `no-host-home`，不猜 |
+| 定时任务 | `~~timer` | 宿主定时口（落法见装包 `adapters/<宿主>.md`） | 只剩人工唤醒，登记 `no-timer` |
 | 包管理与安装 | `~~installer` | 文件复制／符号链接；`magpie-sync` 中央库 | 登记 `no-installer`，不手改宿主库 |
 | 通道 | `~~chat` | 会话内 | 只写文件，不假装通知到人 |
 

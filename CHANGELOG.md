@@ -2,6 +2,63 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.33.0 — 2026-10-28
+
+- **新插件 `studio`（文娱集团）**：六个岗位技能——`producer` 企划、`lead-writer` 主笔、`lead-artist` 主美、
+  `director` 导演、`final-review` 终审、`marketing` 宣发；共享协议住 `skills/studio/SKILL.md`
+  （六道门 G0–G5、记录面 `studio/`、接口卡、主创部门与项目负责人、派活与停点）。
+  三坊两台改名落地，`--lead/--make` 模式废止：**make 降为子代理**，lead 独占会话。
+- **四个薄子代理模板**：住装机技能 `core/skills/set-kai-mode/templates/agents/`（四自建
+  `implementer`（sonnet/high/80）、`reviewer`（opus/max/40）、`adjudicator`（opus/max/20）、
+  `researcher`（haiku/low/40）＋三内置覆盖 `Explore`/`Plan`/`general-purpose`），
+  只写 model/effort/maxTurns/tools，不写判据（adjudicator 的裁决契约指针化，正本住 loop 的
+  adjudication）；模板故意不给 `Agent` 工具，锁死深度 1 层。
+- **技能归属定型**：岗位技能（流程＋判据）只给会话；方法技能（手法）给子代理，派工卡点名；
+  判据技能走例外通道（裁决必须带 adjudication）。这条写进 `studio` 协议与模板 README。
+- **登记**：marketplace 六插件；`full` 档 27 条自动件；`manifests/package-layout.json` 收 `studio/`。
+- **子代理改为「4 自建 ＋ 3 预设覆盖」**：新增 `Explore.md`（haiku/low）、`Plan.md`（opus/high，计划卡五段）、
+  `general-purpose.md`（sonnet/high，禁 `Agent`），三者用**同名覆盖**盖掉宿主内置并固定档位（官方文档确认：
+  项目 `.claude/agents/` 同名定义会覆盖内置且保留自己的 `model`）；删除自建 `planner.md`，策划交给 `Plan`。
+  插件里的 agent 带命名空间盖不掉内置 ⇒ 必须由装机拷到项目目录。
+- **装机按宿主适配内置子代理**：`set-kai-mode` 5.8.0 把装法改成四步——① 读 `adapters/<宿主>.md`「内置子代理」节
+  探名单与档位命名；② 按该宿主档位替换 `model:`（映射不出就三格登记，不瞎填）；③ 有同名内置就做同名覆盖、
+  没有就按自建装；④ 宿主无 agent 文件则登记 `no-agent-surface` 并走降级腿。回执记「覆盖了哪些／自建了哪些／跳过了哪些」。
+  `adapters/claude.md` 补「内置子代理与同名覆盖」节（含优先级与禁用开关），qoder／codex／opencode 各补一节。
+- **装机纳入子代理**：`set-kai-mode` 5.5.0——缺口扫描加第 11 项（项目 `.claude/agents/` 四个薄文件是否在位），
+  第 2 步加「拷四个模板 + 在项目指令文件写一行『派活优先用这四个』」；不加那行宿主仍派内置 agent，等于白装。
+  同时写明别开 `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` 与 `CLAUDE_CODE_EFFORT_LEVEL`（会压平分档）。
+
+## 0.32.0 — 2026-10-28
+
+- **体检修复（全量体检报告 13 条高危）**：AGENTS.md 死指针与人格局残留清退；协议版本三方统一
+  v11；`source-check.py` 退出码按「需处理数」返回；`handoff-board.py` 包装器指向
+  `core/skills/kai-handoff/scripts/`；CI 装 pytest 并跑 `--with-tests`（补分支过滤与
+  concurrency）；doctor 补「正文指针可解析性」与机器路径扫描面（0 文件即红）；模板退役名额句改指针；
+  set-kai-mode 删手抄技能计数；harness-audit 改新布局路径。
+- **一件判据一个家**：王牌执行帽数值与扩容条件收口协议 §一，ace／PLAYBOOK／kai-mode／flight-info
+  只留指针；canon 新增 `ace-cap` 键。红线计数去数字：principle 两件不再自称「三条」。
+- **退役与收编**：`schemas/` 三件零消费者，整体退役（README／打包清单／kai-mode 指针同步清）；
+  双 `verification-skill` 模板收编为 `core/skills/set-kai-mode/templates/` 一份（升 schema 4 口径）；
+  仓根 `skills/flight-info/scripts/refresh.vbs` 重复副本删除；人格层残留（`chk_agents`、
+  `agents-contract` 假覆盖测试、`_agent_personas`）整体清除，ADR-0018 D2/D3 补订正注。
+- **第二波（同日续修）**：doctor 硬化——例句豁免改显式标记、真硬编码的盘符反斜杠路径不再被当转义字面量放行、
+  框架仓 URL 从 marketplace 派生、handoff 收件箱滞留改提示不判红、payload-refs 单次读盘；
+  `host-neutral` 补自然语言宿主词；写盘统一 tmp+replace（init-project／plugin-check／new-skill／vendor-sync）；
+  `vendor/manifest.json` 记上游溯源（repo／sha／license），`--check` 无本机镜像时按 manifest 哈希校验。
+- **判据收口**：canon 新增 `redline-count`／`polling-rounds`／`lane-labels`，`wake-fence` 补否定句式并把 home
+  迁到协议 §一（ADR-0010 留理由）；协议 §七 新增「收工门禁四值契约」；车道标签正本＝地勤「车道分流」；
+  pilot／copilot／二副补可死性三件；触发词去重（开工／记想法／派活）。
+- **新 ADR**：0025 塔台两把机械判据（ship-queue 派生队列 ＋ wake-gate 门卫）。
+- **第三波（结构刀）**：塔台排班算法搬到 `airport/skills/tower/references/scheduling.md`（正文只留「本轮最后一步」＋指针，
+  description 六行压三行）；`set-kai-mode` 的宿主 flag（`outputMode`／`executionAuthorization`／CLI 探测名／钩子字段）
+  全部下沉 `adapters/<宿主>.md`，正文只留指针。
+- **两把新机检**：`pilot/scripts/restore-guard.py`（stale 桶 restore 前验「内容在 dev 历史里逐字存在」，
+  四态 clean／safe／not-in-history／missing）与 `ace/scripts/hotfix-lint.py`（分支名／提交标识／日表行三件），
+  各带 6 条测试；pilot 3.4.0、ace 1.4.0、tower 2.3.0。
+- **ADR 卫生**：0007／0008 补 Status 与取代横幅，0009 数字与扫描面订正，0013 键名，0016 状态，0005 退役注。
+- **指针全绿**：docs/skill-sources 与 kai-handoff 的旧布局路径改现行插件路径；adapters 的宿主落点、
+  项目仓脚本与已知缺件（`inflight-budget.py`）进显式豁免表，不再靠「扫不到」装绿。
+
 ## 0.31.0 — 2026-10-27
 
 - **塔台待发货探测**：新增 `airport/skills/tower/scripts/ship-queue.py`——从 Issue 判词

@@ -53,8 +53,7 @@ dependencies:
 python <gates.captain_preflight> --lane deputy
 ```
 
-`CONTINUE` 继续补下一张（表的判据只算未完工票，已 `pass` 进待发货的不占你名额）；
-`REVIEW` 判完确实没活加 `--ack-review`；`STOP` 才停；`BLOCKED` 写卡点，不得当空表。
+四值语义见协议 §七「收工门禁四值契约」。补位前同机长：须先过可死性三件（协议 §一）。
 
 ## 验证命令
 

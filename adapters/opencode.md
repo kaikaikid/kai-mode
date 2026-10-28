@@ -19,6 +19,11 @@ opencode --version          # 本机实测 2.1.4
 - **Builder（施工）**：`opencode run`；探测不到 `opencode` 入口 ⇒ 本档不可用，缺件如实登记。
 - **Reviewer（评审）**：`opencode run`，**另起一次**只读 prompt（新上下文）；复用施工会话 ⇒ 不算独立验收。
 - **Researcher（检索/探索）**：`opencode run` 只读 prompt，产出研究稿，不写实现。
+## 内置子代理
+
+- 无 agent 定义文件这一层 ⇒ **覆盖不适用**：不装 `.md`，子代理按下面的独立进程腿执行，
+  装机时三格登记 `no-agent-surface`。
+
 - **降级**：无 Task 类子代理字段 ⇒ 三个角色都用独立 `opencode run` 进程顶替；起不动写 `launch-failed` 交人工，不重试到死。
 
 ## 起角色

@@ -1,8 +1,8 @@
 # kai-mode —— 机场体系的技能与通用剧本仓库
 
-> **状态：0.31.0（2026-10-27 塔台待发货探测：新增 `ship-queue.py`，从 Issue 判词派生待发货队列，增量扫描（`since=`）＋写前日志＋「票已关／sha 已进 `dev`」自动退役；零票时塔台只读一行即走轻量轮，探测失败 `rc=3` 不等于零票；机长不写账本。worker 预算加档：每车道子代理限额 3→5，规划权仍在机长（[ADR-0024](docs/adr/0024-worker-budget-five-per-lane.md)）。定时器改**门卫薄壳**：`wake-gate.py` 先判上一轮是否还在跑、有没有活，跳过时零模型调用（首个适配宿主＝Claude Code）。航班信息板换骨：KWP 暖白陶橙皮肤 ＋ 看板列＝阶段，新增待发货队列与塔台灯，钩子扩到三枚、30 分钟脚本定时器零黑窗，`--max-age` 兜底 GitHub 侧更新。初始化遇到同名不同内容技能时逐条问用户去留，默认保留现有，不再静默覆盖。上一版 0.30.0：二副车道——新增第四位机长 `second-officer`，塔台排班扩到三张正常日表，Issue 车道标签补齐四条；见 [ADR-0023](docs/adr/0023-second-officer-fourth-pilot-lane.md)）。**
+> **状态：0.33.0（2026-10-28 文娱集团落地：新插件 `studio`——企划/主笔/主美/导演/终审/宣发六岗位，共享协议＋四个薄子代理模板；三坊两台改名，make 降为子代理）。上一版 0.32.0（2026-10-28 体检修复：AGENTS.md 死指针与人格局残留清退、协议版本三方统一 v11、`source-check.py` 退出码按需处理数返回、CI 补跑 `--with-tests`、doctor 补机器路径扫描面＋正文指针可解析性检查、schemas 三件退役、ace 执行帽正本收口协议 §一；第二波：doctor 硬化＋canon 数值键＋ADR-0025＋vendor 溯源）。上一版 0.31.0（2026-10-27）：塔台待发货探测：新增 `ship-queue.py`，从 Issue 判词派生待发货队列，增量扫描（`since=`）＋写前日志＋「票已关／sha 已进 `dev`」自动退役；零票时塔台只读一行即走轻量轮，探测失败 `rc=3` 不等于零票；机长不写账本。worker 预算加档：每车道子代理限额 3→5，规划权仍在机长（[ADR-0024](docs/adr/0024-worker-budget-five-per-lane.md)）。定时器改**门卫薄壳**：`wake-gate.py` 先判上一轮是否还在跑、有没有活，跳过时零模型调用（首个适配宿主＝Claude Code）。航班信息板换骨：KWP 暖白陶橙皮肤 ＋ 看板列＝阶段，新增待发货队列与塔台灯，钩子扩到三枚、30 分钟脚本定时器零黑窗，`--max-age` 兜底 GitHub 侧更新。初始化遇到同名不同内容技能时逐条问用户去留，默认保留现有，不再静默覆盖。上一版 0.30.0：二副车道——新增第四位机长 `second-officer`，塔台排班扩到三张正常日表，Issue 车道标签补齐四条；见 [ADR-0023](docs/adr/0023-second-officer-fourth-pilot-lane.md)）。**
 > （[0003：四角色＋1 小时唤醒塔台](docs/adr/0003-airport-rebuild-four-roles.md)；[0020：王牌飞行员加急车道](docs/adr/0020-ace-pilot-expedited-lane.md)）；**本仓是宿主装机正本**（`magpie-sync apply --root <本仓>`，
-> 按市场清单的插件目录装齐，当前 20 条自动件），项目仓那份技能副本只作镜像。
+> 按市场清单的插件目录装齐，当前 27 条自动件），项目仓那份技能副本只作镜像。
 > 旧五角色（Tower/Ground/Coordinator/Group-A/B）、租约、班次、handoff 按铃那套已随机场体系重做退役（本仓 [0003](docs/adr/0003-airport-rebuild-four-roles.md)）<!-- canon:allow-retired -->
 > （git 历史可捞）。
 
@@ -15,9 +15,8 @@ kai-mode 是「一句话需求 → 票 → 排班 → 施工 → 审查 → 发�
 - 技能清单：**以 [`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json) 为准**（单一事实源；安装器从插件目录现场派生，本文件不再手写名单）。两类：
   - **框架技能**（`kind: framework`）：框架本身的一部分，各项目都该有，默认 `install: auto` 进中央库；
   - **个人技能**（`kind: personal`）：只给自己用的，默认 `install: manual`，**不进中央库**。
-- 协议正本：`airport/skills/loop/references/loop-protocol.md`（v9）
+- 协议正本：`airport/skills/loop/references/loop-protocol.md`（v11）
 - 通用方法：按上游名引用 `tdd`／`code-review`／`diagnosing-bugs` 等（`vendor/skills/` 原样副本，本仓不 fork）
-- 可执行契约：`task` / `acceptance` / `event` schema
 - 宿主适配器：Qoder（60 分钟唤醒定时器＋按需子会话）、opencode/codex 备胎
 - 项目配置模板：`templates/kai-mode.project.json`
 
@@ -31,13 +30,13 @@ kai-mode 是「一句话需求 → 票 → 排班 → 施工 → 审查 → 发�
 | set-kai-mode 装配 | `/set-kai-mode` | 安装、探测、装定时器、doctor、缺件登记 | 日常施工 |
 | 地勤 | `/ground-crew`（说「地勤」也认） | 对话、规划、开票（六件套＋`ready-for-agent`）、收想法 | 写码、push、派施工 |
 | 塔台 | `/tower`（说「塔台」「出货」也认） | 独立岗位；默认每 60 分钟由定时器唤醒，也可人工唤醒；kai-mode 只推荐命令；先发货、后补排班（日表行数见协议正本，放本轮最后） | 写码、替审查下结论 |
-| 机长 / 副机长 | `/pilot` `/copilot`（说「机长」「副机长」也认） | goal 模式滚动跑完自己那张日表（在飞帽只算未完工票，`pass` 进待发货即释放）；每票 1 施工＋1 审查（新上下文），跃迁窗口内取舍派 `adjudicator` 出 `ruling=` | 写码、push、合并 |
+| 机长 / 副机长 | `/pilot` `/copilot`（说「机长」「副机长」也认） | goal 模式滚动跑完自己那张日表（在飞帽只算未完工票，`pass` 进待发货即释放）；每票 1 施工＋1 审查（新上下文），跃迁窗口内取舍派只读裁决子代理出 `ruling=` | 写码、push、合并 |
 | 二副 | `/second-officer`（说「二副」「第二副机长」也认） | 同机长：滚动跑完 `-second.md`；第三条正常机长道，与副机长并列而非替补 | 写码、push、合并、读写别人的日表 |
-| 王牌飞行员 | `/ace`（说「王牌」也认） | 用户直连的加急通道；读 `ace-queue` 标签票，在自己那张 `-ace.md` 滚动消费（同刻 1 张）；简单免票热修、复杂自补票 | 写 `-main`/`-deputy`/`-second` 日表、push、合并、关票 |
+| 王牌飞行员 | `/ace`（说「王牌」也认） | 用户直连的加急通道；读加急队列标签票，在自己那张 `-ace.md` 滚动消费（执行帽口径见协议 §一）；简单免票热修、复杂自补票 | 写 `-main`/`-deputy`/`-second` 日表、push、合并、关票 |
 
 **权限硬线（[0003](docs/adr/0003-airport-rebuild-four-roles.md) ＋ [0020](docs/adr/0020-ace-pilot-expedited-lane.md) ＋ [0023](docs/adr/0023-second-officer-fourth-pilot-lane.md)）**：塔台**独占** push 与关票；机长/副机长/二副/王牌只管理不写码（王牌热修是受控例外）、不 push；地勤只开票；记录面三分——主、副、二副三张日表只由塔台写、王牌日表只由王牌写、状态只写 Issue 评论、代码只进分支。
 
-**唤醒围栏（[0010](docs/adr/0010-role-wake-fence.md)）**：角色之间不互相拉起/唤醒；只有人工与定时器（仅塔台）能唤醒角色，kai-mode 只推荐命令、不自动起角色。子代理是票内委派，不受此围栏影响。
+**唤醒围栏**：正本＝协议 §一（裁决理由见 [0010](docs/adr/0010-role-wake-fence.md)）；kai-mode 只推荐命令、不自动起角色。子代理是票内委派，不受此围栏影响。
 
 ## 闭环
 
@@ -46,7 +45,7 @@ kai-mode 是「一句话需求 → 票 → 排班 → 施工 → 审查 → 发�
                     │
                     ▼
               地勤（开票：里程碑＋ready-for-agent＋AC＋禁区）
-                    │  三选一：等塔台（不打标）│ 进王牌队列/现在拉起（打 ace-queue）
+                    │  三选一：等塔台（不打标）│ 进王牌队列/现在拉起（打加急队列标签）
                     ├──────────────────────────────────┐
                     ▼                                  ▼
               塔台（先发货：合并/push/关票，           王牌飞行员（写自己的 -ace.md，
@@ -56,7 +55,7 @@ kai-mode 是「一句话需求 → 票 → 排班 → 施工 → 审查 → 发�
         机长 ──┬── 机长 ──┐   ← 主/副/二副各按协议名额在飞；子代理按需
         副机长 ├── 副机长 │
         二副   ┘          │                          │
-       （每票：施工子代理[独立 worktree] → 审查子代理[新上下文]）
+       （每票：施工子代理[车道工作树] → 审查子代理[新上下文]）
                     │  verdict=pass ＋逐条 AC 证据 → 「待发货」
                     ▼
               塔台（再发货：批内合并 → 收尾门一次 → push 一次 → 关票）
@@ -82,19 +81,19 @@ kai-mode 是「一句话需求 → 票 → 排班 → 施工 → 审查 → 发�
 ## 目录
 
 ```text
-.claude-plugin/marketplace.json   唯一分发清单：五个剧本插件的名字、版本、来源
+.claude-plugin/marketplace.json   唯一分发清单：六个剧本插件的名字、版本、来源
 airport/    机场体系剧本：commands/（六岗位）＋ skills/（loop·pilot·copilot·second-officer·tower·ground-crew·ace）
 core/       入口与安装剧本：commands/ ＋ skills/（入口、安装、交接、审计、六条原则）
 board/      看板剧本：skills/flight-info（SQLite → board.json ＋ index.html）
 intake/     想法池剧本：skills/kai-boom-idea-log
 ops/        事故与运维剧本：skills/incident-response、skills/runbook
+studio/     文娱集团剧本：skills/studio（共享协议）＋ 企划/主笔/主美/导演/终审/宣发 六岗位
 <插件>/.claude-plugin/plugin.json  Claude Code 插件清单
 <插件>/.qoder-plugin/plugin.json   Qoder 插件清单
 <插件>/PLAYBOOK.md                 剧本总览：角色、阶段、记录面、红线指针
 <插件>/CONNECTORS.md               工具类别与降级
 manifests/  install-profiles.json（档位）· package-layout.json（三层边界）· plugins.lock.json（版本/摘要钉死）
 scripts/    仓级工具：doctor.py（校验入口）· plugin-check.py（清单体检）· init-project.py
-schemas/    task / acceptance / event
 adapters/   宿主落法：README（总则）＋ claude、qoder、codex、opencode
 templates/  kai-mode.project.json（schema 4）＋ skill/ 技能骨架
 docs/       ADR、技能契约、打包说明、设计图
@@ -126,7 +125,7 @@ CHANGELOG.md  版本变更记录
 python scripts/doctor.py --with-tests
 ```
 
-覆盖：市场清单与插件清单、每个技能的目录与 `SKILL.md`、frontmatter 八字段与顺序、三处 name 一致、盘上有技能目录但没登记、`SKILL.md` 相对链接断链与宿主中立、机器绝对路径入正文、仓内行尾口径、`VERSION` 与本文件版本串一致、解耦门、交接文档分类、Agent Skills 1.2 对齐、判据归属、`vendor/` 跟踪与漂移、中央库副本与本仓是否逐字相同（`install-sync` 项），以及各技能自己的 pytest。
+覆盖：市场清单与插件清单、每个技能的目录与 `SKILL.md`、frontmatter 八字段与顺序、三处 name 一致、盘上有技能目录但没登记、`SKILL.md` 相对链接断链与宿主中立、机器绝对路径入正文、正文指针指向的仓内文件、协议版本号三方一致、仓内行尾口径、`VERSION` 与本文件版本串一致、解耦门、交接文档分类、Agent Skills 1.2 对齐、判据归属、`vendor/` 跟踪与漂移、中央库副本与本仓是否逐字相同（`install-sync` 项），以及各技能自己的 pytest。
 
 清单与版本另有一道独立体检：
 
@@ -156,7 +155,7 @@ python scripts/plugin-check.py
 - 角色唤醒围栏：本仓 [`docs/adr/0010-role-wake-fence.md`](docs/adr/0010-role-wake-fence.md)
 - 三层打包边界：本仓 [`manifests/package-layout.json`](manifests/package-layout.json)（说明 [`docs/package-layout.md`](docs/package-layout.md)，裁决 [`0011`](docs/adr/0011-package-layout-three-layers.md)）
 - 全局 agent 数据根：本机 [`docs/agent-data-layout.md`](docs/agent-data-layout.md)（裁决 [`0012`](docs/adr/0012-global-agent-data-root.md)）
-- 单票闭环协议：本仓 `airport/skills/loop/references/loop-protocol.md`（v9）
+- 单票闭环协议：本仓 `airport/skills/loop/references/loop-protocol.md`（v11）
 - **技能清单与装机清单**：[`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json)（安装器从插件目录现场派生）
 - **技能目录契约**：[`docs/skill-layout.md`](docs/skill-layout.md)（目录结构 / frontmatter 八字段与顺序 / 注册表字段 / 读契约）
 - 版本与设计沿革：`CHANGELOG.md`（逐版变更）＋ `docs/adr/`（裁决）

@@ -264,9 +264,12 @@ def check_lock(root: str, plugins: dict):
 def write_lock(root: str, plugins: dict):
     path = os.path.join(root, *LOCK_REL.split("/"))
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf-8", newline="\n") as f:
+    # 先写 .tmp 再 replace：锁文件是 doctor 的输入，中断留半截会被读成「锁坏了」（体检 M18）
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8", newline="\n") as f:
         json.dump(build_lock(plugins), f, ensure_ascii=False, indent=2)
         f.write("\n")
+    os.replace(tmp, path)
     return path
 
 

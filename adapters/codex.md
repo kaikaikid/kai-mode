@@ -20,6 +20,11 @@ codex --version          # 本机实测 0.164.0-alpha.11.1
 - **Builder（施工）**：`codex exec -s workspace-write`（沙箱给写权）；探测不到 `codex` 入口 ⇒ 本档不可用，缺件如实登记。
 - **Reviewer（评审）**：`codex exec -s read-only`，**另起一次调用**（新上下文）；复用施工会话 ⇒ 不算独立验收。
 - **Researcher（检索/探索）**：`codex exec -s read-only`，只产出研究稿，不写实现。
+## 内置子代理
+
+- 无 agent 定义文件这一层 ⇒ **覆盖不适用**：不装 `.md`，子代理按下面的独立进程腿执行，
+  装机时三格登记 `no-agent-surface`，不假装已装。
+
 - **降级**：无 Task 类子代理字段 ⇒ 三个角色都用独立 `codex exec` 进程顶替，各带各的 sandbox；付费未授权 ⇒ 记 `paid-not-authorized`，不偷偷跑。
 
 ## 起角色（可写，仅人工执行）

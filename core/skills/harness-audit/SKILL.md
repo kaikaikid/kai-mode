@@ -25,14 +25,14 @@ metadata:
 
 - 发版前、每月一次。
 - doctor 全绿但你觉得不对劲：同一数值有两套、技能指向已删目录、触发词与正文不一致。
-- 新增/删除技能、改人格契约后。
+- 新增/删除技能、改技能契约后。
 
 ## 输入
 
 只读盘点：
 
 ```bash
-python skills/harness-audit/scripts/inventory.py --root <仓根> --summary
+python core/skills/harness-audit/scripts/inventory.py --root <仓根> --summary
 ```
 
 Quick Scan 只看上次审计后 mtime 变过的件；Full Stocktake 审全部。mtime 只是线索，
@@ -40,7 +40,7 @@ Quick Scan 只看上次审计后 mtime 变过的件；Full Stocktake 审全部�
 
 ## 检查清单
 
-对每个技能/人格/ADR 至少过这七项：
+对每个技能/ADR 至少过这七项：
 
 1. **重叠**：与另一个技能、AGENTS.md、README、ADR 是否讲同一件事？
 2. **过期引用**：路径、脚本、模板、宿主 token 是否还存在？**必需件是否真的在 git 里**（`git ls-files`；
@@ -85,6 +85,6 @@ Quick Scan 只看上次审计后 mtime 变过的件；Full Stocktake 审全部�
 ## 验证命令
 
 ```bash
-python skills/harness-audit/scripts/inventory.py --root <仓根> --summary
+python core/skills/harness-audit/scripts/inventory.py --root <仓根> --summary
 python scripts/doctor.py --with-tests
 ```

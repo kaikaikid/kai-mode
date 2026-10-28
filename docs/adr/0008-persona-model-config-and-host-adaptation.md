@@ -1,5 +1,10 @@
 # 人格层收口：去前缀、模型归用户、宿主落法转方法论
 
+## Status
+
+accepted（2026-10-26）——**人格层已由 [0021](0021-plugin-playbooks-and-persona-retirement.md) 退役**；
+本 ADR 仍然有效的判据：宿主中立（`host-neutral` 门）、模型不由框架发明 slug、宿主落法归 `adapters/`。
+
 三条实测事实促成本文：
 
 1. **`kai-` 前缀在人格层没有依据。** 唯一规定它的两处（`docs/skill-layout.md` §1、`docs/skill-sources/README.md` §6）写的理由是

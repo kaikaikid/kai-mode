@@ -30,7 +30,7 @@
 ### boom-idea-log → skills/kai-boom-idea-log
 
 - **为什么是我们设计的**：落点、汇总面、发布动作由本仓角色分工决定（地勤只收不开票、全文进 `paths.ideas_dir`、汇总票只留简述），上游那份写死了单项目票号与目录。
-- **本仓接口**：接 `skills/ground-crew/SKILL.md`「工作流 · 分流」第 3 步，输出回链 ground-crew 的记账表。
+- **本仓接口**：接 `airport/skills/ground-crew/SKILL.md`「工作流 · 分流」第 3 步，输出回链 ground-crew 的记账表。
 - 继承：本地全文正本 + 远端仅简述、查重、编号只增不减、`gh --body-file`、只暂存目标文件、毕业回写。
 - 改：写死的票号与目录 → 项目配置 `paths.ideas_dir` ＋ 汇总票号；缺配置报缺件（`ADR-0004` D4）；补完成判据与失败降级。
 
@@ -44,8 +44,8 @@
 | `vendor/skills/tdd` | 施工：先红后绿 | `airport/skills/loop/references/loop-protocol.md` §三.3／§九（接缝＝票面验证命令、一测例一提交） |
 | `vendor/skills/code-review` | 审查：双轴出判词 | 同文件 §四（机器门／语义门、判词四要素） |
 | `vendor/skills/diagnosing-bugs` | 连续失败／原因不明 | 同文件 §七／§八（卡点、止损、等待纪律） |
-| `vendor/skills/domain-modeling` | 定稿第 2 步：术语与 ADR | `skills/kai-mode/SKILL.md` 定稿段 ＋ `docs/adr/` |
-| `vendor/skills/to-tickets` | 定稿第 3 步：拆票草案 | `skills/kai-mode/SKILL.md` 定稿段 ＋ `skills/ground-crew/SKILL.md` 票面六件套 |
+| `vendor/skills/domain-modeling` | 定稿第 2 步：术语与 ADR | `core/skills/kai-mode/SKILL.md` 定稿段 ＋ `docs/adr/` |
+| `vendor/skills/to-tickets` | 定稿第 3 步：拆票草案 | `core/skills/kai-mode/SKILL.md` 定稿段 ＋ `airport/skills/ground-crew/SKILL.md` 票面六件套 |
 | `vendor/skills/writing-for-agents` | 写 SKILL／AGENTS 文档 | `docs/skill-layout.md`（八字段、<500 行）＋ `scripts/doctor.py` |
 | `vendor/skills/security-audit` | 审查：安全专项（六阶段漏洞猎取） | `airport/skills/loop/references/dispatch.md` 的 安全专项 ＋ `airport/skills/loop/references/dispatch.md` §2／§3 |
 
@@ -66,7 +66,7 @@
 
 | 源 | 理由 |
 |---|---|
-| `research` | 全文只有「起后台代理、查一手来源、落一份 md」；`agents/librarian.md` 已承载同一纪律 |
+| `research` | 全文只有「起后台代理、查一手来源、落一份 md」；研究纪律现住 `core/skills/kai-mode/SKILL.md` 与 `airport/skills/loop/references/dispatch.md`（人格层已退役） |
 | `implement` | 15 行薄壳，内容＝按票实现→tdd→code-review；`airport/skills/loop/references/loop-protocol.md` §二 已写死同样顺序 |
 | `grilling` | 「一次一问逐个确认」判据正本已是 `skills/principle-ask-one-question-at-a-time/` |
 

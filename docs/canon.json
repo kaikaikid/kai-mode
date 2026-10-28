@@ -81,8 +81,8 @@
     },
     {
       "key": "wake-fence",
-      "home": "docs/adr/0010-role-wake-fence.md",
-      "pattern": "拉起继任机长|拉起继任副机长|自行判断拉起角色|自动拉起角色|自动唤醒继任",
+      "home": "airport/skills/loop/references/loop-protocol.md",
+      "pattern": "拉起继任机长|拉起继任副机长|自行判断拉起角色|自动拉起角色|自动唤醒继任|不互相唤醒|不互相拉起|不得唤醒|不许唤醒|禁止唤醒",
       "forbidden": [
         "airport/skills",
         "core/skills",
@@ -91,7 +91,7 @@
         "ops/skills",
         "README.md"
       ],
-      "why": "角色之间不互相拉起/唤醒；只有人工与定时器（仅塔台）能唤醒角色"
+      "why": "角色之间不互相拉起/唤醒；只有人工与定时器（仅塔台）能唤醒角色。判据正本住在随技能安装的协议里（ADR-0010 留裁决理由），否定句式也抓（体检 M4/M12）。"
     },
     {
       "key": "pilot-wip",
@@ -104,10 +104,11 @@
         "intake/skills",
         "ops/skills",
         "adapters",
+        "templates",
         "README.md",
         "AGENTS.md"
       ],
-      "why": "执行名额是协议数值（§一 角色、名额与隔离）；技能、适配与说明只许指过来"
+      "why": "执行名额是协议数值（§一 角色、名额与隔离）；技能、适配、模板与说明只许指过来（模板曾把退役的「2 张」写进每个新项目）"
     },
     {
       "key": "day-table-rows",
@@ -179,6 +180,72 @@
         "AGENTS.md"
       ],
       "why": "裁决三值与四件形状只住 adjudication；协议与技能只用 marker 名 `ruling=`。"
+    },
+    {
+      "key": "ace-cap",
+      "home": "airport/skills/loop/references/loop-protocol.md",
+      "pattern": "执行帽\\*{0,2}\\s*默认\\s*\\*{0,2}\\s*1\\s*张|王牌[^\\n]{0,12}默认\\s*\\*{0,2}\\s*1\\s*张",
+      "forbidden": [
+        "airport/",
+        "core/skills",
+        "board/skills",
+        "intake/skills",
+        "ops/skills",
+        "adapters",
+        "templates",
+        "README.md",
+        "AGENTS.md"
+      ],
+      "why": "王牌执行帽的数值与扩容条件只住协议 §一；王牌技能、剧本、看板与说明只许指过来（曾互指为正本、看板按旧数判超编）。"
+    },
+    {
+      "key": "redline-count",
+      "home": "airport/skills/loop/references/loop-protocol.md",
+      "pattern": "[三四五六]\\s*条红线|[三四五六]\\s*个红线",
+      "forbidden": [
+        "airport/skills",
+        "core/skills",
+        "board/skills",
+        "intake/skills",
+        "ops/skills",
+        "adapters",
+        "templates",
+        "README.md",
+        "AGENTS.md"
+      ],
+      "why": "红线几条是协议 §七 的数值（安装面四条／仓内五条），技能与说明只许指过来，不许各报一个数（曾出现 5/4/3 三套）"
+    },
+    {
+      "key": "polling-rounds",
+      "home": "airport/skills/loop/references/loop-protocol.md",
+      "pattern": "(?:至多|最多连续|最多)\\s*(?:\\d+|[一二三四五六七八九十])\\s*轮",
+      "forbidden": [
+        "airport/skills",
+        "core/skills",
+        "board/skills",
+        "intake/skills",
+        "ops/skills",
+        "adapters",
+        "templates",
+        "README.md",
+        "AGENTS.md"
+      ],
+      "why": "有界轮询的轮数是协议 §八⑤ 的数值；角色技能只写「见协议 §八⑤」，抄一份就会随改口径静默漂移"
+    },
+    {
+      "key": "lane-labels",
+      "home": "airport/skills/ground-crew/SKILL.md",
+      "pattern": "main-queue|deputy-queue|second-queue|ace-queue",
+      "forbidden": [
+        "core/skills",
+        "intake/skills",
+        "ops/skills",
+        "adapters",
+        "templates",
+        "README.md",
+        "AGENTS.md"
+      ],
+      "why": "四条车道标签的字符串由地勤建与打（唯一写者），塔台与看板只读；曾出现「正本在项目仓」「正本在框架文档」两处互斥宣言"
     }
   ]
 }

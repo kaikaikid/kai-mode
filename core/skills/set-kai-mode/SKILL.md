@@ -18,8 +18,8 @@ description: >
   doctor、缺件如实登记。触发：新 agent 接手装配、换宿主、装/改定时器、修技能落点、
   给项目出技能骨架、迁旧配置实例、问「这套东西都住在哪」。
   不做日常施工。
-version: 5.4.0
-updated: 2026-10-27
+version: 5.8.0
+updated: 2026-10-28
 allowed-tools: Bash(*) Read Write Edit
 compatibility: Requires python3, git
 ---
@@ -86,7 +86,7 @@ python scripts/init-project.py --repo <目标仓> --answers a.json   # 机器填
 | # | 装什么 | 验收 |
 |---|---|---|
 | 0 | **缺口扫描（只读，先看缺什么）** | 出一张缺口清单：每项标「已就位/跳过」或「需处理（原因）」，先念给用户 |
-| 1 | 注入方法论与技能（仓库内正本） | 16 个技能文件在位（以注册表 `install:auto` 为准），入口/角色/协议互指一致 |
+| 1 | 注入方法论与技能（仓库内正本） | 技能文件在位（计数以 `.claude-plugin/marketplace.json` 现场派生为准，正文不手抄），入口/角色/协议互指一致 |
 | 2 | 装技能到宿主（岗位技能 ＋ 入口/安装/协议技能） | 宿主技能列表里能看见，内容与正本同哈希 |
 | 3 | 装 60 分钟唤醒定时器（门卫薄壳） | `list` 回读 `enabled=true`、周期 1 小时；到点跑一次 `wake-gate.py` 看 `rc=0/10` 与理由 |
 | 4 | worktree 环境自检（三项） | 解释器 / node / 依赖三项都有明确读数 |
@@ -100,7 +100,7 @@ python scripts/init-project.py --repo <目标仓> --answers a.json   # 机器填
 
 | 项 | 只读探法 | 判「已就位（跳过）」 | 判「需处理」 |
 |---|---|---|---|
-| 1 正本技能 | 按 `.claude-plugin/marketplace.json` 的插件目录里 `skills/*/SKILL.md` 派生清单（当前 20 条自动件 ＋ 1 条手动件），逐个检查 `SKILL.md` ＋ 互指 grep | 清单内都在、互指路径一致 | 缺文件或互指断裂 |
+| 1 正本技能 | 按 `.claude-plugin/marketplace.json` 的插件目录里 `skills/*/SKILL.md` 派生清单（当前 27 条自动件 ＋ 1 条手动件），逐个检查 `SKILL.md` ＋ 互指 grep | 清单内都在、互指路径一致 | 缺文件或互指断裂 |
 | 2 宿主同步 | `python skills/set-kai-mode/scripts/magpie-sync.py check`（按回执档位；无回执=full） | 漂移表三面全绿（内容/落点/注册） | 有漂移文件（列出具体哪些） |
 | 3 唤醒定时器 | 现测证据：项目配置 `paths.handoff_dir` 当日日报里 `cron-tower-*` 轮次 / 宿主 `list` 回读 `enabled` | 今日有真实运行轮次或 `enabled=true` | 无运行证据且宿主无定时口 |
 | 4 环境三项 | `test -x` 解释器/node、`test -d node_modules` | 三项都有明确读数 | 任一项缺（报绝对路径） |
@@ -109,6 +109,7 @@ python scripts/init-project.py --repo <目标仓> --answers a.json   # 机器填
 | 7 项目配置实例 | 仓库根探测（只读）：`git rev-parse --show-toplevel` → 读 `<root>/.ai/kai-mode.project.json` 的 `schema` 字段 | schema 4 实例在位且过「模型核对」 | 无实例 → 按 D4 报缺件三格（怎么补＝本技能生成或手工按模板填）；schema 2/3 → 走「迁移腿」 |
 | 8 宿主技能与命令 | 列宿主技能目录（`adapters/<宿主>.md`）与插件命令 | 角色技能与命令都能读到 | 缺落点 → 按 `adapters/<宿主>.md` 补，软约束要登记 |
 | 9 同名技能冲突 | `python <本技能目录>/scripts/magpie-sync.py check --json` 看 `conflicts[]`（同一名字、库/宿主已有内容与正本不同） | 无冲突（`conflicts` 为空） | 有冲突 → **逐条问用户去留**；不许静默覆盖 |
+| 11 子代理薄文件 | 按 `adapters/<宿主>.md`「内置子代理」节的名单，读项目 agent 目录有没有 `implementer`／`reviewer`／`adjudicator`／`researcher` 四个自建 ＋ `Explore`／`Plan`／`general-purpose` 三个同名覆盖（落点见 `adapters/<宿主>.md`） | 七个都在，frontmatter 只有 `model`／`effort`／`maxTurns`／`tools` | 缺 ⇒ 列进推荐清单；同名已有 ⇒ 逐条问去留，默认保留 |
 | 10 开票归属守卫 | 读宿主 `settings.json` 的 `hooks.PreToolUse` 里有没有 `issue-guard.py`；有则 `python <本技能目录>/scripts/issue-guard.py --self-test` | 钩子已挂且自测 ok | 未挂 → 列进推荐清单（只有用户点头才写 settings.json）；挂错了 → 按第 7 步重写 |
 
 **产出与动作**：
@@ -155,12 +156,25 @@ python $S apply --profile core             # 正本 → 库 → 各家链接；�
   宿主落点（技能目录、命令、子代理、定时口）按 `adapters/<宿主>.md`：探测 → 落点 → 降级 → 装完自证。
   落点必须项目级，不装全局。
 - 要装/更新的技能（装机清单＝`.claude-plugin/marketplace.json` 列出的插件目录里 `skills/*/SKILL.md`；
-  安装器现场派生，不落第二份清单）：
-  `airport` 7 条、`core` 10 条（9 自动＋1 手动）、`board` 1 条、`intake` 1 条、`ops` 2 条。
+  安装器现场派生，各插件技能数以派生结果为准，正文不落第二份清单）。
 - **安装档位**：`manifests/install-profiles.json` 定两档——`core`（10 条最小闭环：入口/安装/协议/六岗位/交接）、
   `full`（20 条自动件全部）。`apply/check --profile core|full`；缺省读库根回执里的档位，无回执＝`full`。
 - **安装回执**：库根 `.kai-mode-source.json` 记来源根、HEAD、档位、技能清单与每技能哈希；
   `doctor` 的 `install-receipt` 项校验。回执里另记「宿主落点」：技能目录、命令名、子代理口。写库前整包备份到 `<库根>/.backups/`（保留 5 份），失败自动还原。
+- **七个子代理薄文件（随装，项目级；按宿主适配）**：四个自建（`implementer`／`reviewer`／`adjudicator`／`researcher`）
+  ＋ 三个内置覆盖（`Explore`／`Plan`／`general-purpose`），模板住本技能
+  `templates/agents/`（装机来源，[README](templates/agents/README.md) 有适配细则）。
+  **先读 `adapters/<宿主>.md`「内置子代理」节**，再按它装：
+  1. **探**：该宿主的内置子代理名单、覆盖机制、模型档位命名。适配文件没有这一节 ⇒ 按「无内置可覆盖」处理，**不假设能覆盖**。
+  2. **适配 `model:` 字段**：模板里写的是档位别名；按该宿主的档位命名替换（Claude 用 `sonnet`／`opus`／`haiku`）。
+     映射不出来就按缺件三格登记，**不许瞎填一个模型 id**。
+  3. **落盘**：宿主有同名内置 ⇒ 拷到项目 agent 目录做**同名覆盖**（只有项目级生效；插件里的 agent 带命名空间，盖不掉内置）；
+     宿主无同名内置 ⇒ 按**自建**装，名字不变，回执注明「无内置可覆盖，按自建」。
+  4. **宿主没有 agent 文件**（只支持独立进程）⇒ 不装文件，按适配文件的降级腿执行，三格登记 `no-agent-surface`。
+  - 同名文件已存在 ⇒ 逐条问用户去留，默认保留现有。
+  - 拷完在项目指令文件（`CLAUDE.md`／`AGENTS.md`）加一行「派活优先用这几个子代理」——不加这行，宿主仍会派内置的。
+  - **回执记三样**：覆盖了哪些／自建了哪些／跳过了哪些（含原因）。
+  - 别开 `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` 与 `CLAUDE_CODE_EFFORT_LEVEL`（会把每个 agent 的分档压平）。
 - 手动件（如 `harness-audit`）不进档位；需要时单独 `install:manual` 装。
 - **全局数据根**：宿主的非项目数据统一按
   agent-data-layout
@@ -194,14 +208,14 @@ python $S apply --profile core             # 正本 → 库 → 各家链接；�
 
 **目标形状**：定时器每 60 分钟唤醒塔台一次；塔台是独立岗位，人工 `/tower` / kai-mode 也能唤醒。每轮先发货、后补排班（排班放本轮最后）。
 **定时器唤醒的塔台实例同样走令牌**：令牌防的是「多实例」——定时器、人工两路并发时靠它互斥，抢不到牌的一轮退位退出；kai-mode 只推荐命令，不唤醒。
-**手段按宿主选**（／D5）：宿主能力探测与具体定时口见 `adapters/<宿主>.md`（Qoder 见 `adapters/qoder.md`）；其它宿主按同一契约装配。
+**手段按宿主选**：宿主能力探测、定时口的具体命令、执行模式与授权档，**一律见 `adapters/<宿主>.md`**；本文件只写与宿主无关的四步。
 
 **四步：探测 → 建 → 复读 → 缺件登记**
 
 1. **探测**（结果一律现测，不抄旧读数）：
 
    ```bash
-   command -v qodercli qoder codex opencode 2>/dev/null   # 谁有 shell 入口（Windows 漏报时用 Get-Command）
+   command -v <宿主 CLI> 2>/dev/null                      # 命令名见 adapters/<宿主>.md（Windows 漏报时用 Get-Command）
    git config core.hooksPath                              # 钩子指到哪
    python -V && node -v                                   # 运行时
    ```
@@ -212,17 +226,17 @@ python $S apply --profile core             # 正本 → 库 → 各家链接；�
 2. **建**：一枚唤醒任务即可，**不要四枚并存**。
    - 周期：`0 * * * *`（默认 1 小时；周期可调，改这里一处）。
    - 工作目录：主树绝对路径。
-   - 执行模式：独立会话（Qoder `outputMode=independent`）。
+   - 执行模式：独立会话（字段名与取值见 `adapters/<宿主>.md` 的定时任务一节）。
    - prompt 只放**门卫薄壳**（长规则住技能正本，任务配置里不存第二份）：
      `先跑 python <tower 技能目录>/scripts/wake-gate.py；退出码 10 ⇒ 只回它那一行即结束，不读任何技能；`
      `退出码 0 ⇒ 读取并执行 airport/skills/tower/SKILL.md 全文跑一轮；退出码 2 ⇒ 按缺件三格报告。`
      门卫是纯脚本，跳过时零模型调用——没活或上一轮还在跑都不再拉起一整轮会话。
-   - Qoder 建任务时统一 `executionAuthorization=true`（Full Access，与既有定时任务同档）。
+   - 授权档：照 `adapters/<宿主>.md` 的定时任务一节，与既有定时任务同档，不擅自提权。
    - 旧的四枚定时任务：**停用或删除**，不得与 60 分钟唤醒定时器并存。
      顺序：先 `disable` → 等 `runningAt` 为空或确认已停 → 再 `remove`；**别对正在跑的直接 remove**。
 
 3. **复读**（建完不算完，用之前再读一次）：
-   宿主的定时口 `list` 子命令（Qoder 的具体命令见 `adapters/qoder.md`），回读 `enabled` / `nextRunAt`（换算成人话几点）/ `lastRunAt` 有没有动。
+   宿主的定时口 `list` 子命令（具体命令见 `adapters/<宿主>.md`），回读 `enabled` / `nextRunAt`（换算成人话几点）/ `lastRunAt` 有没有动。
    **`enable` 返回成功不等于它一直开着**；看到 `pauseReason=manual` ＝ 有人手动停，**别自动重开**，
    报状态时把「建过、现在是停的」两句都写出来。建完写一条 jobId 到本机配置（不入 tracked 模板）。
 
@@ -235,10 +249,10 @@ python $S apply --profile core             # 正本 → 库 → 各家链接；�
 |---|---|---|
 | 直接定时 | 角色会话自带调度器的 run 工具 | 直接建 60 分钟唤醒任务 |
 | 会话创建 | 有会话创建口 | 定时任务开薄壳子会话，由子会话自己起塔台 |
-| shell 启动 | 有 shell 启动入口（见 `adapters/opencode.md`、`adapters/codex.md`） | 定时任务只调 shell 唤醒塔台；其它角色人工（付费档须显式授权） |
+| shell 启动 | 有 shell 启动入口（见对应 `adapters/<宿主>.md`） | 定时任务只调 shell 唤醒塔台；其它角色人工（付费档须显式授权） |
 | 都没有 | — | 人工 `/tower`，缺件如实登记 |
 
-角色之间不互相唤醒；塔台之外的角色只由人工喊口令启动。
+唤醒围栏见协议 §一；塔台之外的角色只由人工喊口令启动。
 宿主有会话创建口也不得由角色自动调用；kai-mode 只推荐命令。
 选完把档位写进本机配置并**做一次自证**（到点真的跑一轮、目标真的起来），未实测的 flag 不写进正本。
 
@@ -279,10 +293,9 @@ python scripts/framework-gate.py --selftest   # 推前框架门自证
 1. **先探**：读宿主 `settings.json` 的 `hooks.PreToolUse`，找 `issue-guard.py`。
    已挂 → 只跑 `--self-test`，绿了就写「跳过，不重复装」；没挂 → 进推荐清单等用户点头。
 2. **再装**（用户点头才写；写前备份 `settings.json`）：
-   - Claude Code：`hooks.PreToolUse` 追加一条 `matcher: "Bash"`，`hooks[].command` 指向本脚本的**绝对路径**
-     （宿主配置里不写相对路径），超时 10 秒；脚本从 stdin 读 `tool_input.command`，缺 `--repo` 就 `exit 2`。
-   - 其它宿主：按 `adapters/<宿主>.md` 的钩子形状折算；宿主没有钩子口 ⇒ 三格登记
-     `no-hook-surface`，**不许谎报已拦截**。
+   - 钩子的具体形状（字段名、matcher、超时、command 指向绝对路径）见 `adapters/<宿主>.md`
+     「开票归属钩子」；本文件不复述宿主字段。
+   - 宿主没有钩子口 ⇒ 三格登记 `no-hook-surface`，**不许谎报已拦截**。
 3. **验收**（两条都要做，读数写回执）：
    - 在项目仓里跑 `gh issue create --title probe` → 被拒（`rc=2`），且提示里给出实例 `issue.repo`；
    - 同一条加 `--repo <实例里的仓>` → 放行（`rc=0`）。
@@ -330,7 +343,7 @@ python scripts/framework-gate.py --selftest   # 推前框架门自证
 
 1. **整包备份（迁移前）**：原实例整份拷到本地不入库的位置（文件名带日期），至少保留到迁移验收完；
    备份读不出就停下来报缺件，不许凭记忆重造。
-2. **逐字段映射**（去向四类：改写/沿用/删除/新增；全表＝ 字段表）：
+2. **逐字段映射**（去向四类：改写/沿用/删除/新增；全表＝下方逐字段映射）：
    - **改写**：旧 `paths.day_tables` → `paths.day_tables_dir`（补 `day_table_pattern`/`lanes`，问答填实）；
      旧 `paths.daily_report` → `paths.handoff_dir`；旧 `paths.skills` / `paths.loop_protocol` →
      `registry.skills.project_skills_dir` / `loop_dir`；旧 runtime 三门 → `gates` 段
@@ -384,7 +397,7 @@ python scripts/framework-gate.py --selftest   # 推前框架门自证
 
 - 红线照旧先问：**花钱** / **对外真发布** / **不可回滚或改写历史**的 git 动作 / **删任何未提交内容**。
 - 不碰项目仓 `.githooks/**`；确需改先问（红线邻面）。钩子只当发令员：只写标记、fail-open，不派工。
-- Codex 是付费档：起它必须显式 `KAI_WATCHDOG_ALLOW_PAID=1`；没授权就只用免费档或人工。
+- 付费档宿主（如 `adapters/codex.md` 记的那档）：起它必须显式授权，变量名与用法见该适配文件；没授权就只用免费档或人工。
 - 写 Magpie 中央库前必须整包备份＋哈希基线；库内凭据**只报字段名与位置，严禁抄值**。
 - 本技能不排班、不发货、不关票、不写产品代码——那些是塔台/机长/地勤的活。
 
@@ -392,9 +405,9 @@ python scripts/framework-gate.py --selftest   # 推前框架门自证
 
 | 你要的 | 去哪 |
 |---|---|
-| 怎么提需求、拷问、定稿、路由 | [`skills/kai-mode/SKILL.md`](../kai-mode/SKILL.md) |
+| 怎么提需求、拷问、定稿、路由 | [`core/skills/kai-mode/SKILL.md`](../kai-mode/SKILL.md) |
 | 六岗位各自怎么干 | [`ground-crew`](../../../airport/skills/ground-crew/SKILL.md)／[`tower`](../../../airport/skills/tower/SKILL.md)／[`pilot`](../../../airport/skills/pilot/SKILL.md)／[`copilot`](../../../airport/skills/copilot/SKILL.md)／[`second-officer`](../../../airport/skills/second-officer/SKILL.md)／[`ace`](../../../airport/skills/ace/SKILL.md) |
-| 单票闭环怎么跑 | [`airport/skills/loop/SKILL.md`](../../../airport/skills/loop/SKILL.md) ＋ `references/loop-protocol.md` |
+| 单票闭环怎么跑 | [`airport/skills/loop/SKILL.md`](../../../airport/skills/loop/SKILL.md) ＋ `airport/skills/loop/references/loop-protocol.md` |
 | 本机环境事实（解释器、node、坑） | 本机 `agents.local.md`（不入库，每台一份） |
 | 改了技能正本怎么让各家吃到 | 本技能「2. 装技能到宿主」＋ `magpie-sync.py` |
 | 给项目出验收/验证技能骨架（生成式腿） | 本技能「按项目生成」段 ＋ [`templates/verification-skill/SKILL.md`](templates/verification-skill/SKILL.md) |

@@ -15,6 +15,8 @@
   · 本地副本指纹 != 索引里的 sha256  → 「源件已更新，需对账」
   · 今天 >= next_diff_due            → 「到对账日」
   · 本地副本读不到（未安装/已卸载）  → 「副本缺失」
+
+退出码：全部 ok ⇒ rc=0；有任何需处理项 ⇒ rc=1（自动化可据此中断）。
 """
 
 from __future__ import annotations
@@ -103,17 +105,17 @@ def main() -> int:
             "note": it.get("note", "-"),
         })
 
+    todo = [r for r in rows if r["status"] != "ok"]
     if a.json:
         print(json.dumps({"today": today.isoformat(), "sources": rows}, ensure_ascii=False, indent=2))
-        return 0
+        return 1 if todo else 0
 
     print(f"素材对账 —— {today} ｜ 共 {len(rows)} 条")
     for r in rows:
         print(f"  [{r['status']:<16}] {r['id']:<22} 指纹={r['fingerprint'] or '-':<12} "
               f"下次对账={r['next_diff_due']} 特化={r['specialized_as']}")
-    todo = [r for r in rows if r["status"] != "ok"]
     print(f"总结：{len(rows)} 条 ｜ 需处理 {len(todo)} ｜ 对账命令：python scripts/source-check.py")
-    return 0
+    return 1 if todo else 0
 
 
 if __name__ == "__main__":

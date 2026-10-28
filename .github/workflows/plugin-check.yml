@@ -2,24 +2,33 @@ name: plugin-check
 
 # 体检：市场清单 ↔ 插件目录 ↔ 版本/摘要锁 ↔ 安装档位，再跑仓库 doctor。
 # 与 KWP 的 CI 同形：本地清单是唯一来源，漂移即红；不接外部安全扫描与 MCP 存活检查。
+# 2026-10-28：补装 pytest 并跑 --with-tests——测试网必须在 CI 上张开，不做荣誉职务。
 
 on:
   push:
+    branches: [main, dev]
   pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: plugin-check-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: install pytest
+        run: python -m pip install --quiet pytest
       - name: plugin-check
         run: python scripts/plugin-check.py
-      - name: doctor
-        run: python scripts/doctor.py
+      - name: doctor (with tests)
+        run: python scripts/doctor.py --with-tests

@@ -15,7 +15,7 @@ description: >
   想法进 BOOM（全文进项目配置 paths.ideas_dir 目录 + 想法池汇总票简述），可执行需求进 Issue（挂里程碑、ready-for-agent、AC、允许/禁止修改、验证命令）。
   开票后给用户三选一：现在拉起王牌 / 进王牌队列 / 等塔台；前两项只打 `ace-queue` 标签，不写王牌日表。
   用户点名要某个机长道时，按 `main-queue` / `deputy-queue` / `second-queue` 打标；不打标走塔台正常排班。
-  不写产品代码、不 push、不派施工。触发：`/ground-crew`、用户要规划 / 开票 / 记想法，
+  不写产品代码、不 push、不派施工。触发：`/ground-crew`、用户要规划 / 开票（想法由 `kai-boom-idea-log` 收，本技能只做分流），
   或 `/kai-mode` 把需求交给地勤。
 version: 1.6.0
 updated: 2026-10-27
@@ -90,10 +90,10 @@ dependencies:
    - **现在让王牌做**（真加急）→ 给票打 `ace-queue`，回「请执行 `/ace`」；
    - **进王牌队列** → 打 `ace-queue`，回「已进王牌队列，稍后执行 `/ace`」；
    - **等塔台正常排班** → 不打标，进后备池。
-   前两项机制相同（都只打标），差别只在用户现在起不起会话——**地勤不代拉角色**（角色之间不互相拉起）。
+   前两项机制相同（都只打标），差别只在用户现在起不起会话——**地勤不代拉角色**（围栏正本见协议 §一「唤醒围栏」）。
    **指定机长道**（用户说「这张给二副／给副机长／给机长」）→ 打对应的 `main-queue` / `deputy-queue` / `second-queue`；
    塔台读到就排进该车道，不再按亲和与均衡改排。不打标＝走塔台正常排班。
-   四条车道标签的字符串与语义正本在项目仓的分诊标签表（`docs/agents/triage-labels.md`），本技能不另立第二份。
+   **四条车道标签的正本就在下面这段**（`main-queue` / `deputy-queue` / `second-queue` / `ace-queue`）：地勤是唯一的写者，塔台与看板只读。框架仓 `docs/agents/triage-labels.md` 是维护侧的对照参考（triage 角色对照），不随技能安装，别当正本引。
    标签不存在就先建一次：
    ```bash
    gh label create main-queue   --description "机长道排队"

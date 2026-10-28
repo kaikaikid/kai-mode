@@ -50,7 +50,7 @@ metadata:
 | `flightinfo/config.py` | 板配置加载 / 校验 / 定位落点 | 不许写盘 |
 | `schema/*.sql` | 表结构正本（可重复执行） | — |
 
-加一个**航班形态**的源（产出 `flights`/`schedules`）＝在 `sources/` 放一个实现 `collect(cfg, ctx)` 的模块 ＋ 在 `sources/__init__.py` 的 `REGISTRY` 加一行。**其他文件一个字都不用改。**
+加一个**航班形态**的源（产出 `flights`/`schedules`）＝在 `sources/` 放一个实现 `collect(cfg, ctx)` 的模块 ＋ 在 `flightinfo/sources/__init__.py` 的 `REGISTRY` 加一行。**其他文件一个字都不用改。**
 
 加一个**非航班形态**的源（如 `handoff-index`，产出 `handoffs` 这类自定义键）要四件事：源模块返回该键 → `collect.run_sources` 汇总该键并调 `db.replace_*` 落库 → `db.py` 加读函数 ＋ `schema/00X-*.sql` 建表 → `render.py` 加段落。`run_sources` 是显式按键名取的（不是自动透传），所以键名要和落库/渲染函数对齐。
 
@@ -77,7 +77,7 @@ metadata:
 | `summary.ai_note_chars` | 否 | AI 面排班备注截断（默认 160）。实测一条备注能到 2 千字，占 board.json 65% 预算、把航班挤到只剩 2 条。 |
 | `summary.ai_label_max` | 否 | AI 面每票标签上限（默认 6，超出折成「…共 N 枚」）。 |
 | `sources[].lanes` | 否 | **书写顺序＝页面上车道块的左右顺序**（如 `["main","deputy","second","ace"]` ⇒ 主机长在左）。以前按字母排，`deputy` 天然压到 `main` 前面，把"主道优先"读反了 |
-| `view.urgent` | 否 | 加急腿（王牌飞行员）：`{"lanes":["ace"],"label":"ace-queue"}`。两条信号**任一成立**即上「紧急任务」段——① 该车道的日表行；② 开放票带该标签。ace 车道的排班行**不进**「塔台排班」（免得挤占 20 行额度）。协议同刻只许 1 张，超了段头直接报「超编」。空态自带亮起方式，不许一片空白让人以为坏了（D-05） |
+| `view.urgent` | 否 | 加急腿（王牌飞行员）：`{"lanes":["ace"],"label":"ace-queue"}`。两条信号**任一成立**即上「紧急任务」段——① 该车道的日表行；② 开放票带该标签。ace 车道的排班行**不进**「塔台排班」（免得挤占排班行数额度，额度见协议 §零）。王牌执行帽口径见协议 §一，按该口径判「超编」（授权并行后以人工核对为准）。空态自带亮起方式，不许一片空白让人以为坏了（D-05） |
 | `view.focal_stage` | 否 | 哪一段着赭色，默认 `to_ship`；该段为 0 张时**不亮** |
 | `view.font_source` | 否 | `system`（默认，零网络）/ `web`（引 Google Fonts） |
 | `view.metrics[]` | 否 | `{key,label}` 次级读数；不写＝航班总数 / 今日收尾 / 今日排班 |
@@ -174,6 +174,10 @@ python scripts/refresh_if_dirty.py --repo-root <仓根> --config <板配置> [--
 >
 > 定时任务用系统账号跑时 `gh` 读不到你的 GitHub 登录态（票面源降级）；
 > 用当前用户 ＋ 仅登录时 ＝ `gh` 正常、又无 token。
+>
+> **平台边界（体检 L12）**：第 ②③ 层（`refresh.vbs`／`schtasks`／`wscript`）目前只有 Windows 实现。
+> 「跨 agent」指不依赖某个 AI 宿主，**不是跨 OS**——非 Windows 环境用第 ① 层钩子 ＋ 手动
+> `python refresh.py`（或自建 cron 调 `refresh_if_dirty.py`），`--max-age` 兜底仍然成立。
 
 ## 6. 退出码与降级
 
@@ -201,7 +205,7 @@ python scripts/refresh_if_dirty.py --repo-root <仓根> --config <板配置> [--
 ## 8. 验证命令
 
 ```bash
-python -m unittest discover -s tests -v          # 33 项单元测试（含端到端）
+python -m unittest discover -s tests -v          # 单元测试（含端到端；项数以实际收集为准，不写死）
 python scripts/init_board.py --repo-root <临时仓>  # 自证：装完能用
 python scripts/refresh.py --repo-root <临时仓> --config <板配置> --no-network
 ```

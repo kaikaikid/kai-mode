@@ -46,6 +46,10 @@ def make_repo(tmp_path, skills=("alpha",)):
     (root / "VERSION").write_text("9.9.9\n", encoding="utf-8")
     (root / "README.md").write_text("# 假仓\n\n状态：9.9.9\n", encoding="utf-8")
     (root / ".gitattributes").write_text("* text=auto\n*.bat text eol=crlf\n", encoding="utf-8")
+    # pointer-targets 会解析 SKILL_WITH_CMD 里的 `python scripts/gate.py`：假仓也要有实体，
+    # 否则「处处合规的假仓」被指针检查判红（假仓的合规面包含脚本可解析）。
+    (root / "scripts").mkdir()
+    (root / "scripts" / "gate.py").write_text("# 假门脚本\n", encoding="utf-8")
     # 15 handoff-slots / 18 canon-dup 的必需件：假仓也要齐，否则 clean_repo 不是绿的
     for slot in ("00-inbox", "10-session", "20-plan", "30-research",
                  "40-review", "50-comms", "60-board", "90-archive"):
@@ -588,6 +592,11 @@ def test_payload_refs_external_link_is_red(tmp_path):
 
 def test_payload_refs_framework_url_is_red(tmp_path):
     root = make_repo(tmp_path)
+    # 框架仓 URL 的匹配式从市场清单的 owner+name 派生（体检 L9），假仓也要有这两项
+    (root / ".claude-plugin").mkdir(exist_ok=True)
+    (root / ".claude-plugin" / "marketplace.json").write_text(
+        json.dumps({"name": "kai-mode", "owner": {"name": "kaikaikid"}, "plugins": []},
+                   ensure_ascii=False), encoding="utf-8")
     (root / "skills" / "alpha" / "notes.md").write_text(
         "详见 [README](https://github.com/kaikaikid/kai-mode/blob/main/README.md)\n",
         encoding="utf-8")
@@ -806,33 +815,6 @@ def test_command_surface_shape_edge_cases(tmp_path):
     assert status_of(data, "command-surface") == "ok", detail_of(data, "command-surface")
 
 
-def test_persona_count_hardcoded_is_red(tmp_path):
-    """人格**个数**不许抄第二份：加一格就会把别处旧数留成假话（第七人格落地时实测三处）。
-    人格层已从 CHECKS 退役，这里直接调 chk_agents（保留函数供旧仓自测）。"""
-    import importlib.util
-    spec = importlib.util.spec_from_file_location("kai_doctor_direct", DOCTOR)
-    doc = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(doc)
-    root = make_repo(tmp_path)
-    (root / "agents").mkdir()
-    (root / "agents" / "worker.md").write_text(
-        "---\nname: worker\ndescription: 可写实现。\nversion: 1.0.0\nmetadata:\n  access: write\n---\n\n"
-        "# worker\n\n正文。\n", encoding="utf-8")
-    (root / "agents" / "README.md").write_text(
-        "# agents\n\n| 人格 | access | 何时派 |\n|---|---|---|\n"
-        "| [worker](worker.md) | write | 有界实现 |\n\n"
-        "一个岗位可拉起多个人格，一个人格从不排班。\n", encoding="utf-8")
-    p = root / "skills" / "alpha" / "SKILL.md"
-    p.write_text(p.read_text(encoding="utf-8") + "\n子代理层：6 个人格。\n", encoding="utf-8")
-    status, detail = doc.chk_agents(str(root), None)
-    assert status == "fail" and "写死了人格计数" in detail
-    # 「× 7」式写法与 prose「一个人格从不排班」「可派全部人格」都不是计数，不该炸
-    p.write_text(SKILL_MD.format(name="alpha") + "\n一个岗位可拉起多个人格，一个人格从不排班；主代理可派全部人格。\n",
-                 encoding="utf-8")
-    status, detail = doc.chk_agents(str(root), None)
-    assert "写死了人格计数" not in detail, detail
-
-
 def test_marketplace_layout_registry_file_check(tmp_path):
     """测试市场清单的注册表文件检查"""
     root = tmp_path / "repo"
@@ -923,25 +905,6 @@ def test_marketplace_layout_skills_registered_correctly(tmp_path):
     rc, data = run_doctor(root)
     assert status_of(data, "unregistered-skill") == "ok"
     assert "市场布局中 1 个技能都登记了" in detail_of(data, "unregistered-skill")
-
-
-def test_marketplace_layout_agents_check_skip(tmp_path):
-    """测试没有 agents/ 目录时 agents-contract 检查被跳过"""
-    root = tmp_path / "repo"
-    root.mkdir()
-
-    # Create minimal valid repo
-    (root / "skills").mkdir()
-    with open(root / "registry.json", "w", encoding="utf-8") as f:
-        json.dump({"schema": "kai-mode-registry/1", "version": 1, "skills": []}, f, ensure_ascii=False)
-    (root / "VERSION").write_text("1.0.0\n", encoding="utf-8")
-    (root / "README.md").write_text("# Test\n", encoding="utf-8")
-    (root / ".gitattributes").write_text("* text=auto\n", encoding="utf-8")
-
-    rc, data = run_doctor(root)
-    # agents-contract should be skipped since there's no agents/ directory
-    agent_contract_check = next((c for c in data["checks"] if c["id"] == "agents-contract"), None)
-    assert agent_contract_check is None or agent_contract_check["status"] == "skip"
 
 
 def test_marketplace_layout_payload_budget_paths(tmp_path):

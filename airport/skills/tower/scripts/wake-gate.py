@@ -8,7 +8,8 @@
 用法（定时器 prompt 的薄壳第一句）：
   python <本技能目录>/scripts/wake-gate.py [--repo <仓根>] [--json]
 
-判据顺序（任一成立即放行，其余跳过；判据住这里，技能正文与定时器 prompt 不复述）：
+判据顺序（任一成立即放行，其余跳过；可执行正本＝本脚本，技能正文与定时器 prompt 不复述；
+裁决理由见框架仓决策记录）：
   1. 令牌：他人持牌且心跳在「本轮上限」内 ⇒ 上一轮大概率还在跑 ⇒ SKIP（治「下一个塔台白跑」）；
      心跳超过本轮上限 ⇒ 死牌，不阻塞（塔台进去后按 $tower-token acquire 接管）。
   2. 待发货：`ship-queue.py peek` 的 pending／hotfix／invalid 任一非空 ⇒ WAKE。
