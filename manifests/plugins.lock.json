@@ -18,14 +18,14 @@
     },
     "board": {
       "version": "1.2.0",
-      "digest": "650eca40cf0de529704348adf5abd0aee1007bdfbee5807cabcd62dadd07815f",
+      "digest": "091ecd004c13c3af16b9a03fcfcaa4a9af824b932e6f7e32d6037c1bb1e57f06",
       "skills": {
         "flight-info": "1.5.0"
       }
     },
     "core": {
-      "version": "1.1.0",
-      "digest": "7e11804073d0532baa38bfa502f4ef4bba8f036ce1eb67eb740c72acf1b51fb7",
+      "version": "1.2.0",
+      "digest": "518cccdff5fe1683af0d97d322458c090ba88b293d4b51fd09328f6af5658276",
       "skills": {
         "harness-audit": "0.2.0",
         "kai-handoff": "0.3.5",
@@ -34,6 +34,7 @@
         "principle-ceremony-collapses-with-scale": "0.1.2",
         "principle-measure-dont-ask": "0.1.1",
         "principle-one-semantics-one-home": "0.1.3",
+        "principle-output-structure": "0.1.0",
         "principle-report-missing-parts": "0.1.1",
         "principle-visible-and-redline-only": "0.1.1",
         "set-kai-mode": "5.8.2",
@@ -49,12 +50,13 @@
     },
     "methods": {
       "version": "0.1.0",
-      "digest": "2a536e03a53caddc8cab90308f3badec52bb72d55c4dbd34a26c8c7919e4a1a6",
+      "digest": "ff1e32a581d89092b7b62d00ce39bbb004b3b2d5b297c76a3a93beea649aba44",
       "skills": {
         "kai-code-review": "0.1.0",
         "kai-diagnosing-bugs": "0.1.0",
         "kai-domain-modeling": "0.1.0",
         "kai-security-audit": "0.1.0",
+        "kai-skills": "0.1.0",
         "kai-tdd": "0.1.0",
         "kai-to-tickets": "0.1.0",
         "kai-writing-for-agents": "0.1.0"

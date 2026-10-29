@@ -27,6 +27,8 @@ stays short on purpose, it is read every session):
 
 Explain professional problems in plain language — no jargon without explanation, use everyday analogies when possible. If a term is unavoidable, explain it first before using it.
 
+Outputs follow the L1–L4 carrier ladder (text → diagram → single-file HTML → explainer video, cheapest first). Source of truth: `core/skills/principle-output-structure/SKILL.md`.
+
 ## Red lines (the only hard stops; everything else is a default)
 
 | Red line | Meaning |
@@ -60,6 +62,7 @@ tools. Subagents within a ticket are not role sessions. Source of truth:
 | Ticket-level protocol (slots, fail/retry counts, receipt, shipping) | `airport/skills/loop/references/loop-protocol.md` | pointer |
 | Out-of-ticket dispatch (when not to delegate, who may dispatch whom, concurrency, context budget) | `airport/skills/loop/references/dispatch.md` | pointer |
 | Method (how to explore / review / plan / implement) | `airport/skills/<role>/SKILL.md`（each role skill carries its own method） | pointer |
+| Output structure (which carrier: L1 text / L2 diagram / L3 single-file HTML / L4 explainer video) | `core/skills/principle-output-structure/SKILL.md` | pointer |
 | Host differences (launcher per role, how a persona becomes a native agent file, permissions, model) | `adapters/README.md` + `adapters/<host>.md` | pointer |
 | Artifact packaging (dev records vs host payload vs project scaffold) | `manifests/package-layout.json` + `docs/package-layout.md` | pointer |
 | Agent global data layout (non-project data root, per-agent override, project boundary) | `docs/agent-data-layout.md` | pointer in adapters |

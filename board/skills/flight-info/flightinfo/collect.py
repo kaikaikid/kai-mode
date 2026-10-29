@@ -28,18 +28,35 @@ def ticket_key(value) -> str:
 
 
 def lane_index(schedules: list[dict]) -> dict[str, str]:
-    """票号 → 车道。只认**最新那张日表**：历史表里的排班不算今天的归属。"""
+    """票号 → 车道。每条车道各取自己最新那张日表。
+
+    2026-10-29 实测踩过：原实现取**全局** max(table_date)，于是只要有一条车道
+    的表更旧，它整条车道的行都被筛掉（Kai-vass：主/副道写 10-29，王牌道停在
+    10-27 ⇒ 王牌道的票全丢了归属，看着像"ACE 手上没活"）。
+    各车道的日表各自独立推进，按车道分组取最新才对。
+    """
     if not schedules:
         return {}
-    latest = max((s.get("table_date") or "") for s in schedules)
-    idx: dict[str, str] = {}
+    latest: dict[str, str] = {}
     for s in schedules:
-        if (s.get("table_date") or "") != latest:
+        lane = s.get("lane") or ""
+        d = s.get("table_date") or ""
+        if d > latest.get(lane, ""):
+            latest[lane] = d
+    # 同一票出现在多条车道的最新表里 → 取日表日期较新的那条（更新的排班＝现在的归属）
+    best: dict[str, tuple[str, str]] = {}
+    for s in schedules:
+        lane = s.get("lane") or ""
+        d = s.get("table_date") or ""
+        if d != latest.get(lane):
             continue
         k = ticket_key(s.get("ticket"))
-        if k and k not in idx and s.get("lane"):
-            idx[k] = s["lane"]
-    return idx
+        if not k or not lane:
+            continue
+        cur = best.get(k)
+        if cur is None or d > cur[0]:
+            best[k] = (d, lane)
+    return {k: v[1] for k, v in best.items()}
 
 
 def resolve_owner(rec: dict, lane: str | None, role_labels: dict,

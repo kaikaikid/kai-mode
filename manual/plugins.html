@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>插件与装配 · kai-mode 使用手册</title>
+<meta name="description" content="6 个插件、28 个技能、三层打包边界、宿主适配与子代理模板。">
+<link rel="stylesheet" href="assets/manual.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="side">
+    <a class="brand" href="index.html">kai-mode<span>使用手册</span></a>
+    <button class="menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="side-nav">目录</button>
+    <nav id="side-nav" aria-label="手册目录"></nav>
+    <div class="side-foot"><button class="theme-btn" id="theme-btn" type="button">深色</button></div>
+  </aside>
+
+  <main class="page">
+    <p class="kicker">参考</p>
+    <h1>插件与装配</h1>
+    <p class="lede">这一页回答“这套东西由什么组成、装的时候发生了什么”。日常使用不需要读；想改它、排查它、或者想知道技能从哪来，再往下看。</p>
+
+    <h2>六个插件</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>插件</th><th>显示名</th><th>技能</th><th>命令</th><th>管什么</th></tr></thead>
+        <tbody>
+          <tr><td><code>airport</code></td><td>机场体系</td><td>7</td><td>6 个岗位口令</td><td>地勤开票、塔台排班发货、机长 / 副机长 / 二副施工、王牌加急</td></tr>
+          <tr><td><code>core</code></td><td>入口与安装</td><td>10</td><td>3 个</td><td>总入口、安装、交接、语义体检、六条原则</td></tr>
+          <tr><td><code>studio</code></td><td>文娱集团</td><td>7</td><td>技能名即口令</td><td>共享协议，加企划 / 主笔 / 主美 / 导演 / 终审 / 宣发</td></tr>
+          <tr><td><code>intake</code></td><td>想法池</td><td>1</td><td>1 个</td><td>收想法，全文落盘，汇总票只贴简述</td></tr>
+          <tr><td><code>ops</code></td><td>事故与运维</td><td>2</td><td>2 个</td><td>事故分级、时间线、复盘补票；可重复运维步骤</td></tr>
+          <tr><td><code>board</code></td><td>看板</td><td>1</td><td>1 个</td><td>Flight Information：SQLite 落库，出 board.json 与 index.html</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>合计 28 个插件技能；另有 7 个随仓库自带的外部方法。逐条清单见 <a href="skills.html">技能速查</a>。</p>
+
+    <h2>三层打包边界</h2>
+    <div class="cards">
+      <div class="card">
+        <h3>本仓开发件</h3>
+        <p><code>docs/</code>、<code>handoff/</code> 历史、<code>scripts/</code>、<code>adapters/</code>、<code>manifests/</code>。这些不随技能装走。</p>
+      </div>
+      <div class="card">
+        <h3>宿主安装件</h3>
+        <p>每个插件的 <code>skills/*</code>、<code>commands/</code>、<code>PLAYBOOK.md</code>、<code>CONNECTORS.md</code>，以及两份 <code>plugin.json</code>。</p>
+      </div>
+      <div class="card">
+        <h3>项目生成件</h3>
+        <p><code>.ai/kai-mode.project.json</code>、<code>handoff/</code> 八槽、<code>GLOSSARY.md</code>、空的 <code>docs/adr/</code>。框架仓的 <code>docs/</code> 永不复制。</p>
+      </div>
+    </div>
+
+    <h2>装配链路</h2>
+    <p>市场清单是唯一分发清单；安装档位和版本锁是两种“护栏”；安装器把技能从插件目录搬到中央库，再链到宿主；项目里只生成自己的骨架。</p>
+    <pre><code>marketplace.json（6 个插件）
+  → install-profiles.json（core 10 / full 27）
+  → plugins.lock.json（版本与摘要）
+  → set-kai-mode + magpie-sync.py
+  → Magpie 中央库（library.json）
+  → 宿主 skills/ 与 commands/
+  → 项目 .ai/ + handoff/ + GLOSSARY.md + docs/adr/</code></pre>
+
+    <h2>六家宿主，落法不同</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>宿主</th><th>技能落点</th><th>新上下文</th><th>定时口</th></tr></thead>
+        <tbody>
+          <tr><td>Claude Code</td><td><code>.claude/skills/</code> 或中央库副本</td><td>原生子代理</td><td>无内置，人工或外部调度</td></tr>
+          <tr><td>Qoder</td><td><code>.qoder/skills/</code>（项目）/ <code>~/.qoder/skills/</code></td><td>原生 subagent 或新会话</td><td>CLI 定时任务 / <code>/loop</code> / IDE Automations</td></tr>
+          <tr><td>Codex</td><td>项目技能目录</td><td>独立 <code>codex exec</code> 进程</td><td>无</td></tr>
+          <tr><td>OpenCode</td><td>项目技能目录</td><td>独立 <code>opencode run</code> 进程</td><td>无</td></tr>
+          <tr><td>Copilot</td><td><code>.github/agents/</code></td><td>宿主 agent</td><td>视版本</td></tr>
+          <tr><td>Cursor</td><td><code>.cursor/agents/</code></td><td>宿主 agent</td><td>视版本</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>装机前要按“入口、新上下文口、权限口、定时口”四步实测，不许凭印象。权限降级分三级：硬权限最好，工具白名单次之，只读提示最弱；降到第三级必须在回执里标“软约束”。</p>
+
+    <h2>七个子代理模板</h2>
+    <p>四个自建：施工（可写）、审查（只读、新上下文）、裁决（只读、新上下文）、调查（只读）。三个同名覆盖宿主内置：<code>Explore</code>、<code>Plan</code>、<code>general-purpose</code>。</p>
+    <p>模板只写模型、工具、轮次上限，一句判据都不写；判据的家在 <code>loop</code> 与 <code>studio</code> 的 references。派生深度固定一层：子代理不再派子代理。</p>
+
+    <h2>七个上游方法</h2>
+    <p><code>kai-tdd</code>、<code>kai-code-review</code>、<code>kai-diagnosing-bugs</code>、<code>kai-domain-modeling</code>、<code>kai-security-audit</code>、<code>kai-to-tickets</code>、<code>kai-writing-for-agents</code>。它们放在 <code>methods/</code>，<code>kai-</code> 前缀、登记为插件技能、随安装走；fork 自上游，可微调，改动记 <code>deltas</code>，上游更新按 30 天对账人工吸纳。</p>
+
+    <details class="fold">
+      <summary>给技术同事：文件与门禁</summary>
+      <div class="fold-body">
+        <p>清单正本：<code>.claude-plugin/marketplace.json</code>；档位：<code>manifests/install-profiles.json</code>；版本锁：<code>manifests/plugins.lock.json</code>；三层边界：<code>manifests/package-layout.json</code> + <code>docs/package-layout.md</code>。</p>
+        <p>目录契约：<code>&lt;plugin&gt;/skills/&lt;name&gt;/SKILL.md</code>，目录名＝frontmatter 的 <code>name</code>；<code>commands/&lt;role&gt;.md</code> 只做“读取并执行哪份技能”，不写长规则。</p>
+        <p>门禁：<code>python scripts/doctor.py</code>（29 项）、<code>python scripts/plugin-check.py</code>（清单与版本锁）、<code>python scripts/source-check.py</code>（外部素材对账）、<code>python scripts/check-instance.py --repo &lt;项目仓&gt;</code>（配置实例）。</p>
+        <p>安装面不得出现框架仓 URL、ADR 编号、维护者门禁命令；开发件不进安装面，项目骨架只从清单生成。</p>
+      </div>
+    </details>
+
+    <footer class="page-foot">
+      <span>kai-mode 使用手册</span>
+      <span><a href="assets/full-map.html">下一站：完整技术图 →</a></span>
+    </footer>
+  </main>
+</div>
+<script src="assets/manual.js"></script>
+</body>
+</html>

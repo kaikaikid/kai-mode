@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>装好它 · kai-mode 使用手册</title>
+<meta name="description" content="三步把 kai-mode 装到你的项目：选宿主、发一句话、看回执。">
+<link rel="stylesheet" href="assets/manual.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="side">
+    <a class="brand" href="index.html">kai-mode<span>使用手册</span></a>
+    <button class="menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="side-nav">目录</button>
+    <nav id="side-nav" aria-label="手册目录"></nav>
+    <div class="side-foot"><button class="theme-btn" id="theme-btn" type="button">深色</button></div>
+  </aside>
+
+  <main class="page">
+    <p class="kicker">上手</p>
+    <h1>装好它</h1>
+    <p class="lede">你不需要自己敲命令。选好你平时用的 AI 宿主，把一句话发过去，然后看它交回来的“装机回执”。</p>
+
+    <ol class="steps">
+      <li>
+        <h3>确认你在哪个宿主里</h3>
+        <p>就是你平时跟 AI 说话的那个地方：Claude Code、Qoder、Codex、OpenCode、Copilot 或 Cursor。不知道名字也没关系，直接问它“你是什么宿主”。</p>
+      </li>
+      <li>
+        <h3>把这句话发给 AI</h3>
+        <p><strong>“请用 kai-mode 的 set-kai-mode，把框架装到我当前的项目。先扫描缺什么，列清单给我确认，只装缺的。”</strong></p>
+        <p>它会先报“已经有什么、还缺什么”，不会闷头覆盖你现有的东西。</p>
+      </li>
+      <li>
+        <h3>看回执，别急着开工</h3>
+        <p>回执里应该写清楚：装了哪些技能、用的哪个档位、定时器有没有装上、缺什么。缺的会按“缺什么 / 卡在哪 / 要谁拍”三格登记，不会假装成功。</p>
+      </li>
+    </ol>
+
+    <div class="callout">
+      <span class="label">第一次装，建议选小档</span>
+      <p>先装 <code>core</code>（最小闭环：入口、安装、协议、六个岗位、交接），跑通一张真票，再补 <code>full</code>。一次装全，出了问题不容易看出是哪一层。</p>
+    </div>
+
+    <h2>东西装到哪去了</h2>
+    <p>插件是“货”，安装器是“搬运”，中央库是“仓库”，宿主是“你平时用的工具”，项目里只放这个项目自己的配置和交接骨架。</p>
+
+    <svg class="diagram" viewBox="0 0 900 250" role="img" aria-label="安装链路：六个插件经安装器写入中央库，再链接到宿主，项目里生成配置与交接骨架">
+      <defs>
+        <marker id="arrow2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 z" fill="var(--accent)"/>
+        </marker>
+      </defs>
+
+      <rect class="d-box" x="20" y="70" width="150" height="92" rx="10"/>
+      <text class="d-t" x="95" y="100" text-anchor="middle">6 个插件</text>
+      <text class="d-s" x="95" y="122" text-anchor="middle">airport · core · studio</text>
+      <text class="d-s" x="95" y="140" text-anchor="middle">intake · ops · board</text>
+
+      <rect class="d-box" x="215" y="70" width="140" height="92" rx="10"/>
+      <text class="d-t" x="285" y="100" text-anchor="middle">安装器</text>
+      <text class="d-s" x="285" y="122" text-anchor="middle">先扫描，只装缺的</text>
+      <text class="d-s" x="285" y="140" text-anchor="middle">set-kai-mode</text>
+
+      <rect class="d-box" x="400" y="70" width="140" height="92" rx="10"/>
+      <text class="d-t" x="470" y="100" text-anchor="middle">中央库</text>
+      <text class="d-s" x="470" y="122" text-anchor="middle">技能的正本</text>
+      <text class="d-s" x="470" y="140" text-anchor="middle">每条一个目录</text>
+
+      <rect class="d-box" x="585" y="70" width="140" height="92" rx="10"/>
+      <text class="d-t" x="655" y="100" text-anchor="middle">你的宿主</text>
+      <text class="d-s" x="655" y="122" text-anchor="middle">技能与命令出现</text>
+      <text class="d-s" x="655" y="140" text-anchor="middle">在技能目录里</text>
+
+      <rect class="d-box-accent" x="770" y="70" width="110" height="92" rx="10"/>
+      <text class="d-t" x="825" y="100" text-anchor="middle">你的项目</text>
+      <text class="d-s" x="825" y="122" text-anchor="middle">配置 / 交接</text>
+      <text class="d-s" x="825" y="140" text-anchor="middle">术语 / ADR 骨架</text>
+
+      <text class="d-l" x="192" y="62" text-anchor="middle">按目录</text>
+      <text class="d-l" x="378" y="62" text-anchor="middle">拷贝</text>
+      <text class="d-l" x="562" y="62" text-anchor="middle">链接</text>
+      <text class="d-l" x="745" y="62" text-anchor="middle">生成</text>
+
+      <path class="d-a" d="M170,116 H215" marker-end="url(#arrow2)"/>
+      <path class="d-a" d="M355,116 H400" marker-end="url(#arrow2)"/>
+      <path class="d-a" d="M540,116 H585" marker-end="url(#arrow2)"/>
+      <path class="d-a" d="M725,116 H770" marker-end="url(#arrow2)"/>
+
+      <text class="d-l" x="450" y="205" text-anchor="middle">开发记录、测试、缓存不跟着装走；项目里只生成骨架，不复制框架仓的 docs/。</text>
+    </svg>
+
+    <h2>装完你会得到什么</h2>
+    <div class="cards">
+      <div class="card">
+        <h3>技能</h3>
+        <p>宿主里能看到这套技能；用 <code>/kai-mode</code>、<code>/ground-crew</code> 这类口令就能叫出来。</p>
+      </div>
+      <div class="card">
+        <h3>项目骨架</h3>
+        <p>项目里多出 <code>.ai/kai-mode.project.json</code>、<code>handoff/</code> 八个槽、<code>GLOSSARY.md</code> 和一个空的 <code>docs/adr/</code>。</p>
+      </div>
+      <div class="card">
+        <h3>一张回执</h3>
+        <p>写清楚装了什么、缺什么、定时器有没有装。缺件不会静默消失。</p>
+      </div>
+    </div>
+
+    <h2>两个档位</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>档位</th><th>包含</th><th>适合谁</th></tr></thead>
+        <tbody>
+          <tr><td><code>core</code></td><td>入口、安装、单票协议、六个机场岗位、交接，共 10 件</td><td>第一次用，先跑通最小闭环</td></tr>
+          <tr><td><code>full</code></td><td>core ＋ 六条原则、想法池、看板、事故与运维、文娱六岗位，共 27 件自动件</td><td>确认要长期用，想要完整能力</td></tr>
+          <tr><td>手动</td><td><code>harness-audit</code> 语义体检，不进自动档</td><td>发版前或月度体检时单独装</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout">
+      <span class="label">定时器只叫醒塔台</span>
+      <p>“每 60 分钟自动看一眼”的能力叫唤醒定时器。它只会叫醒塔台，不会自动拉起机长或创作角色；只有人能起角色。宿主不支持定时器时，回执会明确写“没装上”，不会假装有。</p>
+    </div>
+
+    <details class="fold">
+      <summary>给技术同事：实际跑了什么</summary>
+      <div class="fold-body">
+        <p>安装面由 <code>core/skills/set-kai-mode/scripts/magpie-sync.py</code> 负责：从 <code>.claude-plugin/marketplace.json</code> 派生插件目录，按 <code>manifests/install-profiles.json</code> 选档位，逐字拷贝到 Magpie 中央库，再链到各宿主。漂移判据看内容、落点、注册三面。</p>
+        <p>项目骨架由 <code>scripts/init-project.py</code> 的十问生成：项目名、票源、仓库 slug、日表目录、交接目录、想法目录、ADR 目录、宿主、收工门禁、想法池汇总票号。生成后可用 <code>python scripts/check-instance.py --repo &lt;项目仓&gt;</code> 对账。</p>
+        <p>框架仓自检：<code>python scripts/doctor.py</code>（29 项）。装机回执里出现 <code>missing: no-timer / no-new-context / soft-permission-only</code> 时，按缺件三格登记，不要猜路径。</p>
+      </div>
+    </details>
+
+    <footer class="page-foot">
+      <span>kai-mode 使用手册</span>
+      <span><a href="tickets.html">下一站：开票与施工 →</a></span>
+    </footer>
+  </main>
+</div>
+<script src="assets/manual.js"></script>
+</body>
+</html>

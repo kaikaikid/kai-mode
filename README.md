@@ -1,8 +1,8 @@
 # kai-mode —— 机场体系的技能与通用剧本仓库
 
-> **状态：0.34.0（2026-10-29 通用方法改 fork：7 个通用方法技能迁入 `methods/` 插件、加 `kai-` 前缀、可微调，`vendor/` 与 `vendor-sync` 退役，上游更新人工吸纳；见 [ADR-0026](docs/adr/0026-fork-generic-methods-with-kai-prefix.md)）。上一版 0.33.0（2026-10-28 文娱集团落地：新插件 `studio`——企划/主笔/主美/导演/终审/宣发六岗位，共享协议＋四个薄子代理模板；三坊两台改名，make 降为子代理）。上一版 0.32.0（2026-10-28 体检修复：AGENTS.md 死指针与人格局残留清退、协议版本三方统一 v11、`source-check.py` 退出码按需处理数返回、CI 补跑 `--with-tests`、doctor 补机器路径扫描面＋正文指针可解析性检查、schemas 三件退役、ace 执行帽正本收口协议 §一；第二波：doctor 硬化＋canon 数值键＋ADR-0025＋vendor 溯源）。上一版 0.31.0（2026-10-27）：塔台待发货探测：新增 `ship-queue.py`，从 Issue 判词派生待发货队列，增量扫描（`since=`）＋写前日志＋「票已关／sha 已进 `dev`」自动退役；零票时塔台只读一行即走轻量轮，探测失败 `rc=3` 不等于零票；机长不写账本。worker 预算加档：每车道子代理限额 3→5，规划权仍在机长（[ADR-0024](docs/adr/0024-worker-budget-five-per-lane.md)）。定时器改**门卫薄壳**：`wake-gate.py` 先判上一轮是否还在跑、有没有活，跳过时零模型调用（首个适配宿主＝Claude Code）。航班信息板换骨：KWP 暖白陶橙皮肤 ＋ 看板列＝阶段，新增待发货队列与塔台灯，钩子扩到三枚、30 分钟脚本定时器零黑窗，`--max-age` 兜底 GitHub 侧更新。初始化遇到同名不同内容技能时逐条问用户去留，默认保留现有，不再静默覆盖。上一版 0.30.0：二副车道——新增第四位机长 `second-officer`，塔台排班扩到三张正常日表，Issue 车道标签补齐四条；见 [ADR-0023](docs/adr/0023-second-officer-fourth-pilot-lane.md)）。**
+> **状态：0.35.0（2026-10-30 新增原则技能 `principle-output-structure`：输出结构 L1–L4 随 `core` 插件装到宿主，部署 kai-mode 的项目、角色会话与子代理共用一套载体选择判据；`full` 档 34 → 35 条）。上一版 0.34.0（2026-10-29 通用方法改 fork：7 个通用方法技能迁入 `methods/` 插件、加 `kai-` 前缀、可微调，`vendor/` 与 `vendor-sync` 退役，上游更新人工吸纳；见 [ADR-0026](docs/adr/0026-fork-generic-methods-with-kai-prefix.md)）。上一版 0.33.0（2026-10-28 文娱集团落地：新插件 `studio`——企划/主笔/主美/导演/终审/宣发六岗位，共享协议＋四个薄子代理模板；三坊两台改名，make 降为子代理）。上一版 0.32.0（2026-10-28 体检修复：AGENTS.md 死指针与人格局残留清退、协议版本三方统一 v11、`source-check.py` 退出码按需处理数返回、CI 补跑 `--with-tests`、doctor 补机器路径扫描面＋正文指针可解析性检查、schemas 三件退役、ace 执行帽正本收口协议 §一；第二波：doctor 硬化＋canon 数值键＋ADR-0025＋vendor 溯源）。上一版 0.31.0（2026-10-27）：塔台待发货探测：新增 `ship-queue.py`，从 Issue 判词派生待发货队列，增量扫描（`since=`）＋写前日志＋「票已关／sha 已进 `dev`」自动退役；零票时塔台只读一行即走轻量轮，探测失败 `rc=3` 不等于零票；机长不写账本。worker 预算加档：每车道子代理限额 3→5，规划权仍在机长（[ADR-0024](docs/adr/0024-worker-budget-five-per-lane.md)）。定时器改**门卫薄壳**：`wake-gate.py` 先判上一轮是否还在跑、有没有活，跳过时零模型调用（首个适配宿主＝Claude Code）。航班信息板换骨：KWP 暖白陶橙皮肤 ＋ 看板列＝阶段，新增待发货队列与塔台灯，钩子扩到三枚、30 分钟脚本定时器零黑窗，`--max-age` 兜底 GitHub 侧更新。初始化遇到同名不同内容技能时逐条问用户去留，默认保留现有，不再静默覆盖。上一版 0.30.0：二副车道——新增第四位机长 `second-officer`，塔台排班扩到三张正常日表，Issue 车道标签补齐四条；见 [ADR-0023](docs/adr/0023-second-officer-fourth-pilot-lane.md)）。**
 > （[0003：四角色＋1 小时唤醒塔台](docs/adr/0003-airport-rebuild-four-roles.md)；[0020：王牌飞行员加急车道](docs/adr/0020-ace-pilot-expedited-lane.md)）；**本仓是宿主装机正本**（`magpie-sync apply --root <本仓>`，
-> 按市场清单的插件目录装齐，当前 27 条自动件），项目仓那份技能副本只作镜像。
+> 按市场清单的插件目录装齐，当前 35 条自动件），项目仓那份技能副本只作镜像。
 > 旧五角色（Tower/Ground/Coordinator/Group-A/B）、租约、班次、handoff 按铃那套已随机场体系重做退役（本仓 [0003](docs/adr/0003-airport-rebuild-four-roles.md)）<!-- canon:allow-retired -->
 > （git 历史可捞）。
 
@@ -86,7 +86,7 @@ kai-mode 是「一句话需求 → 票 → 排班 → 施工 → 审查 → 发�
 ```text
 .claude-plugin/marketplace.json   唯一分发清单：六个剧本插件的名字、版本、来源
 airport/    机场体系剧本：commands/（六岗位）＋ skills/（loop·pilot·copilot·second-officer·tower·ground-crew·ace）
-core/       入口与安装剧本：commands/ ＋ skills/（入口、安装、交接、审计、六条原则）
+core/       入口与安装剧本：commands/ ＋ skills/（入口、安装、交接、审计、七条原则）
 board/      看板剧本：skills/flight-info（SQLite → board.json ＋ index.html）
 intake/     想法池剧本：skills/kai-boom-idea-log
 ops/        事故与运维剧本：skills/incident-response、skills/runbook

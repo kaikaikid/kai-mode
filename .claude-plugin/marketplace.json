@@ -14,7 +14,7 @@
       "name": "core",
       "displayName": "入口与安装",
       "source": "./core",
-      "description": "统一入口、装机、交接与六条原则；不含岗位流程。"
+      "description": "统一入口、装机、交接与七条原则；不含岗位流程。"
     },
     {
       "name": "board",

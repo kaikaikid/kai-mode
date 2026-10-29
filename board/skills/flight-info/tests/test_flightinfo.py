@@ -542,6 +542,22 @@ class TestOwnerResolution(unittest.TestCase):
         idx = collect.lane_index(rows)
         self.assertEqual(idx, {"1": "deputy", "2": "main"})
 
+    def test_lane_index_is_per_lane_not_global(self):
+        """各车道各取自己最新那张表：落后车道不许被别车道的日期挤掉。
+
+        2026-10-29 实测踩过：主/副道写 10-29，王牌道停在 10-27，
+        原实现取全局 max ⇒ 王牌道的票全丢了归属，看着像"ACE 手上没活"。
+        """
+        rows = [{"ticket": "#1", "lane": "main", "table_date": "2026-10-29"},
+                {"ticket": "#2", "lane": "ace", "table_date": "2026-10-27"}]
+        self.assertEqual(collect.lane_index(rows), {"1": "main", "2": "ace"})
+
+    def test_lane_index_newer_table_wins_across_lanes(self):
+        """同一票在两条车道的最新表里都有 → 取日表较新的那条。"""
+        rows = [{"ticket": "#1", "lane": "main", "table_date": "2026-10-29"},
+                {"ticket": "#1", "lane": "ace", "table_date": "2026-10-30"}]
+        self.assertEqual(collect.lane_index(rows), {"1": "ace"})
+
     def test_ticket_key_scales(self):
         for v in ("#1711", "1711", "issue:1711", " #1711 "):
             self.assertEqual(collect.ticket_key(v), "1711")
@@ -600,6 +616,43 @@ class TestFacesNotSharedBudget(unittest.TestCase):
                               "flights_truncated": False}}
         out, _ = render.trim_to_bytes(payload, 8000, indent=1)
         self.assertLessEqual(len(render.dumps(out, 1)), 8000)
+
+    def test_ai_face_keeps_flights_under_budget(self):
+        """AI 面超预算时，先瘦历史与长文，票不许被挤成 0 张。
+
+        2026-10-29 实测踩过：24 轮趋势占 13 KB，加急行/卡点行留着全文，
+        25.6 KB 的预算被吃光 ⇒ AI 面最后只剩 0 张航班（板上 48 张未收尾），
+        那等于对 AI 说"没事干"。
+        """
+        payload = {"schema": "x", "title": "T", "direction": "", "run_id": "r",
+                   "kpi": render.compute_kpi([]),
+                   "flights": [{"ticket": f"#{i}", "title": "票", "stage": "flying",
+                                "why": "判据" * 50} for i in range(30)],
+                   "degraded": [],
+                   "trend": [{"run_id": f"r{i}", "kpi": {"total": 100, "open": 10}}
+                             for i in range(24)],
+                   "schedules": [{"lane": "main", "ticket": "#1", "summary": "排班",
+                                  "note": "备注" * 500, "table_date": "2026-10-29"}],
+                   "urgent": {"label": "ace-queue", "lanes": ["ace"],
+                              "rows": [{"lane": "ace", "ticket": "#77", "summary": "加急",
+                                        "note": "加急备注" * 500,
+                                        "table_date": "2026-10-29"}],
+                              "tickets": [{"ticket": "#88", "why": "判据" * 200}]},
+                   "sources": {}, "runtime": {},
+                   "blocked": [{"ticket": "#9", "title": "卡住", "owner": "主机长",
+                                "why": "卡点判据" * 300}],
+                   "milestones": [], "handoffs": [],
+                   "counts": {"flights_total": 30, "flights_included": 30,
+                              "flights_truncated": False}}
+        with tempfile.TemporaryDirectory() as d:
+            render.write_outputs(d, payload, self._cfg())
+            with open(os.path.join(d, "board.json"), encoding="utf-8") as f:
+                bj = json.load(f)
+        self.assertGreater(len(bj["flights"]), 0)          # 票不许被挤没
+        self.assertLessEqual(len(render.dumps(bj, 1)), 25600)
+        self.assertLessEqual(len(bj["urgent"]["rows"][0]["note"]), 161)
+        self.assertLessEqual(len(bj["blocked"][0]["why"]), 161)
+        self.assertLessEqual(len(bj["trend"]), 8)
 
 
 class TestDegradedFlag(unittest.TestCase):
@@ -744,6 +797,45 @@ class TestUrgentLane(unittest.TestCase):
         html = render._urgent_section(payload, self._cfg())
         self.assertIn("#88", html)
         self.assertIn('href="https://x/88"', html)      # 加急票必须能直接点开
+
+    def test_closed_ticket_is_not_urgent(self):
+        """已关的票不是"在手活"：不该占加急名额、也不该报超编。
+
+        2026-10-29 实测踩过：ace-queue 标签留在一堆已关票上，板子因此报
+        "超编：同刻 6 张"——那是完工留痕，不是 ACE 手上有六件活。
+        """
+        payload = self._payload([], [
+            {"uid": "issue:90", "ticket": "#90", "title": "早关了", "stage": "closed",
+             "closed": True, "open": 0, "labels": ["ace-queue"], "url": "https://x/90"}])
+        self.assertEqual(payload["urgent"]["tickets"], [])
+        html = render._urgent_section(payload, self._cfg())
+        self.assertIn("当前没有加急任务", html)
+
+    def test_closed_ticket_row_is_not_urgent(self):
+        """日表行对应的票已关 ⇒ 那行是留痕，不算在手活。"""
+        payload = self._payload(
+            [{"lane": "ace", "ticket": "#91", "summary": "早关了", "note": "已发货",
+              "table_date": "2026-10-27"}],
+            [{"uid": "issue:91", "ticket": "#91", "title": "早关了", "stage": "closed",
+              "closed": True, "open": 0}])
+        self.assertEqual(payload["urgent"]["rows"], [])
+
+    def test_lagging_lane_keeps_its_own_latest_day(self):
+        """落后车道的日表不许被别车道的日期挤掉（2026-10-29 实测）。
+
+        主/副道写 10-29、王牌道停在 10-27 时，牌子上不该"王牌道整条消失"。
+        """
+        payload = self._payload(
+            [{"lane": "main", "ticket": "#1", "summary": "主道今天", "note": "",
+              "table_date": "2026-10-29"},
+             {"lane": "ace", "ticket": "#77", "summary": "加急还没完", "note": "加急",
+              "table_date": "2026-10-27"}],
+            [{"uid": "issue:1", "ticket": "#1", "title": "主道今天", "stage": "queued",
+              "open": 1}])
+        self.assertEqual([r["ticket"] for r in payload["urgent"]["rows"]], ["#77"])
+        self.assertEqual([s["ticket"] for s in payload["schedules"]], ["#1"])
+        html = render._urgent_section(payload, self._cfg())
+        self.assertIn("加急还没完", html)
         self.assertIn("1 张 · 加急", html)
         self.assertIn("协议同刻只许 1 张", html)
 

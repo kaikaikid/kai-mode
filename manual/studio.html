@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>创作体系 · kai-mode 使用手册</title>
+<meta name="description" content="文娱集团：企划、主笔、主美、导演、终审、宣发，六道门推进一个作品项目。">
+<link rel="stylesheet" href="assets/manual.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="side">
+    <a class="brand" href="index.html">kai-mode<span>使用手册</span></a>
+    <button class="menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="side-nav">目录</button>
+    <nav id="side-nav" aria-label="手册目录"></nav>
+    <div class="side-foot"><button class="theme-btn" id="theme-btn" type="button">深色</button></div>
+  </aside>
+
+  <main class="page">
+    <p class="kicker">日常</p>
+    <h1>创作体系</h1>
+    <p class="lede">做绘本、文案、动画、海报这类作品，不走“票”，走“项目”。企划立项，三条创作线各管一段，终审独立验收，宣发提前进场。</p>
+
+    <h2>和机场体系怎么分工</h2>
+    <svg class="diagram" viewBox="0 0 900 300" role="img" aria-label="两个体系：机场体系管代码和工程，文娱集团管作品和创作">
+      <rect class="d-box" x="25" y="35" width="405" height="215" rx="12"/>
+      <text class="d-t" x="227" y="68" text-anchor="middle">机场体系 · 票制</text>
+      <text class="d-s" x="227" y="94" text-anchor="middle">管代码、文档、发布</text>
+      <text class="d-s" x="227" y="128" text-anchor="middle">地勤 → 塔台 → 机长 ×3 / 王牌</text>
+      <text class="d-s" x="227" y="152" text-anchor="middle">塔台独占 push 与关票</text>
+      <text class="d-l" x="227" y="188" text-anchor="middle">记录：Issue · 日表 · 分支提交</text>
+      <text class="d-l" x="227" y="212" text-anchor="middle">核心单位：一张票</text>
+
+      <rect class="d-box-accent" x="470" y="35" width="405" height="215" rx="12"/>
+      <text class="d-t" x="672" y="68" text-anchor="middle">文娱集团 · 项目制</text>
+      <text class="d-s" x="672" y="94" text-anchor="middle">管绘本、文案、动画、海报</text>
+      <text class="d-s" x="672" y="128" text-anchor="middle">企划 → 主笔 / 主美 / 导演 → 终审 → 宣发</text>
+      <text class="d-s" x="672" y="152" text-anchor="middle">G0–G5 六道门，终审只判不修</text>
+      <text class="d-l" x="672" y="188" text-anchor="middle">记录：brief · decisions · delivery</text>
+      <text class="d-l" x="672" y="212" text-anchor="middle">核心单位：一个项目</text>
+
+      <text class="d-l" x="450" y="282" text-anchor="middle">机场管代码，文娱管作品；两边都只在你拍板时停。</text>
+    </svg>
+
+    <h2>六个岗位</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>岗位</th><th>只负责</th><th>绝不做</th></tr></thead>
+        <tbody>
+          <tr><td>企划</td><td>立项、排期、预算、跨部门协调、指派项目负责人</td><td>替部门做创作决定</td></tr>
+          <tr><td>主笔</td><td>故事骨架、剧本、台词、文案、字幕</td><td>排版、定色、改视觉风格</td></tr>
+          <tr><td>主美</td><td>风格板、角色、色彩、版面、成稿</td><td>改故事结构、改节奏</td></tr>
+          <tr><td>导演</td><td>分镜、动态分镜、节奏、声音、成片</td><td>改文字定稿、改视觉风格</td></tr>
+          <tr><td>终审</td><td>独立验收、逐条证据、出 pass/fail</td><td>修稿、改判据</td></tr>
+          <tr><td>宣发</td><td>物料、渠道、投放排期、数据回收</td><td>改作品内容、替部门定风格</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>六道门</h2>
+    <ol class="steps">
+      <li>
+        <h3>G0 立项 · 你拍板</h3>
+        <p>受众、形态、主创部门、期限、预算、交付规格。产出 <code>brief.md</code>。</p>
+      </li>
+      <li>
+        <h3>G1 方向 · 主创自决</h3>
+        <p>一句话承诺、参考、情绪。不用你签字。</p>
+      </li>
+      <li>
+        <h3>G2 风格 / 语感 · 你拍板</h3>
+        <p>一页能约束全项目的风格板或语感指南。宣发从这之后就可以进场做物料。</p>
+      </li>
+      <li>
+        <h3>G3 草案 · 你拍板</h3>
+        <p>草图、初稿或动态分镜，要能看出成品方向。</p>
+      </li>
+      <li>
+        <h3>G4 终审 · 终审自决</h3>
+        <p>新上下文，逐条对 brief 和各线清单，出 <code>verdict=pass|fail</code> 与证据。只判不修。</p>
+      </li>
+      <li>
+        <h3>G5 上线 · 你拍板</h3>
+        <p>格式、尺寸、字幕、命名、归档、投放。企划与宣发一起收口。</p>
+      </li>
+    </ol>
+
+    <div class="callout">
+      <span class="label">主流程</span>
+      <p>文字 → 图 → 音像 → 宣发。文字定稿后，图和音像可以并行；宣发在 G2 风格定稿后就进场，不等到最后。</p>
+    </div>
+
+    <h2>怎么开始</h2>
+    <p>对 AI 说：<strong>“我想做一本给 6 岁孩子看的绘本，三个月，先立项。”</strong> 或者直接 <code>/producer</code>。企划会从 G0 开始问，问完给你一份 brief。</p>
+
+    <h2>跨部门只走接口卡</h2>
+    <p>每条线交件时附一张小卡：需要什么、交付什么、规格（尺寸 / 时长 / 格式 / 命名）、下一线什么时候要。不靠“总导演盯着”，靠接口。子代理不跨部门串联，深度固定一层；跨部门只走项目负责人或接口卡。</p>
+
+    <details class="fold">
+      <summary>给技术同事：协议、记录面与新上下文</summary>
+      <div class="fold-body">
+        <p>正本：<code>studio/skills/studio/SKILL.md</code>；六个岗位技能只写各自的执行清单。派活判据借用 <code>loop</code> 的 <code>references/dispatch.md</code>，取舍裁决借用 <code>references/adjudication.md</code>，不各写一份。</p>
+        <p>记录面（项目内 <code>studio/</code>，首次立项时创建）：<code>brief.md</code>（企划）、<code>decisions.md</code>（拍板与代决）、<code>delivery.md</code>（交付规格）、各线记录（<code>visual/</code>、<code>text/</code>、<code>time/</code>）、<code>review/</code>。</p>
+        <p>终审必须另起新上下文；起不了就登记 <code>no-new-context</code>，不许记“已审”。这条和机场的“审查独立”是同一条判据。</p>
+        <p>命令：<code>/producer</code> <code>/writer</code> <code>/artist</code> <code>/director</code> <code>/review</code> <code>/marketing</code>。</p>
+      </div>
+    </details>
+
+    <footer class="page-foot">
+      <span>kai-mode 使用手册</span>
+      <span><a href="others.html">下一站：其他能力 →</a></span>
+    </footer>
+  </main>
+</div>
+<script src="assets/manual.js"></script>
+</body>
+</html>
