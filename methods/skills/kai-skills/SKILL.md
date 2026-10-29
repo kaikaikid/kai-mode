@@ -3,6 +3,7 @@ name: kai-skills
 status: active
 approved_by: human:kaikaikid
 approved: 2026-10-29
+sources: []
 description: >
   kai 技能库的运维总入口。技能新增、更新、中文名对不上、技能手册过期时，把这条链走一遍：
   扫正本 → 补中文名 → 重建四个消费端的中文副本 → 重出技能手册。
@@ -10,7 +11,13 @@ description: >
   以及把某个消费端退回纯链接（英文）老形态。
   触发：用户说「技能中文化」「新技能了」「技能更新了」「重建技能副本」「中文名不对」
   「手册该更新了」「帮我看看技能库状态」「某端退回英文」，或者刚跑完 sync-matt-skills.py 同步过上游之后。
-  不做：不改技能正本的内容，不翻译技能正文（正文一律保留英文原文给 AI 读）。---
+  不做：不改技能正本的内容，不翻译技能正文（正文一律保留英文原文给 AI 读）。
+version: 0.1.0
+updated: 2026-10-30
+allowed-tools: Read Grep Glob Write Edit Bash(python:*)
+metadata:
+  alias: 技能中文化
+---
 <!-- 本文件由 build-skills-zh.py 生成，改它没用：改 data\library\skills-cn.json 后重跑本脚本 -->
 
 # kai-skills · 技能中文化 + 手册管理
