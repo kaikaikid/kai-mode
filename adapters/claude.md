@@ -71,12 +71,12 @@ Claude 桌面端/Code 的定时任务每轮**都会拉起一次模型会话**，
   └─ prompt（薄壳，全文照抄，不加长规则）：
      在项目仓根执行 `python <tower 技能目录>/scripts/wake-gate.py`。
      退出码 10 ⇒ 只回复它打印的那一行，立即结束，不读任何技能、不扫 Issue、不排班。
-     退出码 0 ⇒ 读取并执行 airport/skills/tower/SKILL.md 全文，按该文件跑一轮；任务名 cron-tower-<日期>-<时分>。
+     退出码 0 ⇒ 读取并执行 airport/skills/tower/SKILL.md 全文，按该文件跑一轮（本轮启用道 lanes=1+2）；任务名 cron-tower-<日期>-<时分>。
      退出码 2 ⇒ 按缺件三格如实报告，结束。
 ```
 
 - 门卫判据住 `tower/scripts/wake-gate.py`，prompt 里不复述：上一轮还在跑（令牌心跳新于
-  `tower_cron.interval_min + 5` 分钟）⇒ 跳过；零待发货且三张正常日表都在下限以上 ⇒ 跳过；
+  `tower_cron.interval_min + 5` 分钟）⇒ 跳过；零待发货且**启用道**日表都在下限以上 ⇒ 跳过；
   待发货探测失败 ⇒ 放行（失败不等于零活）。
 - **跳过时零模型调用**：门卫是纯脚本，`rc=10` 那一轮只有一个短回合的回复，不加载 21KB 技能正文。
 - 建完必回读：`list_scheduled_tasks` 看 `enabled`、`nextRunAt`、`lastRunAt` 有没有动；

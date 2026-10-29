@@ -56,7 +56,7 @@ Qoder 没有 Claude Code 那种 `/plugin:command` 命名空间。角色用两种
 ```text
 Qoder CLI 定时任务（每 60 分钟，enabled）
   ├─ cwd：项目仓根
-  ├─ prompt 薄壳：先跑 tower/scripts/wake-gate.py；rc=10 收场，rc=0 才读 airport/skills/tower/SKILL.md 全文
+  ├─ prompt 薄壳：先跑 tower/scripts/wake-gate.py；rc=10 收场，rc=0 才读 airport/skills/tower/SKILL.md 全文（本轮启用道 lanes=1+2）
   └─ 任务名：kai-tower-<日期>-<时分>
 ```
 
