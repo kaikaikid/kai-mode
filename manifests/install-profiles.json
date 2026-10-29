@@ -47,7 +47,8 @@
         "lead-artist",
         "director",
         "final-review",
-        "marketing"
+        "marketing",
+        "pk"
       ]
     }
   }
