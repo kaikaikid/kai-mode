@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>这是什么 · kai-mode 使用手册</title>
+<meta name="description" content="kai-mode 使用手册：把一句话需求变成一张有人负责的票。">
+<link rel="stylesheet" href="assets/manual.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="side">
+    <a class="brand" href="index.html">kai-mode<span>使用手册</span></a>
+    <button class="menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="side-nav">目录</button>
+    <nav id="side-nav" aria-label="手册目录"></nav>
+    <div class="side-foot"><button class="theme-btn" id="theme-btn" type="button">深色</button></div>
+  </aside>
+
+  <main class="page">
+    <p class="kicker">上手</p>
+    <h1>一句话，变成一张有人负责的票</h1>
+    <p class="lede">kai-mode 是一套“接活、排班、施工、审查、发货”的分工办法。你只需要说清楚想要什么；谁来做、谁来查、什么时候该你拍板，它都写好了。</p>
+
+    <div class="callout">
+      <span class="label">先说清楚</span>
+      <p>你不需要懂代码，也不需要记住每个角色。你只要会描述想要的东西，并在“要花钱、要对外发布、要删东西”这类红线前停下来问一句。</p>
+    </div>
+
+    <h2>它替你解决三件麻烦事</h2>
+    <div class="cards">
+      <div class="card">
+        <h3>想法不会停在聊天里</h3>
+        <p>一句话会被整理成一张票：目标、验收标准、允许改什么、禁止改什么、怎么验证。</p>
+      </div>
+      <div class="card">
+        <h3>干活和检查不是同一个人</h3>
+        <p>施工的人只负责改；审查的人用新的上下文独立判断，只出“过 / 不过”和逐条证据。</p>
+      </div>
+      <div class="card">
+        <h3>做完有记录，换人也能接</h3>
+        <p>状态写在 Issue 评论里，排班写在日表里，代码在分支里。断点三件套，继任者照着就能续跑。</p>
+      </div>
+    </div>
+
+    <h2>谁把活交给谁</h2>
+    <p>你起头，地勤把需求整理成票，塔台排班，机长带施工和审查，塔台最后统一发货。中间任何一步卡住，都只停那一张票，不会把整条线拖垮。</p>
+
+    <svg class="diagram" viewBox="0 0 900 250" role="img" aria-label="人和角色怎么接力：你说需求，地勤开票，塔台排班，机长施工并派审查，审查给判词，塔台发货">
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 z" fill="var(--accent)"/>
+        </marker>
+      </defs>
+
+      <rect class="d-box-accent" x="20" y="50" width="120" height="78" rx="10"/>
+      <text class="d-t" x="80" y="80" text-anchor="middle">你</text>
+      <text class="d-s" x="80" y="102" text-anchor="middle">说想要什么</text>
+
+      <rect class="d-box" x="180" y="50" width="120" height="78" rx="10"/>
+      <text class="d-t" x="240" y="80" text-anchor="middle">地勤</text>
+      <text class="d-s" x="240" y="102" text-anchor="middle">整理成票</text>
+
+      <rect class="d-box" x="340" y="50" width="120" height="78" rx="10"/>
+      <text class="d-t" x="400" y="80" text-anchor="middle">塔台</text>
+      <text class="d-s" x="400" y="102" text-anchor="middle">排班 / 发货</text>
+
+      <rect class="d-box" x="500" y="50" width="120" height="78" rx="10"/>
+      <text class="d-t" x="560" y="80" text-anchor="middle">机长</text>
+      <text class="d-s" x="560" y="102" text-anchor="middle">带施工和审查</text>
+
+      <rect class="d-box" x="660" y="50" width="120" height="78" rx="10"/>
+      <text class="d-t" x="720" y="80" text-anchor="middle">审查</text>
+      <text class="d-s" x="720" y="102" text-anchor="middle">新上下文 / 只判不修</text>
+
+      <text class="d-l" x="160" y="42" text-anchor="middle">一句话</text>
+      <text class="d-l" x="320" y="42" text-anchor="middle">开票</text>
+      <text class="d-l" x="480" y="42" text-anchor="middle">排班</text>
+      <text class="d-l" x="640" y="42" text-anchor="middle">派活</text>
+
+      <path class="d-a" d="M140,89 H180" marker-end="url(#arrow)"/>
+      <path class="d-a" d="M300,89 H340" marker-end="url(#arrow)"/>
+      <path class="d-a" d="M460,89 H500" marker-end="url(#arrow)"/>
+      <path class="d-a" d="M620,89 H660" marker-end="url(#arrow)"/>
+      <path class="d-a" d="M720,128 V200 H400 V128" marker-end="url(#arrow)"/>
+      <text class="d-l" x="560" y="192" text-anchor="middle">verdict=pass → 待发货</text>
+      <text class="d-l" x="450" y="232" text-anchor="middle">只有塔台能合并、推送、关票；机长和审查都不碰。</text>
+    </svg>
+
+    <h2>两个体系，各管一摊</h2>
+    <div class="cards">
+      <div class="card">
+        <h3>机场体系 · 管代码和工程</h3>
+        <p>用票来推进：开票 → 排班 → 施工 → 审查 → 发货。适合修功能、改文档、做发布。</p>
+        <p><a href="tickets.html">从“开票与施工”开始 →</a></p>
+      </div>
+      <div class="card">
+        <h3>文娱集团 · 管作品和创作</h3>
+        <p>用项目来推进：企划 → 主笔 / 主美 / 导演 → 终审 → 宣发。适合绘本、文案、动画、海报。</p>
+        <p><a href="studio.html">从“创作体系”开始 →</a></p>
+      </div>
+    </div>
+
+    <h2>第一次用，按这个顺序</h2>
+    <ol class="steps">
+      <li>
+        <h3>先装好</h3>
+        <p>把一句安装的话发给你的 AI，让它先扫描缺什么、只装缺的。<a href="install.html">去装好它 →</a></p>
+      </li>
+      <li>
+        <h3>再开一张小票</h3>
+        <p>拿一件很小的事试一遍，走完“开票 → 施工 → 审查 → 发货”。<a href="tickets.html">看怎么开票 →</a></p>
+      </li>
+      <li>
+        <h3>最后学看进度</h3>
+        <p>知道去 Issue、日表和看板哪里看“现在在飞什么”。<a href="progress.html">去看进度 →</a></p>
+      </li>
+    </ol>
+
+    <div class="callout">
+      <span class="label">一个判断</span>
+      <p>如果一件事会花钱、会对外发布、会不可逆地改东西，或者要删别人还没提交的工作——先停，问人。这是整套办法里唯一的“硬停”。</p>
+    </div>
+
+    <details class="fold">
+      <summary>给技术同事：这套东西由什么组成</summary>
+      <div class="fold-body">
+        <p>本仓是宿主装机正本：6 个插件、28 个自动技能、7 个上游方法副本；协议正本在 <code>airport/skills/loop/references/loop-protocol.md</code>（v11）。</p>
+        <p>插件：<code>airport</code>（机场六岗位）、<code>core</code>（入口 / 安装 / 交接 / 六原则）、<code>studio</code>（文娱六岗位）、<code>intake</code>（想法池）、<code>ops</code>（事故与运维）、<code>board</code>（看板）。</p>
+        <p>完整结构、装配链路和记录面，见 <a href="plugins.html">插件与装配</a>；一张图看全，见 <a href="assets/full-map.html">完整技术图</a>。</p>
+      </div>
+    </details>
+
+    <footer class="page-foot">
+      <span>kai-mode 使用手册</span>
+      <span><a href="skills.html">技能速查</a> · <a href="assets/full-map.html">完整技术图</a></span>
+    </footer>
+  </main>
+</div>
+<script src="assets/manual.js"></script>
+</body>
+</html>

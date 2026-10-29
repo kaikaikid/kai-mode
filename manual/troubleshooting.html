@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>遇到问题 · kai-mode 使用手册</title>
+<meta name="description" content="缺件、技能没出现、定时器不醒、票卡住、审查起不了新上下文、doctor 红了，分别怎么办。">
+<link rel="stylesheet" href="assets/manual.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="side">
+    <a class="brand" href="index.html">kai-mode<span>使用手册</span></a>
+    <button class="menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="side-nav">目录</button>
+    <nav id="side-nav" aria-label="手册目录"></nav>
+    <div class="side-foot"><button class="theme-btn" id="theme-btn" type="button">深色</button></div>
+  </aside>
+
+  <main class="page">
+    <p class="kicker">日常</p>
+    <h1>遇到问题</h1>
+    <p class="lede">先记住一条：这套东西宁可说“缺”，也不会假装装好。看到“缺件”“卡点”“no-new-context”，不是坏了，是它在如实报告。</p>
+
+    <h2>AI 说“缺件”</h2>
+    <p>缺件会按三格写：<strong>缺什么 / 卡在哪 / 要谁拍</strong>。机器只认最后一行 <code>missing: &lt;kind&gt;</code>，其余是给人看的。</p>
+    <ul>
+      <li><strong>缺什么</strong>：一句话说清，比如“没有定时器”“起不了新上下文”“只有软权限”。</li>
+      <li><strong>卡在哪</strong>：具体到探测的那一步或命令报错。</li>
+      <li><strong>要谁拍</strong>：人、换宿主、还是接受软约束。</li>
+    </ul>
+    <p>不要让它猜一个路径继续跑。缺件登记本身不算修好；补法走 <code>/set-kai-mode</code> 的缺口清单。</p>
+
+    <h2>装完技能没出现</h2>
+    <ul>
+      <li>先确认你问的是同一个宿主：在 Claude Code 里装的，不会自动出现在 Qoder 里。</li>
+      <li>看回执里的落点：技能应该在宿主的技能目录，或中央库链接到宿主。</li>
+      <li>落点必须是项目级，不要装全局，避免和别的框架同名打架。</li>
+      <li>还是看不到，就让 AI 重新扫描一次缺什么，不要手动复制正文改来改去——两份会漂移。</li>
+    </ul>
+
+    <h2>定时器没叫醒塔台</h2>
+    <p>这是设计如此：定时器只唤醒塔台，不会自动拉起机长、王牌或创作角色。只有人能起其他角色。</p>
+    <ul>
+      <li>每 60 分钟一轮；宿主不支持定时器时，回执会写“没装上”。</li>
+      <li>门卫会先判断：上一轮还在跑、或者没活，就直接跳过，零模型调用。所以“没动静”可能是没活。</li>
+      <li>有活但没醒，可以人工叫一次塔台；不要自己改定时器去叫别的角色。</li>
+    </ul>
+
+    <h2>票卡住了 / 失败了</h2>
+    <p>单票失败会重试一次；再失败就写“卡点”停票，并说明原因。同一类错误连续出现会触发熔断。红线只停那一张票，不会拖垮整条线。</p>
+
+    <h2>审查说“起不了新上下文”</h2>
+    <p>审查必须换一段新上下文，不能施工的人自己审自己。宿主起不了子代理、独立进程或新会话时，会登记 <code>no-new-context</code>，并且<strong>不许记“已审查”</strong>。换一个能起新上下文的宿主，或先停下来问人。</p>
+
+    <h2>“体检红了”</h2>
+    <p>框架仓的红线是：<code>python scripts/doctor.py</code> 红了不许收工。总结行会写多少项、几绿几红；红了先修，不要绕过。项目仓那份配置实例用 <code>check-instance.py</code> 对账。</p>
+
+    <h2>红线：唯一需要“停下来问人”的五件事</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>红线</th><th>包括什么</th></tr></thead>
+        <tbody>
+          <tr><td>花钱</td><td>付费执行器、云资源、第三方服务</td></tr>
+          <tr><td>对外发布</td><td>部署、发布、公开发帖、发邮件</td></tr>
+          <tr><td>不可逆</td><td>改历史、force-push、数据迁移、破坏性改表、改权限 / 安全边界</td></tr>
+          <tr><td>删未提交的东西</td><td>任何人的未提交文件、工作树、日志</td></tr>
+          <tr><td>把开发数据提交进仓库</td><td>会话、日志、DB、缓存、验证报告、agent 数据、仓库自己的 handoff 记录</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>碰到红线时，正确说法是：“这张票停了，原因是……；需要你拍板：……”。不要先改审批规则或自己的权限，再自己批准。</p>
+
+    <div class="callout">
+      <span class="label">最后一条</span>
+      <p>如果你不确定一件事算不算红线，就按红线处理，先问。停下来问一句的成本，远低于不可逆地做错一次。</p>
+    </div>
+
+    <details class="fold">
+      <summary>给技术同事：缺件类型与自检命令</summary>
+      <div class="fold-body">
+        <p>缺件类型：<code>no-launcher</code> · <code>no-new-context</code> · <code>no-timer</code> · <code>no-model-field</code> · <code>soft-permission-only</code> · <code>paid-not-authorized</code> · <code>launch-failed</code> · <code>missing-instance</code>。</p>
+        <p>框架仓：<code>python scripts/doctor.py [--with-tests]</code>；项目实例：<code>python scripts/check-instance.py --repo &lt;项目仓&gt;</code>；插件清单：<code>python scripts/plugin-check.py</code>；外部素材对账：<code>python scripts/source-check.py</code>。</p>
+        <p>唤醒门卫：<code>airport/skills/tower/scripts/wake-gate.py</code>；待发货探测：<code>ship-queue.py</code>。探测失败返回 <code>rc=3</code>，不等于零票。</p>
+        <p>路径一律相对仓库根，不写盘符绝对路径；技能落点必须项目级。</p>
+      </div>
+    </details>
+
+    <footer class="page-foot">
+      <span>kai-mode 使用手册</span>
+      <span><a href="skills.html">去技能速查 →</a></span>
+    </footer>
+  </main>
+</div>
+<script src="assets/manual.js"></script>
+</body>
+</html>

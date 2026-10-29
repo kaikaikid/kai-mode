@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>其他能力 · kai-mode 使用手册</title>
+<meta name="description" content="想法池、事故处置、运维手册、看板和六条原则。">
+<link rel="stylesheet" href="assets/manual.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="side">
+    <a class="brand" href="index.html">kai-mode<span>使用手册</span></a>
+    <button class="menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="side-nav">目录</button>
+    <nav id="side-nav" aria-label="手册目录"></nav>
+    <div class="side-foot"><button class="theme-btn" id="theme-btn" type="button">深色</button></div>
+  </aside>
+
+  <main class="page">
+    <p class="kicker">日常</p>
+    <h1>其他能力</h1>
+    <p class="lede">除了开票和创作，还有四件常做的事：记想法、处理事故、写重复操作、看进度。它们都很轻，不改变主线。</p>
+
+    <h2>你想做什么，就说哪句话</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>你想…</th><th>说这句话 / 用这个口令</th><th>会发生什么</th></tr></thead>
+        <tbody>
+          <tr><td>记个想法</td><td><code>/idea</code>，或说“记个想法”</td><td>全文收进想法池，不开票、不改代码</td></tr>
+          <tr><td>处理线上事故</td><td><code>/incident</code>，或说“出事了”</td><td>先分级止损，再记时间线、出复盘和后续票</td></tr>
+          <tr><td>把重复操作写下来</td><td><code>/runbook</code>，或说“写个 runbook”</td><td>产出能照着跑的步骤，带预期结果和失败分支</td></tr>
+          <tr><td>看现在在飞什么</td><td><code>/航班信息</code>，或说“看现在在飞什么”</td><td>读看板，汇报在飞、待发货和卡点</td></tr>
+          <tr><td>写交接</td><td><code>/handoff</code>，或说“写交接”</td><td>把当前会话压成一份可续接的交接文档</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>想法池：只收，不做</h2>
+    <p>想法会全文落在项目配置的 <code>ideas_dir</code> 里，一天一份文件；汇总票只贴一句简述，不把长文堆进 Issue。它不会自动变成票——要不要做，交给地勤分流。</p>
+
+    <div class="callout">
+      <span class="label">一个边界</span>
+      <p>想法池只收想法，不开票、不改代码。真正要开工，还是走 <code>/kai-mode</code> 或地勤。</p>
+    </div>
+
+    <h2>事故与运维：先止损，再复盘</h2>
+    <div class="cards">
+      <div class="card">
+        <h3>事故处置</h3>
+        <p>先分级、划影响面、记录止损动作和时间线，最后出复盘与后续票。事故中不改产品代码，修复走正常票。</p>
+      </div>
+      <div class="card">
+        <h3>运维手册</h3>
+        <p>把一件会重复做的操作写成步骤；每步写清“预期结果”和“失败怎么办”，破坏性动作不藏在普通步骤里。</p>
+      </div>
+    </div>
+
+    <p>两条纪律：不接监控就不编造指标，不猜根因，不把“没数据”写成“没问题”；复盘只对事不对人，每条行动项要么有票，要么写明“不做”的理由。</p>
+
+    <h2>六条原则：不是口令，是做事方式</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>原则</th><th>一句话</th></tr></thead>
+        <tbody>
+          <tr><td>一次一问</td><td>要问你时，一次只问一个，每题带推荐答案。</td></tr>
+          <tr><td>只问可见与红线</td><td>只有看得见的界面、文案、观感，和花钱 / 发布 / 不可逆这类红线，才拿来问你；其余自决并记代决清单。</td></tr>
+          <tr><td>一个语义一个家</td><td>同一条规则只留一个正本，别处只放指针，不抄第二份。</td></tr>
+          <tr><td>缺件如实登记</td><td>缺什么、卡在哪、要谁拍，三格写清；不写成已实现，不静默吞错，不猜路径。</td></tr>
+          <tr><td>能测就不问</td><td>能跑一下量出来的事实，自己量、留读数，不拿它问你。</td></tr>
+          <tr><td>仪式随规模缩</td><td>小改动不配大流程；每张工单带时限，到点交半成品并写明停在哪。</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <details class="fold">
+      <summary>给技术同事：插件与落点</summary>
+      <div class="fold-body">
+        <p><code>intake</code>：技能 <code>kai-boom-idea-log</code>，命令 <code>/idea</code>；只写 <code>paths.ideas_dir</code> 与想法池汇总票，不开票。</p>
+        <p><code>ops</code>：技能 <code>incident-response</code>（<code>/incident</code>）与 <code>runbook</code>（<code>/runbook</code>）；两者只产出记录与票，不直接改生产。</p>
+        <p><code>board</code>：技能 <code>flight-info</code>（<code>/航班信息</code>，命令 <code>/refresh</code>）；产物是 <code>board.db</code> / <code>board.json</code> / <code>index.html</code>。</p>
+        <p><code>core</code> 的六条原则是技能，不是命令；它们随会话自动带入，影响 AI 怎么问你、怎么自决、怎么登记缺件。</p>
+      </div>
+    </details>
+
+    <footer class="page-foot">
+      <span>kai-mode 使用手册</span>
+      <span><a href="troubleshooting.html">下一站：遇到问题 →</a></span>
+    </footer>
+  </main>
+</div>
+<script src="assets/manual.js"></script>
+</body>
+</html>
