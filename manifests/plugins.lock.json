@@ -4,13 +4,14 @@
   "plugins": {
     "airport": {
       "version": "3.4.0",
-      "digest": "9fafbcd1a0347763308d7d9835b56a6cdc105cadb21ee9b04d3e2e15b89bb105",
+      "digest": "0bf08f006eeaab5f0047b16e0145cc881963e39d5761a3aa27be1ba370e781bd",
       "skills": {
         "ace": "1.4.0",
         "copilot": "3.1.0",
         "ground-crew": "1.6.0",
         "loop": "6.3.0",
         "pilot": "3.4.0",
+        "pk": "0.1.0",
         "second-officer": "1.0.0",
         "tower": "2.4.0"
       }
