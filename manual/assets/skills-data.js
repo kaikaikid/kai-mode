@@ -54,6 +54,16 @@ window.KAI_SKILLS = [
     "group": "机场体系",
     "plugin": "机场体系",
     "pluginId": "airport",
+    "skill": "pk",
+    "oneLine": "通用对比分析 PK：对项目/图像/文章等多对象做维度化对比，输出图表与结论。",
+    "trigger": "/pk、/PK、/对比，或用户说「PK」「对比」「比一比」「PK 一下」",
+    "command": "",
+    "version": "0.1.0"
+  },
+  {
+    "group": "机场体系",
+    "plugin": "机场体系",
+    "pluginId": "airport",
     "skill": "second-officer",
     "oneLine": "二副：第三条正常车道，和机长、副机长并行。",
     "trigger": "/second-officer；说「二副」",
