@@ -1,6 +1,19 @@
 ---
-name: tdd
-description: Test-driven development. Use when the user wants to build features or fix bugs test-first, mentions "red-green-refactor", or wants integration tests.
+name: kai-tdd
+status: active
+approved_by: human:kaikaikid
+approved: 2026-10-29
+sources:
+  - resource: "tests.md"
+    note: "上游伴生文件（原样 fork）"
+  - resource: "mocking.md"
+    note: "上游伴生文件（原样 fork）"
+description: >
+  kai 施工方法（fork 自上游 tdd）：先红后绿、一测例一提交，测试只落在预先确认的接缝。
+  不做：非代码／纯配置／纯文案票不硬写测试。
+  触发：施工环节默认方法；「test-first」「红绿重构」「integration tests」。
+version: 0.1.0
+updated: 2026-10-29
 ---
 
 # Test-Driven Development

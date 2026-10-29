@@ -1633,9 +1633,8 @@ def chk_canon(root, ms):
     return "ok", f"{scanned} 个文件：退役词 {len(retired)} 个零命中，判据键 {len(keys)} 条单点住家"
 
 
-# ── 19 vendor 漂移（ADR-0008 D7）：vendor/ 必须进 git；有本机镜像时与源一致 ─────────
-# ── 20 宿主中立（ADR-0008）：宿主专有 token 只许住 adapters/ ─────────────────
-HOST_NEUTRAL_DIRS = ("airport", "core", "board", "intake", "ops", "skills")
+# ── 宿主中立（ADR-0008）：宿主专有 token 只许住 adapters/ ─────────────────
+HOST_NEUTRAL_DIRS = ("airport", "core", "board", "intake", "ops", "methods", "skills")
 HOST_TOKENS = (
     (re.compile(r"\$\{?CLAUDE_"), "CLAUDE_*"),
     (re.compile(r"\$\{?ARGUMENTS\}?"), "$ARGUMENTS"),
@@ -1749,11 +1748,6 @@ def chk_frontmatter_yaml(root: str, ms):
     if bad:
         return "fail", "；".join(bad[:6]) + (f"（共 {len(bad)} 处）" if len(bad) > 6 else "")
     return "ok", f"{scanned} 份 frontmatter YAML 形状合规（无未加引号的 ': ' / 保留字符开头）"
-
-
-VENDOR_REL = "vendor"
-VENDOR_SYNC = "scripts/vendor-sync.py"
-VENDOR_MIRROR = os.path.expanduser(os.path.join("~", ".workbuddy", "skills"))
 
 
 # ── 28 命令面覆盖：技能正文 ```bash 块里声明要跑的命令，必须在它自己的 allowed-tools 里 ──
@@ -1870,34 +1864,6 @@ def chk_command_surface(root: str, ms=None):
                           "不该它跑的移出 ```bash 块")
     return "ok", (f"command-surface 扫了 {scanned} 份 SKILL.md 的 ```bash 块，"
                   f"{cmds} 条命令全部在各自 allowed-tools 内（无 bash 块的技能不计）")
-
-
-def chk_vendor(root, ms):
-    """19 vendor/：未纳入 git ⇒ 红（克隆不可复原）；本机无镜像 ⇒ skip；有镜像则跑 --check 比漂移。"""
-    if not os.path.isdir(os.path.join(root, VENDOR_REL)):
-        return "skip", "没有 vendor/（不适用）"
-    if _in_git_repo(root):
-        try:
-            p = subprocess.run(["git", "-C", root, "ls-files", "--", VENDOR_REL],
-                               capture_output=True, text=True, encoding="utf-8", errors="replace")
-        except (OSError, ValueError) as exc:
-            return "skip", f"git 不可用：{exc}"
-        if p.returncode == 0 and not p.stdout.strip():
-            return "fail", "vendor/ 未纳入 git 跟踪（克隆出来会缺件）：git add -- vendor"
-    script = os.path.join(root, *VENDOR_SYNC.split("/"))
-    if not os.path.isfile(script):
-        return "fail", f"缺件：{VENDOR_SYNC}"
-    if not os.path.isdir(VENDOR_MIRROR):
-        return "skip", f"本机无技能镜像（{VENDOR_MIRROR} 不存在），跨机不判漂移"
-    try:
-        p = subprocess.run([sys.executable, script, "--check"], cwd=root,
-                           capture_output=True, text=True, encoding="utf-8", errors="replace")
-    except (OSError, ValueError) as exc:
-        return "skip", f"跑不动 {VENDOR_SYNC}：{exc}"
-    out = " ".join(x.strip() for x in ((p.stdout or "") + (p.stderr or "")).splitlines() if x.strip())
-    if p.returncode != 0:
-        return "fail", f"{VENDOR_SYNC} --check rc={p.returncode}：{out}"
-    return "ok", out.split("。")[0][:200] if out else "vendor 与源一致"
 
 
 BUDGETS = (  # 层 → (glob 列表, 上限字节)。与项目仓治理体量的上限同尺，项目可更严、不可更松
@@ -2071,7 +2037,6 @@ CHECKS = (
     ("skill-spec", "技能格式对齐 Agent Skills 1.2", chk_skill_spec),
     ("command-surface", "技能声明的命令在自己工具面里", chk_command_surface),
     ("canon-dup", "判据一个家（退役词/平行正本）", chk_canon),
-    ("vendor-sync", "辅助技能原样副本（跟踪/漂移）", chk_vendor),
     ("payload-budget", "安装面字节预算（分层反膨胀）", chk_payload_budget),
 )
 

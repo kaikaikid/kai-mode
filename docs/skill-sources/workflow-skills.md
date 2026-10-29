@@ -3,12 +3,11 @@
 > 一次引入的一批：主体来自同一上游（mattpocock/skills），另有一个安全专项（cloudflare/security-audit-skill），共用一个对账节奏，合成一份摘要省重复。
 > 索引正本：`sources.json`（机器读）；本文件给人与 AI 读，**不是任何技能的正本**。
 
-## 1. 收录口径：三种处置，只有一种算特化
+## 1. 收录口径：三种处置
 
 | 状态 | 含义 | 本批 |
 |---|---|---|
-| `adopted` | **本仓自己设计的**东西 → 特化入 `skills/kai-*`，加前缀 | 1 个：boom-idea-log |
-| `vendored` | 通用方法 → **原样拉取**到 `vendor/skills/`，不改内容不改名不登记 | 7 个：tdd／code-review／diagnosing-bugs／domain-modeling／to-tickets／writing-for-agents／security-audit |
+| `adopted` | **本仓拥有正文**（自己设计，或 fork 后微调）→ `kai-` 前缀、登记插件、随安装 | 8 个：boom-idea-log ＋ 方法库 7 个（kai-tdd／kai-code-review／kai-diagnosing-bugs／kai-domain-modeling／kai-to-tickets／kai-writing-for-agents／kai-security-audit） |
 | `watching` | 有价值但不适用，先观察上游 | 2 个：prototype／pr |
 | `dropped` | 判定不引，理由在 `sources.json` 的 `reason` | 3 个：research／implement／grilling |
 
@@ -21,9 +20,9 @@
 3. **不 fork 就没有家**：找不到现成正本承载它。
 
 只改措辞、加一段「用的时候注意配合本仓」＝**假特化**，不许 fork。
-通用方法（TDD、双轴审查、诊断法、术语建模、拆票法、写作法）都属此类：**方法与流程各有一个家——方法是上游技能，流程是本仓 `loops/` 与角色技能。**
-
-**为什么不能 fork 通用件**：中央库已有同名通用件，fork 要么加前缀造出第二份同义判据，要么 `magpie-sync apply` 覆盖通用件、让非本项目场景失效。两条都坏。
+通用方法（TDD、双轴审查、诊断法、术语建模、拆票法、写作法）的 fork 口径已改：**ADR-0026** 起，
+它们以 `kai-` 前缀 fork 进 `methods/skills/kai-*`，随插件安装，允许微调；改动必须记 `sources.json` 的 `deltas`，
+上游更新按 30 天对账人工吸纳。加前缀的代价（第二份同义判据）由 ADR-0026 显式豁免——名字不同，宿主里不与用户自装的同名上游件互相覆盖。
 
 ## 3. 唯一特化的一个
 
@@ -34,26 +33,28 @@
 - 继承：本地全文正本 + 远端仅简述、查重、编号只增不减、`gh --body-file`、只暂存目标文件、毕业回写。
 - 改：写死的票号与目录 → 项目配置 `paths.ideas_dir` ＋ 汇总票号；缺配置报缺件（`ADR-0004` D4）；补完成判据与失败降级。
 
-## 4. 原样拉取的七个（vendored）
+## 4. fork 的七个（方法库 `kai-*`）
 
-用法：**直接用 `vendor/skills/` 里那份原文**（`python scripts/vendor-sync.py` 刷新、`--check` 校验）。
-本仓只在流程位写清「什么时候用它、产出交给谁」。
+用法：正文住 `methods/skills/kai-*`，随插件安装（`full` 档位）。**允许微调**，但改动必须记进
+`sources.json` 的 `deltas`；上游更新按 30 天对账人工 diff 后吸纳（ADR-0026）。
+本仓流程位只写「什么时候用它、产出交给谁」。
 
-| 外部技能 | 用在工作流的哪一步 | 本仓承载「流程」的那一份（不复制方法） |
+| 方法技能 | 用在工作流的哪一步 | 本仓承载「流程」的那一份（不复制方法） |
 |---|---|---|
-| `vendor/skills/tdd` | 施工：先红后绿 | `airport/skills/loop/references/loop-protocol.md` §三.3／§九（接缝＝票面验证命令、一测例一提交） |
-| `vendor/skills/code-review` | 审查：双轴出判词 | 同文件 §四（机器门／语义门、判词四要素） |
-| `vendor/skills/diagnosing-bugs` | 连续失败／原因不明 | 同文件 §七／§八（卡点、止损、等待纪律） |
-| `vendor/skills/domain-modeling` | 定稿第 2 步：术语与 ADR | `core/skills/kai-mode/SKILL.md` 定稿段 ＋ `docs/adr/` |
-| `vendor/skills/to-tickets` | 定稿第 3 步：拆票草案 | `core/skills/kai-mode/SKILL.md` 定稿段 ＋ `airport/skills/ground-crew/SKILL.md` 票面六件套 |
-| `vendor/skills/writing-for-agents` | 写 SKILL／AGENTS 文档 | `docs/skill-layout.md`（八字段、<500 行）＋ `scripts/doctor.py` |
-| `vendor/skills/security-audit` | 审查：安全专项（六阶段漏洞猎取） | `airport/skills/loop/references/dispatch.md` 的 安全专项 ＋ `airport/skills/loop/references/dispatch.md` §2／§3 |
+| `methods/skills/kai-tdd` | 施工：先红后绿 | `airport/skills/loop/references/loop-protocol.md` §三.3／§九（接缝＝票面验证命令、一测例一提交） |
+| `methods/skills/kai-code-review` | 审查：双轴出判词 | 同文件 §四（机器门／语义门、判词四要素） |
+| `methods/skills/kai-diagnosing-bugs` | 连续失败／原因不明 | 同文件 §七／§八（卡点、止损、等待纪律） |
+| `methods/skills/kai-domain-modeling` | 定稿第 2 步：术语与 ADR | `core/skills/kai-mode/SKILL.md` 定稿段 ＋ `docs/adr/` |
+| `methods/skills/kai-to-tickets` | 定稿第 3 步：拆票草案 | `core/skills/kai-mode/SKILL.md` 定稿段 ＋ `airport/skills/ground-crew/SKILL.md` 票面六件套 |
+| `methods/skills/kai-writing-for-agents` | 写 SKILL／AGENTS 文档 | `docs/skill-layout.md`（八字段、<500 行）＋ `scripts/doctor.py` |
+| `methods/skills/kai-security-audit` | 审查：安全专项（六阶段漏洞猎取） | `airport/skills/loop/references/dispatch.md` 的 安全专项 ＋ §2／§3 |
 
-`vendor/skills/security-audit` 额外三条（与其他六个不同）：
+`methods/skills/kai-security-audit` 额外三条（与其他六个不同）：
 上游 `cloudflare/security-audit-skill`（MIT，`LICENSE` 随件），**需要 node**（两个零依赖校验器）与**OS 沙箱**（真跑目标代码）；
 无沙箱时按上游规定只做静态复核，结论最高 `needs_validation`。它是**父级编排**型技能：六阶段由派活方驱动，不为它新增人格。
 
-`vendor/` 里的文件**一个字都不改**：`--check` 会报与源不一致，下次 sync 直接覆盖。要改行为就改上表右列。
+**微调规则**：改 `kai-*` 正文可以，但必须把改动写进 `sources.json` 的 `deltas`；吸纳上游时按 deltas 逐条对，
+否则下次对账会把你的改动当成漂移。
 
 ## 5. 观察中的两个（watching）
 

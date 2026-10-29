@@ -29,9 +29,8 @@
 | `note` | 摘要文件路径 |
 | `sha256` `source_lines` | 源件指纹与规模，用于判断是否变了 |
 | `first_seen` `last_diff` `next_diff_due` | 时间线（默认 30 天对一次） |
-| `status` | `adopted`（已特化）/ `vendored`（原样拉取到 `vendor/skills/`）/ `watching`（只观察）/ `dropped`（弃用） |
-| `reason` | 非 `adopted` 必填：为什么不特化（改判 `adopted` 后可删） |
-| `vendored_at` | `vendored` 必填：原样副本落点（`vendor/skills/<名>`） |
+| `status` | `adopted`（已特化或 fork 后本仓拥有正文）/ `watching`（只观察）/ `dropped`（弃用） |
+| `reason` | 非 `adopted` 必填：为什么不用（改判 `adopted` 后可删） |
 | `deltas` | 本仓相对源件**改了什么**（差异表） |
 | `inherited` | 从源件**继承了什么** |
 
@@ -51,13 +50,12 @@ python scripts/source-check.py --json   # 机器读
 2. `sources.json` 加一条（照抄字段，别漏 `sha256`）
 3. 若已特化，在特化技能的 references 目录下放一份 `source.md`，**只放指针**，指回本目录（不复制摘要）
 
-## 6. 命名避让与 fork 判据
+## 6. 命名避让与 fork 口径
 
-**默认不 fork。** 只有「判据由本仓设计、有本仓接口、不 fork 就没有家」三条全中，才特化入库并加 `kai-` 前缀；
-通用方法一律按上游名引用（`referenced`），本仓不复制、不改名、不登记。
-
-**为什么不能 fork 通用件**：中央库已有同名通用件——不加前缀 = `magpie-sync apply` 覆盖通用件，让非本项目场景失效；
-加了前缀 = 造出第二份同义判据。两条都坏。
+- **自己设计**的件：三条全中（判据由本仓设计、有本仓接口、不 fork 就没有家）才特化入库并加 `kai-` 前缀。
+- **通用方法**：ADR-0026 起允许 fork——进 `methods/skills/kai-*`，随插件安装，可微调，改动记 `deltas`，
+  上游按 30 天对账人工吸纳。**必须加 `kai-` 前缀**：与用户自装的同名上游件不同名，宿主里不互相覆盖。
+- 加前缀的代价是「第二份同义判据」，由 ADR-0026 显式豁免；不加前缀反而会撞上 `magpie-sync apply` 覆盖用户通用件的坏路。
 
 **本节只管 `skills/`**：`agents/` 的子代理人格**不加 `kai-` 前缀**——它们不经中央库安装（`magpie-sync` 只装 `skills/`），
 不存在同名覆盖问题，落点是项目级宿主目录（见 `adapters/README.md`）。

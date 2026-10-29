@@ -1,6 +1,15 @@
 ---
-name: code-review
-description: "Review the changes since a fixed point (commit, branch, tag, or merge-base) along two axes: Standards (does the code follow this repo's documented coding standards?) and Spec (does the code match what the originating issue/spec asked for?). Runs both reviews in parallel sub-agents and reports them side by side. Use when the user wants to review a branch, a PR, work-in-progress changes, or asks to \"review since X\"."
+name: kai-code-review
+status: active
+approved_by: human:kaikaikid
+approved: 2026-10-29
+sources: []
+description: >
+  kai 审查方法（fork 自上游 code-review）：Standards 与 Spec 双轴分开报，不合并不排名。
+  不做：不代替机器门，不越出票面 AC。
+  触发：审查环节默认方法；「review since X」「双轴审查」。
+version: 0.1.0
+updated: 2026-10-29
 ---
 
 Two-axis review of the diff between `HEAD` and a fixed point the user supplies:

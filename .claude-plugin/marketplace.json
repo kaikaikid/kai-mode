@@ -39,6 +39,12 @@
       "displayName": "文娱集团",
       "source": "./studio",
       "description": "六岗位创作剧本：企划立项、主笔/主美/导演三条创作线、终审独立验收、宣发投放。"
+    },
+    {
+      "name": "methods",
+      "displayName": "方法库",
+      "source": "./methods",
+      "description": "通用方法技能（fork 自上游，kai- 前缀）：施工、审查、诊断、术语、拆票、写文档、安全专项。"
     }
   ]
 }

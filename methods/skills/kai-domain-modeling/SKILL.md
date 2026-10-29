@@ -1,6 +1,19 @@
 ---
-name: domain-modeling
-description: Build and sharpen a project's domain model. Use when discussing codebase terminology, writing or editing a GLOSSARY.md, or recording or editing an ADR.
+name: kai-domain-modeling
+status: active
+approved_by: human:kaikaikid
+approved: 2026-10-29
+sources:
+  - resource: "ADR-FORMAT.md"
+    note: "上游伴生文件（原样 fork）"
+  - resource: "GLOSSARY-FORMAT.md"
+    note: "上游伴生文件（原样 fork）"
+description: >
+  kai 定稿方法（fork 自上游 domain-modeling）：术语挑战、ADR 三条件、GLOSSARY 落点。
+  不做：不替项目做业务决策。
+  触发：定稿第 2 步；术语／ADR／GLOSSARY。
+version: 0.1.0
+updated: 2026-10-29
 ---
 
 # Domain Modeling
@@ -16,8 +29,8 @@ Most repos have a single context:
 ├── GLOSSARY.md
 ├── docs/
 │   └── adr/
-│       ├── 0001-event-sourced-orders.md
-│       └── 0002-postgres-for-write-model.md
+│       ├── NNNN-event-sourced-orders.md
+│       └── NNNN-postgres-for-write-model.md
 └── src/
 ```
 

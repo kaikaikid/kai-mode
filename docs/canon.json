@@ -10,7 +10,8 @@
     "Group-A",
     "tier_models",
     "agent-emit",
-    "档位核对"
+    "档位核对",
+    "vendor/skills"
   ],
   "scan_roots": [
     "airport",

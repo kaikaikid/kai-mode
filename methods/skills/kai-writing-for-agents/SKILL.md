@@ -1,6 +1,17 @@
 ---
-name: writing-for-agents
-description: Writing documents for agents. Use when creating or editing skills, or modifying AGENTS.md or CLAUDE.md.
+name: kai-writing-for-agents
+status: active
+approved_by: human:kaikaikid
+approved: 2026-10-29
+sources:
+  - resource: "SKILL-MECHANICS.md"
+    note: "上游伴生文件（原样 fork）"
+description: >
+  kai 文档写法（fork 自上游 writing-for-agents）：写 SKILL／AGENTS 文档的杠杆。
+  不做：不替代 docs/skill-layout.md 的契约。
+  触发：写或改技能／AGENTS.md 文档。
+version: 0.1.0
+updated: 2026-10-29
 ---
 
 Reference for writing any document an agent consumes: a skill, an `AGENTS.md` / `CLAUDE.md`, a doc reached by a pointer. The packaging differs; the writing does not: the same levers make each one predictable, since the agent takes the same _process_ every run rather than producing the same output.

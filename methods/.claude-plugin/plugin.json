@@ -1,0 +1,8 @@
+{
+  "name": "methods",
+  "version": "0.1.0",
+  "description": "通用方法技能（fork 自上游，kai- 前缀）：施工、审查、诊断、术语、拆票、写文档、安全专项。",
+  "author": {
+    "name": "kaikaikid"
+  }
+}

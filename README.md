@@ -1,10 +1,12 @@
 # kai-mode —— 机场体系的技能与通用剧本仓库
 
-> **状态：0.33.0（2026-10-28 文娱集团落地：新插件 `studio`——企划/主笔/主美/导演/终审/宣发六岗位，共享协议＋四个薄子代理模板；三坊两台改名，make 降为子代理）。上一版 0.32.0（2026-10-28 体检修复：AGENTS.md 死指针与人格局残留清退、协议版本三方统一 v11、`source-check.py` 退出码按需处理数返回、CI 补跑 `--with-tests`、doctor 补机器路径扫描面＋正文指针可解析性检查、schemas 三件退役、ace 执行帽正本收口协议 §一；第二波：doctor 硬化＋canon 数值键＋ADR-0025＋vendor 溯源）。上一版 0.31.0（2026-10-27）：塔台待发货探测：新增 `ship-queue.py`，从 Issue 判词派生待发货队列，增量扫描（`since=`）＋写前日志＋「票已关／sha 已进 `dev`」自动退役；零票时塔台只读一行即走轻量轮，探测失败 `rc=3` 不等于零票；机长不写账本。worker 预算加档：每车道子代理限额 3→5，规划权仍在机长（[ADR-0024](docs/adr/0024-worker-budget-five-per-lane.md)）。定时器改**门卫薄壳**：`wake-gate.py` 先判上一轮是否还在跑、有没有活，跳过时零模型调用（首个适配宿主＝Claude Code）。航班信息板换骨：KWP 暖白陶橙皮肤 ＋ 看板列＝阶段，新增待发货队列与塔台灯，钩子扩到三枚、30 分钟脚本定时器零黑窗，`--max-age` 兜底 GitHub 侧更新。初始化遇到同名不同内容技能时逐条问用户去留，默认保留现有，不再静默覆盖。上一版 0.30.0：二副车道——新增第四位机长 `second-officer`，塔台排班扩到三张正常日表，Issue 车道标签补齐四条；见 [ADR-0023](docs/adr/0023-second-officer-fourth-pilot-lane.md)）。**
+> **状态：0.34.0（2026-10-29 通用方法改 fork：7 个通用方法技能迁入 `methods/` 插件、加 `kai-` 前缀、可微调，`vendor/` 与 `vendor-sync` 退役，上游更新人工吸纳；见 [ADR-0026](docs/adr/0026-fork-generic-methods-with-kai-prefix.md)）。上一版 0.33.0（2026-10-28 文娱集团落地：新插件 `studio`——企划/主笔/主美/导演/终审/宣发六岗位，共享协议＋四个薄子代理模板；三坊两台改名，make 降为子代理）。上一版 0.32.0（2026-10-28 体检修复：AGENTS.md 死指针与人格局残留清退、协议版本三方统一 v11、`source-check.py` 退出码按需处理数返回、CI 补跑 `--with-tests`、doctor 补机器路径扫描面＋正文指针可解析性检查、schemas 三件退役、ace 执行帽正本收口协议 §一；第二波：doctor 硬化＋canon 数值键＋ADR-0025＋vendor 溯源）。上一版 0.31.0（2026-10-27）：塔台待发货探测：新增 `ship-queue.py`，从 Issue 判词派生待发货队列，增量扫描（`since=`）＋写前日志＋「票已关／sha 已进 `dev`」自动退役；零票时塔台只读一行即走轻量轮，探测失败 `rc=3` 不等于零票；机长不写账本。worker 预算加档：每车道子代理限额 3→5，规划权仍在机长（[ADR-0024](docs/adr/0024-worker-budget-five-per-lane.md)）。定时器改**门卫薄壳**：`wake-gate.py` 先判上一轮是否还在跑、有没有活，跳过时零模型调用（首个适配宿主＝Claude Code）。航班信息板换骨：KWP 暖白陶橙皮肤 ＋ 看板列＝阶段，新增待发货队列与塔台灯，钩子扩到三枚、30 分钟脚本定时器零黑窗，`--max-age` 兜底 GitHub 侧更新。初始化遇到同名不同内容技能时逐条问用户去留，默认保留现有，不再静默覆盖。上一版 0.30.0：二副车道——新增第四位机长 `second-officer`，塔台排班扩到三张正常日表，Issue 车道标签补齐四条；见 [ADR-0023](docs/adr/0023-second-officer-fourth-pilot-lane.md)）。**
 > （[0003：四角色＋1 小时唤醒塔台](docs/adr/0003-airport-rebuild-four-roles.md)；[0020：王牌飞行员加急车道](docs/adr/0020-ace-pilot-expedited-lane.md)）；**本仓是宿主装机正本**（`magpie-sync apply --root <本仓>`，
 > 按市场清单的插件目录装齐，当前 27 条自动件），项目仓那份技能副本只作镜像。
 > 旧五角色（Tower/Ground/Coordinator/Group-A/B）、租约、班次、handoff 按铃那套已随机场体系重做退役（本仓 [0003](docs/adr/0003-airport-rebuild-four-roles.md)）<!-- canon:allow-retired -->
 > （git 历史可捞）。
+
+> 使用手册（HTML，多页）：[manual/index.html](manual/index.html)；完整技术图在附录。
 
 ## 这是什么
 
@@ -16,7 +18,7 @@ kai-mode 是「一句话需求 → 票 → 排班 → 施工 → 审查 → 发�
   - **框架技能**（`kind: framework`）：框架本身的一部分，各项目都该有，默认 `install: auto` 进中央库；
   - **个人技能**（`kind: personal`）：只给自己用的，默认 `install: manual`，**不进中央库**。
 - 协议正本：`airport/skills/loop/references/loop-protocol.md`（v11）
-- 通用方法：按上游名引用 `tdd`／`code-review`／`diagnosing-bugs` 等（`vendor/skills/` 原样副本，本仓不 fork）
+- 通用方法：`methods/skills/kai-*`（fork 自上游，`kai-` 前缀；可微调，改动记 `deltas`，上游更新按 30 天对账人工吸纳）
 - 宿主适配器：Qoder（60 分钟唤醒定时器＋按需子会话）、opencode/codex 备胎
 - 项目配置模板：`templates/kai-mode.project.json`
 
@@ -96,6 +98,7 @@ manifests/  install-profiles.json（档位）· package-layout.json（三层边�
 scripts/    仓级工具：doctor.py（校验入口）· plugin-check.py（清单体检）· init-project.py
 adapters/   宿主落法：README（总则）＋ claude、qoder、codex、opencode
 templates/  kai-mode.project.json（schema 4）＋ skill/ 技能骨架
+manual/     使用手册（多页静态 HTML；技能表由 scripts/manual-gen.py 生成）
 docs/       ADR、技能契约、打包说明、设计图
 CHANGELOG.md  版本变更记录
 ```
@@ -109,11 +112,12 @@ CHANGELOG.md  版本变更记录
 5. 项目专用路径、票号、job id 只进项目配置与本机文件，不进本仓技能正文。
 
 
-## 加一个技能（三步）
+## 加一个技能（四步）
 
 1. **选剧本**：把 [`templates/skill/SKILL.md`](templates/skill/SKILL.md) 复制到 `<插件>/skills/<名>/SKILL.md`，把 `<占位>` 全替换掉（目录名＝frontmatter 的 `name`）。
 2. **登记剧本**：已有剧本直接放进去；新剧本才在 [`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json) 加一个插件目录（含两份 `plugin.json`）。
 3. **体检**：跑 `python scripts/plugin-check.py --bump && python scripts/doctor.py`，全绿才算加完 —— 漏登记、版本漂移、摘要不符都会红。
+4. **刷新手册**：跑 `python scripts/manual-gen.py`，把新技能写进 `manual/assets/skills-data.js`；手册的技能表只读这份生成数据。
 
 契约细节（目录必含什么、frontmatter 八字段与顺序、插件清单字段、读契约）见 [`docs/skill-layout.md`](docs/skill-layout.md)。
 
@@ -125,7 +129,7 @@ CHANGELOG.md  版本变更记录
 python scripts/doctor.py --with-tests
 ```
 
-覆盖：市场清单与插件清单、每个技能的目录与 `SKILL.md`、frontmatter 八字段与顺序、三处 name 一致、盘上有技能目录但没登记、`SKILL.md` 相对链接断链与宿主中立、机器绝对路径入正文、正文指针指向的仓内文件、协议版本号三方一致、仓内行尾口径、`VERSION` 与本文件版本串一致、解耦门、交接文档分类、Agent Skills 1.2 对齐、判据归属、`vendor/` 跟踪与漂移、中央库副本与本仓是否逐字相同（`install-sync` 项），以及各技能自己的 pytest。
+覆盖：市场清单与插件清单、每个技能的目录与 `SKILL.md`、frontmatter 八字段与顺序、三处 name 一致、盘上有技能目录但没登记、`SKILL.md` 相对链接断链与宿主中立、机器绝对路径入正文、正文指针指向的仓内文件、协议版本号三方一致、仓内行尾口径、`VERSION` 与本文件版本串一致、解耦门、交接文档分类、Agent Skills 1.2 对齐、判据归属、中央库副本与本仓是否逐字相同（`install-sync` 项），以及各技能自己的 pytest。
 
 清单与版本另有一道独立体检：
 

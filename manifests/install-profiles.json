@@ -47,7 +47,14 @@
         "lead-artist",
         "director",
         "final-review",
-        "marketing"
+        "marketing",
+        "kai-tdd",
+        "kai-code-review",
+        "kai-diagnosing-bugs",
+        "kai-domain-modeling",
+        "kai-to-tickets",
+        "kai-writing-for-agents",
+        "kai-security-audit"
       ]
     }
   }

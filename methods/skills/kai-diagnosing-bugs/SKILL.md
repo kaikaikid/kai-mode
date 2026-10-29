@@ -1,6 +1,17 @@
 ---
-name: diagnosing-bugs
-description: Diagnosis loop for hard bugs and performance regressions. Use when the user says "diagnose"/"debug this", or reports something broken/throwing/failing/slow.
+name: kai-diagnosing-bugs
+status: active
+approved_by: human:kaikaikid
+approved: 2026-10-29
+sources:
+  - resource: "scripts/hitl-loop.template.sh"
+    note: "上游伴生文件（原样 fork）"
+description: >
+  kai 诊断方法（fork 自上游 diagnosing-bugs）：先造红得起来的反馈环，再定位根因。
+  不做：常规施工不走它。
+  触发：连续失败／原因不明；「diagnose」「debug this」。
+version: 0.1.0
+updated: 2026-10-29
 ---
 
 # Diagnosing Bugs

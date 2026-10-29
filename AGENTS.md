@@ -2,8 +2,9 @@
 
 Framework repo, independent of any project repo. Run `python scripts/doctor.py` before and after
 every change — the 总结 line prints the check count; red means `rc=1`.  
-`vendor/` is tracked (clones must be able to restore it); `scripts/tests/` runs under
-`doctor.py --with-tests` (needs pytest) and is part of that gate.
+`methods/` holds forked generic-method skills (`kai-*`, upstream absorbed by hand — see
+ADR-0026); `scripts/tests/` runs under `doctor.py --with-tests` (needs pytest) and is part of
+that gate.
 
 ## Writing docs: run the script, don't hand-write
 
@@ -77,7 +78,7 @@ mechanically. To write about a retired mechanism on purpose, mark that line `can
 | Topic | Source of truth |
 |---|---|
 | Skill layout & frontmatter contract | `docs/skill-layout.md` |
-| Writing a SKILL / AGENTS doc | external skill `writing-for-agents` (not forked; list in `docs/skill-sources/workflow-skills.md`) |
+| Writing a SKILL / AGENTS doc | skill `kai-writing-for-agents`（fork 自上游；溯源见 `docs/skill-sources/workflow-skills.md`） |
 | Sub-agent dispatch contract (depth, context budget, who may dispatch whom) | `airport/skills/loop/references/dispatch.md` |
 | Handoff docs & cross-agent board | `handoff/README.md` · `handoff/60-board/README.md` |
 | External skills kept as reference material | `docs/skill-sources/README.md` |
@@ -120,8 +121,7 @@ Pick the slot from the type word in the filename. Full rules: `handoff/README.md
 python scripts/doctor.py [--with-tests]          # 项数以 stdout 汇总行为准；--with-tests 含 scripts/tests
 python scripts/check-instance.py --repo <项目仓>   # 校验项目仓那份配置实例（键集/占位/机器路径/落点/日表）
 python scripts/new-skill.py <n> --summary "..."  # skill scaffold
-python scripts/vendor-sync.py [--check]          # vendored skills: pull from local mirror / detect drift
+python scripts/source-check.py                   # external source drift / 30-day reconcile reminder (forked methods included)
 python scripts/handoff-board.py list             # cross-agent board
-python scripts/source-check.py                   # external source material drift
 powershell -File scripts/setup-agent-data.ps1 -Root "<本机数据根>"   # agent 全局数据根（dry-run；加 -Apply）
 ```

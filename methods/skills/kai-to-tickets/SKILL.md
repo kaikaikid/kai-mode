@@ -1,7 +1,15 @@
 ---
-name: to-tickets
-description: Break a plan, spec, or the current conversation into a set of tracer-bullet tickets, each declaring its blocking edges, published to the configured tracker (edges as text in one file per ticket locally, or native blocking links on a real tracker).
-disable-model-invocation: true
+name: kai-to-tickets
+status: active
+approved_by: human:kaikaikid
+approved: 2026-10-29
+sources: []
+description: >
+  kai 拆票方法（fork 自上游 to-tickets）：垂直切片、阻塞边、宽重构 expand–contract。
+  不做：只出草案，开票归地勤。
+  触发：定稿第 3 步；「拆票」「to tickets」。
+version: 0.1.0
+updated: 2026-10-29
 ---
 
 # To Tickets

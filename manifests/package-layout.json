@@ -21,7 +21,7 @@
     "handoff/",
     "scripts/",
     "adapters/",
-    "vendor/",
+    "methods/",
     "manifests/",
     "studio/"
   ],

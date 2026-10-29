@@ -2,6 +2,20 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.34.0 — 2026-10-29
+
+- **通用方法改 fork（ADR-0026）**：7 个通用方法技能迁入新插件 `methods/`，加 `kai-` 前缀——
+  `kai-tdd`／`kai-code-review`／`kai-diagnosing-bugs`／`kai-domain-modeling`／`kai-to-tickets`／
+  `kai-writing-for-agents`／`kai-security-audit`。登记为插件技能、随安装走（`full` 档位），**允许微调**，
+  改动记 `sources.json` 的 `deltas`；上游按 30 天对账人工吸纳。首次迁移正文保持上游原文（仅换八字段 frontmatter、
+  去掉 `agents/openai.yaml`、domain-modeling 目录树示例的 ADR 编号改 `NNNN`）。
+- **vendor 机制退役**：删 `vendor/`、`scripts/vendor-sync.py` 与 doctor 的 `vendor-sync` 项（29 → 28 项）；
+  上游指纹仍住 `docs/skill-sources/sources.json`，安装面摘要由 `plugins.lock.json` 承接。
+- **引用点同步**：`loop`／`loop-protocol`／`dispatch`／`kai-mode`／`set-kai-mode`／`AGENTS.md`／README／
+  `docs/skill-layout.md`／`docs/skill-sources/*` 全部改指 `kai-*`；`canon.json` 增退役词 `vendor/skills`。
+- 安装档位：`full` 27 → 34 条；`core` 不变（10 条）。manual 重新生成（35 个技能）。
+- 遗留：`manual/assets/full-map.html`（设计全景图）仍画着 vendor 节点，待重出图时一并更新。
+
 ## 0.33.0 — 2026-10-28
 
 - **新插件 `studio`（文娱集团）**：六个岗位技能——`producer` 企划、`lead-writer` 主笔、`lead-artist` 主美、

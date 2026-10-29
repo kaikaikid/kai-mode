@@ -15,10 +15,10 @@ allowed-tools: Read Grep
 compatibility: Host-agnostic
 dependencies:
   skills:
-    - name: domain-modeling
-      reason: "定稿第 2 步（术语与 ADR）的方法（外部技能，本仓不 fork）"
-    - name: to-tickets
-      reason: "定稿第 3 步（拆票草案）的方法（外部技能，本仓不 fork）"
+    - name: kai-domain-modeling
+      reason: "定稿第 2 步（术语与 ADR）的方法（fork 自上游，微调记 deltas）"
+    - name: kai-to-tickets
+      reason: "定稿第 3 步（拆票草案）的方法（fork 自上游，微调记 deltas）"
 ---
 
 # Kai Mode —— 所有剧本的统一入口
@@ -75,9 +75,9 @@ dependencies:
 
 1. **清账**：上游决策已被推翻 / 重复票 → 关；不属于本里程碑 → 转走；超 30 天没动 → **只列清单交用户，不自动关**。
 2. **ADR**：大方向决策落项目 ADR 目录，落点从项目配置实例 `registry.adrs.dir` 读（缺实例即报缺件，不猜落点）。
-   方法用外部技能 `domain-modeling`（术语挑战、ADR 三条件、GLOSSARY 落点），本仓不 fork。
+   方法用 `kai-domain-modeling`（术语挑战、ADR 三条件、GLOSSARY 落点；fork 自上游）。
 3. **拆票草案**：按里程碑拆成可执行工单草案（目标、AC、允许/禁止修改、验证命令）。
-   方法用外部技能 `to-tickets`（垂直切片、阻塞边、宽重构 expand–contract），本仓不 fork；**只出草案，开票归地勤**。
+   方法用 `kai-to-tickets`（垂直切片、阻塞边、宽重构 expand–contract；fork 自上游）；**只出草案，开票归地勤**。
 4. **规划表**：汇总成一张表——她**只在规划表上拍一次板**；批准后路由**地勤开票**。
 
 ## 审批边界 —— 流程位＋指针

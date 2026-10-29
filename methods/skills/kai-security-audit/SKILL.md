@@ -1,6 +1,16 @@
 ---
-name: security-audit
-description: Security guidance and vulnerability review for codebases, APIs, services, CLI tools, libraries, and daemons. Use for security questions, focused reviews, vulnerability research, security audits, or pen tests. Run the complete workflow only for explicit codebase audit or pen-test requests, full/comprehensive/end-to-end reviews, or requested report artifacts.
+name: kai-security-audit
+status: active
+approved_by: human:kaikaikid
+approved: 2026-10-29
+sources: []
+description: >
+  kai 安全专项（fork 自上游 security-audit）：六阶段漏洞猎取。
+  不做：不是常规代码审查；无沙箱时最高结论 needs_validation。
+  触发：明确要求安全审计／漏洞排查。
+version: 0.1.0
+updated: 2026-10-29
+license: MIT
 ---
 
 # Security Audit

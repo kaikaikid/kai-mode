@@ -13,11 +13,11 @@ allowed-tools: Read Grep Bash(python:*)
 compatibility: Host-agnostic
 dependencies:
   skills:
-    - name: tdd
+    - name: kai-tdd
       reason: "施工默认方法（非代码票可换轻量验证；选用判据见 §派活）"
-    - name: code-review
-      reason: "审查常用方法（安全专项可换 security-audit）"
-    - name: diagnosing-bugs
+    - name: kai-code-review
+      reason: "审查常用方法（安全专项可换 kai-security-audit）"
+    - name: kai-diagnosing-bugs
       reason: "连续失败时的诊断方法（条件触发，平时不预载）"
 ---
 
@@ -89,13 +89,13 @@ python <gates.captain_preflight> --lane main|deputy|second|ace
 
 派工卡只给**契约五件**：票号、AC、允许修改面、验证命令、回执格式（形状住协议 §五）。
 **方法由子代理按票情自选，派活方不代定**；下表是菜单与选用判据，不是绑定。
-方法住**外部技能**，本仓不 fork（只按上游名引用）：
+方法住 `methods/skills/kai-*`（fork 自上游，本仓可微调，改动记 `docs/skill-sources/sources.json` 的 `deltas`）：
 
 | 环节 | 常用方法 | 何时换 / 何时不用 |
 |---|---|---|
-| 施工 | `tdd`（默认先红后绿，一测例一提交） | 非代码／纯配置／纯文案票：跑票面验证命令即可，不硬写测试 |
-| 审查（出判词） | `code-review`（双轴分开报，不合并不排名） | 安全专项挂 `security-audit`；只对票面 AC 面，不越出 |
-| 连续失败 / 原因不明 | `diagnosing-bugs`（先造红得起来的反馈环） | 条件触发才加载，平时不预载 |
+| 施工 | `kai-tdd`（默认先红后绿，一测例一提交） | 非代码／纯配置／纯文案票：跑票面验证命令即可，不硬写测试 |
+| 审查（出判词） | `kai-code-review`（双轴分开报，不合并不排名） | 安全专项挂 `kai-security-audit`；只对票面 AC 面，不越出 |
+| 连续失败 / 原因不明 | `kai-diagnosing-bugs`（先造红得起来的反馈环） | 条件触发才加载，平时不预载 |
 
 ## 验证命令
 
