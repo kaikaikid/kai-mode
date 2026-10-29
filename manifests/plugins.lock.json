@@ -17,7 +17,7 @@
     },
     "board": {
       "version": "1.2.0",
-      "digest": "650eca40cf0de529704348adf5abd0aee1007bdfbee5807cabcd62dadd07815f",
+      "digest": "091ecd004c13c3af16b9a03fcfcaa4a9af824b932e6f7e32d6037c1bb1e57f06",
       "skills": {
         "flight-info": "1.5.0"
       }

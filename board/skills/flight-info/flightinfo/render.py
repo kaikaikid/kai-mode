@@ -183,19 +183,32 @@ def build_summary(conn, cfg: dict, board_dir: str | None = None) -> dict:
     flights = [f for f in all_flights
                if not includes or f.get("stage") in includes]
     schedules = db.fetch_schedules(conn, run) if run else []
-    # 排班只出「最新那一天」：日表目录里留着历史表，混着出会把几天前的排班行
-    # 当成今天的（Kai-vass 实测：20 行里前 3 行都是 10-23 的副表）。
+    # 排班只出「每条车道自己最新那张日表」：各车道写表的日子不一样
+    # （塔台天天写；王牌道只在有加急活时才写），取**全场**最大日期会把落后
+    # 车道的整张表筛掉（Kai-vass 2026-10-29 实测：主/副道 10-29、王牌道 10-27
+    # ⇒ 王牌道的行一条不剩，看着像"ACE 手上没活"）。
     if schedules:
-        latest_day = max((s.get("table_date") or "") for s in schedules)
-        schedules = [s for s in schedules if (s.get("table_date") or "") == latest_day]
+        latest: dict[str, str] = {}
+        for s in schedules:
+            lane = s.get("lane") or ""
+            d = s.get("table_date") or ""
+            if d > latest.get(lane, ""):
+                latest[lane] = d
+        schedules = [s for s in schedules
+                     if (s.get("table_date") or "") == latest.get(s.get("lane") or "", "")]
     # 加急腿：王牌车道的排班行 ＋ 打了加急标签的开放票。两条信号任一成立就亮。
     urgent_cfg = (cfg.get("view") or {}).get("urgent") or {}
     urgent_lanes = set(urgent_cfg.get("lanes") or ["ace"])
     urgent_label = urgent_cfg.get("label") or "ace-queue"
     ace_sched = [s for s in schedules if (s.get("lane") or "") in urgent_lanes]
     schedules = [s for s in schedules if (s.get("lane") or "") not in urgent_lanes]
+    # 「在手」＝票还没关。日表里留着已关票的行是完工留痕，不是待办
+    # （2026-10-29 实测：6 张 ace-queue 票全部已关，却仍被算成 6 张超编）。
+    closed = {f.get("ticket") for f in all_flights if not f.get("open")}
+    ace_sched = [s for s in ace_sched if (s.get("ticket") or "") not in closed]
     ace_tickets = [f for f in all_flights
-                   if urgent_label in [x.strip() for x in (f.get("labels") or "").split(",")]]
+                   if f.get("open")
+                   and urgent_label in [x.strip() for x in (f.get("labels") or "").split(",")]]
     kpi = compute_kpi(all_flights)
     sources = db.fetch_sources(conn)
     runtime = db.fetch_runtime(conn)
@@ -284,6 +297,23 @@ def build_summary(conn, cfg: dict, board_dir: str | None = None) -> dict:
 def dumps(payload: dict, indent: int | None = None) -> bytes:
     return json.dumps(payload, ensure_ascii=False,
                       indent=indent).encode("utf-8")
+
+
+def _cap_text(row: dict, key: str, cap: int) -> dict:
+    """正文截断：超长只留首句 + 省略号。副本进出，不改原行。"""
+    out = dict(row)
+    text = out.get(key) or ""
+    if len(text) > cap:
+        out[key] = text[:cap].rstrip() + "…"
+    return out
+
+
+def _ai_face_urgent(urgent: dict, note_cap: int, why_cap: int) -> dict:
+    """加急段的 AI 面副本：行备注与票面判据都截断（原文留给人面）。"""
+    out = dict(urgent)
+    out["rows"] = [_cap_text(r, "note", note_cap) for r in (urgent.get("rows") or [])]
+    out["tickets"] = [_cap_text(t, "why", why_cap) for t in (urgent.get("tickets") or [])]
+    return out
 
 
 def trim_to_bytes(payload: dict, max_bytes: int,
@@ -865,10 +895,11 @@ def _ordered_lanes(lanes: set, order: list) -> list:
 def _shift_section(payload: dict, cfg: dict) -> str:
     role_labels = cfg.get("role_labels") or {}
     sched = payload.get("schedules") or []
-    day = max((s.get("table_date") or "") for s in sched) if sched else ""
     blocks = []
     for lane in _ordered_lanes({s.get("lane") for s in sched} or {"main"}, _lane_order(cfg)):
         rows = [s for s in sched if s.get("lane") == lane]
+        # 每条车道写自己的日期（各道推进节奏不同），别拿全场最大日期冒充
+        day = max((s.get("table_date") or "") for s in rows) if rows else ""
         items = "".join(
             f'<li><a href="https://github.com/{_esc(cfg.get("repo") or "")}/issues/"'
             f' target="_blank" rel="noreferrer">{_esc(r.get("ticket") or "（无票号）")}</a>'
@@ -1348,6 +1379,19 @@ def write_outputs(board_dir: str, payload: dict, cfg: dict) -> dict:
         note = s.get("note") or ""
         if len(note) > note_cap:
             s["note"] = note[:note_cap].rstrip() + "…"
+    # 同一把尺要盖住 AI 面的每一处正文：原来只截了航班判据与排班备注，
+    # 加急行的备注、卡点行的判据都留着全文（一条能到 2 千字）——
+    # 2026-10-29 实测：这些正文把 25.6 KB 预算吃光，AI 面最后只剩 0 张航班。
+    ai_payload["urgent"] = _ai_face_urgent(payload.get("urgent") or {},
+                                         note_cap=note_cap,
+                                         why_cap=int((cfg.get("summary") or {}).get("ai_why_chars") or 160))
+    ai_payload["blocked"] = [_cap_text(b, "why", int((cfg.get("summary") or {}).get("ai_why_chars") or 160))
+                             for b in (payload.get("blocked") or [])]
+    # 趋势是给人画折线用的：全量正本在 history.jsonl，AI 面只留最近几轮。
+    # 24 轮要 13 KB——占掉一半预算，航班全被挤没。
+    trend_keep = int((cfg.get("summary") or {}).get("ai_trend_rounds") or 8)
+    if isinstance(ai_payload.get("trend"), list) and len(ai_payload["trend"]) > trend_keep:
+        ai_payload["trend"] = ai_payload["trend"][-trend_keep:]
     ai_payload, trimmed = trim_to_bytes(ai_payload, max_bytes, indent=1)
     if trimmed:
         ai_payload["counts"]["flights_truncated"] = True
