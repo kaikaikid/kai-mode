@@ -20,7 +20,7 @@
       ]
     },
     "full": {
-      "description": "core ＋ 六个原则 ＋ BOOM 想法池 ＋ 看板 ＋ 事故与运维剧本 ＋ 文娱集团六岗位。",
+      "description": "core ＋ 七个原则 ＋ BOOM 想法池 ＋ 看板 ＋ 事故与运维剧本 ＋ 文娱集团六岗位。",
       "skills": [
         "kai-mode",
         "set-kai-mode",
@@ -37,6 +37,7 @@
         "principle-ceremony-collapses-with-scale",
         "principle-measure-dont-ask",
         "principle-one-semantics-one-home",
+        "principle-output-structure",
         "principle-report-missing-parts",
         "principle-visible-and-redline-only",
         "kai-boom-idea-log",
