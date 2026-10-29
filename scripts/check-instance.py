@@ -201,6 +201,13 @@ def main() -> int:
     dtd = getpath(cfg, "paths.day_tables_dir")
     pat = getpath(cfg, "paths.day_table_pattern")
     lanes = getpath(cfg, "paths.lanes") or []
+    known_lanes = ("main", "deputy", "second", "ace")
+    if lanes:
+        unknown = [x for x in lanes if x not in known_lanes]
+        if unknown:
+            rep.add("红", f"⑤ paths.lanes 有不认识的道：{unknown}（只认 main/deputy/second/ace）")
+        if "main" not in lanes:
+            rep.add("红", "⑤ paths.lanes 必须含 main（主机长道是兜底，关掉它排班无处可去）")
     if dtd and pat and lanes:
         d = os.path.join(repo, *str(dtd).split("/"))
         if not os.path.isdir(d):

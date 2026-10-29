@@ -9,8 +9,8 @@ description: >
   → 定稿（清账 → ADR → 拆票草案 → 规划表）→ 用户拍一次板 → 路由给地勤开票 / 机长执行 / 王牌加急 / 塔台排班发货，
   只推荐唤醒命令，不自动起角色；剧本不限于这几个岗位。要全景/看进度时路由到看板（数据层 60-board ＋ 展示层 航班信息）。不执行具体活。
   触发：新想法、要开工、加急插单、kai 模式；熟活可直接喊角色口令（/ground-crew /tower /pilot /copilot /second-officer /ace；中文「地勤」「塔台」「机长」「二副」也认）。
-version: 3.1.0
-updated: 2026-10-27
+version: 3.1.1
+updated: 2026-10-29
 allowed-tools: Read Grep
 compatibility: Host-agnostic
 dependencies:
@@ -145,4 +145,4 @@ kai-mode 只推荐命令，不在唤醒名单；唤醒围栏见协议 §一（�
 ## 历史
 
 旧机场机器（2026-10-21 前那套）已退役，角色、并发、任务面与发货边界一律以六岗位技能正文为准；
-配置与安装走 [`/set-kai-mode`](../set-kai-mode/SKILL.md)。
+配置与安装走 [`/set-kai-mode`](../set-kai-mode/SKILL.md)；已装旧版要升级走 [`/upgrade-kai-mode`](../upgrade-kai-mode/SKILL.md)。

@@ -40,6 +40,15 @@ def write_token(repo, holder="A", age_min=0):
     return path
 
 
+def write_lanes(repo, spec):
+    """车道开关：门卫只按启用道判定日表。"""
+    path = os.path.join(repo, ".git", "kai-mode", "tower-lanes.json")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump({"schema": "kai-mode-tower-lanes/1", "spec": spec, "lanes": [],
+                   "set_at": "", "source": "command"}, f)
+
+
 def write_table(repo, lane="main", rows=7, day=None):
     day = day or datetime.now().strftime("%Y-%m-%d")
     path = os.path.join(repo, "tables", f"{day}-{lane}.md")
@@ -139,3 +148,35 @@ def test_round_limit_follows_interval():
     data = json.loads(out)
     assert data["detail"]["token"]["state"] == "stale"
     assert data["detail"]["token"]["limit_min"] == 35
+
+
+def test_default_spec_ignores_disabled_third_lane():
+    """默认 1+2：二副道没开，缺表也不算唤醒理由。"""
+    repo = make_repo()
+    write_table(repo, "main", rows=7)
+    write_table(repo, "deputy", rows=7)
+    rc, out = run(repo, "--json")
+    data = json.loads(out)
+    tables = data["detail"]["day_tables"]
+    assert tables["spec"] == "1+2" and tables["absent"] == [] and tables["short"] == []
+
+
+def test_enabled_third_lane_absent_is_a_wake_reason():
+    repo = make_repo()
+    write_lanes(repo, "1+2+3")
+    write_table(repo, "main", rows=7)
+    write_table(repo, "deputy", rows=7)
+    rc, out = run(repo, "--json")
+    data = json.loads(out)
+    tables = data["detail"]["day_tables"]
+    assert tables["spec"] == "1+2+3" and "second" in tables["absent"]
+
+
+def test_ace_only_spec_is_reported_not_silently_skipped():
+    repo = make_repo()
+    write_lanes(repo, "0")
+    rc, out = run(repo, "--json")
+    data = json.loads(out)
+    assert data["wake"] is True
+    assert data["detail"]["day_tables"]["state"] == "error"
+    assert "王牌" in data["detail"]["day_tables"]["detail"]

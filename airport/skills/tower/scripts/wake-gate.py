@@ -13,7 +13,8 @@
   1. 令牌：他人持牌且心跳在「本轮上限」内 ⇒ 上一轮大概率还在跑 ⇒ SKIP（治「下一个塔台白跑」）；
      心跳超过本轮上限 ⇒ 死牌，不阻塞（塔台进去后按 $tower-token acquire 接管）。
   2. 待发货：`ship-queue.py peek` 的 pending／hotfix／invalid 任一非空 ⇒ WAKE。
-  3. 日表：三张正常日表任一缺失或行数低于下限 ⇒ WAKE（没人补日表，机长会饿）。
+  3. 日表：**启用道**的正常日表任一缺失或行数低于下限 ⇒ WAKE（没人补日表，机长会饿）。
+     启用道从 `lane_spec.py` 读（显式参数 > 状态文件 > 默认 `1+2`）；停用道不参与判定。
   4. 探测失败（ship-queue rc=3）⇒ WAKE（失败不等于零票，保守放行）。
 
 本轮上限 = `tower_cron.interval_min + 5` 分钟（走满一个轮巡周期还没收工，算还在飞）。
@@ -44,11 +45,13 @@ TOKEN_NAME = "tower-token.json"
 DEFAULT_INTERVAL_MIN = 60
 ROUND_SLACK_MIN = 5
 MIN_ROWS = 5  # 协议 §一 持有帽下限；区间数值正本在协议，本处只做「表是否见底」的粗判
-DEFAULT_LANES = ("main", "deputy", "second")
 TICKET_ROW_RE = re.compile(r"^\|\s*[^|]*\|\s*(\d+)\s*\|")
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SHIP_QUEUE = os.path.join(HERE, "ship-queue.py")
+if HERE not in sys.path:
+    sys.path.insert(0, HERE)
+import lane_spec  # noqa: E402  车道代号的唯一语法与优先级
 
 
 def missing(what: str, who: str, how: str) -> int:
@@ -150,15 +153,18 @@ def check_queue(repo: str) -> dict:
 
 # ---------- 3. 日表 ----------
 
-def check_day_tables(repo: str, cfg: dict) -> dict:
+def check_day_tables(repo: str, cfg: dict, state_dir: str) -> dict:
     paths = cfg.get("paths") or {}
     tables = (paths.get("day_tables_dir") or "").strip()
     if not tables:
         return {"state": "missing", "detail": "实例没有 paths.day_tables_dir"}
     base = os.path.join(repo, *tables.split("/"))
     pattern = (paths.get("day_table_pattern") or "YYYY-MM-DD-{lane}.md").strip()
-    lanes = [x for x in (paths.get("lanes") or DEFAULT_LANES) if x in DEFAULT_LANES]
-    lanes = lanes or list(DEFAULT_LANES)
+    try:
+        resolved = lane_spec.resolve(cfg, state_dir)
+    except ValueError as exc:
+        return {"state": "error", "detail": f"车道代号读不出：{exc}"}
+    lanes = resolved["normal"]
     today = datetime.now().strftime("%Y-%m-%d")
     short, absent = [], []
     for lane in lanes:
@@ -181,7 +187,8 @@ def check_day_tables(repo: str, cfg: dict) -> dict:
         if rows < MIN_ROWS:
             short.append(f"{lane}={rows}")
     state = "short" if (short or absent) else "full"
-    return {"state": state, "short": short, "absent": absent, "min_rows": MIN_ROWS}
+    return {"state": state, "short": short, "absent": absent, "min_rows": MIN_ROWS,
+            "spec": resolved["spec"], "lanes": lanes}
 
 
 # ---------- 汇总 ----------
@@ -206,14 +213,17 @@ def decide(repo: str, cfg: dict, state_dir: str) -> dict:
                 "reason": f"pending={queue['ready']} hotfix={queue['hotfix']} invalid={queue['invalid']}",
                 "detail": {"token": token, "queue": queue}}
 
-    tables = check_day_tables(repo, cfg)
+    tables = check_day_tables(repo, cfg, state_dir)
+    if tables["state"] == "error":
+        return {"wake": True, "reason": f"日表判据失败（{tables.get('detail', '')}）",
+                "detail": {"token": token, "queue": queue, "day_tables": tables}}
     if tables["state"] == "short":
         bits = []
         if tables["short"]:
             bits.append("低于下限 " + "、".join(tables["short"]))
         if tables["absent"]:
             bits.append("缺表 " + "、".join(tables["absent"]))
-        return {"wake": True, "reason": "日表：" + "；".join(bits),
+        return {"wake": True, "reason": f"日表（启用道 {tables.get('spec', '?')}）：" + "；".join(bits),
                 "detail": {"token": token, "queue": queue, "day_tables": tables}}
 
     if queue["state"] in ("error", "missing"):

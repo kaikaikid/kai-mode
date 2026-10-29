@@ -18,8 +18,8 @@ description: >
   doctor、缺件如实登记。触发：新 agent 接手装配、换宿主、装/改定时器、修技能落点、
   给项目出技能骨架、迁旧配置实例、问「这套东西都住在哪」。
   不做日常施工。
-version: 5.8.0
-updated: 2026-10-28
+version: 5.8.1
+updated: 2026-10-29
 allowed-tools: Bash(*) Read Write Edit
 compatibility: Requires python3, git
 ---
@@ -40,6 +40,7 @@ compatibility: Requires python3, git
 - 撞见「同一条判据两处说法不一样」——配置面漂移，回到这里对表。
 - 给目标项目仓生成项目本地技能骨架（生成式腿，首例＝验收/验证技能）。
 - 项目仓配置实例还是 schema 2（读取端记 warn）——走迁移腿，别拖过双仓回归期。
+- **已装的是旧版、要升到新版** ⇒ 不在本技能：走 [`upgrade-kai-mode`](../upgrade-kai-mode/SKILL.md)。本技能只补缺、不覆盖已就位的东西。
 
 ## 装到别的项目：QA 初始化（先跑这个，再走下面的七步）
 
@@ -100,7 +101,7 @@ python scripts/init-project.py --repo <目标仓> --answers a.json   # 机器填
 
 | 项 | 只读探法 | 判「已就位（跳过）」 | 判「需处理」 |
 |---|---|---|---|
-| 1 正本技能 | 按 `.claude-plugin/marketplace.json` 的插件目录里 `skills/*/SKILL.md` 派生清单（当前 27 条自动件 ＋ 1 条手动件），逐个检查 `SKILL.md` ＋ 互指 grep | 清单内都在、互指路径一致 | 缺文件或互指断裂 |
+| 1 正本技能 | 按 `.claude-plugin/marketplace.json` 的插件目录里 `skills/*/SKILL.md` 派生清单（条数以派生结果为准，正文不抄计数），逐个检查 `SKILL.md` ＋ 互指 grep | 清单内都在、互指路径一致 | 缺文件或互指断裂 |
 | 2 宿主同步 | `python skills/set-kai-mode/scripts/magpie-sync.py check`（按回执档位；无回执=full） | 漂移表三面全绿（内容/落点/注册） | 有漂移文件（列出具体哪些） |
 | 3 唤醒定时器 | 现测证据：项目配置 `paths.handoff_dir` 当日日报里 `cron-tower-*` 轮次 / 宿主 `list` 回读 `enabled` | 今日有真实运行轮次或 `enabled=true` | 无运行证据且宿主无定时口 |
 | 4 环境三项 | `test -x` 解释器/node、`test -d node_modules` | 三项都有明确读数 | 任一项缺（报绝对路径） |
@@ -157,8 +158,8 @@ python $S apply --profile core             # 正本 → 库 → 各家链接；�
   落点必须项目级，不装全局。
 - 要装/更新的技能（装机清单＝`.claude-plugin/marketplace.json` 列出的插件目录里 `skills/*/SKILL.md`；
   安装器现场派生，各插件技能数以派生结果为准，正文不落第二份清单）。
-- **安装档位**：`manifests/install-profiles.json` 定两档——`core`（10 条最小闭环：入口/安装/协议/六岗位/交接）、
-  `full`（20 条自动件全部）。`apply/check --profile core|full`；缺省读库根回执里的档位，无回执＝`full`。
+- **安装档位**：`manifests/install-profiles.json` 定两档——`core`（最小闭环：入口/安装/升级/协议/六岗位/交接）、
+  `full`（全部自动件）。`apply/check --profile core|full`；缺省读库根回执里的档位，无回执＝`full`。
 - **安装回执**：库根 `.kai-mode-source.json` 记来源根、HEAD、档位、技能清单与每技能哈希；
   `doctor` 的 `install-receipt` 项校验。回执里另记「宿主落点」：技能目录、命令名、子代理口。写库前整包备份到 `<库根>/.backups/`（保留 5 份），失败自动还原。
 - **七个子代理薄文件（随装，项目级；按宿主适配）**：四个自建（`implementer`／`reviewer`／`adjudicator`／`researcher`）
@@ -231,6 +232,8 @@ python $S apply --profile core             # 正本 → 库 → 各家链接；�
      `先跑 python <tower 技能目录>/scripts/wake-gate.py；退出码 10 ⇒ 只回它那一行即结束，不读任何技能；`
      `退出码 0 ⇒ 读取并执行 airport/skills/tower/SKILL.md 全文跑一轮；退出码 2 ⇒ 按缺件三格报告。`
      门卫是纯脚本，跳过时零模型调用——没活或上一轮还在跑都不再拉起一整轮会话。
+   - 薄壳可带 `lanes=<代号>`（与人工命令同一套：`0` 王牌、`1` 主、`2` 副、`3` 二副，`1+2` 默认，`all`＝1+2+3）。
+     不带就用状态文件，再没有就是默认 `1+2`；塔台把解析结果落进 `paths.state_dir`，门卫读同一份。
    - 授权档：照 `adapters/<宿主>.md` 的定时任务一节，与既有定时任务同档，不擅自提权。
    - 旧的四枚定时任务：**停用或删除**，不得与 60 分钟唤醒定时器并存。
      顺序：先 `disable` → 等 `runningAt` 为空或确认已停 → 再 `remove`；**别对正在跑的直接 remove**。
