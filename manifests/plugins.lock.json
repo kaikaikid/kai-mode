@@ -25,7 +25,7 @@
     },
     "core": {
       "version": "1.2.0",
-      "digest": "518cccdff5fe1683af0d97d322458c090ba88b293d4b51fd09328f6af5658276",
+      "digest": "228d87ceb8e2cc97a6eb7664053bea67247c18b353207ea08a5c9b7f2b67c92e",
       "skills": {
         "harness-audit": "0.2.0",
         "kai-handoff": "0.3.5",
@@ -81,6 +81,13 @@
         "marketing": "1.0.0",
         "producer": "1.0.0",
         "studio": "1.2.0"
+      }
+    },
+    "v2": {
+      "version": "0.1.0",
+      "digest": "474e628e1e4fe9081c7e8d93f972587a19a87b09c4c015f822a8223865038d76",
+      "skills": {
+        "coding": "0.1.0"
       }
     }
   }

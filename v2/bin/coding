@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# V2 control plane launcher.
+set -euo pipefail
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec "${PYTHON:-python}" "$DIR/../coding_main.py" "$@"
