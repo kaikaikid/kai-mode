@@ -95,6 +95,29 @@ python scripts/init-project.py --repo <目标仓> --answers a.json   # 机器填
 | 6 | 缺件登记与交接 | 缺件如实登记进日报（三格判据唯一正本：[`principle-report-missing-parts`](../principle-report-missing-parts/SKILL.md)） |
 | 7 | **开票归属守卫**（宿主 PreToolUse 钩子，`matcher=Bash`） | 在项目仓里跑 `gh issue create --title probe` → **必须被拒**；带 `--repo` 的同一条 → 放行 |
 
+## 安装档位：共存 / 仅 V2
+
+装之前先问一句：**装哪套？** 默认共存。
+
+| 档位 | 装什么 | 不装什么 |
+|---|---|---|
+| `共存`（默认） | 现有七步全部 ＋ V2 | — |
+| `仅 V2` | 只装 V2 执行内核 | 机场角色技能、定时器、日表、看板、开票守卫 |
+
+**仅 V2 的安装步骤**（判据与命令正本在 v2 插件自带的 README，本节只给入口）：
+
+1. `.gitignore` 加 `.coding/`；
+2. `v2/bin` 加进 PATH（或直接用 `v2/bin/coding`）；
+3. 可选：装 `savvy-progress@claude-kit` 并跑 `python v2/mods/apply.py`；
+4. 验证：`coding status` 能跑、`coding run probe && coding stop <id>` 能开能停。
+
+**规则**：
+
+- 装 V2 **不卸载、不改写 V1**；卸载 V1 是单独动作，必须用户明确要求。
+- 两套状态分开：V1 用 `handoff/`、日表；V2 用 `.coding/runs/`。
+- 命令不冲突：V1 `/pilot` `/tower` `/ace`；V2 `/coding`。
+- 升级互不影响：`upgrade-kai-mode` 只升 V1；V2 升级重跑 `v2/mods/apply.py` 即可。
+
 ### 0. 缺口扫描（只读，先看缺什么再决定装不装）
 
 > **这一步只读数、不写盘。** 进本技能先跑它，把各项的现状列成「缺口清单」，再决定后面装不装。
@@ -130,6 +153,7 @@ python scripts/init-project.py --repo <目标仓> --answers a.json   # 机器填
 
 - 正本全部住在仓库里（中立层），任何宿主一进仓库即生效：
   - 入口与安装：`core/skills/{kai-mode,set-kai-mode}/SKILL.md`
+  - V2 执行内核：`v2/skills/coding/SKILL.md`（入口 `/coding`；实现与安装在 `v2/README.md`）
   - 岗位技能：`airport/skills/{ground-crew,tower,pilot,copilot,second-officer,ace}/SKILL.md`
   - 单票闭环：`airport/skills/loop/SKILL.md` ＋ `airport/skills/loop/references/loop-protocol.md`
   - 看板展示层：`board/skills/flight-info/SKILL.md`（SQLite 落库 ＋ 模块化采集/判据/渲染；装配与刷新都在它的 `scripts/`；板库根＝板配置 `output.root`，相对项目仓根）

@@ -45,6 +45,12 @@
       "displayName": "方法库",
       "source": "./methods",
       "description": "通用方法技能（fork 自上游，kai- 前缀）：施工、审查、诊断、术语、拆票、写文档、安全专项。"
+    },
+    {
+      "name": "v2",
+      "displayName": "V2 执行内核",
+      "source": "./v2",
+      "description": "一个 issue 一个 run：主会话规划与验收，物理子会话执行；命令入口 /coding，与机场体系并存。"
     }
   ]
 }

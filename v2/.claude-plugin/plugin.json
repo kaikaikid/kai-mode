@@ -1,0 +1,6 @@
+{
+  "name": "v2",
+  "version": "0.1.0",
+  "description": "V2 execution kernel: one issue per run, main session plans and reviews, physical sub-sessions execute. Entry: /coding.",
+  "author": { "name": "kaikaikid" }
+}

@@ -342,26 +342,33 @@ def trim_to_bytes(payload: dict, max_bytes: int,
 # 且会挡住首屏）。装了 Geist / Instrument Serif 的机器自动用上，否则落到系统字。
 # 要换成 web 字体：板配置 view.font_source = "web"。
 
-CSS = """
+CSS = r"""
 /* ── Token：KWP（anthropics/knowledge-work-plugins）看板皮肤。
       暖白纸底 #faf9f5 · 陶橙强调 #D97757 · 卡片白 · 发丝描边。
       改皮肤只改这里；使用面禁硬编码色值。暗档由 html[data-theme=dark] 整块覆盖。 ── */
 :root{
 --bg-primary:#faf9f5;--bg-secondary:#F5F4EF;--bg-card:#FFFFFF;
---text-primary:#141413;--text-secondary:#5c5c5a;--text-muted:#8c8c8a;
---accent:#D97757;--accent-hover:#c4684a;--border:#e5e4df;--border-light:#eeeee9;
+--text-primary:#141413;--text-secondary:#5c5c5a;--text-muted:#6f6f6b;
+--accent:#D97757;--accent-hover:#c4684a;--accent-text:#B4552F;--accent-strong:#A54E2E;--accent-strong-hover:#8F4325;--warn:#8A6116;--border:#e5e4df;--border-light:#eeeee9;
 --shadow:rgba(20,20,19,.04);--shadow-hover:rgba(20,20,19,.08);
---positive:#5B8C5A;--negative:#C4553F;--info:#4F7C8C;
+--positive:#4A7A49;--negative:#B0412B;--info:#3E6675;
 --radius:10px;--radius-lg:14px;--radius-pill:999px;
 --gap:16px;--sidebar-w:216px;
 --font:14px/1.5 'Inter',-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',system-ui,sans-serif}
 html[data-theme="dark"]{
 --bg-primary:#141413;--bg-secondary:#1d1d1b;--bg-card:#242421;
---text-primary:#f5f4ef;--text-secondary:#a9a9a4;--text-muted:#7d7d78;
---accent:#e08c6b;--accent-hover:#eda283;--border:#34342f;--border-light:#2c2c28;
+--text-primary:#f5f4ef;--text-secondary:#a9a9a4;--text-muted:#94948e;
+--accent:#e08c6b;--accent-hover:#eda283;--accent-text:#eda283;--accent-strong:#a9553a;--accent-strong-hover:#8F4325;--warn:#e0a94a;--border:#34342f;--border-light:#2c2c28;
 --shadow:rgba(0,0,0,.3);--shadow-hover:rgba(0,0,0,.45);
 --positive:#8fbc8f;--negative:#e08c7b;--info:#8fb3bf}
 *{box-sizing:border-box}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{
+animation-duration:.01ms!important;animation-iteration-count:1!important;
+transition-duration:.01ms!important;scroll-behavior:auto!important}}
+.skip{position:fixed;left:-9999px;top:0;z-index:100}
+.skip:focus{left:12px;top:12px;background:var(--bg-card);color:var(--text-primary);
+padding:8px 14px;border-radius:8px;border:1px solid var(--border);
+box-shadow:0 2px 8px var(--shadow-hover);font-size:13px;font-weight:600;text-decoration:none}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg-primary);color:var(--text-primary);font:var(--font);
 -webkit-font-smoothing:antialiased}
@@ -375,7 +382,7 @@ max-height:calc(100vh - 24px);overflow:auto}
 .main{flex:1 1 auto;min-width:0;padding:4px 8px 64px}
 .inner{max-width:1400px;margin:0 auto}
 .brand{display:flex;align-items:center;gap:10px}
-.brand .mark{width:28px;height:28px;border-radius:8px;background:var(--accent);
+.brand .mark{width:28px;height:28px;border-radius:8px;background:var(--accent-strong);
 color:#fff;display:grid;place-items:center;font-weight:700;font-size:11px;flex:0 0 auto;
 letter-spacing:.02em}
 .brand b{font-size:15px;font-weight:600}
@@ -390,7 +397,7 @@ background:var(--bg-secondary);border-radius:var(--radius-pill);padding:1px 7px;
 min-width:22px;text-align:center;font-variant-numeric:tabular-nums}
 .nav a:hover{background:var(--bg-secondary);color:var(--text-primary)}
 .nav a[aria-current=page]{background:var(--bg-secondary);color:var(--text-primary);font-weight:600}
-.nav a[aria-current=page] .c{background:var(--accent);color:#fff}
+.nav a[aria-current=page] .c{background:var(--accent-strong);color:#fff}
 .side .foot{margin-top:auto}
 .side .foot summary{font-size:12px;color:var(--text-muted);cursor:pointer;
 padding:6px 4px;list-style:none}
@@ -398,7 +405,7 @@ padding:6px 4px;list-style:none}
 .side .foot p{margin:0;font-size:12px;line-height:1.7;color:var(--text-secondary)}
 .page-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:4px 0 14px}
 .page-head .eyebrow{font-size:11px;font-weight:600;letter-spacing:.12em;
-text-transform:uppercase;color:var(--accent);width:100%;margin-bottom:-6px}
+text-transform:uppercase;color:var(--accent-text);width:100%;margin-bottom:-6px}
 .page-head h1{margin:0;font-size:24px;font-weight:600;line-height:1.2;letter-spacing:-.02em}
 .page-head .read{font-size:12px;color:var(--text-secondary)}
 .page-head .read b{color:var(--text-primary);font-weight:600;font-variant-numeric:tabular-nums}
@@ -411,9 +418,9 @@ background:var(--bg-card);border-radius:8px;color:var(--text-secondary);
 font:500 13px/1 inherit;cursor:pointer;display:inline-flex;align-items:center;gap:6px;
 transition:all .12s ease}
 .tbtn:hover{border-color:var(--border);color:var(--text-primary);box-shadow:0 1px 3px var(--shadow-hover)}
-.tbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.tbtn.is-primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
-.tbtn.is-primary:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
+.tbtn:focus-visible{outline:2px solid var(--accent-text);outline-offset:2px}
+.tbtn.is-primary{background:var(--accent-strong);border-color:var(--accent-strong);color:#fff;font-weight:600}
+.tbtn.is-primary:hover{background:var(--accent-strong-hover);border-color:var(--accent-strong-hover)}
 .tbtn .k{font-size:11px;color:var(--text-muted);border:1px solid var(--border);
 border-radius:6px;padding:0 4px}
 .viewtoggle{display:flex;gap:4px;background:var(--bg-secondary);padding:3px;border-radius:9px}
@@ -432,9 +439,11 @@ display:flex;align-items:center;gap:6px;text-transform:uppercase;letter-spacing:
 .card .num{font-size:28px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums;
 letter-spacing:-.02em}
 .card .sub{font-size:12px;color:var(--text-muted);margin-top:2px}
+.card .num svg{vertical-align:middle;margin-left:8px;opacity:.5;overflow:visible}
 .card.is-warn .lab i{background:var(--negative)}
 .card.is-warn .num{color:var(--negative)}
 .card.is-hot .lab i{background:var(--accent)}
+a:focus-visible,button:focus-visible,[tabindex]:focus-visible,summary:focus-visible,input:focus-visible{outline:2px solid var(--accent-text);outline-offset:2px;border-radius:6px}
 .card[role=button]{cursor:pointer;transition:all .15s ease}
 .card[role=button]:hover{box-shadow:0 4px 12px var(--shadow-hover);border-color:var(--border)}
 .card.on{box-shadow:inset 0 0 0 2px var(--accent)}
@@ -463,7 +472,7 @@ padding:12px 16px}
 .urgent-box ol{margin:0;padding:0;list-style:none}
 .urgent-box li{padding:6px 0;font-size:13px}
 .urgent-box li+li{border-top:1px solid var(--border-light)}
-.urgent-box li em{display:block;font-style:normal;font-size:12px;
+.urgent-box li em{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;font-style:normal;font-size:12px;
 color:var(--text-muted);margin-top:2px}
 .sect .empty code,.urgent-box code{font-family:ui-monospace,Consolas,monospace;font-size:12px}
 .shifts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
@@ -476,8 +485,8 @@ color:var(--text-muted);margin-top:2px}
 .shift li+li{border-top:1px solid var(--border-light)}
 .shift li a{font-size:12px;font-weight:600;text-decoration:none;color:var(--text-secondary);
 margin-right:6px}
-.shift li a:hover{color:var(--accent-hover)}
-.shift li em{display:block;font-style:normal;font-size:12px;color:var(--text-muted);
+.shift li a:hover{color:var(--accent-text)}
+.shift li em{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;font-style:normal;font-size:12px;color:var(--text-muted);
 line-height:1.5;margin-top:2px}
 .shift .zero{font-size:12px;color:var(--text-muted)}
 .qrow{display:flex;align-items:baseline;gap:10px;padding:7px 0;font-size:13px}
@@ -488,23 +497,25 @@ font-variant-numeric:tabular-nums}
 .qrow .sha{font-family:ui-monospace,Consolas,monospace;font-size:11px;color:var(--text-muted)}
 .qrow .br{color:var(--text-secondary);font-size:12px}
 .qrow .held{margin-left:auto;font-size:11px;font-weight:600;color:var(--negative)}
-.board{display:flex;gap:16px;overflow-x:auto;padding:2px 2px 12px;align-items:flex-start}
+.board{display:flex;gap:16px;overflow-x:auto;padding:2px 2px 16px;align-items:flex-start;scroll-snap-type:x proximity;scrollbar-gutter:stable}
 .col{background:var(--bg-secondary);border-radius:12px;min-width:280px;max-width:340px;
-flex:0 0 300px;display:flex;flex-direction:column;max-height:calc(100vh - 260px)}
+flex:0 0 300px;display:flex;flex-direction:column;max-height:clamp(360px,60vh,760px);scroll-snap-align:start}
 .colhead{padding:12px 14px;font-weight:600;font-size:12px;text-transform:uppercase;
 letter-spacing:.05em;color:var(--text-secondary);display:flex;
 justify-content:space-between;align-items:center}
 .colhead .cnt{background:var(--bg-card);padding:2px 9px;border-radius:var(--radius-pill);
 font-size:11px;font-weight:500;color:var(--text-muted)}
-.colcards{flex:1;overflow-y:auto;padding:0 10px 10px;min-height:60px}
+.colcards{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:0 10px 10px;min-height:60px;scrollbar-gutter:stable}
 .kcard{background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius);
 padding:12px 14px;margin-bottom:8px;box-shadow:0 1px 3px var(--shadow);
 transition:box-shadow .15s ease,border-color .15s ease}
 .kcard:hover{box-shadow:0 4px 12px var(--shadow-hover);border-color:var(--border)}
+.kcard:hover .kt a.no,.kcard:focus-within .kt a.no{color:var(--accent-text)}
+.kcard:focus-within{border-color:var(--accent-text)}
 .kcard .kt{font-size:13px;font-weight:500;line-height:1.45}
 .kcard .kt .no{font-size:12px;font-weight:600;margin-right:6px}
 .kcard .km{display:flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap}
-.kcard .kw{font-size:12px;color:var(--text-muted);margin-top:4px;line-height:1.45}
+.kcard .kw{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;font-size:12px;color:var(--text-muted);margin-top:4px;line-height:1.45}
 .kcard .kage{margin-left:auto;font-size:11px;color:var(--text-muted);
 font-variant-numeric:tabular-nums}
 .board-empty{font-size:12px;color:var(--text-muted);padding:8px 4px}
@@ -521,10 +532,10 @@ tr.flight:hover>td{background:var(--bg-secondary)}
 tr.flight:focus-visible>td{background:var(--bg-secondary)}
 .no{font-size:12px;font-weight:600;text-decoration:none;color:var(--text-secondary);
 white-space:nowrap}
-.no:hover{color:var(--accent-hover);text-decoration:underline}
+.no:hover{color:var(--accent-text);text-decoration:underline}
 .msl{font-size:12px;color:var(--text-muted);margin-top:2px}
 .ttl{font-size:13px;font-weight:500;line-height:1.4}
-.ttl .why{display:block;font-size:12px;font-weight:400;color:var(--text-muted);
+.ttl .why{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;font-size:12px;font-weight:400;color:var(--text-muted);
 line-height:1.5;margin-top:2px}
 .tag{display:inline-block;font-size:11px;font-weight:600;padding:1px 7px;margin-left:6px;
 border-radius:var(--radius-pill);color:var(--text-secondary);background:var(--bg-secondary);
@@ -571,11 +582,11 @@ margin-top:8px;overflow:hidden}
 .hands a{display:flex;gap:12px;padding:7px 0;text-decoration:none;font-size:12px;
 color:var(--text-secondary)}
 .hands a+a{border-top:1px solid var(--border-light)}
-.hands a:hover{color:var(--accent-hover)}
+.hands a:hover{color:var(--accent-text)}
 .hands .dt{flex:0 0 84px;font-size:12px;color:var(--text-muted);
 font-variant-numeric:tabular-nums}
 .hands .ti{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.statusbar{position:fixed;left:calc(var(--sidebar-w) + 40px);right:24px;bottom:10px;
+.statusbar{position:fixed;left:calc(var(--sidebar-w) + 40px);right:24px;bottom:10px;z-index:8;
 height:30px;display:flex;align-items:center;gap:12px;padding:0 16px;font-size:12px;
 color:var(--text-secondary);border:1px solid var(--border-light);border-radius:var(--radius-pill);
 background:color-mix(in srgb,var(--bg-card) 88%,transparent);
@@ -592,14 +603,15 @@ justify-content:center;padding-top:14vh;background:rgba(20,20,19,.28)}
 box-shadow:0 12px 32px rgba(20,20,19,.18);padding:16px;border:1px solid var(--border)}
 .pal input{width:100%;height:38px;border:1px solid var(--border);background:var(--bg-primary);
 border-radius:9px;padding:0 14px;font:14px inherit;color:var(--text-primary);outline:none}
-.pal input:focus{border-color:var(--accent)}
+.pal input:focus{border-color:var(--accent-text)}
 .pal .tip{margin:10px 0 0;font-size:12px;color:var(--text-muted);
 display:flex;align-items:center;gap:8px}
 .pal .tip b{color:var(--text-primary);font-weight:600;font-variant-numeric:tabular-nums}
+body.ov-open{overflow:hidden}
 @media(max-width:1080px){.bento{grid-template-columns:repeat(2,1fr)}.miles{grid-template-columns:1fr}}
 @media(max-width:860px){.shell{flex-direction:column}
-.side{position:static;flex:none;width:auto;max-height:none;flex-direction:row;flex-wrap:wrap;
-align-items:center;gap:6px 12px;padding:10px 12px}
+.side{position:sticky;top:0;z-index:6;flex:none;width:auto;max-height:none;flex-direction:row;flex-wrap:wrap;
+align-items:center;gap:6px 12px;padding:10px 12px;box-shadow:0 1px 0 var(--border-light)}
 .side>div{display:contents}.grp-t{display:none}
 .nav{flex-direction:row;flex-wrap:wrap;gap:4px}
 .side .foot{display:none}
@@ -607,6 +619,8 @@ align-items:center;gap:6px 12px;padding:10px 12px}
 .statusbar{left:12px}
 .shifts{grid-template-columns:1fr}}
 @media(max-width:560px){.bento{grid-template-columns:repeat(2,1fr)}
+.tools{gap:6px}.tbtn{padding:0 10px;font-size:12px}
+.page-head .read{width:100%}.page-head .eyebrow{margin-bottom:0}
 .side{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
 .side::-webkit-scrollbar{display:none}.side>div{flex:0 0 auto}
 .nav{flex-wrap:nowrap}.nav a{white-space:nowrap}.brand b{display:none}
@@ -619,7 +633,39 @@ align-items:center;gap:6px 12px;padding:10px 12px}
 .pstamp b{color:var(--text-primary)}
 .shell{display:block;padding:0}
 .main{background:transparent}.sect{box-shadow:none}
-tr.det{display:table-row}}
+tr.det{display:table-row}
+.col{max-height:none}.board{overflow:visible;flex-wrap:wrap}
+.colcards{overflow:visible}.skip{display:none}}
+
+/* ── C3 阶段语义：色族 + 字形 + 文字 三重编码。
+      色只分四族（中性/进行/行动/告警），避免彩虹；字形与左栏导航图标同源；
+      文字永远在——色盲、灰度打印、高对比度模式下任一通道单独成立。 ── */
+.tag[data-s]{--stg:var(--text-muted);--g:"\00B7";color:var(--stg);
+background:color-mix(in srgb,var(--stg) 10%,transparent);
+border:1px solid color-mix(in srgb,var(--stg) 32%,transparent)}
+.tag[data-s]::before{content:var(--g);font-weight:700;margin-right:4px}
+.tag[data-s="flying"]{--stg:var(--info);--g:"\25C9"}
+.tag[data-s="to_ship"]{--stg:var(--accent-text);--g:"\25B6"}
+.tag[data-s="stale"]{--stg:var(--warn);--g:"\25B2"}
+.tag[data-s="hold"]{--stg:var(--negative);--g:"\25A0"}
+.tag[data-s="ready"]{--stg:var(--positive);--g:"\25C7"}
+.tag[data-s="closed"]{--stg:var(--positive);--g:"\2713"}
+.tag[data-s="queued"]{--g:"\00B7"}
+.tag[data-s="assigned"]{--g:"\25CB"}
+.tag[data-s="unresolved"]{--g:"\00D7"}
+/* 看板卡片：左侧色条＝阶段，不读文字也能扫出告警列 */
+.kcard{border-left:3px solid var(--border)}
+.kcard[data-stage="flying"]{border-left-color:var(--info)}
+.kcard[data-stage="to_ship"]{border-left-color:var(--accent)}
+.kcard[data-stage="stale"]{border-left-color:var(--warn)}
+.kcard[data-stage="hold"]{border-left-color:var(--negative)}
+.kcard[data-stage="ready"]{border-left-color:var(--positive)}
+.kcard[data-stage="unresolved"]{border-left-color:var(--text-muted);border-left-style:dashed}
+/* 列表：阶段名加粗配色，与色条同源 */
+tr.flight[data-stage="to_ship"] .stg{color:var(--accent-text);font-weight:600}
+tr.flight[data-stage="stale"] .stg{color:var(--warn);font-weight:600}
+tr.flight[data-stage="hold"] .stg{color:var(--negative);font-weight:600}
+tr.flight[data-stage="flying"] .stg{color:var(--info);font-weight:600}
 """
 
 
@@ -666,9 +712,9 @@ def _plain(text) -> str:
 def _chain_cells(f: dict) -> str:
     """五格迷你阶段链：当前格着色，停滞／卡点转 danger。"""
     st = f.get("stage") or ""
-    off = {"ready": ("可领", "d"), "hold": ("卡点", "e"), "stale": ("停滞", "e"),
-           "assigned": ("已派未动", "d"), "unresolved": ("残留", "d"),
-           "closed": ("收尾", "d")}
+    off = {"queued": ("排队", ""), "ready": ("可领", "d"), "hold": ("卡点", "e"),
+           "stale": ("停滞", "e"), "assigned": ("已派未动", "d"),
+           "unresolved": ("残留", "d"), "closed": ("收尾", "d")}
     idx = -1
     if st == "flying":
         idx = 1
@@ -790,25 +836,38 @@ def _flag(degraded: list[dict]) -> str:
             + "；".join(parts) + "。</div>")
 
 
-def _trend(payload: dict) -> str:
-    """近 N 轮 KPI 迷你折线（history.jsonl）。少于 2 轮不画，不空喊趋势。"""
+def _spark_map(payload: dict) -> dict:
+    """近 N 轮 KPI 迷你折线的 points（history.jsonl）。少于 2 轮不给，不空喊趋势。"""
     rows = [r for r in (payload.get("trend") or []) if isinstance(r, dict)]
     if len(rows) < 2:
-        return ""
-    out = []
-    for key, label in (("open", "未收尾"), ("stale", "停滞"), ("to_ship", "待发货")):
+        return {}
+    out = {}
+    for key in ("open", "stale", "to_ship"):
         vals = [int(((r.get("kpi") or {}).get(key)) or 0) for r in rows]
         hi = max(vals) or 1
-        pts = " ".join(f"{i * (86 / max(1, len(vals) - 1)):.1f},"
-                       f"{22 - (v / hi) * 20:.1f}" for i, v in enumerate(vals))
-        out.append('<span class="card b1" style="box-shadow:none;background:transparent;'
-                   'padding:0"><p class="lab"><i aria-hidden="true"></i>' + _esc(label) +
-                   '</p><div class="num">' + str(vals[-1]) +
-                   f'<svg width="86" height="24" viewBox="0 0 86 24" aria-hidden="true">'
-                   f'<polyline fill="none" stroke="currentColor" stroke-width="1.2" '
-                   f'points="{pts}"/></svg></div>'
-                   f'<div class="sub">近 {len(vals)} 轮</div></span>')
-    return '<div class="bento">' + "".join(out) + "</div>"
+        step = 86 / max(1, len(vals) - 1)
+        pts = " ".join("%.1f,%.1f" % (n * step, 22 - (v / hi) * 20)
+                       for n, v in enumerate(vals))
+        out[key] = (pts, vals[-1])
+    return out
+
+
+def _spark(sm: dict, key: str) -> str:
+    """迷你趋势线；没有对应序列就给空串，卡片只显示当前值。"""
+    if not key or key not in sm:
+        return ""
+    return (f'<svg width="64" height="18" viewBox="0 0 86 24" aria-hidden="true">'
+            f'<polyline fill="none" stroke="currentColor" stroke-width="1.4" '
+            f'points="{sm[key][0]}"/></svg>')
+
+
+def _trend(payload: dict) -> str:
+    """趋势已并入 _bento 的 KPI 卡（值与趋势合一），这里不再单独立块。
+
+    原来底部这块与顶部 KPI 卡同名重复（未收尾／停滞／待发货各出现两次）。
+    保留本函数是为了调用方不用改。
+    """
+    return ""
 
 
 def _sidebar(cfg: dict, payload: dict, kpi: dict) -> str:
@@ -852,24 +911,36 @@ def _sidebar(cfg: dict, payload: dict, kpi: dict) -> str:
 
 
 def _bento(payload: dict, kpi: dict, cfg: dict) -> str:
-    """上层信息用小卡片（B-01 只准 1×1／2×1，一卡一任务，内容卡 ≤R3 20）。"""
-    cards = [("to_ship", "待发货", kpi["to_ship"], "塔台合并推送", "is-hot"),
-             ("stale", "停滞", kpi["stale"], "超阈值没动", "is-warn"),
-             ("hold", "卡点", kpi["hold"], "等解", "is-warn"),
-             ("flying", "在飞", kpi["in_flight"], "有活证据", "")]
-    out = [f'<div class="card b1 {cls}" data-stage="{key}" role="button" tabindex="0">'
-           f'<p class="lab"><i aria-hidden="true"></i>{_esc(lab)}</p>'
-           f'<div class="num">{n}</div><div class="sub">{_esc(sub)}</div></div>'
-           for key, lab, n, sub, cls in cards]
+    """上层信息用小卡片（B-01 只准 1×1／2×1，一卡一任务，内容卡 ≤R3 20）。
+
+    值与趋势合一：迷你折线并入对应卡片，不再单独摆一块——
+    否则「未收尾／停滞／待发货」会在页面上各出现两次。
+    """
+    sm = _spark_map(payload)
+    out = ['<div class="card b1"><p class="lab"><i aria-hidden="true"></i>未收尾</p>'
+           f'<div class="num" title="近 24 轮未收尾趋势">{kpi["open"]}{_spark(sm, "open")}</div>'
+           f'<div class="sub">有票面 {kpi["open_with_face"]} · '
+           f'无票面 {kpi["open_no_face"]}</div></div>']
+    for key, lab, sub, cls, sk in (
+            ("to_ship", "待发货", "塔台合并推送", "is-hot", "to_ship"),
+            ("stale", "停滞", "超阈值没动", "is-warn", "stale"),
+            ("hold", "卡点", "等解", "is-warn", ""),
+            ("flying", "在飞", "有活证据", "", "")):
+        n = kpi["in_flight"] if key == "flying" else kpi[key]
+        tip = f' title="近 24 轮{lab}趋势"' if sk else ""
+        out.append(f'<div class="card b1 {cls}" data-stage="{key}" role="button" tabindex="0">'
+                   f'<p class="lab"><i aria-hidden="true"></i>{_esc(lab)}</p>'
+                   f'<div class="num"{tip}>{n}{_spark(sm, sk)}</div>'
+                   f'<div class="sub">{_esc(sub)}</div></div>')
     sched = payload.get("schedules") or []
     day = max((s.get("table_date") or "") for s in sched) if sched else ""
-    out.append('<div class="card b2 dir"><p class="lab"><i aria-hidden="true"></i>下一轮方向</p>'
-               f"<p>{_esc(payload['direction'] or '暂无方向句')}</p></div>")
-    out.append('<div class="card b2"><p class="lab"><i aria-hidden="true"></i>今日排班</p>'
+    out.append('<div class="card b1"><p class="lab"><i aria-hidden="true"></i>今日排班</p>'
                f'<div class="num">{len(sched)}'
                '<span style="font-size:14px;font-weight:500;color:var(--text-muted)"> '
                '行 · 日表只由塔台写</span></div>'
                f'<div class="sub">{_esc(day or "今天还没有日表")}</div></div>')
+    out.append('<div class="card b2 dir"><p class="lab"><i aria-hidden="true"></i>下一轮方向</p>'
+               f"<p>{_esc(payload['direction'] or '暂无方向句')}</p></div>")
     return f'<div class="bento">{"".join(out)}</div>'
 
 
@@ -901,7 +972,8 @@ def _shift_section(payload: dict, cfg: dict) -> str:
         # 每条车道写自己的日期（各道推进节奏不同），别拿全场最大日期冒充
         day = max((s.get("table_date") or "") for s in rows) if rows else ""
         items = "".join(
-            f'<li><a href="https://github.com/{_esc(cfg.get("repo") or "")}/issues/"'
+            f'<li><a href="https://github.com/{_esc(cfg.get("repo") or "")}/issues/'
+            f'{_esc((r.get("ticket") or "").lstrip("#"))}"'
             f' target="_blank" rel="noreferrer">{_esc(r.get("ticket") or "（无票号）")}</a>'
             f'{_esc(r.get("summary") or "")}'
             + (f'<em>{_esc(_plain(r.get("note"))[:120])}</em>' if r.get("note") else "")
@@ -911,7 +983,7 @@ def _shift_section(payload: dict, cfg: dict) -> str:
                       f"<ol>{items or '<li>今天没有排班</li>'}</ol></div>")
     return ('<details class="sect" id="s-shift" open><summary><h2>塔台排班</h2>'
             '<span class="hint">置顶 · 先看今天谁飞什么 · 日表只由塔台写</span>'
-            '<span class="arw">收起</span></summary>'
+            '<span class="arw" aria-hidden="true">收起</span></summary>'
             f'<div class="sect-body"><div class="shifts">{"".join(blocks)}</div></div></details>')
 
 
@@ -967,7 +1039,7 @@ def _urgent_section(payload: dict, cfg: dict) -> str:
                 + _esc(role_labels.get("ace") or "王牌飞行员") + '</b><span>'
                 + str(total) + ' 张 · 加急</span></div><ol>' + "".join(items) + "</ol></div>")
     return ('<details class="sect urgent" id="s-urgent" open><summary><h2>紧急任务</h2>'
-            + head + '<span class="arw">收起</span></summary>'
+            + head + '<span class="arw" aria-hidden="true">收起</span></summary>'
             '<div class="sect-body">' + body + "</div></details>")
 
 
@@ -1070,7 +1142,7 @@ def _queue_section(payload: dict) -> str:
         detail = "尚无队列（塔台跑过 ship-queue sync 后才有）" if q else "未接 ship-queue 源"
         return ('<details class="sect" id="s-queue"><summary><h2>待发货队列</h2>'
                 f'<span class="hint">{_esc(detail)}</span>'
-                '<span class="arw">展开</span></summary></details>')
+                '<span class="arw" aria-hidden="true">展开</span></summary></details>')
     items = []
     for r in rows:
         held = f'<span class="held">{_esc(r["held"])}</span>' if r.get("held") else ""
@@ -1081,7 +1153,7 @@ def _queue_section(payload: dict) -> str:
                      + '</span>' + held + "</div>")
     return ('<details class="sect" id="s-queue" open><summary><h2>待发货队列</h2>'
             f'<span class="hint">{len(rows)} 张 · 由塔台写，新判词下一轮进队</span>'
-            '<span class="arw">收起</span></summary>'
+            '<span class="arw" aria-hidden="true">收起</span></summary>'
             f'<div class="sect-body">{"".join(items)}</div></details>')
 
 
@@ -1111,8 +1183,9 @@ def _statusbar(sources: dict, runtime: dict | None = None) -> str:
             '<span class="sp"></span><span>flight-info · 只读各源，不写票面与日表</span></div>')
 
 
-JS = """
+JS = r"""
 var STALE=0;
+function RM(){return !!(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches)}
 function $(s,p){return (p||document).querySelector(s)}
 function $$(s,p){return [].slice.call((p||document).querySelectorAll(s))}
 var st={stage:"all",q:"",open:{},view:"board"};
@@ -1143,7 +1216,8 @@ function apply(){
   $("#crumb").textContent=(st.stage==="all"?"":"阶段＝"+st.stage+" · ")
     +(st.q?"搜「"+st.q+"」· ":"")+shown+" / "+total+" 张";
   $$(".card[data-stage]").forEach(function(c){
-    c.classList.toggle("on",c.dataset.stage===st.stage)});
+    c.classList.toggle("on",c.dataset.stage===st.stage);
+    if(c.hasAttribute("role"))c.setAttribute("aria-pressed",c.dataset.stage===st.stage?"true":"false");});
   $$("#stages a").forEach(function(a){
     if(a.dataset.stage===st.stage)a.setAttribute("aria-current","page");
     else a.removeAttribute("aria-current")});
@@ -1155,7 +1229,7 @@ function unhash(){(location.hash||"").replace(/^#/,"").split("&").forEach(functi
   var kv=p.split("=");if(kv[0]==="stage")st.stage=decodeURIComponent(kv[1]||"all");
   if(kv[0]==="q")st.q=decodeURIComponent(kv[1]||"");});}
 function jump(){var s=$("#s-board");if(s){s.open=true;
-  s.scrollIntoView({behavior:"smooth",block:"start"});}}
+  s.scrollIntoView({behavior:RM()?"auto":"smooth",block:"start"});}}
 $$("#stages").length&&$("#stages").addEventListener("click",function(e){
   var a=e.target.closest("a[data-stage]");if(!a)return;e.preventDefault();
   st.stage=a.dataset.stage;hash();apply();jump();});
@@ -1165,7 +1239,7 @@ $$(".card[data-stage]").forEach(function(c){
   c.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();go()}});});
 $("#nav").addEventListener("click",function(e){var a=e.target.closest("a[data-sec]");if(!a)return;
   e.preventDefault();var s=document.getElementById(a.dataset.sec);if(!s)return;s.open=true;
-  s.scrollIntoView({behavior:"smooth",block:"start"});
+  s.scrollIntoView({behavior:RM()?"auto":"smooth",block:"start"});
   $$("#nav a").forEach(function(x){x.removeAttribute("aria-current")});
   a.setAttribute("aria-current","page");});
 $("#tbody").addEventListener("click",function(e){var tr=e.target.closest("tr.flight");
@@ -1189,15 +1263,7 @@ if(_lb)_lb.addEventListener("click",function(){setView("list")});
 var _lastMod=0,_watch=null;
 function _startWatch(){
   if(_watch)clearInterval(_watch);
-  _watch=setInterval(function(){
-    if(document.hidden)return;
-    fetch(location.href,{method:"HEAD",cache:"no-store"}).then(function(r){
-      var lm=Date.parse(r.headers.get("last-modified")||"");
-      if(!lm)return;
-      if(_lastMod&&lm>_lastMod){location.reload()}
-      else if(!_lastMod){_lastMod=lm}
-    }).catch(function(){});
-  },5000);
+  _watch=setInterval(function(){_beat()},30000);
 }
 (function initView(){
   var v="board";try{v=localStorage.getItem("fi-view")||"board"}catch(e){}
@@ -1207,15 +1273,19 @@ function _startWatch(){
 $("#tbody").addEventListener("keydown",function(e){var tr=e.target.closest("tr.flight");
   if(!tr)return;if(e.key==="Enter"||e.key===" "){e.preventDefault();toggle(tr.dataset.k);}});
 function toggle(k){var d=document.querySelector('tr.det[data-d="'+k+'"]');if(!d)return;
-  var on=d.classList.toggle("open");d.hidden=!on;st.open[k]=on?1:0;}
+  var on=d.classList.toggle("open");d.hidden=!on;st.open[k]=on?1:0;
+  var tr=document.querySelector('tr.flight[data-k="'+k+'"]');
+  if(tr)tr.setAttribute("aria-expanded",on?"true":"false");}
 $("#expand").addEventListener("click",function(){
   var closed=$$("#tbody tr.det").filter(function(d){return !d.classList.contains("open")});
   var open=closed.length>0;
   $$("#tbody tr.det").forEach(function(d){d.classList.toggle("open",open);
-    if(!open)d.hidden=true;st.open[d.dataset.d]=open?1:0;});
+    if(!open)d.hidden=true;st.open[d.dataset.d]=open?1:0;})
+  $$("#tbody tr.flight").forEach(function(t){t.setAttribute("aria-expanded",open?"true":"false")});
   this.textContent=open?"收起细节":"展开细节";});
 $("#qbtn").addEventListener("click",function(){pal(true)});
 function pal(on){var ov=$("#ov");ov.classList.toggle("open",on);
+  document.body.classList.toggle("ov-open",on);
   if(on){lastFocus=document.activeElement;setTimeout(function(){$("#q").focus()},30);}
   else if(lastFocus&&lastFocus.focus)lastFocus.focus();}
 var lastFocus=null;
@@ -1233,17 +1303,24 @@ $("#refresh").addEventListener("click",function(){
    重建时 write_outputs 会写 generated_at；这里每 60 秒取一次 board.json 的
    generated_at（file:// 下取不到就安静跳过，靠手动刷新）。 */
 var _gen=null;
-setInterval(function(){
+/* 一次调度、两条腿：先问 index.html 的 lastModified（重建必然变）；
+   file:// 下拿不到响应头就退回问 board.json 的 generated_at。 */
+function _beat(){
   if(document.hidden)return;
-  fetch("board.json?_="+Date.now(),{cache:"no-store"}).then(function(r){return r.json()})
-  .then(function(j){
-    var g=j.generated_at||"";
+  fetch(location.href,{method:"HEAD",cache:"no-store"}).then(function(r){
+    var lm=Date.parse(r.headers.get("last-modified")||"");
+    if(lm&&_lastMod&&lm>_lastMod){location.reload();return}
+    if(lm&&!_lastMod){_lastMod=lm}
+    if(!lm)return _genBeat();
+  }).catch(function(){return _genBeat()});}
+function _genBeat(){
+  return fetch("board.json?_="+Date.now(),{cache:"no-store"}).then(function(r){return r.json()})
+  .then(function(j){var g=j.generated_at||"";
     if(_gen===null){_gen=g;return}
-    if(g&&g!==_gen){location.reload()}
-  }).catch(function(){});
-},60000);
+    if(g&&g!==_gen){location.reload()}}).catch(function(){});}
 $("#theme").addEventListener("click",function(){var el=document.documentElement;
-  el.setAttribute("data-theme",el.getAttribute("data-theme")==="dark"?"light":"dark");});
+  var nx=el.getAttribute("data-theme")==="dark"?"light":"dark";
+  el.setAttribute("data-theme",nx);try{localStorage.setItem("fi-theme",nx)}catch(e){}});
 $$("details.sect").forEach(function(s){s.addEventListener("toggle",function(){
   var a=s.querySelector(".arw");if(a)a.textContent=s.open?"收起":"展开";});});
 function tick(){var el=$("#age");if(!el||!el.dataset.ts)return;
@@ -1254,10 +1331,41 @@ document.addEventListener("keydown",function(e){
   if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==="k"){e.preventDefault();pal(true);}
   if(e.key==="Escape"){if($("#ov").classList.contains("open")){pal(false);}
     else if(st.q||st.stage!=="all"){st.q="";st.stage="all";hash();apply();}}});
+
+/* C3：阶段名兜底 + 阶段链点亮。生成器给 queued 行留了空的 .stg，
+   这里按行的 data-stage 补真文本（CSS 生成内容不可被稳定朗读，故走 JS）。 */
+var STG={queued:"排队",ready:"可领",flying:"在飞",review:"审查",to_ship:"待发货",
+hold:"卡点",stale:"停滞",assigned:"已派未动",unresolved:"残留分支",closed:"已收尾"};
+var CHAIN_AT={queued:0,flying:1,review:2,to_ship:3,closed:4,
+stale:1,hold:1,ready:0,assigned:0,unresolved:0};
+function fillStages(){
+  $$("#tbody tr.flight").forEach(function(tr){
+    var s=tr.querySelector(".stg");
+    if(s&&!s.textContent.trim())s.textContent=STG[tr.dataset.stage]||"—";
+    var cs=$$(".chain i",tr),i=CHAIN_AT[tr.dataset.stage];
+    if(cs.length&&i!=null)cs.forEach(function(c,n){c.classList.toggle("on",n<=i)});
+    var ch=tr.querySelector(".chain");
+    if(ch)ch.setAttribute("title","阶段链 排队→在飞→审查→待发货→已收尾；当前＝"+(STG[tr.dataset.stage]||"—"));
+    tr.setAttribute("aria-expanded","false");
+    var dd=document.querySelector('tr.det[data-d="'+tr.dataset.k+'"]');
+    if(dd){var did="det-"+String(tr.dataset.k).replace(/[^0-9A-Za-z_-]/g,"");
+      dd.id=did;tr.setAttribute("aria-controls",did);}
+  });}
 (function init(){
-  if(window.matchMedia&&matchMedia("(prefers-color-scheme:dark)").matches)
-    document.documentElement.setAttribute("data-theme","dark");
-  unhash();apply();tick();setInterval(tick,30000);})();
+  var _t=null;try{_t=localStorage.getItem("fi-theme")}catch(e){}
+  if(!_t&&window.matchMedia&&matchMedia("(prefers-color-scheme:dark)").matches)_t="dark";
+  if(_t)document.documentElement.setAttribute("data-theme",_t);
+
+/* M1：被截断的长判据挂 title，鼠标悬停可读全文（视觉收 3 行，信息不丢）。 */
+$$(".shift li em,.urgent-box li em,.ttl .why,.kcard .kw").forEach(function(e){
+  if(!e.title)e.title=e.textContent.trim();});
+  unhash();fillStages();apply();tick();setInterval(tick,30000);})();
+
+/* P4：看板列是 section 却没有名字；这里按列头补 aria-label。 */
+$$("#board .col").forEach(function(c){
+  if(c.getAttribute("aria-label"))return;
+  var h=c.querySelector(".colhead");
+  if(h)c.setAttribute("aria-label",(h.textContent||"").trim()+" 看板列");});
 """
 
 
@@ -1281,6 +1389,7 @@ def render_html(payload: dict, cfg: dict) -> str:
 <meta name="color-scheme" content="light dark">
 <title>{_esc(payload['title'])}</title>
 <style>{CSS}</style></head><body>
+<a class="skip" href="#s-board">跳到航班表</a>
 <div class="shell">
 {_sidebar(cfg, payload, kpi)}
 <main class="main"><div class="inner">
@@ -1313,16 +1422,16 @@ def render_html(payload: dict, cfg: dict) -> str:
   {_shift_section(payload, cfg)}
   {_queue_section(payload)}
   <details class="sect" id="s-board" open>
-    <summary><h2>{_esc(lb['flights'])}</h2><span class="hint" id="crumb">{len(face)} 张未收尾 · 看板按阶段分列</span>
-      <span class="arw">收起</span></summary>
+    <summary><h2>{_esc(lb['flights'])}</h2><span class="hint" id="crumb" aria-live="polite">{len(face)} 张未收尾 · 看板按阶段分列</span>
+      <span class="arw" aria-hidden="true">收起</span></summary>
     <div class="sect-body">
       <div id="boardView">{_kanban(payload, cfg)}</div>
       <div id="listView" hidden>
       <table><thead><tr>
-        <th class="fixed" style="width:132px">{_esc(lb['ticket'])} / 里程碑</th>
-        <th class="fixed">{_esc(lb['content'])} · 徽章 · 判据</th>
-        <th class="fixed" style="width:152px">{_esc(lb['stage'])} / {_esc(lb['owner'])}</th>
-        <th class="fixed" style="width:76px">距今</th>
+        <th class="fixed" scope="col" style="width:132px">{_esc(lb['ticket'])} / 里程碑</th>
+        <th class="fixed" scope="col">{_esc(lb['content'])} · 徽章 · 判据</th>
+        <th class="fixed" scope="col" style="width:152px">{_esc(lb['stage'])} / {_esc(lb['owner'])}</th>
+        <th class="fixed" scope="col" style="width:76px">距今</th>
       </tr></thead><tbody id="tbody">
         {_flight_rows(payload, cfg)}
       </tbody></table>
@@ -1332,20 +1441,20 @@ def render_html(payload: dict, cfg: dict) -> str:
   </details>
   <details class="sect" id="s-mile" open>
     <summary><h2>里程碑进度</h2><span class="hint">已收尾 ÷ 全部（全量分母）</span>
-      <span class="arw">收起</span></summary>
+      <span class="arw" aria-hidden="true">收起</span></summary>
     <div class="sect-body">{_milestone_grid(payload.get("milestones") or [])}</div>
   </details>
   <details class="sect" id="s-hand">
     <summary><h2>交接日报</h2><span class="hint">索引 · 点开看全文</span>
-      <span class="arw">展开</span></summary>
+      <span class="arw" aria-hidden="true">展开</span></summary>
     <div class="sect-body">{_handoff_section(payload.get("handoffs") or [], "../" * depth)}</div>
   </details>
   {_trend(payload)}
 </div></main>
 </div>
 {_statusbar(payload.get("sources") or {}, payload.get("runtime") or {})}
-<div class="ov" id="ov"><div class="pal">
-  <input id="q" placeholder="搜票号 / 标题 / 里程碑 / 掌机 / 判据" aria-label="搜票">
+<div class="ov" id="ov"><div class="pal" role="dialog" aria-modal="true" aria-label="搜索票">
+  <input id="q" type="search" autocomplete="off" placeholder="搜票号 / 标题 / 里程碑 / 掌机 / 判据" aria-label="搜票">
   <p class="tip"><span>Esc 关闭 · 再按一次清筛选</span>
     <span style="margin-left:auto">筛选态写进网址</span></p>
 </div></div>

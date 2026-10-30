@@ -1,0 +1,8 @@
+{
+  "name": "v2",
+  "version": "0.1.0",
+  "description": "V2 执行内核：一个 issue 一个 run，主会话规划与验收，物理子会话执行。入口 /coding。",
+  "author": {
+    "name": "kaikaikid"
+  }
+}

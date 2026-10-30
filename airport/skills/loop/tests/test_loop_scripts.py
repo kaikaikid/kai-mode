@@ -95,12 +95,18 @@ def test_worktree_parse_and_classify(tmp_path):
     root = str(tmp_path)
     text = (
         f"worktree {root}/.worktrees/lane-main\nHEAD abc123\nbranch refs/heads/dev\n\n"
+        f"worktree {root}/.worktrees/lane-main-b\nHEAD bbb222\nbranch refs/heads/dev\n\n"
         f"worktree {root}/.worktrees/lane-ace\nHEAD def456\ndetached\n\n"
         f"worktree {root}/_push\nHEAD 111\ndetached\n"
     )
     items = worktree.parse_porcelain(text)
-    assert len(items) == 3
-    assert items[1]["detached"] is True
-    assert worktree.classify(items[0]["path"], root) == "lane-main"
-    assert worktree.classify(items[1]["path"], root) == "lane-ace"
-    assert worktree.classify(items[2]["path"], root) == "push-station"
+    assert len(items) == 4
+    assert items[2]["detached"] is True
+    # 旧槽 lane-main 视为 -a；正常车道第二槽是 -b；王牌仍一棵 lane-ace
+    assert worktree.classify(items[0]["path"], root) == "lane-main-a"
+    assert worktree.classify(items[1]["path"], root) == "lane-main-b"
+    assert worktree.classify(items[2]["path"], root) == "lane-ace"
+    assert worktree.classify(items[3]["path"], root) == "push-station"
+    assert worktree.is_legacy(items[0]["path"], root) is True
+    assert worktree.is_legacy(items[1]["path"], root) is False
+    assert Path(worktree.slot_path(root, "main", "b")).name == "lane-main-b"
