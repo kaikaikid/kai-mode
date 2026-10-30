@@ -38,7 +38,7 @@ window.KAI_SKILLS = [
     "oneLine": "机长每张票的固定流程（施工→审查→待发货），不是口令。",
     "trigger": "随 /pilot、/copilot、/second-officer、/ace 自动带入",
     "command": "",
-    "version": "6.3.0"
+    "version": "6.4.0"
   },
   {
     "group": "机场体系",
@@ -48,7 +48,7 @@ window.KAI_SKILLS = [
     "oneLine": "机长：带施工和审查，滚动跑完自己的日表。",
     "trigger": "/pilot；说「机长」",
     "command": "/pilot",
-    "version": "3.4.0"
+    "version": "3.5.0"
   },
   {
     "group": "机场体系",
@@ -208,7 +208,7 @@ window.KAI_SKILLS = [
     "oneLine": "看板：把票、日表、交接和 Issue 汇总成一页。",
     "trigger": "/航班信息；说「看现在在飞什么」",
     "command": "/refresh",
-    "version": "1.5.0"
+    "version": "1.5.1"
   },
   {
     "group": "支持能力",

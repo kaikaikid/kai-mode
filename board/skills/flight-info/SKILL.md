@@ -15,8 +15,8 @@ description: >
   刷新靠 git 钩子打脏标记 ＋ 30 分钟脚本定时任务（`--max-age` 兜底 GitHub 侧更新）＋ 页面自刷新，
   零 token、跨 agent；任一源失败只降级点名，不整页崩。
   触发：/航班信息、刷新航班信息板、看现在在飞什么、给这个仓装一块板。
-version: 1.5.0
-updated: 2026-10-27
+version: 1.5.1
+updated: 2026-10-30
 allowed-tools: Bash(python:*) Bash(git:*) Read Write
 compatibility: Requires python3 (stdlib only), git
 metadata:

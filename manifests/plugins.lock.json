@@ -3,24 +3,24 @@
   "_note": "版本钉死：由 scripts/plugin-check.py --bump 生成，不手改。digest 是插件安装面的内容摘要。",
   "plugins": {
     "airport": {
-      "version": "3.4.0",
-      "digest": "0bf08f006eeaab5f0047b16e0145cc881963e39d5761a3aa27be1ba370e781bd",
+      "version": "3.5.0",
+      "digest": "467a6e3c97d50d6e29d0f12d57739c34468a9af3b37c2f51355a21d3a7b0118f",
       "skills": {
         "ace": "1.4.0",
         "copilot": "3.1.0",
         "ground-crew": "1.6.0",
-        "loop": "6.3.0",
-        "pilot": "3.4.0",
+        "loop": "6.4.0",
+        "pilot": "3.5.0",
         "pk": "0.1.0",
         "second-officer": "1.0.0",
         "tower": "2.4.0"
       }
     },
     "board": {
-      "version": "1.2.0",
-      "digest": "091ecd004c13c3af16b9a03fcfcaa4a9af824b932e6f7e32d6037c1bb1e57f06",
+      "version": "1.2.1",
+      "digest": "3878e4c17a365b441279baab5fb8b2e724b16c212343cfbe87c7cf8f0dcb45bb",
       "skills": {
-        "flight-info": "1.5.0"
+        "flight-info": "1.5.1"
       }
     },
     "core": {

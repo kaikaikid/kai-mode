@@ -681,13 +681,17 @@ class TestHistory(unittest.TestCase):
             self.assertEqual([r["run_id"] for r in render.read_trend(d)], ["r1", "r2"])
 
     def test_trend_needs_two_rounds_to_draw(self):
-        self.assertEqual(render._trend({"trend": []}), "")
+        self.assertEqual(render._spark_map({"trend": []}), {})
         one = [{"run_id": "a", "kpi": {"open": 3}}]
-        self.assertEqual(render._trend({"trend": one}), "")
+        self.assertEqual(render._spark_map({"trend": one}), {})
         two = one + [{"run_id": "b", "kpi": {"open": 2}}]
-        html = render._trend({"trend": two})
+        sm = render._spark_map({"trend": two})
+        self.assertIn("open", sm)
+        html = render._spark(sm, "open")
         self.assertIn("<svg", html)
-        self.assertIn("未收尾", html)
+        self.assertIn("polyline", html)
+        # 趋势已并入 _bento 的 KPI 卡；_trend 保留为兼容空壳
+        self.assertEqual(render._trend({"trend": two}), "")
 
     def test_missing_history_is_silent(self):
         self.assertEqual(render.read_trend(None), [])

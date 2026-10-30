@@ -4,8 +4,10 @@
 
 用法：
   python worktree.py list [--root <repo>] [--json]
-  python worktree.py status --lane main|deputy|second|ace [--root <repo>] [--json]
+  python worktree.py status --lane main|deputy|second|ace [--slot a|b] [--root <repo>] [--json]
 
+正常车道两固定槽（`lane-<lane>-a`／`-b`），王牌道仍一棵 `lane-ace`；
+旧槽 `lane-<lane>` 视为 `-a`（迁移前查脏，脏则停手问人）。
 只读：不建树、不切分支、不删树。缺槽位就如实报，不猜。
 退出码：0 槽位存在；1 槽位缺失；2 git 起不来。
 """
@@ -23,6 +25,16 @@ except Exception:
     pass
 
 LANES = ("main", "deputy", "second", "ace")
+SLOT_LANES = ("main", "deputy", "second")
+SLOTS = ("a", "b")
+
+
+def slot_path(root: str, lane: str, slot: str) -> str:
+    return os.path.join(root, ".worktrees", f"lane-{lane}-{slot}")
+
+
+def legacy_path(root: str, lane: str) -> str:
+    return os.path.join(root, ".worktrees", f"lane-{lane}")
 
 
 def git(root: str, *args: str):
@@ -68,13 +80,23 @@ def parse_porcelain(text: str) -> list:
 
 def classify(path: str, root: str) -> str:
     norm = os.path.normcase(os.path.abspath(path))
-    for lane in LANES:
-        if norm == os.path.normcase(os.path.join(root, ".worktrees", f"lane-{lane}")):
-            return f"lane-{lane}"
+    for lane in SLOT_LANES:
+        for slot in SLOTS:
+            if norm == os.path.normcase(slot_path(root, lane, slot)):
+                return f"lane-{lane}-{slot}"
+        if norm == os.path.normcase(legacy_path(root, lane)):
+            return f"lane-{lane}-a"
+    if norm == os.path.normcase(legacy_path(root, "ace")):
+        return "lane-ace"
     base = os.path.basename(os.path.normpath(path)).lower()
     if base == "_push" or base.startswith("kai-push-station") or base.startswith("tower-push"):
         return "push-station"
     return "other"
+
+
+def is_legacy(path: str, root: str) -> bool:
+    norm = os.path.normcase(os.path.abspath(path))
+    return any(norm == os.path.normcase(legacy_path(root, lane)) for lane in SLOT_LANES)
 
 
 def dirty(path: str) -> tuple:
@@ -85,23 +107,42 @@ def dirty(path: str) -> tuple:
     return lines, None
 
 
-def status(root: str, lane: str) -> dict:
+def status(root: str, lane: str, slot: str = "a") -> dict:
     out, err = git(root, "worktree", "list", "--porcelain")
     if err:
         raise SystemExit(f"git worktree list 失败：{err}")
-    slot = os.path.join(root, ".worktrees", f"lane-{lane}")
+    if lane == "ace":
+        want = legacy_path(root, lane)
+        candidates = [want]
+        canonical = "lane-ace"
+    else:
+        want = slot_path(root, lane, slot)
+        candidates = [want]
+        if slot == "a":
+            candidates.append(legacy_path(root, lane))
+        canonical = f"lane-{lane}-{slot}"
     entry = None
+    found_path = want
     for item in parse_porcelain(out):
-        if os.path.normcase(os.path.abspath(item.get("path", ""))) == os.path.normcase(slot):
-            entry = item
+        ip = os.path.normcase(os.path.abspath(item.get("path", "")))
+        for cand in candidates:
+            if ip == os.path.normcase(cand):
+                entry = item
+                found_path = cand
+                break
+        if entry:
             break
     if not entry:
-        return {"lane": lane, "slot": slot, "exists": False, "ok": False,
-                "hint": f"git worktree add {os.path.join('.worktrees', f'lane-{lane}')} dev"}
-    files, derr = dirty(slot)
+        rel = os.path.join(".worktrees", canonical)
+        return {"lane": lane, "slot": canonical, "path": want,
+                "exists": False, "ok": False,
+                "hint": f"git worktree add {rel} dev"}
+    files, derr = dirty(found_path)
     return {
         "lane": lane,
-        "slot": slot,
+        "slot": canonical,
+        "path": found_path,
+        "legacy": lane != "ace" and found_path == legacy_path(root, lane),
         "exists": True,
         "ok": files is not None and not files,
         "branch": (entry.get("branch") or "").replace("refs/heads/", "") or None,
@@ -122,6 +163,7 @@ def main(argv=None) -> int:
     p.set_defaults(fn="list")
     p = sub.add_parser("status")
     p.add_argument("--lane", choices=LANES, required=True)
+    p.add_argument("--slot", choices=SLOTS, default="a")
     p.add_argument("--root")
     p.add_argument("--json", action="store_true")
     p.set_defaults(fn="status")
@@ -137,6 +179,7 @@ def main(argv=None) -> int:
         for item in parse_porcelain(out):
             files, _ = dirty(item["path"]) if os.path.isdir(item["path"]) else (None, None)
             items.append({"path": item["path"], "slot": classify(item["path"], root),
+                          "legacy": is_legacy(item["path"], root),
                           "branch": (item.get("branch") or "").replace("refs/heads/", "") or None,
                           "head": item.get("HEAD"), "detached": bool(item.get("detached")),
                           "dirty": bool(files), "files": len(files or [])})
@@ -144,17 +187,19 @@ def main(argv=None) -> int:
             print(json.dumps({"root": root, "worktrees": items}, ensure_ascii=False, indent=2))
         else:
             for it in items:
-                print(f"{it['slot']:<14} {it['branch'] or '(detached)':<28} "
+                name = it["slot"] + (" (legacy)" if it.get("legacy") else "")
+                print(f"{name:<22} {it['branch'] or '(detached)':<28} "
                       f"{'脏' if it['dirty'] else '净'} {it['path']}")
         return 0
 
-    info = status(root, a.lane)
+    info = status(root, a.lane, a.slot)
     if a.json:
         print(json.dumps(info, ensure_ascii=False, indent=2))
     elif not info["exists"]:
-        print(f"{info['lane']}：槽位缺失 {info['slot']}；{info['hint']}")
+        print(f"{info['slot']}：槽位缺失 {info['path']}；{info['hint']}")
     else:
-        print(f"{info['lane']}：{info['branch'] or '(detached)'} @ {str(info['head'])[:10]} "
+        legacy = " (legacy)" if info.get("legacy") else ""
+        print(f"{info['slot']}{legacy}：{info['branch'] or '(detached)'} @ {str(info['head'])[:10]} "
               f"{'脏 ' + str(len(info['files'])) + ' 件' if info['dirty'] else '净'}")
     return 0 if info["exists"] else 1
 

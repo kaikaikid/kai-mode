@@ -15,10 +15,12 @@ def test_card_builder_and_reviewer(tmp_path, capsys):
             "deny": ["src/b.py"], "verify": ["pytest -q"]}
     p = tmp_path / "t.json"
     p.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
-    assert card.main(["--ticket-json", str(p), "--lane", "main"]) == 0
+    assert card.main(["--ticket-json", str(p), "--lane", "main", "--slot", "b"]) == 0
     out = capsys.readouterr().out
     assert "票号：12" in out and "甲" in out and "pytest -q" in out
-    assert card.main(["--ticket-json", str(p), "--role", "reviewer", "--json"]) == 0
+    assert "槽位：b" in out
+    assert card.main(["--ticket-json", str(p), "--role", "reviewer", "--slot", "a", "--json"]) == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["role"] == "reviewer"
+    assert payload["slot"] == "a"
     assert "只读" in payload["instruction"]

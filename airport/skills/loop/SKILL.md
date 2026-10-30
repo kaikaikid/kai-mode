@@ -7,8 +7,8 @@ sources: []
 description: >
   机长 / 副机长 / 二副 / 王牌飞行员共用的单票闭环（不是用户入口）。判据以协议正本为准。
   触发：由 `/pilot`、`/copilot`、`/second-officer`、`/ace` 自动带入；「loop」不是口令。
-version: 6.3.0
-updated: 2026-10-27
+version: 6.4.0
+updated: 2026-10-30
 allowed-tools: Read Grep Bash(python:*)
 compatibility: Host-agnostic
 dependencies:
@@ -47,18 +47,18 @@ dependencies:
 | `scripts/ticket.py receipt --file <回执>` | 验回执字段；行数上限可按协议传 `--max-lines` |
 | `scripts/ticket.py pointer --file <指针>` | 验续跑指针四件 |
 | `scripts/protocol.py --section 三` | 只打印协议那一节，不整份加载 |
-| `scripts/worktree.py status --lane main` | 车道槽、分支、HEAD、脏否（只读） |
+| `scripts/worktree.py status --lane main [--slot a\|b]` | 槽位、分支、HEAD、脏否（只读） |
 
 ## 一张票
 
-开工评论 → 施工（车道工作树里换分支）→ 施工完成评论 → 新上下文审查
+开工评论 → 施工（槽位工作树里换票分支）→ 施工完成评论 → 新上下文审查
 → `fail` 按协议重试再审 → `pass` 后按判词格式写「待发货」（首行 `verdict=`、第二行 `ac=<通过数>/<总数>`；
 格式与窄读命令见兄弟技能 `pilot`）。
 
 **环节顺序不可反（协议 §二），轮次可并**：轻量票可把相邻环节并进同一轮（如施工完成评论并入审查派发），
 环节不可省略；并了哪几步在票面留一句。
 
-`pass` 写进待发货＝这票在你这儿**完工**：当场释放执行名额，接着补日表的下一张。合并、push、关票归塔台，
+`pass` 写进待发货＝这票在你这儿**完工**：当场释放执行名额与槽位，接着补日表的下一张。合并、push、关票归塔台，
 它按情况分批——不等收货、不拿「批收尾」当停点（停点只认协议 §七）。
 
 ## 收工

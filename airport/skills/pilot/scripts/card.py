@@ -47,6 +47,7 @@ def build(data: dict, a) -> dict:
         "ticket": data.get("number"),
         "role": role,
         "lane": a.lane,
+        "slot": a.slot,
         "branch": a.branch,
         "worktree": a.worktree,
         "ac": data.get("ac") or [],
@@ -59,7 +60,7 @@ def build(data: dict, a) -> dict:
     if role == "reviewer":
         card["instruction"] = "只读；逐条对 AC 与机检；不得改代码、不得复用施工上下文。"
     else:
-        card["instruction"] = "独立车道工作树里换票分支；增量提交；不 push、不合并。"
+        card["instruction"] = "独立槽位工作树里换票分支；增量提交；不 push、不合并。"
     return card
 
 
@@ -69,6 +70,8 @@ def render(card: dict) -> str:
         f"角色：{card['role']}",
         f"车道：{card['lane']}",
     ]
+    if card.get("slot"):
+        out.append(f"槽位：{card['slot']}")
     if card.get("branch"):
         out.append(f"分支：{card['branch']}")
     if card.get("worktree"):
@@ -94,6 +97,7 @@ def main(argv=None) -> int:
     ap.add_argument("--ticket-json", required=True)
     ap.add_argument("--role", choices=("builder", "reviewer"), default="builder")
     ap.add_argument("--lane", choices=("main", "deputy", "second", "ace"), default="main")
+    ap.add_argument("--slot", choices=("a", "b"))
     ap.add_argument("--branch")
     ap.add_argument("--worktree")
     ap.add_argument("--method")
