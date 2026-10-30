@@ -25,11 +25,12 @@
     },
     "core": {
       "version": "1.2.0",
-      "digest": "228d87ceb8e2cc97a6eb7664053bea67247c18b353207ea08a5c9b7f2b67c92e",
+      "digest": "a3fb08fde55816bd93192bbffda32287b0831920349b7aa98f1d6e0fc9ab43b6",
       "skills": {
         "harness-audit": "0.2.0",
         "kai-handoff": "0.3.5",
         "kai-mode": "3.1.1",
+        "kai-mods": "0.1.0",
         "principle-ask-one-question-at-a-time": "0.1.1",
         "principle-ceremony-collapses-with-scale": "0.1.2",
         "principle-measure-dont-ask": "0.1.1",
