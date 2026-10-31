@@ -115,6 +115,34 @@ def main() -> None:
         out = run(repo, "status", "--html")
         assert Path(out).exists(), out
         checks.append("board html")
+
+        # 8. 跃迁模式：自动批门 + 门卫审查 + 自动发货
+        for r in (rid, rid2, rid3, urgent, ra):
+            if (repo / ".coding" / "runs" / r / "state.json").exists():
+                run(repo, "stop", r)
+        git(repo, "checkout", "--", "a.txt")
+        rid4 = run(repo, "jump", "jump path", "--base", "main").splitlines()[0]
+        plan(repo, rid4, [{"id": "t1", "title": "a", "brief": "x", "tier": "light",
+                           "touchset": ["j.txt"], "ac": ["ok"]}])
+        run(repo, "spawn", rid4, "t1", "--adapter", "mock")
+        time.sleep(0.2)
+        run(repo, "report", rid4, "t1")
+        run(repo, "review", rid4, "t1", "--adapter", "mock", "--apply")
+        state = json.loads((repo / ".coding" / "runs" / rid4 / "state.json").read_text(encoding="utf-8"))
+        assert state["phase"] == "done", state
+        assert state["gates"]["g2"] == "approved", state
+        checks.append("jump autopilot")
+
+        # 9. drive：脚本无人值守跑完整条流水线
+        rid5 = run(repo, "jump", "drive path", "--base", "main").splitlines()[0]
+        plan(repo, rid5, [
+            {"id": "t1", "title": "a", "brief": "x", "tier": "light", "touchset": ["d1.txt"], "ac": ["ok"]},
+            {"id": "t2", "title": "b", "brief": "y", "tier": "light", "deps": ["t1"], "touchset": ["d2.txt"], "ac": ["ok"]},
+        ])
+        run(repo, "drive", "--run", rid5, "--adapter", "mock")
+        state = json.loads((repo / ".coding" / "runs" / rid5 / "state.json").read_text(encoding="utf-8"))
+        assert state["phase"] == "done", state
+        checks.append("drive")
     finally:
         import shutil
         shutil.rmtree(repo, ignore_errors=True)

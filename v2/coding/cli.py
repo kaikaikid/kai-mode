@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -49,11 +50,69 @@ def _gate_ok(s: dict[str, Any], g: str) -> bool:
     return s.get("gates", {}).get(g) in {"approved", "skipped"}
 
 
-def advance(s: dict[str, Any]) -> None:
+def _coding_config(root: "Path") -> dict[str, Any]:
+    p = st.coding_dir(root) / "config.json"
+    if not p.exists():
+        return {}
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+ISSUE_RE = re.compile(r"https?://github\.com/[\w.-]+/[\w.-]+/issues/(\d+)|(?<![\w#])#(\d+)")
+
+
+def _issue_number(text: str) -> str | None:
+    m = ISSUE_RE.search(text or "")
+    if not m:
+        return None
+    return m.group(1) or m.group(2)
+
+
+def _close_issue(s: dict[str, Any], root: "Path") -> tuple[bool, str]:
+    """从 issue 文本自动识别票号并关票；识别不到就跳过，不阻塞发货。"""
+    num = _issue_number(s.get("issue", ""))
+    if not num:
+        return False, "no issue reference"
+    try:
+        import subprocess as _sp
+        r = _sp.run(["gh", "issue", "close", num, "--comment",
+                     f"Shipped by V2 run {s.get('run_id')} (autopilot)."],
+                    cwd=str(root), capture_output=True, text=True, encoding="utf-8", errors="replace",
+                    timeout=30)
+        if r.returncode != 0:
+            return False, (r.stderr or r.stdout).strip()[:300]
+        return True, f"closed #{num}"
+    except Exception as e:
+        return False, str(e)
+
+
+def _ship(s: dict[str, Any], root: "Path") -> tuple[bool, str]:
+    """发货：merge → 收尾门 → push → 关票。失败返回 (False, 原因)。"""
+    cfg = _coding_config(root)
+    ok, msg = worktree.ship(s["run_id"], s["base_branch"], root, finish_cmd=cfg.get("finish_cmd"))
+    ship = {"ok": ok, "message": msg}
+    if ok:
+        closed, cm = _close_issue(s, root)
+        ship["issue_closed"] = closed
+        ship["issue_message"] = cm
+    s["ship"] = ship
+    return ok, msg
+
+
+def advance(s: dict[str, Any], root: "Path | None" = None) -> None:
     """按设计里的 phase 推进条件推进；只做确定性判断。循环到稳定。"""
     # 没有 UI 任务时 G1 自动跳过（G1 只在碰可见 UI 时才有意义）
     if s.get("tasks") and not _has_ui(s) and s.get("gates", {}).get("g1") == "pending":
         s["gates"]["g1"] = "skipped"
+    # 跃迁模式（autopilot）：G0/G1 由门卫自批，不等人
+    if s.get("autopilot"):
+        if s.get("gates", {}).get("g0") == "pending":
+            s["gates"]["g0"] = "approved"
+        if s.get("gates", {}).get("g1") == "pending":
+            s["gates"]["g1"] = "approved" if _has_ui(s) else "skipped"
+        # G2 发货门：门卫代理自动批（默认开，跃迁模式专属）— 在 phase 推进循环之后执行
 
     for _ in range(6):
         phase = s.get("phase")
@@ -78,6 +137,28 @@ def advance(s: dict[str, Any]) -> None:
 
         if s.get("phase") == before:
             break
+
+    # 任务图里已有 blocked/failed，且没有可继续的活 → 整 run 转 blocked，别停在 reviewing/delegating 假象
+    tasks = s.get("tasks", [])
+    if (tasks and s.get("phase") not in {"blocked"} | st.TERMINAL_PHASES
+            and any(t.get("status") in {"blocked", "failed"} for t in tasks)
+            and all(t.get("status") in {"accepted", "abandoned", "blocked", "failed"} for t in tasks)):
+        blocked_ids = [t["id"] for t in tasks if t.get("status") in {"blocked", "failed"}]
+        s["phase"] = "blocked"
+        s["resume"]["next_action"] = "task(s) blocked: " + ", ".join(blocked_ids)
+
+    # 跃迁模式：phase 推进到 closing 后，门卫代理自动批 G2 → 发货（merge → 收尾门 → push → 关票）
+    if s.get("autopilot") and s.get("phase") == "closing" and s.get("gates", {}).get("g2") == "pending":
+        if root is not None:
+            ok, msg = _ship(s, root)
+            if ok:
+                s["gates"]["g2"] = "approved"
+                s["phase"] = "done"
+                s["resume"]["next_action"] = "done"
+                worktree.remove(s["run_id"], root)
+            else:
+                s["phase"] = "blocked"
+                s["resume"]["next_action"] = f"ship failed: {msg}"
 
 
 def _task(s: dict[str, Any], tid: str) -> dict[str, Any]:
@@ -110,6 +191,7 @@ def cmd_run(args: argparse.Namespace) -> None:
             "branch": worktree.branch_name(rid),
             "worktree": str(worktree.worktree_path(rid, root)),
             "depends_on_runs": args.depends or [],
+            "autopilot": bool(getattr(args, "autopilot", False)),
             "budget": {"max_tokens": args.max_tokens, "used_tokens": 0},
             "gates": {"g0": "pending", "g1": "pending", "g2": "pending"},
             "tasks": [],
@@ -126,6 +208,35 @@ def cmd_run(args: argparse.Namespace) -> None:
             s["resume"]["next_action"] = f"waiting: {why}"
         _save(s)
         print(rid)
+        return rid
+
+
+def cmd_pri_jump(args: argparse.Namespace) -> None:
+    """加急跃迁：走加急预留槽。"""
+    args.urgent = True
+    args.autopilot = True
+    cmd_jump(args)
+
+
+def cmd_jump(args: argparse.Namespace) -> None:
+    """跃迁模式：全自动挡。autopilot=True，施工+发货门由门卫代理自批，只在红线/异常时停。"""
+    # 复用 cmd_run 的建 run 逻辑，但强制 autopilot
+    args.autopilot = True
+    args.urgent = getattr(args, "urgent", False)
+    if getattr(args, "base", None) is None:
+        # 默认推到 dev；dev 不存在才退回当前分支
+        _r = worktree._git("rev-parse", "--verify", "dev", cwd=_root(), check=False)
+        args.base = "dev" if _r.returncode == 0 else None
+    args.max_tokens = getattr(args, "max_tokens", 200000)
+    args.depends = getattr(args, "depends", [])
+    rid = cmd_run(args)
+    with st.lock(_root()):
+        s = st.load(rid, _root())
+        s["autopilot"] = True
+        st.save(s, _root())
+    if getattr(args, "tasks", None):
+        cmd_plan(argparse.Namespace(run_id=rid, file=args.tasks))
+    print(f"jump run {rid} autopilot=True")
 
 
 def cmd_adopt(args: argparse.Namespace) -> None:
@@ -146,6 +257,7 @@ def cmd_adopt(args: argparse.Namespace) -> None:
             "branch": worktree.branch_name(rid),
             "worktree": str(root),  # 接管当前工作区，不建树
             "depends_on_runs": [],
+            "autopilot": False,
             "budget": {"max_tokens": args.max_tokens, "used_tokens": 0},
             "gates": {"g0": "skipped", "g1": "pending", "g2": "pending"},
             "tasks": [],
@@ -162,7 +274,7 @@ def cmd_plan(args: argparse.Namespace) -> None:
     root = _root()
     with st.lock(root):
         s = st.load(args.run_id, root)
-        if s["phase"] not in {"planning", "design"}:
+        if s["phase"] not in {"planning", "design", "queued"}:
             _err(f"cannot plan in phase {s['phase']}")
         raw = Path(args.file).read_text(encoding="utf-8") if args.file else sys.stdin.read()
         data = json.loads(raw)
@@ -185,7 +297,7 @@ def cmd_plan(args: argparse.Namespace) -> None:
         s["tasks"] = norm
         s["touchset"] = sorted({p for t in norm for p in t.get("touchset", [])})
         s["resume"]["next_action"] = "gate g0"
-        advance(s)
+        advance(s, root)
         _save(s)
         print(f"planned {len(norm)} task(s)")
 
@@ -206,20 +318,21 @@ def cmd_gate(args: argparse.Namespace) -> None:
             s["gates"][g] = "skipped"
 
         if g == "g2" and args.decision == "approve":
-            ok, msg = worktree.merge(s["run_id"], s["base_branch"], root)
+            ok, msg = _ship(s, root)
             if not ok:
                 s["phase"] = "blocked"
-                s["resume"]["next_action"] = f"resolve merge conflict: {msg}"
+                s["resume"]["next_action"] = f"ship failed: {msg}"
                 _save(s)
-                _err(f"merge failed, run blocked: {msg}")
+                _err(f"ship failed, run blocked: {msg}")
+            s["gates"]["g2"] = "approved"
             s["phase"] = "done"
             s["resume"]["next_action"] = "done"
             _save(s)
             worktree.remove(s["run_id"], root)
-            print("merged and closed")
+            print(f"shipped: {msg}")
             return
 
-        advance(s)
+        advance(s, root)
         _save(s)
         print(f"{g}={s['gates'][g]} phase={s['phase']}")
 
@@ -240,6 +353,8 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     root = _root()
     with st.lock(root):
         s = st.load(args.run_id, root)
+        if s.get("phase") == "queued":
+            _err("run is queued; wait for a free slot")
         t = _task(s, args.task_id)
         ok, why = scheduler.can_spawn(s, t, root)
         if not ok:
@@ -275,6 +390,8 @@ def _build_brief(s: dict[str, Any], t: dict[str, Any]) -> str:
         f"ACCEPTANCE CRITERIA:\n" + "\n".join(f"- {a}" for a in t.get("ac", [])) + "\n\n"
         f"RULES:\n"
         f"- Do only this task. Do not widen scope, refactor neighbours, or invent UI.\n"
+        f"- Work only inside your own worktree. Never run control-plane commands (`coding ...`); "
+        f"only the orchestrator owns the run.\n"
         f"- Never run destructive commands (rm -rf, drop, force push). They are denied.\n"
         f"- Verify before reporting: build, test, or exercise the path; report the command and outcome.\n"
         f"- End your reply with ONE JSON object and nothing after it:\n"
@@ -296,13 +413,28 @@ def cmd_report(args: argparse.Namespace) -> None:
             _err("session record missing")
         sdir = _session_dir(s["run_id"], sid)
         adapter = adapters.get(sess["adapter"])
-        # 进程可能已经结束，报告落盘即可
-        text = adapter.read({"dir": str(sdir)})
-        report = adapters.parse_report(text)
-        report_path = _report_path(s["run_id"], t["id"])
-        report_path.parent.mkdir(parents=True, exist_ok=True)
-        report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+        pid = 0
+        pidf = sdir / "pid"
+        if pidf.exists():
+            try:
+                pid = int(pidf.read_text().strip())
+            except Exception:
+                pid = 0
+    # 等待子会话进程结束放在锁外：长任务不能占住整个仓库的写锁
+    if pid > 0:
+        deadline = time.time() + args.timeout
+        while time.time() < deadline and st._pid_alive(pid):
+            time.sleep(0.5)
+    # 进程可能已经结束，报告落盘即可
+    text = adapter.read({"dir": str(sdir)})
+    report = adapters.parse_report(text)
+    report_path = _report_path(args.run_id, args.task_id)
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
 
+    with st.lock(root):
+        s = st.load(args.run_id, root)
+        t = _task(s, args.task_id)
         # 报告与 diff 对账
         changed = worktree.changed_files(s["run_id"], s["base_branch"], root)
         claimed = report.get("files_changed") or []
@@ -311,12 +443,120 @@ def cmd_report(args: argparse.Namespace) -> None:
         if missing:
             report["result"] = "partial"
             report["notes"] = (report.get("notes", "") + f" [mismatch: {', '.join(missing[:5])}]").strip()
-
-        sess["status"] = "finished"
+        sess = next((x for x in s.get("sessions", []) if x["id"] == t.get("session_id")), None)
+        if sess:
+            sess["status"] = "finished"
         t["status"] = "review"
         s["resume"]["next_action"] = f"review {t['id']}"
         _save(s)
-        print(json.dumps(report, ensure_ascii=False, indent=2))
+    print(json.dumps(report, ensure_ascii=False, indent=2))
+
+
+def _build_review_brief(s: dict[str, Any], t: dict[str, Any]) -> str:
+    root = _root()
+    wt = s.get("worktree") or str(root)
+    mb = worktree._git("merge-base", s["base_branch"], worktree.branch_name(s["run_id"]),
+                       cwd=root, check=False).stdout.strip()
+    diff_cmd = f"git -C {wt} diff {mb}..HEAD" if mb else f"git -C {wt} diff"
+    lines = [
+        "REVIEWER: you are an independent gatekeeper. You did not write this code.",
+        "Read the actual diff, do not trust any report. You must not modify files.",
+        "",
+        f"TASK: {t['title']}",
+        "",
+        t.get("brief", ""),
+        "",
+        "ACCEPTANCE CRITERIA:",
+        *[f"- {a}" for a in t.get("ac", [])],
+        "",
+        "DIFF COMMAND:",
+        f"  {diff_cmd}",
+        "",
+        "CHECK:",
+        "- every AC is actually met by the diff;",
+        "- no files changed outside the declared touchset;",
+        "- no destructive or unrelated changes.",
+        "",
+        "End your reply with ONE JSON object and nothing after it:",
+        '{"verdict":"accept|return","defects":["..."],"reason":"<=100 chars",'
+        '"result":"done","files_changed":[],"verification":[],"open_questions":[]}',
+    ]
+    return chr(10).join(lines) + chr(10)
+
+
+def cmd_review(args: argparse.Namespace) -> None:
+    """门卫子代理：独立上下文只读审查，产出 accept/return 裁决。"""
+    root = _root()
+    with st.lock(root):
+        s = st.load(args.run_id, root)
+        t = _task(s, args.task_id)
+        if t.get("status") != "review":
+            _err(f"task {t['id']} is {t.get('status')}, not review")
+        adapter = adapters.pick(args.adapter)
+        sid = _new_sid()
+        sdir = _session_dir(s["run_id"], sid)
+        brief = _build_review_brief(s, t)
+        cwd = Path(s["worktree"]) if s.get("worktree") else root
+    # 评审子代理在锁外跑，避免一次审查占住整个仓库的写锁
+    handle = adapter.spawn(brief, cwd, sdir, tier="careful", timeout=args.timeout, read_only=True)
+    adapter.wait(handle, args.timeout)
+    text = adapter.read(handle)
+    rep = adapters.parse_report(text)
+    verdict = rep.get("verdict") or ("accept" if rep.get("result") == "done" else None)
+    if verdict not in {"accept", "return"}:
+        # 评审员结论不明确（报告解析失败/无 verdict）：这不是 worker 的错，
+        # 不烧重做轮次；转 blocked 叫醒人——门卫失灵按异常处理，不静默放行。
+        with st.lock(root):
+            s = st.load(args.run_id, root)
+            t = _task(s, args.task_id)
+            t["review"] = {
+                "verdict": "inconclusive",
+                "defects": [],
+                "reason": rep.get("reason", "") or rep.get("notes", "") or "reviewer report unparseable",
+                "session": sid,
+            }
+            t["session_id"] = sid
+            s.setdefault("sessions", []).append({
+                "id": sid, "task_id": t["id"], "adapter": adapter.name,
+                "pid": handle.get("pid"), "started_at": time.time(), "status": "finished",
+                "role": "reviewer",
+            })
+            if args.apply:
+                s["phase"] = "blocked"
+                s["resume"]["next_action"] = f"review inconclusive on {t['id']}: {t['review']['reason']}"
+            _save(s)
+        print(json.dumps(t["review"], ensure_ascii=False, indent=2))
+        return
+    with st.lock(root):
+        s = st.load(args.run_id, root)
+        t = _task(s, args.task_id)
+        t["review"] = {
+            "verdict": verdict,
+            "defects": rep.get("defects", []),
+            "reason": rep.get("reason", "") or rep.get("notes", ""),
+            "session": sid,
+        }
+        t["session_id"] = sid
+        s.setdefault("sessions", []).append({
+            "id": sid, "task_id": t["id"], "adapter": adapter.name,
+            "pid": handle.get("pid"), "started_at": time.time(), "status": "finished",
+            "role": "reviewer",
+        })
+        if args.apply:
+            if verdict == "accept":
+                t["status"] = "accepted"
+                s["resume"]["last_accepted"] = t["id"]
+                s["resume"]["next_action"] = "next"
+            else:
+                t["status"] = "returned"
+                t["attempts"] = int(t.get("attempts", 0)) + 1
+                t["defects"] = "; ".join(rep.get("defects", [])) or rep.get("reason", "")
+                if t["attempts"] >= 3:
+                    t["status"] = "blocked"
+                s["resume"]["next_action"] = f"rework {t['id']}"
+            advance(s, root)
+        _save(s)
+    print(json.dumps(t["review"], ensure_ascii=False, indent=2))
 
 
 def cmd_accept(args: argparse.Namespace) -> None:
@@ -329,7 +569,7 @@ def cmd_accept(args: argparse.Namespace) -> None:
         t["status"] = "accepted"
         s["resume"]["last_accepted"] = t["id"]
         s["resume"]["next_action"] = "next"
-        advance(s)
+        advance(s, root)
         _save(s)
         print(f"accepted {t['id']} phase={s['phase']}")
 
@@ -385,7 +625,7 @@ def cmd_resume(args: argparse.Namespace) -> None:
                 return
             worktree.create(s["run_id"], s["base_branch"], root)
             s["phase"] = "planning"
-        advance(s)
+        advance(s, root)
         _save(s)
         print(json.dumps({"run_id": s["run_id"], "phase": s["phase"],
                           "resume": s["resume"], "gates": s["gates"]}, ensure_ascii=False, indent=2))
@@ -487,6 +727,87 @@ def cmd_doctor(args: argparse.Namespace) -> None:
 # argparse
 
 
+def promote_queued(root: "Path") -> list[str]:
+    """惰性排班：把 queued 的 run 按创建时间依次塞进空槽并推进。"""
+    promoted: list[str] = []
+    queued = sorted(
+        (r for r in st.list_runs(root) if r.get("phase") == "queued"),
+        key=lambda r: r.get("created_at", ""),
+    )
+    for s in queued:
+        ok, _why = scheduler.can_start(s, root)
+        if not ok:
+            continue
+        worktree.create(s["run_id"], s["base_branch"], root)
+        s["phase"] = "planning"
+        s["resume"]["next_action"] = "plan"
+        advance(s, root)
+        st.save(s, root)
+        promoted.append(s["run_id"])
+    return promoted
+
+
+def cmd_drive(args: argparse.Namespace) -> None:
+    """全自动驱动：脚本循环 spawn → report → review → accept，直到所有 run 到终态或 blocked。"""
+    root = _root()
+    for _step in range(args.max_steps):
+        promote_queued(root)
+        ids = [args.run] if args.run else [r["run_id"] for r in st.list_runs(root)]
+        runs = []
+        for rid in ids:
+            try:
+                r = st.load(rid, root)
+            except FileNotFoundError:
+                continue
+            if r.get("phase") not in st.TERMINAL_PHASES:
+                runs.append(r)
+        if not runs:
+            break
+        acted = False
+        for s in runs:
+            rid = s["run_id"]
+            if s.get("phase") in {"blocked", "queued"}:
+                continue
+            if s.get("autopilot") and not s.get("tasks"):
+                with st.lock(root):
+                    s2 = st.load(rid, root)
+                    s2["phase"] = "blocked"
+                    s2["resume"]["next_action"] = "no task graph; plan required"
+                    st.save(s2, root)
+                acted = True
+                continue
+            # 1) 收已经跑完的 worker 报告
+            for t in list(s.get("tasks", [])):
+                if t.get("status") == "running":
+                    cmd_report(argparse.Namespace(run_id=rid, task_id=t["id"], timeout=args.timeout))
+                    acted = True
+                    s = st.load(rid, root)
+            # 2) 门卫子代理审查
+            for t in list(s.get("tasks", [])):
+                if t.get("status") == "review":
+                    cmd_review(argparse.Namespace(run_id=rid, task_id=t["id"],
+                                                   adapter=args.review_adapter or args.adapter,
+                                                   timeout=args.review_timeout, apply=True))
+                    acted = True
+                    s = st.load(rid, root)
+            # 3) 派 ready 任务
+            for t in scheduler.ready_tasks(s, root):
+                ok, _why = scheduler.can_spawn(s, t, root)
+                if not ok:
+                    break
+                cmd_spawn(argparse.Namespace(run_id=rid, task_id=t["id"], adapter=args.adapter,
+                                             timeout=args.timeout, retry=False))
+                acted = True
+                s = st.load(rid, root)
+        if not acted:
+            break
+    summary = []
+    for r in st.list_runs(root):
+        summary.append({"run": r["run_id"], "phase": r.get("phase"),
+                        "issue": r.get("issue"), "ship": r.get("ship")})
+    print(json.dumps(summary, ensure_ascii=False, indent=2))
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="coding", description="V2 execution kernel control plane")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -530,7 +851,16 @@ def build_parser() -> argparse.ArgumentParser:
     rp = sub.add_parser("report", help="collect a worker report")
     rp.add_argument("run_id")
     rp.add_argument("task_id")
+    rp.add_argument("--timeout", type=int, default=1800)
     rp.set_defaults(func=cmd_report)
+
+    rv = sub.add_parser("review", help="independent gatekeeper review (read-only subagent)")
+    rv.add_argument("run_id")
+    rv.add_argument("task_id")
+    rv.add_argument("--adapter")
+    rv.add_argument("--timeout", type=int, default=900)
+    rv.add_argument("--apply", action="store_true", help="apply verdict to task status")
+    rv.set_defaults(func=cmd_review)
 
     ac = sub.add_parser("accept", help="accept a task")
     ac.add_argument("run_id")
@@ -567,6 +897,30 @@ def build_parser() -> argparse.ArgumentParser:
     d = sub.add_parser("doctor", help="reconcile state with git")
     d.set_defaults(func=cmd_doctor)
 
+    jp = sub.add_parser("jump", help="autopilot run: leap mode")
+    jp.add_argument("issue")
+    jp.add_argument("--urgent", action="store_true")
+    jp.add_argument("--base")
+    jp.add_argument("--depends", nargs="*", default=[])
+    jp.add_argument("--tasks", help="task graph JSON file; plan immediately")
+    jp.set_defaults(func=cmd_jump)
+
+    pp = sub.add_parser("PRI-jump", help="urgent autopilot run")
+    pp.add_argument("issue")
+    pp.add_argument("--base")
+    pp.add_argument("--depends", nargs="*", default=[])
+    pp.add_argument("--tasks", help="task graph JSON file; plan immediately")
+    pp.set_defaults(func=cmd_pri_jump)
+
+    dr = sub.add_parser("drive", help="run the whole loop unattended")
+    dr.add_argument("--run")
+    dr.add_argument("--adapter")
+    dr.add_argument("--review-adapter")
+    dr.add_argument("--max-steps", type=int, default=500)
+    dr.add_argument("--timeout", type=int, default=1800)
+    dr.add_argument("--review-timeout", type=int, default=900)
+    dr.set_defaults(func=cmd_drive)
+
     return p
 
 
@@ -575,6 +929,7 @@ def main(argv: list[str] | None = None) -> None:
     try:
         st.sweep(_root())
         args.func(args)
+        promote_queued(_root())
     except (RuntimeError, FileNotFoundError, TimeoutError) as e:
         _err(str(e))
 

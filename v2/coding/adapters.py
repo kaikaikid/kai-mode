@@ -46,7 +46,7 @@ class Adapter:
         raise NotImplementedError
 
     def spawn(self, brief: str, cwd: Path, session_dir: Path, tier: str = "medium",
-              timeout: int = 1800) -> dict[str, Any]:
+              timeout: int = 1800, read_only: bool = False) -> dict[str, Any]:
         raise NotImplementedError
 
     def wait(self, handle: dict[str, Any], timeout: int) -> int:
@@ -69,18 +69,62 @@ class ClaudeCli(Adapter):
         except Exception as e:
             return {"ok": False, "error": str(e), "maxConcurrent": 0}
 
-    def spawn(self, brief, cwd, session_dir, tier="medium", timeout=1800):
+    def spawn(self, brief, cwd, session_dir, tier="medium", timeout=1800, read_only=False):
         session_dir.mkdir(parents=True, exist_ok=True)
         out = open(session_dir / "stdout.log", "w", encoding="utf-8")
         err = open(session_dir / "stderr.log", "w", encoding="utf-8")
-        cmd = claude_cmd() + ["-p", brief, "--output-format", "json"]
+        # 多行 brief 走 stdin：经 claude.cmd 传命令行参数时，cmd.exe 会在第一个换行处截断，
+        # worker 只会收到 brief 的第一行（实测：只收到「You are a worker...」开场白）。
+        brief_path = session_dir / "brief.txt"
+        brief_path.write_text(brief, encoding="utf-8")
+        # 无交互会话没人批权限：按设计正本给只读工具 + 白名单写工具，
+        # 删除/改写历史类命令一律拒绝（只能主会话在 G2 后做）。
+        if read_only:
+            allowed = ("Read,Grep,Glob,"
+                       "Bash(git diff:*),Bash(git log:*),Bash(git show:*),"
+                       "Bash(git status:*),Bash(git merge-base:*),Bash(git rev-parse:*)")
+        else:
+            allowed = "Read,Grep,Glob,Edit,Write,Bash"
+        disallowed = ("Bash(rm:*),Bash(rmdir:*),Bash(git push:*),Bash(git reset:*),"
+                      "Bash(git clean:*),Bash(git rebase:*),Bash(coding:*),Bash(coding.cmd:*)")
+        if read_only:
+            disallowed += ",Edit,Write,NotebookEdit"
+        cmd = claude_cmd() + [
+            "-p", "--output-format", "json",
+            "--allowedTools", allowed,
+            "--disallowedTools", disallowed,
+        ]
         model = TIER_MODEL.get(tier)
         if model:
             cmd += ["--model", model]
-        proc = subprocess.Popen(
-            cmd, cwd=str(cwd), stdout=out, stderr=err,
-            env={**os.environ, "CODING_WORKER": "1"},
-        )
+        # 从宿主 settings.json 读 env（magpie / API key / base URL 等），
+        # 路径按优先级探测：env KAI_AGENT_DATA_ROOT → ~/.claude/settings.json → 项目 .claude/settings.json
+        _env = {**os.environ, "CODING_WORKER": "1"}
+        try:
+            import json as _j
+            from pathlib import Path as _P
+            _candidates = []
+            _adr = os.environ.get("KAI_AGENT_DATA_ROOT")
+            if _adr:
+                _candidates.append(_P(_adr) / "claude" / "settings.json")
+            _candidates.append(_P.home() / ".claude" / "settings.json")
+            _candidates.append(_P.home() / ".claude" / "settings.local.json")
+            _sp = next((p for p in _candidates if p.exists()), None)
+            if _sp is not None:
+                _d = _j.load(open(_sp, encoding="utf-8"))
+                _env.update(_d.get("env", {}) or {})
+                _env["CODING_WORKER"] = "1"
+            else:
+                import sys as _sys
+                print("[coding:warn] no settings.json found; worker may lack auth env", file=_sys.stderr)
+        except Exception as _e:
+            import sys as _sys
+            print(f"[coding:warn] could not read settings.json env: {_e}", file=_sys.stderr)
+        with open(brief_path, "r", encoding="utf-8") as fin:
+            proc = subprocess.Popen(
+                cmd, cwd=str(cwd), stdin=fin, stdout=out, stderr=err,
+                env=_env,
+            )
         (session_dir / "pid").write_text(str(proc.pid), encoding="utf-8")
         (session_dir / "heartbeat").write_text(str(time.time()), encoding="utf-8")
         return {"pid": proc.pid, "proc": proc, "dir": str(session_dir), "adapter": self.name}
@@ -111,7 +155,7 @@ class Mock(Adapter):
     def probe(self):
         return {"ok": True, "version": "mock", "maxConcurrent": 6}
 
-    def spawn(self, brief, cwd, session_dir, tier="medium", timeout=1800):
+    def spawn(self, brief, cwd, session_dir, tier="medium", timeout=1800, read_only=False):
         session_dir.mkdir(parents=True, exist_ok=True)
         report = {
             "result": "done",
@@ -120,6 +164,17 @@ class Mock(Adapter):
             "open_questions": [],
             "notes": "mock adapter",
         }
+        if read_only or "REVIEWER" in brief:
+            report = {
+                "result": "done",
+                "verdict": "accept",
+                "defects": [],
+                "reason": "mock reviewer",
+                "files_changed": [],
+                "verification": ["mock: read-only review"],
+                "open_questions": [],
+                "notes": "mock reviewer",
+            }
         (session_dir / "stdout.log").write_text(json.dumps(report), encoding="utf-8")
         (session_dir / "pid").write_text("0", encoding="utf-8")
         (session_dir / "heartbeat").write_text(str(time.time()), encoding="utf-8")
@@ -144,7 +199,7 @@ class Generic(Adapter):
     def probe(self):
         return {"ok": bool(os.environ.get("CODING_GENERIC_CMD")), "version": "generic", "maxConcurrent": 4}
 
-    def spawn(self, brief, cwd, session_dir, tier="medium", timeout=1800):
+    def spawn(self, brief, cwd, session_dir, tier="medium", timeout=1800, read_only=False):
         cmd = os.environ.get("CODING_GENERIC_CMD")
         if not cmd:
             raise RuntimeError("CODING_GENERIC_CMD not set")

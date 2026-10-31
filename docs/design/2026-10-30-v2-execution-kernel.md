@@ -160,10 +160,10 @@ queued ⇄ paused     被 urgent 抢占或让位
 
 **并发上限（默认）**
 
-- 普通 run 槽：2
-- 加急 run 预留槽：1
+- 普通 run 槽：3
+- 加急 run 预留槽：2
 - 每 run 子会话并发：2
-- 全局子会话并发：6（3 个 run 槽 × 2，加急槽也计入）
+- 全局子会话并发：10（5 个 run 槽 × 2，加急槽也计入）
 
 上限是配置项，超限的任务排队而不是失败。
 
@@ -191,7 +191,7 @@ run 与 task 都带 `priority: normal | urgent`，默认 `normal`。
 否则两个 run 改同一文件，合并必冲突。
 
 **预留槽的意义**：加急永远有位置，不会因为「普通任务占了 2 个槽」而被卡住。
-代价是磁盘上最多 3 棵树（2 普通 + 1 加急），换来加急零等待。
+代价是磁盘上最多 5 棵树（3 普通 + 2 加急），换来加急零等待。
 
 **验收**
 
@@ -405,9 +405,9 @@ run-id 全局唯一，不会撞。
 merge 目标是配置的 base 分支（默认 `main`）。多个 run 按 **G2 批准时间**顺序合，
 先批准先合；后合的若冲突，转 `blocked` 解冲突，不自动重排。
 
-**硬上限**：活跃 worktree ≤ 3 棵 = 2 个普通槽 + 1 个加急预留槽。
+**硬上限**：活跃 worktree ≤ 5 棵 = 3 个普通槽 + 2 个加急预留槽。
 `paused` 的 run 保留自己的树，占的是它原来的槽位，不额外加树。
-超过就排队，不再建新树。这样最多 3 棵，不会「一堆」，加急也永远有位。
+超过就排队，不再建新树。这样最多 5 棵，不会「一堆」，加急也永远有位。
 
 **兜底命令**：`coding gc` 一条清掉所有已收尾的 worktree、分支与残留状态；
 `coding status` 里每个 run 都标出 worktree 路径和是否已回收。
@@ -482,7 +482,7 @@ interface Capabilities {
 | 预算 | 设小 token 预算 | 到线停并报告，不超支 | 设 1k 预算 |
 | 加急抢占 | 两槽占满时来 urgent | 挂起一个 normal，加急跑完自动恢复 | 构造占满 + urgent |
 | 加急撞文件 | urgent 与在飞 touchset 重叠 | 不抢文件，排队到该任务验收 | 构造重叠 touchset |
-| worktree 收尾 | 连续跑 5 个 run | 每个 done 后自动回收，最多 3 棵 | 跑 5 个并查 `coding status` |
+| worktree 收尾 | 连续跑 5 个 run | 每个 done 后自动回收，最多 5 棵 | 跑 5 个并查 `coding status` |
 | gc 兜底 | 残留 paused/cancelled | `coding gc` 一次清干净 | 构造残留后跑 gc |
 | 晚激活 | 已有未提交改动才敲 `/coding` | 询问接管/丢弃，接管后从当前状态跑 | 造脏工作区再激活 |
 | 脚本调度 | 任务图有多种依赖 | `coding next` 算出正确 ready 任务，幂等 | 重复调用对比结果 |
@@ -609,3 +609,21 @@ r-4e8b   重构 auth 模块       blocked      2/5    G0    1h
 5. V2 目录落 `v2/` 还是 `core/v2/`？（建议顶层 `v2/`，表明是新体系）
 6. 激活命令已定为 `/coding`（用户 2026-10-30 拍板）。
 7. 控制平面脚本用什么写？（建议 Python 3 标准库，零第三方依赖，跨宿主都能跑）
+
+## 十六、跃迁模式（V2 autopilot）
+
+`/jump` 是 V2 的全自动挡：G0/G1/G2 由门卫子代理自批，人只在红线与异常时被叫醒。
+
+- **命令**：`/jump <issue> [--tasks f.json]`；`/PRI-jump` 走加急预留槽。
+- **并发**：普通槽 3 + 加急槽 2；每 run 2 个子代理；全局 10。排队 run 在槽位空出后由
+  `promote_queued` 自动提升。
+- **门卫**：`coding review` 起一个独立上下文、只读工具的子代理，读实际 diff 对照 AC，
+  输出 `accept|return`；`--apply` 把裁决写回任务状态。
+- **发货（全脚本化）**：切到 base（默认 `dev`）→ merge → 收尾门（`.coding/config.json`
+  的 `finish_cmd`）→ `git push origin <base>` → 自动识别 `#123` / GitHub issue URL 并关票。
+- **无人值守驱动**：`coding drive` 循环 `spawn → report → review → accept`，直到所有 run
+  终态或 blocked；不依赖 AI 主会话逐步敲命令。
+- **打断条件**：红线写操作、连续 return 3 轮、merge 冲突（自动 rebase 一次后仍冲突）、
+  收尾门失败、push 被拒、无可用宿主。预算门不启用。
+- **与 V1 的关系**：权限等价于塔台（合并/push/关票），但状态不共享；V2 的 run 仍落
+  `.coding/runs/`，V1 的日表与 Issue 评论不受影响。
