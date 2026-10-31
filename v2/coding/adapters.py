@@ -38,6 +38,38 @@ TIER_MODEL = {
     "fable": os.environ.get("CODING_MODEL_FABLE", ""),
 }
 
+# 工具面是机械保证，不是提示词约定：Bash 只开测试/构建/git 本地白名单——
+# `git -C <root> push` 这类换头命令天然不在白名单里，push/reset/clean 显式 deny。
+WORKER_BASH = ("Bash(git add:*),Bash(git commit:*),Bash(git diff:*),Bash(git status:*),"
+               "Bash(git log:*),Bash(git show:*),Bash(python:*),Bash(pytest:*),Bash(npm:*)")
+WORKER_DENY = ("Bash(rm:*),Bash(rmdir:*),Bash(git push:*),Bash(git reset:*),"
+               "Bash(git clean:*),Bash(git rebase:*),Bash(coding:*),Bash(coding.cmd:*),"
+               "Bash(npm publish:*),Bash(python -c:*),Bash(python3 -c:*)")
+
+
+def worker_cmd(read_only: bool = False, model: str = "") -> list[str]:
+    """构造 worker/reviewer 的 claude -p 命令行。
+
+    worker：Bash 白名单 + Edit/Write（cwd 即 worktree，显式 deny `.coding/**`）。
+    reviewer（read_only）：git 只读白名单，连 Edit/Write 都不给。
+    """
+    if read_only:
+        allowed = ("Read,Grep,Glob,"
+                   "Bash(git diff:*),Bash(git log:*),Bash(git show:*),"
+                   "Bash(git status:*),Bash(git merge-base:*),Bash(git rev-parse:*)")
+        disallowed = WORKER_DENY + ",Edit,Write,NotebookEdit"
+    else:
+        allowed = "Read,Grep,Glob,Edit,Write," + WORKER_BASH
+        disallowed = WORKER_DENY + ",Edit(.coding/**),Write(.coding/**)"
+    cmd = claude_cmd() + [
+        "-p", "--output-format", "json",
+        "--allowedTools", allowed,
+        "--disallowedTools", disallowed,
+    ]
+    if model:
+        cmd += ["--model", model]
+    return cmd
+
 
 class Adapter:
     name = "base"
@@ -77,26 +109,7 @@ class ClaudeCli(Adapter):
         # worker 只会收到 brief 的第一行（实测：只收到「You are a worker...」开场白）。
         brief_path = session_dir / "brief.txt"
         brief_path.write_text(brief, encoding="utf-8")
-        # 无交互会话没人批权限：按设计正本给只读工具 + 白名单写工具，
-        # 删除/改写历史类命令一律拒绝（只能主会话在 G2 后做）。
-        if read_only:
-            allowed = ("Read,Grep,Glob,"
-                       "Bash(git diff:*),Bash(git log:*),Bash(git show:*),"
-                       "Bash(git status:*),Bash(git merge-base:*),Bash(git rev-parse:*)")
-        else:
-            allowed = "Read,Grep,Glob,Edit,Write,Bash"
-        disallowed = ("Bash(rm:*),Bash(rmdir:*),Bash(git push:*),Bash(git reset:*),"
-                      "Bash(git clean:*),Bash(git rebase:*),Bash(coding:*),Bash(coding.cmd:*)")
-        if read_only:
-            disallowed += ",Edit,Write,NotebookEdit"
-        cmd = claude_cmd() + [
-            "-p", "--output-format", "json",
-            "--allowedTools", allowed,
-            "--disallowedTools", disallowed,
-        ]
-        model = TIER_MODEL.get(tier)
-        if model:
-            cmd += ["--model", model]
+        cmd = worker_cmd(read_only=read_only, model=TIER_MODEL.get(tier))
         # 从宿主 settings.json 读 env（magpie / API key / base URL 等），
         # 路径按优先级探测：env KAI_AGENT_DATA_ROOT → ~/.claude/settings.json → 项目 .claude/settings.json
         _env = {**os.environ, "CODING_WORKER": "1"}
@@ -256,11 +269,37 @@ JSON_RE = re.compile(r"\{.*\}", re.S)
 
 
 def parse_report(text: str) -> dict[str, Any]:
-    """从 stdout 里取最后一个 JSON 对象；失败则 partial。"""
+    """解析工人/门卫报告。
+
+    `claude -p --output-format json` 的外层信封是 {"type":"result","result":"<内层 JSON 字符串>",...}，
+    必须先认信封、取内层；mock/旧格式才是裸 JSON。都取不到再回退「最后一个裸 JSON」。
+    外层 usage / total_cost_usd 保留在内层报告上，供预算记账。
+    """
     text = text.strip()
-    candidates = []
-    for m in JSON_RE.finditer(text):
-        candidates.append(m.group(0))
+
+    def _partial(notes: str) -> dict[str, Any]:
+        return {"result": "partial", "files_changed": [], "verification": [], "open_questions": [],
+                "notes": notes}
+
+    try:
+        whole = json.loads(text)
+    except Exception:
+        whole = None
+    if isinstance(whole, dict):
+        if whole.get("type") == "result" and isinstance(whole.get("result"), str):
+            try:
+                inner = json.loads(whole["result"])
+            except Exception:
+                inner = None
+            if isinstance(inner, dict) and "result" in inner:
+                for k in ("usage", "total_cost_usd"):
+                    if whole.get(k) is not None:
+                        inner[k] = whole[k]
+                return inner
+            return _partial("envelope result not parseable")
+        if "result" in whole:
+            return whole
+    candidates = [m.group(0) for m in JSON_RE.finditer(text)]
     for raw in reversed(candidates):
         try:
             obj = json.loads(raw)
@@ -268,5 +307,4 @@ def parse_report(text: str) -> dict[str, Any]:
                 return obj
         except Exception:
             continue
-    return {"result": "partial", "files_changed": [], "verification": [], "open_questions": [],
-            "notes": "report not parseable; read diff"}
+    return _partial("report not parseable; read diff")

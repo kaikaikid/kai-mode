@@ -38,8 +38,8 @@ V1 的安装、定时器、角色技能都不受影响；装 V2 不会卸载或�
 | `coding resume <run>` | 从 state.json 续跑 |
 | `coding report <run> <task>` | 等 worker 结束并收报告 |
 | `coding review <run> <task> [--apply]` | 门卫子代理独立只读审查 |
-| `coding jump <issue> [--tasks f.json]` | 跃迁全自动：自动批门 + 发货 |
-| `coding PRI-jump <issue>` | 加急跃迁，走加急预留槽 |
+| `coding jump <issue> [--tasks f.json]` | 跃迁全自动：自动批门 + 施工，不发货（停在 closing） |
+| `coding PRI-jump <issue>` | 加急跃迁：走加急预留槽，唯一有发货权的全自动入口 |
 | `coding drive [--run r]` | 无人值守驱动整条流水线 |
 | `coding status [--html]` | 看板 |
 | `coding doctor` | 状态与 git 对账 |
@@ -68,7 +68,7 @@ V1 的安装、定时器、角色技能都不受影响；装 V2 不会卸载或�
 - 发货 = 切到 base（默认 `dev`）→ merge → 收尾门 → push → 关票，全脚本化；
 - 收尾门在 `.coding/config.json` 配 `{"finish_cmd": "..."}`，留空则跳过；
 - issue 文本里的 `#123` 或 GitHub issue URL 会自动关票，识别不到则跳过；
-- 并发：普通槽 3 + 加急槽 2，每 run 2 个子代理，全局 10；排队的 run 槽位空出后自动提升。
+- 并发：普通槽 2 + 加急槽 1，每 run 1 个子代理，全局 3；排队的 run 槽位空出后自动提升。
 
 ## 环境变量
 

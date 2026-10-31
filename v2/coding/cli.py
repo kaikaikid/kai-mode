@@ -14,7 +14,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from . import adapters, scheduler, state as st, worktree
+from . import adapters, dirty, scheduler, state as st, worktree
 
 
 # ---------------------------------------------------------------------------
@@ -52,12 +52,23 @@ def _gate_ok(s: dict[str, Any], g: str) -> bool:
 
 def _coding_config(root: "Path") -> dict[str, Any]:
     p = st.coding_dir(root) / "config.json"
-    if not p.exists():
-        return {}
-    try:
-        return json.loads(p.read_text(encoding="utf-8"))
-    except Exception:
-        return {}
+    cfg: dict[str, Any] = {}
+    if p.exists():
+        try:
+            cfg = json.loads(p.read_text(encoding="utf-8"))
+        except Exception:
+            cfg = {}
+    # 项目配置实例可以登记收尾门；.coding/config.json 显式值优先。
+    if not cfg.get("finish_cmd"):
+        inst = root / ".ai" / "kai-mode.project.json"
+        if inst.exists():
+            try:
+                gates = (json.loads(inst.read_text(encoding="utf-8")) or {}).get("gates") or {}
+                if gates.get("finish_cmd"):
+                    cfg["finish_cmd"] = gates["finish_cmd"]
+            except Exception:
+                pass
+    return cfg
 
 
 ISSUE_RE = re.compile(r"https?://github\.com/[\w.-]+/[\w.-]+/issues/(\d+)|(?<![\w#])#(\d+)")
@@ -88,9 +99,31 @@ def _close_issue(s: dict[str, Any], root: "Path") -> tuple[bool, str]:
         return False, str(e)
 
 
+def _kill_tree(pid: int) -> None:
+    """杀进程树。Windows 上 .cmd 包装进程不带走子进程，必须 /T；POSIX 直接 SIGKILL。"""
+    if os.name == "nt":
+        import subprocess as _sp
+        _sp.run(["taskkill", "/PID", str(pid), "/T", "/F"], capture_output=True)
+    else:
+        import signal as _signal
+        try:
+            os.kill(pid, _signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            pass
+
+
 def _ship(s: dict[str, Any], root: "Path") -> tuple[bool, str]:
     """发货：merge → 收尾门 → push → 关票。失败返回 (False, 原因)。"""
     cfg = _coding_config(root)
+    # 未提交成果不可丢：merge 拿的是分支，worktree.remove 会删树——
+    # worktree 里有任何未提交改动（含 untracked）都必须先拦下。
+    wt = s.get("worktree") or ""
+    if wt and Path(wt) != Path(root) and Path(wt).exists():
+        porc = worktree._git("status", "--porcelain", cwd=wt, check=False).stdout
+        dirty = [ln for ln in porc.splitlines() if ln.strip()]
+        if dirty:
+            return False, ("worktree has uncommitted changes (shipping would destroy them); "
+                           "commit first: " + " | ".join(dirty[:5]))
     ok, msg = worktree.ship(s["run_id"], s["base_branch"], root, finish_cmd=cfg.get("finish_cmd"))
     ship = {"ok": ok, "message": msg}
     if ok:
@@ -147,9 +180,12 @@ def advance(s: dict[str, Any], root: "Path | None" = None) -> None:
         s["phase"] = "blocked"
         s["resume"]["next_action"] = "task(s) blocked: " + ", ".join(blocked_ids)
 
-    # 跃迁模式：phase 推进到 closing 后，门卫代理自动批 G2 → 发货（merge → 收尾门 → push → 关票）
+    # 跃迁模式：phase 推进到 closing 后，门卫代理自动批 G2 → 发货（merge → 收尾门 → push → 关票）。
+    # 发货权只归加急跃迁（can_ship）：普通 jump 停在 closing，等舰桥或人工 gate g2 发货。
     if s.get("autopilot") and s.get("phase") == "closing" and s.get("gates", {}).get("g2") == "pending":
-        if root is not None:
+        if root is None:
+            pass
+        elif s.get("can_ship"):
             ok, msg = _ship(s, root)
             if ok:
                 s["gates"]["g2"] = "approved"
@@ -159,6 +195,8 @@ def advance(s: dict[str, Any], root: "Path | None" = None) -> None:
             else:
                 s["phase"] = "blocked"
                 s["resume"]["next_action"] = f"ship failed: {msg}"
+        else:
+            s["resume"]["next_action"] = "construction done; no ship right — ship via bridge or `coding gate <run> g2 approve`"
 
 
 def _task(s: dict[str, Any], tid: str) -> dict[str, Any]:
@@ -219,7 +257,8 @@ def cmd_pri_jump(args: argparse.Namespace) -> None:
 
 
 def cmd_jump(args: argparse.Namespace) -> None:
-    """跃迁模式：全自动挡。autopilot=True，施工+发货门由门卫代理自批，只在红线/异常时停。"""
+    """跃迁模式：全自动挡。autopilot=True，施工+门由门卫代理自批，只在红线/异常时停。
+    发货权只归加急（PRI-jump / --urgent）：普通 jump 停在 closing，由舰桥或人工 gate g2 发货。"""
     # 复用 cmd_run 的建 run 逻辑，但强制 autopilot
     args.autopilot = True
     args.urgent = getattr(args, "urgent", False)
@@ -233,6 +272,7 @@ def cmd_jump(args: argparse.Namespace) -> None:
     with st.lock(_root()):
         s = st.load(rid, _root())
         s["autopilot"] = True
+        s["can_ship"] = bool(getattr(args, "urgent", False))
         st.save(s, _root())
     if getattr(args, "tasks", None):
         cmd_plan(argparse.Namespace(run_id=rid, file=args.tasks))
@@ -268,6 +308,34 @@ def cmd_adopt(args: argparse.Namespace) -> None:
         }
         _save(s)
         print(rid)
+
+
+def cmd_dirty(args: argparse.Namespace) -> None:
+    """打印主树脏件分类；product 类才阻塞发货。"""
+    info = dirty.inspect(_root())
+    if args.json:
+        print(json.dumps(info, ensure_ascii=False, indent=2))
+    else:
+        print(dirty.format_human(info))
+
+
+def cmd_park(args: argparse.Namespace) -> None:
+    """把主树里的无关产品改动收进命名 stash，留回执；不删、不改写。"""
+    res = dirty.park(_root(), message=args.message or "", include_records=args.all)
+    print(json.dumps(res, ensure_ascii=False, indent=2))
+    if not res.get("ok"):
+        raise SystemExit(1)
+
+
+def cmd_unpark(args: argparse.Namespace) -> None:
+    """把收起的改动放回工作区（apply，不 drop）。"""
+    if args.list:
+        print(json.dumps(dirty.list_parked(_root()), ensure_ascii=False, indent=2))
+        return
+    res = dirty.unpark(_root(), args.ref)
+    print(json.dumps(res, ensure_ascii=False, indent=2))
+    if not res.get("ok"):
+        raise SystemExit(1)
 
 
 def cmd_plan(args: argparse.Namespace) -> None:
@@ -309,6 +377,22 @@ def cmd_gate(args: argparse.Namespace) -> None:
         g = args.gate
         if g not in {"g0", "g1", "g2"}:
             _err("gate must be g0, g1 or g2")
+        if g == "g2" and args.decision == "approve":
+            # G2 阶段守卫：发货只能发生在「全部验收、无人还在干活」的 closing 上
+            bad = []
+            if s.get("phase") != "closing":
+                bad.append(f"phase is {s.get('phase')}, not closing")
+            not_done = [t["id"] for t in s.get("tasks", [])
+                        if t.get("status") not in {"accepted", "abandoned"}]
+            if not_done:
+                bad.append("tasks not accepted/abandoned: " + ", ".join(not_done[:5]))
+            live = [x["id"] for x in s.get("sessions", [])
+                    if x.get("status") == "running" and x.get("pid")
+                    and st._pid_alive(int(x["pid"]))]
+            if live:
+                bad.append("live sessions: " + ", ".join(live))
+            if bad:
+                _err("g2 blocked: " + "; ".join(bad))
         if args.decision == "approve":
             s["gates"][g] = "approved"
         elif args.decision == "reject":
@@ -353,6 +437,8 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     root = _root()
     with st.lock(root):
         s = st.load(args.run_id, root)
+        if s.get("phase") in st.TERMINAL_PHASES:
+            _err(f"run is terminal ({s['phase']}); spawn rejected")
         if s.get("phase") == "queued":
             _err("run is queued; wait for a free slot")
         t = _task(s, args.task_id)
@@ -394,8 +480,11 @@ def _build_brief(s: dict[str, Any], t: dict[str, Any]) -> str:
         f"only the orchestrator owns the run.\n"
         f"- Never run destructive commands (rm -rf, drop, force push). They are denied.\n"
         f"- Verify before reporting: build, test, or exercise the path; report the command and outcome.\n"
+        f"- Commit before reporting: `git add -- <files you changed> && git commit -m \"<task>: <title>\"`. "
+        f"Uncommitted work is blocked at shipping and will be treated as not delivered.\n"
         f"- End your reply with ONE JSON object and nothing after it:\n"
         f'{{"result":"done|partial|blocked","files_changed":["path — what"],'
+        f'"commit":"<HEAD sha after your commit; empty if nothing changed>",'
         f'"verification":["cmd -> outcome"],"open_questions":["..."],"notes":"<=100 chars"}}\n'
     )
 
@@ -404,6 +493,8 @@ def cmd_report(args: argparse.Namespace) -> None:
     root = _root()
     with st.lock(root):
         s = st.load(args.run_id, root)
+        if s.get("phase") in st.TERMINAL_PHASES:
+            _err(f"run is terminal ({s['phase']}); report rejected")
         t = _task(s, args.task_id)
         sid = t.get("session_id")
         if not sid:
@@ -425,6 +516,19 @@ def cmd_report(args: argparse.Namespace) -> None:
         deadline = time.time() + args.timeout
         while time.time() < deadline and st._pid_alive(pid):
             time.sleep(0.5)
+        if st._pid_alive(pid):
+            # 超时：先杀进程树再按失败处理（重试/计次语义见 P1-8）
+            _kill_tree(pid)
+            with st.lock(root):
+                s = st.load(args.run_id, root)
+                t = _task(s, args.task_id)
+                t["status"] = "failed"
+                sess = next((x for x in s.get("sessions", []) if x["id"] == t.get("session_id")), None)
+                if sess:
+                    sess["status"] = "failed"
+                s["resume"]["next_action"] = f"worker {t['id']} timed out and was killed"
+                _save(s)
+            _err(f"worker timed out after {args.timeout}s; process tree killed")
     # 进程可能已经结束，报告落盘即可
     text = adapter.read({"dir": str(sdir)})
     report = adapters.parse_report(text)
@@ -435,6 +539,14 @@ def cmd_report(args: argparse.Namespace) -> None:
     with st.lock(root):
         s = st.load(args.run_id, root)
         t = _task(s, args.task_id)
+        # 提交对账：报了 commit 就必须是 worktree HEAD 的祖先（存在且已落在分支上）
+        commit = str(report.get("commit") or "").strip()
+        if commit:
+            wt = s.get("worktree") or str(root)
+            r = worktree._git("merge-base", "--is-ancestor", commit, "HEAD", cwd=wt, check=False)
+            if r.returncode != 0:
+                report["result"] = "partial"
+                report["notes"] = (report.get("notes", "") + " [commit not on worktree HEAD]").strip()
         # 报告与 diff 对账
         changed = worktree.changed_files(s["run_id"], s["base_branch"], root)
         claimed = report.get("files_changed") or []
@@ -457,7 +569,7 @@ def _build_review_brief(s: dict[str, Any], t: dict[str, Any]) -> str:
     wt = s.get("worktree") or str(root)
     mb = worktree._git("merge-base", s["base_branch"], worktree.branch_name(s["run_id"]),
                        cwd=root, check=False).stdout.strip()
-    diff_cmd = f"git -C {wt} diff {mb}..HEAD" if mb else f"git -C {wt} diff"
+    diff_cmd = f"git diff {mb}..HEAD" if mb else "git diff"
     lines = [
         "REVIEWER: you are an independent gatekeeper. You did not write this code.",
         "Read the actual diff, do not trust any report. You must not modify files.",
@@ -489,6 +601,8 @@ def cmd_review(args: argparse.Namespace) -> None:
     root = _root()
     with st.lock(root):
         s = st.load(args.run_id, root)
+        if s.get("phase") in st.TERMINAL_PHASES:
+            _err(f"run is terminal ({s['phase']}); review rejected")
         t = _task(s, args.task_id)
         if t.get("status") != "review":
             _err(f"task {t['id']} is {t.get('status')}, not review")
@@ -607,11 +721,22 @@ def cmd_reopen(args: argparse.Namespace) -> None:
 def cmd_stop(args: argparse.Namespace) -> None:
     root = _root()
     with st.lock(root):
-        s = st.load(args.run_id, root)
+        # verify=False：被篡改的 run 也必须能停机杀进程，诊断面不因验签失灵
+        s = st.load(args.run_id, root, verify=False)
+        # 停机先杀人再改状态：只杀 sessions 里登记的 running pid，绝不按镜像名扫杀
+        killed = []
+        for sess in s.get("sessions", []):
+            if sess.get("status") != "running":
+                continue
+            pid = int(sess.get("pid") or 0)
+            if pid > 0 and st._pid_alive(pid):
+                _kill_tree(pid)
+                killed.append(str(pid))
+            sess["status"] = "stopped"
         s["phase"] = "cancelled"
-        s["resume"]["next_action"] = "stopped"
+        s["resume"]["next_action"] = "stopped" + (f" (killed pids: {','.join(killed)})" if killed else "")
         _save(s)
-        print(f"stopped {s['run_id']}")
+        print(f"stopped {s['run_id']}" + (f"; killed pids {','.join(killed)}" if killed else ""))
 
 
 def cmd_resume(args: argparse.Namespace) -> None:
@@ -825,6 +950,20 @@ def build_parser() -> argparse.ArgumentParser:
     a.add_argument("issue")
     a.add_argument("--max-tokens", type=int, default=200000)
     a.set_defaults(func=cmd_adopt)
+
+    di = sub.add_parser("dirty", help="classify dirty files in the main tree")
+    di.add_argument("--json", action="store_true")
+    di.set_defaults(func=cmd_dirty)
+
+    pk = sub.add_parser("park", help="stash product changes in the main tree (reversible)")
+    pk.add_argument("-m", "--message", default="")
+    pk.add_argument("--all", action="store_true", help="park record files too")
+    pk.set_defaults(func=cmd_park)
+
+    up = sub.add_parser("unpark", help="apply a parked stash back")
+    up.add_argument("ref", nargs="?")
+    up.add_argument("--list", action="store_true")
+    up.set_defaults(func=cmd_unpark)
 
     pl = sub.add_parser("plan", help="set the task graph")
     pl.add_argument("run_id")

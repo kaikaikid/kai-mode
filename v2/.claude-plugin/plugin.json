@@ -1,6 +1,8 @@
 {
   "name": "v2",
-  "version": "0.1.0",
-  "description": "V2 execution kernel: one issue per run, main session plans and reviews, physical sub-sessions execute. Entry: /coding.",
-  "author": { "name": "kaikaikid" }
+  "version": "0.2.0",
+  "description": "V2 execution kernel: one issue per run; bridge is the entry, /jump starts construction.",
+  "author": {
+    "name": "kaikaikid"
+  }
 }

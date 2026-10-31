@@ -1,7 +1,8 @@
-"""状态落盘：原子写、schema 版本、run 目录布局。"""
+"""状态落盘：原子写、schema 版本、完整性签名、run 目录布局。"""
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import random
@@ -56,18 +57,34 @@ def _atomic_write(path: Path, data: str) -> None:
     os.replace(tmp, path)
 
 
+def _state_digest(state: dict[str, Any]) -> str:
+    body = {k: v for k, v in state.items() if k != "integrity"}
+    return hashlib.sha256(
+        json.dumps(body, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+
+
 def save(state: dict[str, Any], root: Path | None = None) -> None:
     state["schema_version"] = SCHEMA_VERSION
     state["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+    # 完整性签名（方案 A，防呆不防对抗）：控制面外的直写（如工人用绝对路径改
+    # state.json——Windows 上工具规则拦不住）在决策点验签时暴露。
+    state["integrity"] = _state_digest(state)
     _atomic_write(state_path(state["run_id"], root), json.dumps(state, ensure_ascii=False, indent=2))
 
 
-def load(run_id: str, root: Path | None = None) -> dict[str, Any]:
+def load(run_id: str, root: Path | None = None, verify: bool = True) -> dict[str, Any]:
     p = state_path(run_id, root)
     if not p.exists():
         raise FileNotFoundError(f"run not found: {run_id}")
     with open(p, encoding="utf-8") as f:
         state = json.load(f)
+    if verify and state.get("integrity") is not None and state["integrity"] != _state_digest(state):
+        raise RuntimeError(
+            f"state.json integrity check failed for {run_id}: state was modified outside "
+            f"`coding` commands. Inspect {p} manually; `coding status` still lists it, "
+            f"`coding stop` still works."
+        )
     migrate(state)
     return state
 

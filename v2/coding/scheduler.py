@@ -7,10 +7,10 @@ from typing import Any
 
 from . import state as st
 
-NORMAL_SLOTS = 3
-URGENT_SLOTS = 2
-PER_RUN_SESSIONS = 2
-GLOBAL_SESSIONS = 10
+NORMAL_SLOTS = 2
+URGENT_SLOTS = 1
+PER_RUN_SESSIONS = 1
+GLOBAL_SESSIONS = 3
 
 TASK_TERMINAL = {"accepted", "abandoned"}
 TASK_INFLIGHT = {"ready", "running", "review", "returned"}

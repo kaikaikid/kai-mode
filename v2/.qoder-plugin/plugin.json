@@ -1,7 +1,7 @@
 {
   "name": "v2",
-  "version": "0.1.0",
-  "description": "V2 执行内核：一个 issue 一个 run，主会话规划与验收，物理子会话执行。入口 /coding。",
+  "version": "0.2.0",
+  "description": "V2 执行内核：一个 issue 一个 run；舰桥是入口，/jump 开始施工。",
   "author": {
     "name": "kaikaikid"
   }

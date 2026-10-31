@@ -6,7 +6,7 @@ approved: 2026-10-31
 sources: []
 description: >
   V2 执行内核的唯一入口：一个 issue 一个 run，主会话规划与验收，物理子会话执行；
-  默认 3 个普通槽 + 2 个加急槽，每槽 2 个子代理；一次触发连续跑到门点才停。用 `coding` 控制平面推进，
+  默认 2 个普通槽 + 1 个加急槽，每槽 1 个子代理；一次触发连续跑到门点才停。用 `coding` 控制平面推进，
   不直接改 state.json。与机场体系（V1）并存，不调用其角色。
   触发：`/coding <任务>`、`/coding status`、`/coding resume`、`/coding gc`、`/coding adopt`、`/jump <任务>`、`/PRI-jump <任务>`；
   中文「用 V2 做」「开个 run」也认。
@@ -73,8 +73,8 @@ compatibility: Host-agnostic
 | `coding doctor` | 状态与 git 对账 |
 | `coding gc [--all]` | 清理已收尾 worktree 与分支 |
 | `coding stop <run>` | 停 run，保留状态 |
-| `coding jump <issue> [--tasks f.json]` | 跃迁全自动：自动批门 + 发货 |
-| `coding PRI-jump <issue>` | 加急跃迁，走加急预留槽 |
+| `coding jump <issue> [--tasks f.json]` | 跃迁全自动：自动批门 + 施工，**不发货**（停在 closing） |
+| `coding PRI-jump <issue>` | 加急跃迁：走加急预留槽，唯一有发货权的全自动入口 |
 | `coding drive [--run r] [--adapter a] [--review-adapter b]` | 脚本无人值守跑完整条流水线 |
 
 ## 任务图
@@ -105,9 +105,10 @@ compatibility: Host-agnostic
 
 `/jump <任务> [--tasks tasks.json]` = 全自动挡：施工全程 AI 自推，门卫代理批 G0/G1/G2，只在红线/异常时停。
 - `--tasks` 可在开 run 时直接写任务图；并发满时 run 排队，槽位空出后自动提升（`promote_queued`）。
-- 普通槽 3 + 加急槽 2，同时跑最多 5 个 run；每槽 2 个子代理，全局最多 10 个。
+- 普通槽 2 + 加急槽 1，同时跑最多 3 个 run；每 run 1 个子代理，全局最多 3 个。
 - return 上限 3 轮，failed 重试 2 次，merge 冲突自动 rebase 一次。
-- G2 发货门默认自动批（门卫代理），发货 = merge → 收尾门 → push → 关票，全脚本化。
+- 发货权只归加急：普通 `/jump` 停在 closing（next_action 注明等发货），由舰桥或人工 `gate g2 approve` 发货；
+  `/PRI-jump`（含 `jump --urgent`）才自动发货 = merge → 收尾门 → push → 关票，全脚本化。
 - push 目标默认 `dev`（dev 不存在则退回当前分支）。
 - issue 引用自动识别：任务文本里的 `#123` 或 GitHub issue URL 会自动关票；识别不到则跳过，不阻塞发货。
 - `coding drive` 是零干预驱动：脚本循环 spawn → report → review → accept，槽位空出自动提升排队 run，直到全部终态或 blocked。
