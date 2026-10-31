@@ -730,20 +730,21 @@ def cmd_doctor(args: argparse.Namespace) -> None:
 def promote_queued(root: "Path") -> list[str]:
     """惰性排班：把 queued 的 run 按创建时间依次塞进空槽并推进。"""
     promoted: list[str] = []
-    queued = sorted(
-        (r for r in st.list_runs(root) if r.get("phase") == "queued"),
-        key=lambda r: r.get("created_at", ""),
-    )
-    for s in queued:
-        ok, _why = scheduler.can_start(s, root)
-        if not ok:
-            continue
-        worktree.create(s["run_id"], s["base_branch"], root)
-        s["phase"] = "planning"
-        s["resume"]["next_action"] = "plan"
-        advance(s, root)
-        st.save(s, root)
-        promoted.append(s["run_id"])
+    with st.lock(root):
+        queued = sorted(
+            (r for r in st.list_runs(root) if r.get("phase") == "queued"),
+            key=lambda r: r.get("created_at", ""),
+        )
+        for s in queued:
+            ok, _why = scheduler.can_start(s, root)
+            if not ok:
+                continue
+            worktree.create(s["run_id"], s["base_branch"], root)
+            s["phase"] = "planning"
+            s["resume"]["next_action"] = "plan"
+            advance(s, root)
+            st.save(s, root)
+            promoted.append(s["run_id"])
     return promoted
 
 
