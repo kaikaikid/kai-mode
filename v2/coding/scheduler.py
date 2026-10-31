@@ -92,12 +92,23 @@ def ready_tasks(run: dict[str, Any], root: Path | None = None) -> list[dict[str,
     return out
 
 
-def slot_usage(root: Path | None = None) -> dict[str, int]:
+def _fleet_id(run: dict[str, Any]) -> str:
+    return run.get("fleet_id") or "default"
+
+
+def slot_usage(root: Path | None = None, fleet_id: str | None = None) -> dict[str, int]:
+    # 槽位上限按舰队（fleet）独立计：不同舰桥/agent 框架互不抢占槽位，
+    # 但 touchset 冲突检测仍全局生效（文件冲突与舰队无关）。
+    if fleet_id is None:
+        import os as _os
+        fleet_id = _os.environ.get("CODING_FLEET_ID", "default")
     normal = urgent = sessions = 0
     for r in st.list_runs(root):
         if r.get("phase") in st.TERMINAL_PHASES:
             continue
         if r.get("phase") == "queued":
+            continue
+        if _fleet_id(r) != fleet_id:
             continue
         if r.get("priority") == "urgent":
             urgent += 1
@@ -108,7 +119,7 @@ def slot_usage(root: Path | None = None) -> dict[str, int]:
 
 
 def can_start(run: dict[str, Any], root: Path | None = None) -> tuple[bool, str]:
-    u = slot_usage(root)
+    u = slot_usage(root, fleet_id=run.get("fleet_id"))
     if run.get("priority") == "urgent":
         if u["urgent"] >= URGENT_SLOTS:
             return False, "urgent slot busy"
@@ -129,6 +140,6 @@ def can_spawn(run: dict[str, Any], task: dict[str, Any], root: Path | None = Non
     running = sum(1 for t in run.get("tasks", []) if t.get("status") == "running")
     if running >= PER_RUN_SESSIONS:
         return False, "per-run session limit"
-    if slot_usage(root)["sessions"] >= GLOBAL_SESSIONS:
+    if slot_usage(root, fleet_id=run.get("fleet_id"))["sessions"] >= GLOBAL_SESSIONS:
         return False, "global session limit"
     return True, "ok"

@@ -224,6 +224,7 @@ def cmd_run(args: argparse.Namespace) -> None:
             "issue": args.issue,
             "phase": "queued",
             "priority": "urgent" if args.urgent else "normal",
+            "fleet_id": getattr(args, "fleet", None) or "default",
             "created_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
             "base_branch": args.base or worktree.base_branch(root),
             "branch": worktree.branch_name(rid),
@@ -249,16 +250,9 @@ def cmd_run(args: argparse.Namespace) -> None:
         return rid
 
 
-def cmd_pri_jump(args: argparse.Namespace) -> None:
-    """加急跃迁：走加急预留槽。"""
-    args.urgent = True
-    args.autopilot = True
-    cmd_jump(args)
-
-
-def cmd_jump(args: argparse.Namespace) -> None:
-    """跃迁模式：全自动挡。autopilot=True，施工+门由门卫代理自批，只在红线/异常时停。
-    发货权只归加急（PRI-jump / --urgent）：普通 jump 停在 closing，由舰桥或人工 gate g2 发货。"""
+def cmd_warp(args: argparse.Namespace) -> None:
+    """曲速：全自动挡（不发货）。autopilot=True，施工+门由门卫代理自批，只在红线/异常时停。
+    发货权只归跃迁（jump / --urgent）：普通 warp 停在 closing，由舰桥或人工 gate g2 发货。"""
     # 复用 cmd_run 的建 run 逻辑，但强制 autopilot
     args.autopilot = True
     args.urgent = getattr(args, "urgent", False)
@@ -276,7 +270,14 @@ def cmd_jump(args: argparse.Namespace) -> None:
         st.save(s, _root())
     if getattr(args, "tasks", None):
         cmd_plan(argparse.Namespace(run_id=rid, file=args.tasks))
-    print(f"jump run {rid} autopilot=True")
+    print(f"warp run {rid} autopilot=True")
+
+
+def cmd_jump(args: argparse.Namespace) -> None:
+    """跃迁：加急全自动，有发货权。"""
+    args.urgent = True
+    args.autopilot = True
+    cmd_warp(args)
 
 
 def cmd_adopt(args: argparse.Namespace) -> None:
@@ -292,6 +293,7 @@ def cmd_adopt(args: argparse.Namespace) -> None:
             "issue": args.issue,
             "phase": "planning",
             "priority": "normal",
+            "fleet_id": "default",
             "created_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
             "base_branch": worktree.base_branch(root),
             "branch": worktree.branch_name(rid),
@@ -939,6 +941,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub = p.add_subparsers(dest="cmd", required=True)
 
     r = sub.add_parser("run", help="create a run")
+    r.add_argument("--fleet", default=None, help="fleet id; slots are per-fleet")
     r.add_argument("issue")
     r.add_argument("--urgent", action="store_true")
     r.add_argument("--base")
@@ -1037,20 +1040,22 @@ def build_parser() -> argparse.ArgumentParser:
     d = sub.add_parser("doctor", help="reconcile state with git")
     d.set_defaults(func=cmd_doctor)
 
-    jp = sub.add_parser("jump", help="autopilot run: leap mode")
+    wp = sub.add_parser("warp", help="autopilot run: warp mode (no ship)")
+    wp.add_argument("--fleet", default=None, help="fleet id; slots are per-fleet")
+    wp.add_argument("issue")
+    wp.add_argument("--urgent", action="store_true")
+    wp.add_argument("--base")
+    wp.add_argument("--depends", nargs="*", default=[])
+    wp.add_argument("--tasks", help="task graph JSON file; plan immediately")
+    wp.set_defaults(func=cmd_warp)
+
+    jp = sub.add_parser("jump", help="urgent autopilot run (ships)")
+    jp.add_argument("--fleet", default=None, help="fleet id; slots are per-fleet")
     jp.add_argument("issue")
-    jp.add_argument("--urgent", action="store_true")
     jp.add_argument("--base")
     jp.add_argument("--depends", nargs="*", default=[])
     jp.add_argument("--tasks", help="task graph JSON file; plan immediately")
     jp.set_defaults(func=cmd_jump)
-
-    pp = sub.add_parser("PRI-jump", help="urgent autopilot run")
-    pp.add_argument("issue")
-    pp.add_argument("--base")
-    pp.add_argument("--depends", nargs="*", default=[])
-    pp.add_argument("--tasks", help="task graph JSON file; plan immediately")
-    pp.set_defaults(func=cmd_pri_jump)
 
     dr = sub.add_parser("drive", help="run the whole loop unattended")
     dr.add_argument("--run")

@@ -614,7 +614,7 @@ r-4e8b   重构 auth 模块       blocked      2/5    G0    1h
 
 `/jump` 是 V2 的全自动挡：G0/G1/G2 由门卫子代理自批，人只在红线与异常时被叫醒。
 
-- **命令**：`/jump <issue> [--tasks f.json]`；`/PRI-jump` 走加急预留槽。
+- **命令**：`/warp <issue> [--tasks f.json]`；`/PRI-jump` 走加急预留槽。
 - **并发**：普通槽 3 + 加急槽 2；每 run 2 个子代理；全局 10。排队 run 在槽位空出后由
   `promote_queued` 自动提升。
 - **门卫**：`coding review` 起一个独立上下文、只读工具的子代理，读实际 diff 对照 AC，

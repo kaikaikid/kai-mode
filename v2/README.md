@@ -38,8 +38,8 @@ V1 的安装、定时器、角色技能都不受影响；装 V2 不会卸载或�
 | `coding resume <run>` | 从 state.json 续跑 |
 | `coding report <run> <task>` | 等 worker 结束并收报告 |
 | `coding review <run> <task> [--apply]` | 门卫子代理独立只读审查 |
-| `coding jump <issue> [--tasks f.json]` | 跃迁全自动：自动批门 + 施工，不发货（停在 closing） |
-| `coding PRI-jump <issue>` | 加急跃迁：走加急预留槽，唯一有发货权的全自动入口 |
+| `coding warp <issue> [--tasks f.json]` | 曲速全自动：自动批门 + 施工，不发货（停在 closing） |
+| `coding jump <issue>` | 跃迁全自动：加急 + 自动发货，唯一有发货权的全自动入口 |
 | `coding drive [--run r]` | 无人值守驱动整条流水线 |
 | `coding status [--html]` | 看板 |
 | `coding doctor` | 状态与 git 对账 |
@@ -60,9 +60,9 @@ V1 的安装、定时器、角色技能都不受影响；装 V2 不会卸载或�
 全部在 `.coding/runs/<run-id>/state.json`，脚本原子写。中断后 `coding resume` 从
 `resume.last_accepted` / `next_action` 接着跑。
 
-## 跃迁模式（jump）
+## 曲速模式（warp）
 
-`coding jump <issue> [--tasks f.json]`：
+`coding warp <issue> [--tasks f.json]`：
 
 - 自动批 G0/G1/G2，门卫子代理（`coding review`）独立只读审查；
 - 发货 = 切到 base（默认 `dev`）→ merge → 收尾门 → push → 关票，全脚本化；
