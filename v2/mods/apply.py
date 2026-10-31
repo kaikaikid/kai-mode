@@ -29,13 +29,17 @@ LANG_ADD = LANG_ANCHOR + """
 
 // [coding-v2] Project root captured from session.start; used by the V2 poller.
 let codingCwd = ''
-const CODING_ID = 'coding:'"""
+const CODING_ID = 'coding:'
+// [coding-v2] remembers first-seen time per V2 row so elapsed time is real, not epoch-based.
+const codingStarted = new Map<string, number>()"""
 
 POLL = r'''
 // [coding-v2] Reads .coding/runs/*/state.json and mirrors running tasks into the panel,
 // so V2's physical sub-sessions show up even though they are not Claude Code subagents.
 async function pollCoding($: EngineInterface): Promise<void> {
   if (!codingCwd) return
+  const now = await $.clock.now()
+  const seen = new Set<string>()
   const base = `${codingCwd}/.coding/runs`
   try {
     if (!(await $.fs.exists(base))) return
@@ -61,6 +65,9 @@ async function pollCoding($: EngineInterface): Promise<void> {
       const tasks = Array.isArray(s.tasks) ? (s.tasks as Record<string, unknown>[]) : []
       const accepted = tasks.filter(t => t.status === 'accepted' || t.status === 'abandoned').length
       const running = tasks.filter(t => t.status === 'running').length
+      // [coding-v2] Only unfinished tasks belong under "Planned"; accepted/abandoned ones
+      // are already counted in done. Listing them made the panel look like idle agents.
+      const planned = tasks.filter(t => t.status !== 'accepted' && t.status !== 'abandoned')
       if (!next || tasks.length > next.total) {
         const mapped: Phase =
           phase === 'planning' ? 'plan'
@@ -75,18 +82,21 @@ async function pollCoding($: EngineInterface): Promise<void> {
           running,
           phase: mapped,
           isFinished: false,
-          tasks: tasks.map(t => ({ title: String(t.title ?? t.id), tier: String(t.tier ?? 'medium'), after: [] })),
+          tasks: planned.map(t => ({ title: String(t.title ?? t.id), tier: String(t.tier ?? 'medium'), after: [] })),
         }
       }
       for (const t of tasks) {
         if (t.status !== 'running' && t.status !== 'review') continue
+        const rowId = `${CODING_ID}${String(s.run_id ?? d.name)}:${String(t.id)}`
+        seen.add(rowId)
+        if (!codingStarted.has(rowId)) codingStarted.set(rowId, now)
         rows.push({
-          id: `${CODING_ID}${String(s.run_id ?? d.name)}:${String(t.id)}`,
+          id: rowId,
           type: 'coding',
           description: `${String(s.run_id ?? d.name)} · ${String(t.title ?? t.id)}`,
           model: String(t.tier ?? 'medium'),
           status: 'running',
-          startedAt: 0,
+          startedAt: codingStarted.get(rowId)!,
           contextTokens: 0,
           contextMax: 0,
           tokens: 0,
@@ -102,6 +112,7 @@ async function pollCoding($: EngineInterface): Promise<void> {
       continue
     }
   }
+  for (const k of [...codingStarted.keys()]) if (!seen.has(k)) codingStarted.delete(k)
   await update($, agents, list => [...list.filter(a => !a.id.startsWith(CODING_ID)), ...rows].slice(-200))
   if (next) await update($, flow, prev => (prev && prev.isFinished ? prev : next))
 }

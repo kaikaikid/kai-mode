@@ -6,9 +6,9 @@ approved: 2026-10-31
 sources: []
 description: >
   V2 执行内核的唯一入口：一个 issue 一个 run，主会话规划与验收，物理子会话执行；
-  默认 2 个普通槽 + 1 个加急槽；一次触发连续跑到门点才停。用 `coding` 控制平面推进，
+  默认 3 个普通槽 + 2 个加急槽，每槽 2 个子代理；一次触发连续跑到门点才停。用 `coding` 控制平面推进，
   不直接改 state.json。与机场体系（V1）并存，不调用其角色。
-  触发：`/coding <任务>`、`/coding status`、`/coding resume`、`/coding gc`、`/coding adopt`；
+  触发：`/coding <任务>`、`/coding status`、`/coding resume`、`/coding gc`、`/coding adopt`、`/jump <任务>`、`/PRI-jump <任务>`；
   中文「用 V2 做」「开个 run」也认。
 version: 0.1.0
 updated: 2026-10-31
@@ -34,9 +34,9 @@ compatibility: Host-agnostic
 
 1. **能脚本就脚本**：状态推进、槽位、worktree、touchset、预算、续跑全走
    `coding` 命令；**绝不手改 `.coding/runs/*/state.json`**。
-2. **只在门点停**：G0 计划、G1 设计（碰可见 UI）、G2 发货。其余全自动。
-3. **验收读 diff**：子会话报告是 claim，不是事实；必须看实际改动再 accept。
-4. **子会话不发货**：删除、force push、merge 只能由主会话在 G2 后做。
+2. **只在门点停**：`/coding` 手动挡在 G0/G1/G2 停；`/jump` 自动挡由门卫子代理自动批门，只在红线/异常时停。
+3. **验收读 diff**：子会话报告是 claim，不是事实；`coding review` 的门卫子代理读实际 diff 再裁决。
+4. **子会话不发货**：worker 与 reviewer 都不 push/merge；发货只由主会话在门点后执行。
 
 ## 流程
 
@@ -48,10 +48,11 @@ compatibility: Host-agnostic
   → （有 UI）G1：设计规格 → coding gate <run> g1 approve
   → 循环：
       coding next                 # 取 ready 任务
-      coding spawn <run> <task>   # 起子会话
+      coding spawn <run> <task>   # 起 worker 子会话
       coding report <run> <task>  # 收报告 + diff 对账
-      读 diff 对照 ac → coding accept 或 coding return --defects "..."
-  → 全部 accepted → G2：coding gate <run> g2 approve   # merge + 回收 worktree
+      coding review <run> <task>  # 门卫子代理独立只读审查（新上下文）
+      读裁决 → coding accept 或 coding return --defects "..."
+  → 全部 accepted → G2：coding gate <run> g2 approve   # merge → 收尾门 → push → 关票
 ```
 
 ## 命令速查
@@ -64,13 +65,17 @@ compatibility: Host-agnostic
 | `coding gate <run> g0\|g1\|g2 approve\|reject\|skip` | 过门；reject 有回流 |
 | `coding next [run]` | 下一个可派任务（含 touchset / 槽位判断） |
 | `coding spawn <run> <task> [--adapter ...]` | 起子会话 |
-| `coding report <run> <task>` | 收报告，校验 files_changed ⊆ git diff |
+| `coding report <run> <task> [--timeout]` | 等 worker 结束，收报告，校验 files_changed ⊆ git diff |
+| `coding review <run> <task> [--apply] [--adapter]` | 门卫子代理独立只读审查，产出 accept/return |
 | `coding accept\|return\|reopen <run> <task>` | 验收 / 打回 / 撤销 |
 | `coding resume <run>` | 从 state.json 续跑 |
 | `coding status [--html]` | 看板（在做 / 在等 / 已完成） |
 | `coding doctor` | 状态与 git 对账 |
 | `coding gc [--all]` | 清理已收尾 worktree 与分支 |
 | `coding stop <run>` | 停 run，保留状态 |
+| `coding jump <issue> [--tasks f.json]` | 跃迁全自动：自动批门 + 发货 |
+| `coding PRI-jump <issue>` | 加急跃迁，走加急预留槽 |
+| `coding drive [--run r] [--adapter a] [--review-adapter b]` | 脚本无人值守跑完整条流水线 |
 
 ## 任务图
 
@@ -92,9 +97,31 @@ compatibility: Host-agnostic
 | 子会话超时/崩溃 | `coding spawn --retry` 重试一次；再失败转 blocked |
 | 报告解析失败 | 读 diff 自判，不重试 |
 | 报告与 diff 不符 | 视为 partial，必须读 diff |
-| 连续 return 2 轮 | 转 blocked，问用户或重规划 |
-| merge 冲突 | run 转 blocked，在 worktree 解冲突后重试 G2 |
-| 预算到线 | run 转 blocked，产出保留 |
+| 连续 return 3 轮 | 转 blocked，叫醒人 |
+| merge 冲突 | 脚本自动 rebase 一次；仍冲突 → blocked |
+| 发货失败（收尾门红 / push 被拒） | run 转 blocked，产出保留 |
+
+## 跃迁模式（/jump）
+
+`/jump <任务> [--tasks tasks.json]` = 全自动挡：施工全程 AI 自推，门卫代理批 G0/G1/G2，只在红线/异常时停。
+- `--tasks` 可在开 run 时直接写任务图；并发满时 run 排队，槽位空出后自动提升（`promote_queued`）。
+- 普通槽 3 + 加急槽 2，同时跑最多 5 个 run；每槽 2 个子代理，全局最多 10 个。
+- return 上限 3 轮，failed 重试 2 次，merge 冲突自动 rebase 一次。
+- G2 发货门默认自动批（门卫代理），发货 = merge → 收尾门 → push → 关票，全脚本化。
+- push 目标默认 `dev`（dev 不存在则退回当前分支）。
+- issue 引用自动识别：任务文本里的 `#123` 或 GitHub issue URL 会自动关票；识别不到则跳过，不阻塞发货。
+- `coding drive` 是零干预驱动：脚本循环 spawn → report → review → accept，槽位空出自动提升排队 run，直到全部终态或 blocked。
+- `coding drive --review-adapter mock` 可让审查走更便宜的适配器（生产默认与 worker 相同）。
+
+## 加急触发（/PRI-jump）
+
+`/PRI-jump <任务>` = 加急跃迁：走加急预留槽，不抢占普通 run，touchset 重叠时排队到该任务验收。
+未显式触发时一律问用户是否用 `/PRI-jump`。
+
+## 触发策略
+
+未显式指定命令时，一律先问用户：「是否用 `/PRI-jump` 加急跃迁？」
+用户确认后再执行；不自行决定。
 
 ## 与其他体系
 
