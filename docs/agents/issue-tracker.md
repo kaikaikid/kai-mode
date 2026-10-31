@@ -15,7 +15,7 @@ Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all o
 
 Infer the repo from `git remote -v`; `gh` does this automatically when run inside a clone.
 
-This repo's remote is `kaikaikid/kai-mode` (private, `https://github.com/kaikaikid/kai-mode`). The five triage labels from `docs/agents/triage-labels.md` — and the four lane queue labels (`main-queue` / `deputy-queue` / `second-queue` / `ace-queue`) — must exist in that repo before skills can apply them; create them once with `gh label create <name> --repo kaikaikid/kai-mode` for any label that `gh label list` doesn't already show.
+This repo's remote is `kaikaikid/kai-mode` (private, `https://github.com/kaikaikid/kai-mode`). The five triage labels from `docs/agents/triage-labels.md` must exist in that repo before skills can apply them; create them once with `gh label create <name> --repo kaikaikid/kai-mode` for any label that `gh label list` doesn't already show. The four V1 lane labels are retired.
 
 ## Pull requests as a triage surface
 

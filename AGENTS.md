@@ -47,21 +47,20 @@ On a red line: stop that ticket only, record why, ask the human. Never self-appr
 approval rule (or your own permissions) first. An approval must be traceable — it binds ticket +
 scope + risk, and goes stale when scope changes.
 
-## Wake fence
+## Entry fence
 
-Roles never create or wake each other's sessions. Only a human starts a role; the scheduler may
-wake **tower only**. `kai-mode` routes and prints the command but does not call session-creation
-tools. Subagents within a ticket are not role sessions. Source of truth:
-`docs/adr/0010-role-wake-fence.md`.
+`bridge` is the only conversational surface and the default entry. It does not call session-creation
+tools to wake other roles; there are no other roles. A session that is not explicitly pointed at another
+skill runs bridge's method. Source of truth: `docs/adr/0028-bridge-entry-and-airport-retirement.md`.
 
 ## Where each kind of rule lives (one kind, one home)
 
 | Kind | Only home | Elsewhere |
 |---|---|---|
 | Non-negotiable constraints (red lines) | this file | pointer |
-| Ticket-level protocol (slots, fail/retry counts, receipt, shipping) | `airport/skills/loop/references/loop-protocol.md` | pointer |
-| Out-of-ticket dispatch (when not to delegate, who may dispatch whom, concurrency, context budget) | `airport/skills/loop/references/dispatch.md` | pointer |
-| Method (how to explore / review / plan / implement) | `airport/skills/<role>/SKILL.md`（each role skill carries its own method） | pointer |
+| Run-level protocol (slots, fail/retry counts, receipt, shipping) | `v2/skills/coding/SKILL.md` | pointer |
+| Dispatch (when to delegate, context budget, report shape) | `v2/skills/coding/SKILL.md` | pointer |
+| Method (how to explore / review / plan / implement) | `methods/skills/kai-*/SKILL.md` | pointer |
 | Output structure (which carrier: L1 text / L2 diagram / L3 single-file HTML / L4 explainer video) | `core/skills/principle-output-structure/SKILL.md` | pointer |
 | Host differences (launcher per role, how a persona becomes a native agent file, permissions, model) | `adapters/README.md` + `adapters/<host>.md` | pointer |
 | Artifact packaging (dev records vs host payload vs project scaffold) | `manifests/package-layout.json` + `docs/package-layout.md` | pointer |
@@ -82,11 +81,11 @@ mechanically. To write about a retired mechanism on purpose, mark that line `can
 |---|---|
 | Skill layout & frontmatter contract | `docs/skill-layout.md` |
 | Writing a SKILL / AGENTS doc | skill `kai-writing-for-agents`（fork 自上游；溯源见 `docs/skill-sources/workflow-skills.md`） |
-| Sub-agent dispatch contract (depth, context budget, who may dispatch whom) | `airport/skills/loop/references/dispatch.md` |
+| Sub-session dispatch contract (depth, context budget, report shape) | `v2/skills/coding/SKILL.md` |
 | Handoff docs & cross-agent board | `handoff/README.md` · `handoff/60-board/README.md` |
 | External skills kept as reference material | `docs/skill-sources/README.md` |
 | Architecture decisions | `docs/adr/` |
-| Single-ticket loop | `airport/skills/loop/references/loop-protocol.md` |
+| Run lifecycle (one issue, one run) | `v2/skills/coding/SKILL.md` |
 
 ## Issue tracker
 
@@ -103,10 +102,9 @@ hook（PreToolUse 拦 `gh issue create|gh pr create`，缺 `--repo` 即拒）：
 
 ## Triage labels
 
-The five canonical role labels, used as-is. See `docs/agents/triage-labels.md` — reference
-material mapping the external mattpocock/skills roles onto this repo's labels (those external
-skills are **not** installed in this repo; the live lane labels live in the ground-crew/tower
-skills).
+The five canonical triage labels are listed in `docs/agents/triage-labels.md`. The V1 lane labels
+(`main-queue`, `deputy-queue`, `second-queue`, `ace-queue`) are retired with the airport system;
+no skill reads them anymore.
 
 ## Domain docs
 
@@ -122,7 +120,7 @@ Pick the slot from the type word in the filename. Full rules: `handoff/README.md
 
 ```bash
 python scripts/doctor.py [--with-tests]          # 项数以 stdout 汇总行为准；--with-tests 含 scripts/tests
-python scripts/check-instance.py --repo <项目仓>   # 校验项目仓那份配置实例（键集/占位/机器路径/落点/日表）
+python scripts/check-instance.py --repo <项目仓>   # 校验项目仓那份配置实例（键集/占位/机器路径/落点/退役键）
 python scripts/new-skill.py <n> --summary "..."  # skill scaffold
 python scripts/source-check.py                   # external source drift / 30-day reconcile reminder (forked methods included)
 python scripts/handoff-board.py list             # cross-agent board

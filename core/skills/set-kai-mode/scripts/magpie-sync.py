@@ -784,6 +784,48 @@ def retire_legacy(library: str, home: str | None = None, dry: bool = False) -> t
     return moved, unlinked, skipped
 
 
+def retire_names(library: str, names, home: str | None = None, dry: bool = False) -> tuple:
+    """显式退役指定技能：目录移到 `<库根>/.retired/<时间>/`，并摘掉各宿主指向它的链接。
+    只处理符号链接；实体目录只报告、不动。返回 (moved, unlinked, skipped)。"""
+    names = {str(n).strip() for n in (names or []) if str(n).strip()}
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%f")
+    retired_root = os.path.join(library_root(library), RETIRED_DIR, stamp)
+    moved, unlinked, skipped = [], [], []
+    faces = find_faces(library, home)
+    for name in sorted(names):
+        src = os.path.join(library, name)
+        if not os.path.isdir(src):
+            continue
+        src_real = os.path.realpath(src)
+        dest = os.path.join(retired_root, name)
+        if dry:
+            moved.append(f"{name} → {dest}")
+        else:
+            os.makedirs(os.path.dirname(dest), exist_ok=True)
+            shutil.move(src, dest)
+            moved.append(f"{name} → {dest}")
+        for face in faces:
+            link = os.path.join(face, name)
+            if not os.path.lexists(link):
+                continue
+            if os.path.islink(link) and os.path.realpath(link) == src_real:
+                if dry:
+                    unlinked.append(link)
+                else:
+                    os.remove(link)
+                    unlinked.append(link)
+            elif os.path.isdir(link) and not os.path.islink(link):
+                skipped.append(f"{link}（实体目录，不删）")
+    if not dry and (moved or unlinked or skipped):
+        os.makedirs(retired_root, exist_ok=True)
+        with open(os.path.join(retired_root, "retired.json"), "w", encoding="utf-8") as f:
+            json.dump({"at": datetime.now(timezone.utc).isoformat(), "names": sorted(names),
+                       "moved": moved, "unlinked": unlinked, "skipped": skipped},
+                      f, ensure_ascii=False, indent=2)
+            f.write("\n")
+    return moved, unlinked, skipped
+
+
 def find_library(home: str | None = None) -> str | None:
     home = home or os.path.expanduser("~")
     env = os.environ.get(LIBRARY_ENV)
@@ -998,7 +1040,7 @@ def link_faces(library: str, names, home: str | None = None, dry: bool = False):
 
 def apply(root: str, library: str, dry: bool, home: str | None = None,
           plan: dict | None = None, profile: str | None = None, retire: bool = False,
-          skip: set | None = None) -> int:
+          skip: set | None = None, retire_names_list: set | None = None) -> int:
     plan = plan if plan is not None else install_plan(root, profile)
     skip_names = {str(n).strip() for n in (skip or []) if str(n).strip()}
     unknown = sorted(skip_names - set(plan))
@@ -1054,6 +1096,17 @@ def apply(root: str, library: str, dry: bool, home: str | None = None,
     if marker:
         print(f"  安装回执 {marker}（来源根／档位／技能哈希）")
     if dry:
+        if retire_names_list:
+            removed = retire_registry_entries(library, retire_names_list, dry=True)
+            moved, unlinked, skipped = retire_names(library, retire_names_list, home, dry=True)
+            for x in removed:
+                print(f"  将退役注册条目 {x}")
+            for x in moved:
+                print(f"  将退役目录 {x}")
+            for x in unlinked:
+                print(f"  将摘链 {x}")
+            for x in skipped:
+                print(f"  退役跳过 {x}")
         if retire:
             removed = retire_registry_entries(library, LEGACY_ALIASES, dry=True)
             moved, unlinked, skipped = retire_legacy(library, home, dry=True)
@@ -1075,6 +1128,21 @@ def apply(root: str, library: str, dry: bool, home: str | None = None,
             print("回写后复量仍有漂移（无备份可还原）")
         return 1
     print("回写后复量：三面全绿")
+    if retire_names_list:
+        try:
+            removed = retire_registry_entries(library, retire_names_list)
+            moved, unlinked, skipped = retire_names(library, retire_names_list, home, dry=False)
+        except (OSError, SystemExit) as exc:
+            print(f"  退役失败：{exc}")
+            return 1
+        for x in removed:
+            print(f"  退役注册条目 {x}")
+        for x in moved:
+            print(f"  退役目录 {x}")
+        for x in unlinked:
+            print(f"  摘旧链 {x}")
+        for x in skipped:
+            print(f"  退役跳过 {x}")
     if retire:
         try:
             removed = retire_registry_entries(library, LEGACY_ALIASES)
@@ -1330,6 +1398,8 @@ def main() -> int:
     ap.add_argument("--profile", default=None, help="安装档位（core/full；缺省读回执，无回执=full）")
     ap.add_argument("--retire-legacy", action="store_true",
                     help="一次性迁移：旧中文角色目录移到 .retired 并摘掉宿主旧链")
+    ap.add_argument("--retire", default="",
+                    help="显式退役技能名，逗号分隔（目录移到 .retired 并摘掉宿主旧链）")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--json", action="store_true", help="check 输出机器可读的漂移/冲突表")
     ap.add_argument("--skip", default=None,
@@ -1372,7 +1442,8 @@ def main() -> int:
         return 1 if drifted else 0
     skip = {s.strip() for s in (a.skip or "").split(",") if s.strip()}
     return apply(root, library, a.dry_run, plan=plan, profile=profile,
-                 retire=a.retire_legacy, skip=skip)
+                 retire=a.retire_legacy, skip=skip,
+                 retire_names_list={x.strip() for x in (a.retire or "").split(",") if x.strip()})
 
 
 if __name__ == "__main__":

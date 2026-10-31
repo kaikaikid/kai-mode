@@ -1,7 +1,7 @@
 {
   "name": "core",
-  "version": "1.2.0",
-  "description": "统一入口、装机、交接与七条原则；不含岗位流程。",
+  "version": "1.3.0",
+  "description": "舰桥入口、装机、升级、交接与七条原则。",
   "author": {
     "name": "kaikaikid"
   }

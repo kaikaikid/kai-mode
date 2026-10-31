@@ -55,7 +55,7 @@
 
       <rect class="d-box" x="20" y="70" width="150" height="92" rx="10"/>
       <text class="d-t" x="95" y="100" text-anchor="middle">6 个插件</text>
-      <text class="d-s" x="95" y="122" text-anchor="middle">airport · core · studio</text>
+      <text class="d-s" x="95" y="122" text-anchor="middle">core · v2 · methods</text>
       <text class="d-s" x="95" y="140" text-anchor="middle">intake · ops · board</text>
 
       <rect class="d-box" x="215" y="70" width="140" height="92" rx="10"/>
@@ -112,24 +112,24 @@
       <table>
         <thead><tr><th>档位</th><th>包含</th><th>适合谁</th></tr></thead>
         <tbody>
-          <tr><td><code>core</code></td><td>入口、安装、单票协议、六个机场岗位、交接，共 10 件</td><td>第一次用，先跑通最小闭环</td></tr>
-          <tr><td><code>full</code></td><td>core ＋ 六条原则、想法池、看板、事故与运维、文娱六岗位，共 27 件自动件</td><td>确认要长期用，想要完整能力</td></tr>
+          <tr><td><code>core</code></td><td>舰桥入口、规划方法、安装、升级、交接与原则，共 14 件</td><td>第一次用，先跑通最小闭环</td></tr>
+          <tr><td><code>full</code></td><td>core ＋ 执行内核、方法库、想法池、看板、事故与运维、文娱六岗位，共 34 件自动件</td><td>确认要长期用，想要完整能力</td></tr>
           <tr><td>手动</td><td><code>harness-audit</code> 语义体检，不进自动档</td><td>发版前或月度体检时单独装</td></tr>
         </tbody>
       </table>
     </div>
 
     <div class="callout">
-      <span class="label">定时器只叫醒塔台</span>
-      <p>“每 60 分钟自动看一眼”的能力叫唤醒定时器。它只会叫醒塔台，不会自动拉起机长或创作角色；只有人能起角色。宿主不支持定时器时，回执会明确写“没装上”，不会假装有。</p>
+      <span class="label">默认入口是舰桥</span>
+      <p>机场体系下线后不再有 60 分钟唤醒定时器，也没有塔台轮巡。安装器会在项目 <code>CLAUDE.md</code> / <code>AGENTS.md</code> 写一段「默认入口＝舰桥」；用户按需起会话，施工由 <code>coding jump</code> 起子会话。</p>
     </div>
 
     <details class="fold">
       <summary>给技术同事：实际跑了什么</summary>
       <div class="fold-body">
         <p>安装面由 <code>core/skills/set-kai-mode/scripts/magpie-sync.py</code> 负责：从 <code>.claude-plugin/marketplace.json</code> 派生插件目录，按 <code>manifests/install-profiles.json</code> 选档位，逐字拷贝到 Magpie 中央库，再链到各宿主。漂移判据看内容、落点、注册三面。</p>
-        <p>项目骨架由 <code>scripts/init-project.py</code> 的十问生成：项目名、票源、仓库 slug、日表目录、交接目录、想法目录、ADR 目录、宿主、收工门禁、想法池汇总票号。生成后可用 <code>python scripts/check-instance.py --repo &lt;项目仓&gt;</code> 对账。</p>
-        <p>框架仓自检：<code>python scripts/doctor.py</code>（29 项）。装机回执里出现 <code>missing: no-timer / no-new-context / soft-permission-only</code> 时，按缺件三格登记，不要猜路径。</p>
+        <p>项目骨架由 <code>scripts/init-project.py</code> 的十问生成：项目名、票源、仓库 slug、交接目录、想法目录、ADR 目录、规则目录、宿主、收尾门、想法池汇总票号。生成后可用 <code>python scripts/check-instance.py --repo &lt;项目仓&gt;</code> 对账。</p>
+        <p>框架仓自检：<code>python scripts/doctor.py</code>（28 项）。装机回执里出现 <code>missing: no-timer / no-new-context / soft-permission-only</code> 时，按缺件三格登记，不要猜路径。</p>
       </div>
     </details>
 

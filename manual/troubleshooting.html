@@ -39,12 +39,12 @@
       <li>还是看不到，就让 AI 重新扫描一次缺什么，不要手动复制正文改来改去——两份会漂移。</li>
     </ul>
 
-    <h2>定时器没叫醒塔台</h2>
-    <p>这是设计如此：定时器只唤醒塔台，不会自动拉起机长、王牌或创作角色。只有人能起其他角色。</p>
+    <h2>没有自动轮巡</h2>
+    <p>这是设计如此：机场体系下线后不再有 60 分钟唤醒定时器，也没有塔台轮巡。用户按需起会话；施工由 <code>coding jump</code> 起子会话。</p>
     <ul>
       <li>每 60 分钟一轮；宿主不支持定时器时，回执会写“没装上”。</li>
       <li>门卫会先判断：上一轮还在跑、或者没活，就直接跳过，零模型调用。所以“没动静”可能是没活。</li>
-      <li>有活但没醒，可以人工叫一次塔台；不要自己改定时器去叫别的角色。</li>
+      <li>要看进度，直接问舰桥或跑 <code>coding status</code>；不要自己改宿主定时任务。</li>
     </ul>
 
     <h2>票卡住了 / 失败了</h2>
@@ -81,7 +81,7 @@
       <div class="fold-body">
         <p>缺件类型：<code>no-launcher</code> · <code>no-new-context</code> · <code>no-timer</code> · <code>no-model-field</code> · <code>soft-permission-only</code> · <code>paid-not-authorized</code> · <code>launch-failed</code> · <code>missing-instance</code>。</p>
         <p>框架仓：<code>python scripts/doctor.py [--with-tests]</code>；项目实例：<code>python scripts/check-instance.py --repo &lt;项目仓&gt;</code>；插件清单：<code>python scripts/plugin-check.py</code>；外部素材对账：<code>python scripts/source-check.py</code>。</p>
-        <p>唤醒门卫：<code>airport/skills/tower/scripts/wake-gate.py</code>；待发货探测：<code>ship-queue.py</code>。探测失败返回 <code>rc=3</code>，不等于零票。</p>
+        <p>run 状态与子会话日志：<code>.coding/runs/&lt;run&gt;/</code>；状态与 git 对账跑 <code>coding doctor</code>。探测失败要如实报错，不等于零活。</p>
         <p>路径一律相对仓库根，不写盘符绝对路径；技能落点必须项目级。</p>
       </div>
     </details>

@@ -29,59 +29,35 @@ claude --help             # 现场核对 plugin / agents / settings 相关 flag
 
 | 装什么 | 源 | 放哪 | 叫什么 |
 |---|---|---|---|
-| 插件清单 | `.claude-plugin/marketplace.json` ＋ `<plugin>/.claude-plugin/plugin.json` | 仓库根；作为本地 marketplace 交给宿主（`/plugin marketplace add <本仓路径>`，先按本机版本核对） | 插件名 `airport`／`core`／`board`／`intake`／`ops` |
+| 插件清单 | `.claude-plugin/marketplace.json` ＋ `<plugin>/.claude-plugin/plugin.json` | 仓库根；作为本地 marketplace 交给宿主（`/plugin marketplace add <本仓路径>`，先按本机版本核对） | 插件名 `core`／`v2`／`methods`／`board`／`intake`／`ops`／`studio` |
 | 技能 | `<plugin>/skills/<名>/SKILL.md` ＋ `scripts/`、`templates/`、`references/` | 项目 `.claude/skills/<名>/`；或中央库 `<...>/magpie/data/library/skills/<名>/`，宿主目录指向它 | 技能名；插件安装后按插件命名空间寻址 |
-| 命令 | `<plugin>/commands/<role>.md` | 随插件安装 | `/airport:pilot` 这类插件命令；自然语言「机长开工」也命中 |
+| 默认入口 | 项目 `CLAUDE.md` / `AGENTS.md` 一段 ＋ `core/skills/bridge/SKILL.md` | 项目根 | `/bridge`、`/舰桥`；未点名其它技能时默认 |
 | 子代理 | 宿主原生 `.claude/agents/<名>.md`（可选，宿主自有格式） | 项目 `.claude/agents/` | 宿主 agent 名 |
 
 - **不装全局**：`.claude/agents/` 与 `.claude/skills/` 只在项目级装，避免和用户其它框架的同名项打架。
 - 框架不再定义人格文件：需要新上下文时用 Claude Code 原生子代理，或另起一次 `claude -p`。
 - 只读靠工具白名单（`tools` 只给 Read/Grep/Glob），不是靠 prompt 自觉。
 
-## 起角色（可写，仅人工执行）
+## 起舰桥（默认入口）
 
-> 任何角色不得自动调用会话创建口起另一个角色（唤醒围栏）。
+> 舰桥是唯一对话面；不再有地勤/塔台/机长等角色会话，也不装任何唤醒定时器。
 
 ```bash
 cd <项目仓根>
 claude
-# 会话内：读取并执行 airport/skills/<角色>/SKILL.md 全文；
-# 你的角色是 cc-<角色>-<时间戳>；只做该文件写的动作。
+# 会话内：未点名其它技能时，读取并执行 core/skills/bridge/SKILL.md 全文；
+# 你的会话名是 cc-bridge-<时间戳>；只做该文件写的动作。
 ```
-
-插件命令装好后也可以直接 `/airport:pilot`、`/airport:tower`、`/airport:ground-crew`、`/airport:copilot`、`/airport:second-officer`、`/airport:ace`。
 
 非交互执行（脚本/回执）：
 
 ```bash
-claude -p "读取并执行 <项目仓根>/airport/skills/<角色>/SKILL.md 全文；只做该文件写的动作。" \
-  --output-format text > <回执文件>
+claude -p "读取并执行 <项目仓根>/.claude/skills/bridge/SKILL.md 全文；只做该文件写的动作。" --output-format text > <回执文件>
 ```
 
-未实测的 flag（如 `--permission-mode`、`--allowedTools`）先 `claude --help` 当场核对，不把猜测写进正本。
-
-## 定时唤醒塔台（门卫薄壳）
-
-Claude 桌面端/Code 的定时任务每轮**都会拉起一次模型会话**，所以 prompt 必须是门卫薄壳，
-不能直接写「读取并执行塔台技能全文」——否则没活、上一轮还在跑，都白烧一整轮。
-
-```text
-定时任务（每 60 分钟）
-  ├─ cwd：项目仓根
-  └─ prompt（薄壳，全文照抄，不加长规则）：
-     在项目仓根执行 `python <tower 技能目录>/scripts/wake-gate.py`。
-     退出码 10 ⇒ 只回复它打印的那一行，立即结束，不读任何技能、不扫 Issue、不排班。
-     退出码 0 ⇒ 读取并执行 airport/skills/tower/SKILL.md 全文，按该文件跑一轮（本轮启用道 lanes=1+2）；任务名 cron-tower-<日期>-<时分>。
-     退出码 2 ⇒ 按缺件三格如实报告，结束。
-```
-
-- 门卫判据住 `tower/scripts/wake-gate.py`，prompt 里不复述：上一轮还在跑（令牌心跳新于
-  `tower_cron.interval_min + 5` 分钟）⇒ 跳过；零待发货且**启用道**日表都在下限以上 ⇒ 跳过；
-  待发货探测失败 ⇒ 放行（失败不等于零活）。
-- **跳过时零模型调用**：门卫是纯脚本，`rc=10` 那一轮只有一个短回合的回复，不加载 21KB 技能正文。
-- 建完必回读：`list_scheduled_tasks` 看 `enabled`、`nextRunAt`、`lastRunAt` 有没有动；
-  看到被手动停（`enabled=false`）⇒ 报「建过、现在是停的」两句，**不自动重开**。
-- 只唤醒塔台；角色之间不互相拉起（唤醒围栏）。人工 `/tower` 不过门卫。
+- **默认入口**：在项目 `CLAUDE.md` / `AGENTS.md` 末尾写一段「默认入口＝舰桥」；这是让用户「忘了触发也进舰桥」的机械落点。
+- 不装定时器：没有塔台轮巡，也没有 60 分钟唤醒。用户按需起会话。
+- 施工由 `coding jump` 起独立进程/子会话；本会话不替子会话写代码。
 
 ## 开票归属钩子（PreToolUse）
 

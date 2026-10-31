@@ -3,12 +3,10 @@ name: pk
 status: active
 approved_by: human:kaikaikid
 approved: 2026-10-30
-sources:
-  - resource: "../loop/references/dispatch.md"
-    note: "派工纪律：只读子代理、传指针不传全文"
+sources: []
 description: >
   通用对比分析 PK：对项目/图像/文章等多对象做维度化对比，输出图表与结论。
-  不做：不改代码、不开票、不走塔台、不做单对象评审。
+  不做：不改代码、不开票、不走施工流水线、不做单对象评审。
   触发：`/pk`、`/PK`、`/对比`，或用户说「PK」「对比」「比一比」「PK 一下」。
 version: 0.1.0
 updated: 2026-10-30
@@ -29,7 +27,7 @@ dependencies:
 
 - 人工：`/pk`、`/PK`、`/对比`，或用户说「PK」「对比」「比一比」「PK 一下」。
 - 定时：无。
-- 上游：无；用户直接调用。kai-mode 只推荐命令，不自动起。
+- 上游：无；用户直接调用。舰桥只推荐命令，不自动起。
 
 ## 输入与输出
 
@@ -75,7 +73,7 @@ dependencies:
 
 **不可以**
 
-- 改代码、开票、走塔台、推送、合并。
+- 改代码、开票、走施工流水线、推送、合并。
 - 不静默降档或静默升档（升档必须用户触发）。
 - 不编造证据：无证据的维度标"未验证"而非给分。
 
@@ -90,11 +88,9 @@ dependencies:
 
 ```text
 维护侧体检（不随技能安装）：plugin-check ＋ 仓级 doctor
-技能自测：python -m pytest airport/skills/pk/tests -q（如有）
 ```
 
 ## 正本
 
-- `airport/skills/pk/SKILL.md` —— 本文件。
+- `methods/skills/pk/SKILL.md` —— 本文件。
 - diagram-design（外援：外部宿主技能，持续关注其版本与 API 变动）—— 图表渲染。
-- `../loop/references/dispatch.md` —— 派工纪律。

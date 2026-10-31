@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:,">
 <title>开票与施工 · kai-mode 使用手册</title>
-<meta name="description" content="一张票从一句话到发货：开票、排班、施工、审查、发货。">
+<meta name="description" content="一张票从一句话到发货：开票、开 run、施工、审查、发货。">
 <link rel="stylesheet" href="assets/manual.css">
 </head>
 <body>
@@ -20,73 +20,73 @@
   <main class="page">
     <p class="kicker">日常</p>
     <h1>开票与施工</h1>
-    <p class="lede">一张票从“我想要”走到“已发货”，中间只有六步。你真正要做的，通常只是回答几个问题、拍一次板，然后等结果。</p>
+    <p class="lede">一张票从“我想要”走到“已发货”，中间只有六步。你真正要做的，通常只是回答几个问题、拍一次板，然后等舰桥回报。</p>
 
     <ol class="steps">
       <li>
         <h3>说需求</h3>
-        <p>把想要的东西用一句话说出来，交给 <code>/kai-mode</code>。它会问你不超过五个大方向的问题，每题都带推荐答案；答完你拍一次板。</p>
+        <p>把想要的东西用一句话说出来，交给舰桥。需求大、方向未定时，它会问你不超过五个大方向的问题，每题都带推荐答案；答完你拍一次板。</p>
       </li>
       <li>
-        <h3>地勤开票</h3>
-        <p>地勤把需求整理成一张能执行的票：目标、验收标准、允许改什么、禁止改什么、怎么验证、依赖与红线。票会进 Issue，并打上“可以开工”的标记。</p>
+        <h3>舰桥开票</h3>
+        <p>舰桥把需求整理成一张能执行的票：目标、验收标准、允许改什么、禁止改什么、怎么验证、依赖与红线。票会进 Issue。</p>
       </li>
       <li>
-        <h3>你选走哪条道</h3>
-        <p>三选一：<strong>等塔台</strong>正常排班；<strong>进王牌队列</strong>；<strong>现在就拉起王牌</strong>。加急只影响排队，不改变“塔台最后统一发货”。</p>
+        <h3>你选普通还是加急</h3>
+        <p>普通 run 排队等槽位；加急 run 走预留槽，不抢普通 run。两种都只有舰桥一个发货口。</p>
       </li>
       <li>
-        <h3>塔台排班</h3>
-        <p>塔台把票写进某位机长的日表。票一进日表，就算被领取了；你不用再手动指派。</p>
+        <h3>舰桥开 run</h3>
+        <p>舰桥执行 <code>coding jump</code>：一个 issue 一个 run，建独立 worktree 与分支，然后按任务图派子会话。</p>
       </li>
       <li>
-        <h3>机长施工 + 审查</h3>
-        <p>机长派一个施工的人去改，再派另一个“新上下文”的人独立审查。审查只出“过 / 不过”和逐条证据；过了就写“待发货”，机长立刻去拿下一张。</p>
+        <h3>子会话施工 + 门卫审查</h3>
+        <p>施工子会话在 run 的 worktree 里改；门卫用另一段新上下文只读审查，逐条对 AC 出 accept / return。施工者不得自审。</p>
       </li>
       <li>
-        <h3>塔台发货</h3>
-        <p>塔台把一批票一起合并，跑一次收尾检查，推一次，然后关票。这里只有塔台能做。</p>
+        <h3>舰桥发货</h3>
+        <p>舰桥在 G2 合并到 base、跑一次收尾门、push 一次、关票。这里只有舰桥能做。</p>
       </li>
     </ol>
 
-    <h2>三个角色，权限分得很死</h2>
+    <h2>三层，权限分得很死</h2>
     <div class="table-wrap">
       <table>
         <thead><tr><th>角色</th><th>只负责</th><th>绝不做</th></tr></thead>
         <tbody>
-          <tr><td>地勤</td><td>对话、规划、开票、分流想法</td><td>写代码、推送、派施工</td></tr>
-          <tr><td>塔台</td><td>排班、发货、合并、推送、关票</td><td>写代码、替审查下结论</td></tr>
-          <tr><td>机长 / 副机长 / 二副</td><td>带施工和审查，跑完自己的日表</td><td>亲自写码、推送、合并</td></tr>
-          <tr><td>王牌</td><td>用户直连的加急；小活可直接修</td><td>推送、合并、关票、写别人的日表</td></tr>
+          <tr><td>舰桥</td><td>对话、判断、开票、开 run、清场、发货、回报</td><td>写产品代码、替用户做产品取舍</td></tr>
+          <tr><td>施工子会话</td><td>按 brief 改代码、跑验证、提交到 run 分支</td><td>push、合并、关票、改 state.json</td></tr>
+          <tr><td>门卫审查</td><td>新上下文只读，逐条对 AC 出 accept / return</td><td>复用施工上下文、替自己下结论</td></tr>
+          <tr><td>V2 内核</td><td>状态推进、槽位、worktree、验收、发货</td><td>规划与产品判断</td></tr>
         </tbody>
       </table>
     </div>
 
     <div class="callout">
       <span class="label">为什么要分这么死</span>
-      <p>施工的人容易“觉得自己做对了”；所以审查必须换一段新上下文，不能自己审自己。塔台独占推送和关票，是为了让“发货”只有一个出口。</p>
+      <p>施工的人容易“觉得自己做对了”；所以审查必须换一段新上下文，不能自己审自己。舰桥独占推送和关票，是为了让“发货”只有一个出口。</p>
     </div>
 
     <h2>你会看到什么</h2>
     <ul>
-      <li><strong>Issue 评论</strong>：开工、施工完成、审查完成、待发货、卡点。状态只写在这里，不靠口头总结。</li>
-      <li><strong>日表</strong>：谁在跑哪张票。主道、副道、二副道三张正常日表由塔台写；王牌写自己的加急日表。</li>
-      <li><strong>分支与提交</strong>：代码只在分支里，不在聊天里；塔台发货时才合并、推送。</li>
+      <li><strong>Issue 与 run 状态</strong>：票面写验收；<code>.coding/runs/&lt;run&gt;/state.json</code> 写阶段、任务、断点。状态只由 <code>coding</code> 写。</li>
+      <li><strong>run 状态</strong>：谁在跑哪个 run、哪个任务、占哪个槽位；<code>coding status</code> 一眼看完。</li>
+      <li><strong>分支与提交</strong>：代码只在 run 分支里，不在聊天里；舰桥发货时才合并、推送。</li>
     </ul>
 
     <h2>卡住了会怎样</h2>
-    <p>一张票失败一次会重试一次；再失败就停下来，写“卡点”并说明原因。同一类错误连续出现会触发熔断。红线（花钱、对外发布、不可逆、删未提交内容）只停那一张票，并且必须报人。</p>
+    <p>子会话超时或崩溃会自动重试；再失败转 blocked，保留产出。merge 冲突自动 rebase 一次；仍冲突转 blocked。红线（花钱、对外发布、不可逆、删未提交内容）只停当前 run，并且必须报人。</p>
 
     <details class="fold">
       <summary>给技术同事：协议与判词</summary>
       <div class="fold-body">
-        <p>单票闭环正本：<code>airport/skills/loop/references/loop-protocol.md</code>（v11）。关键是三段：</p>
+        <p>执行内核正本：<code>v2/skills/coding/SKILL.md</code>。关键是三段：</p>
         <ul>
-          <li>施工回执固定字段：<code>ticket/role/verdict/files/commits/checks/summary/evidence/risks/next</code>。</li>
-          <li>审查判词：首行 <code>verdict=pass</code>，第二行 <code>ac=n/m</code>，附逐条 AC 证据；塔台只认这个，不认口头总结。</li>
-          <li>车道：<code>lane-main</code> / <code>lane-deputy</code> / <code>lane-second</code> / <code>lane-ace</code> 各一棵工作树；每车道 worker 预算 5，三张正常日表合计 15。</li>
+          <li>子会话报告固定字段：<code>result/files_changed/verification/open_questions/notes</code>；报告与 diff 必须对得上。</li>
+          <li>门卫审查：新上下文只读，逐条对 AC 出 accept / return 与证据；舰桥只认这个，不认主会话口头总结。</li>
+          <li>隔离：一个 run 一棵 worktree、一个分支、一组 touchset；touchset 重叠的 run 排队。</li>
         </ul>
-        <p>唤醒围栏：角色之间不互相唤醒；只有人能起角色，定时器只唤醒塔台。子代理是票内委派，不受这条围栏影响。</p>
+        <p>入口：用户只跟舰桥说话；施工由 <code>coding jump</code> 起子会话。没有角色之间的唤醒，也没有塔台定时器。</p>
       </div>
     </details>
 

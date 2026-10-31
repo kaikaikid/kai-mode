@@ -29,6 +29,7 @@ OUT = ROOT / "manual" / "assets" / "skills-data.js"
 
 # 没有 commands/ 的插件里，这些技能本身就是口令
 SELF_COMMAND_SKILLS = {
+    "bridge",
     "producer",
     "lead-writer",
     "lead-artist",
@@ -38,8 +39,9 @@ SELF_COMMAND_SKILLS = {
 }
 
 GROUP_BY_PLUGIN = {
-    "airport": "机场体系",
-    "core": "入口与安装",
+    "core": "舰桥与安装",
+    "v2": "执行内核",
+    "methods": "方法库",
     "studio": "文娱集团",
     "intake": "支持能力",
     "ops": "支持能力",
@@ -155,8 +157,8 @@ def main() -> int:
             if not command and skill == "harness-audit":
                 command = "手动技能"
             if not trigger:
-                if skill == "loop":
-                    trigger = "随 /pilot、/copilot、/second-officer、/ace 自动带入"
+                if skill == "coding":
+                    trigger = "由舰桥触发 /jump"
                 elif skill == "studio":
                     trigger = "随六个创作口令自动带入"
                 elif skill.startswith("principle-"):

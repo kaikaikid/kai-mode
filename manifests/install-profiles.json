@@ -1,38 +1,30 @@
 {
   "schema": "kai-mode-install-profiles/1",
-  "version": 2,
+  "version": 3,
   "_note": "安装档位正本。只列 install:auto 条目；core 是最小闭环，full 是当前全部自动件。手动件（harness-audit）不在此表，按需单独装。技能清单由 marketplace 的插件目录派生，本文件只写档位成员。",
   "profiles": {
     "core": {
-      "description": "最小闭环：入口/安装/协议/六岗位/交接；不含原则、想法池、看板与运维剧本。",
+      "description": "最小闭环：舰桥入口/安装/升级/交接/执行内核。",
       "skills": [
+        "bridge",
         "kai-mode",
         "set-kai-mode",
         "upgrade-kai-mode",
-        "loop",
-        "ground-crew",
-        "tower",
-        "pilot",
-        "copilot",
-        "second-officer",
-        "ace",
-        "kai-handoff"
+        "kai-handoff",
+        "coding",
+        "kai-mods"
       ]
     },
     "full": {
-      "description": "core ＋ 七个原则 ＋ BOOM 想法池 ＋ 看板 ＋ 事故与运维剧本 ＋ 文娱集团六岗位。",
+      "description": "core ＋ 七个原则 ＋ BOOM 想法池 ＋ 看板 ＋ 事故与运维剧本 ＋ 文娱集团六岗位 ＋ 方法库。",
       "skills": [
+        "bridge",
         "kai-mode",
         "set-kai-mode",
         "upgrade-kai-mode",
-        "loop",
-        "ground-crew",
-        "tower",
-        "pilot",
-        "copilot",
-        "second-officer",
-        "ace",
         "kai-handoff",
+        "coding",
+        "kai-mods",
         "principle-ask-one-question-at-a-time",
         "principle-ceremony-collapses-with-scale",
         "principle-measure-dont-ask",
@@ -59,9 +51,7 @@
         "kai-writing-for-agents",
         "kai-security-audit",
         "pk",
-        "kai-skills",
-        "coding",
-        "kai-mods"
+        "kai-skills"
       ]
     }
   }

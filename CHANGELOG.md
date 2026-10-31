@@ -2,6 +2,23 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.37.0 — 2026-10-31
+
+- **机场体系下线（ADR-0028）**：删除 `airport/` 插件（六岗位、loop 协议、日表、车道、塔台令牌/定时器、
+  待发货队列）；`pk` 迁 `methods/skills/pk`；`canon.json` 清退机场判据键；doctor 扫描面同步。
+- **舰桥成为唯一入口（ADR-0028）**：新增 `core/skills/bridge`（口令 `/bridge`／`/舰桥`，默认入口）；
+  `kai-mode` 降为规划与拷问方法；`/coding` 降为内核控制面，`/jump`、`/PRI-jump` 由舰桥触发；
+  `set-kai-mode` 6.0 重写：装舰桥＋内核、写默认入口段、不再装定时器；配置实例升 schema 5
+  （删 `ship_mode`/`day_tables*`/`lanes`/`tower_cron`/`verdict_marker`/`loop_dir`/三键门禁，增 `gates.finish_cmd`）。
+- **set-kai-mode 6.1 加「卸载 V1」腿**：新增 `scripts/uninstall-v1.py`（探测/退役/复核/回执一条腿，
+  复用 magpie-sync 的退役函数；实体目录、宿主定时任务、项目实例退役键只报告不动）；
+  技能正文补「卸载 V1」节与缺口扫描第 10 项的机械探法。
+- **V2 内核补清场命令**：新增 `coding dirty [--json]`（主树脏件分 record/product）、
+  `coding park [-m 理由]`（无关产品改动收进命名 stash，回执落 `.coding/parked/`）、
+  `coding unpark [ref]`（apply 放回，不 drop）；`coding` 配置可回落读实例 `gates.finish_cmd`。
+- 安装面同步：`core` 1.3.0（14 技能）、`v2` 0.2.0；`marketplace.json` 删 airport；install-profiles core/full 重排；
+  手册生成器按新插件分组重出。
+
 ## 0.36.0 — 2026-10-30
 
 - **正常车道两固定槽（ADR-0027）**：`main`／`deputy`／`second` 各 `lane-<lane>-a`／`lane-<lane>-b`；

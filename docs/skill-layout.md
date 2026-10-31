@@ -79,15 +79,15 @@ updated: <YYYY-MM-DD>
 
 | 字段 | 用途 | 本仓口径 |
 |---|---|---|
-| `allowed-tools` | 预批准可用工具（空格分隔） | 按角色收紧；例 塔台 `Bash(git:*) Read Grep` |
+| `allowed-tools` | 预批准可用工具（空格分隔） | 按角色收紧；例 舰桥 `Read Grep Bash` |
 | `compatibility` | 环境要求（≤500 字符） | 需脚本的写 `Requires python3, git`；纯原则写 `Host-agnostic` |
 | `metadata` | 自由键值 | 中文技能写 `alias: <中文名>`，给机器留中文别名 |
-| `dependencies` | 依赖的其他技能（嵌套） | 例 机长 / 副机长 / 二副 依赖 `loop` |
+| `dependencies` | 依赖的其他技能（嵌套） | 例 入口技能依赖内核技能 |
 | `license` | 许可证 | 对外分享时补 |
 
 **技能名一律 kebab-case 英文**（规范硬性：小写字母数字 + 连字符，等于目录名）；
 **中文激活词保留在两处**：`description` 的「触发」行 + `metadata.alias`。
-例：`name: tower` ＋ `alias: 塔台` ＋ 触发 `/tower`／`/塔台`——口令不变，目录合规。
+例：`name: bridge` ＋ `alias: 舰桥` ＋ 触发 `/bridge`／`/舰桥`——口令不变，目录合规。
 
 ## 4. 正文风格
 
@@ -166,6 +166,5 @@ python scripts/doctor.py --with-tests   # 一条命令验全仓
 ## 10. 人格层已退役
 
 旧的 `agents/` 人格层（七个人格文件 ＋ `dispatch.md`）已按 ADR-0021 退役。
-派活规则住 [`airport/skills/loop/references/dispatch.md`](../airport/skills/loop/references/dispatch.md)，
-裁决形状住 [`airport/skills/loop/references/adjudication.md`](../airport/skills/loop/references/adjudication.md)。
+派活规则与裁决形状住 [`v2/skills/coding/SKILL.md`](../v2/skills/coding/SKILL.md)。
 审查独立性由「另一段新上下文」保证；宿主上怎么起新上下文见 [`adapters/`](../adapters/README.md)。

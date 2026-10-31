@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """kai-mode 装到别的项目：QA 初始化
 ==================================
-一串问答 → 生成 `<目标仓>/.ai/kai-mode.project.json`（schema 4 实例）＋ 铺两个组件
+一串问答 → 生成 `<目标仓>/.ai/kai-mode.project.json`（schema 5 实例）＋ 铺两个组件
 （`handoff/` 交接与角色沟通面、`docs/` 长期正本面）。
 
 用法：
@@ -94,7 +94,7 @@ def safe_rel(value: str, field: str) -> str:
 
 
 def normalize_answers(ans: dict) -> dict:
-    for key in ("day_tables_dir", "handoff_dir", "ideas_dir", "adr_dir", "preflight_gate"):
+    for key in ("handoff_dir", "ideas_dir", "adr_dir", "rules_dir"):
         if ans.get(key):
             ans[key] = safe_rel(ans[key], key)
     return ans
@@ -109,13 +109,13 @@ def build_answers(repo: str, a, yes: bool) -> dict:
         "project": ask("1/10 项目名", os.path.basename(os.path.abspath(repo)), yes),
         "ticket_source": ask("2/10 票源（github / none）", "github", yes),
         "repo_slug": ask("3/10 仓库 slug（owner/name，none 可留空）", auto_slug, yes),
-        "day_tables_dir": ask("4/10 日表目录", ".ai/tasks", yes),
-        "handoff_dir": ask("5/10 交接目录", "handoff", yes),
-        "ideas_dir": ask("6/10 想法目录", "ideas", yes),
-        "adr_dir": ask("7/10 ADR 目录", "docs/adr", yes),
+        "handoff_dir": ask("4/10 交接目录", "handoff", yes),
+        "ideas_dir": ask("5/10 想法目录", "ideas", yes),
+        "adr_dir": ask("6/10 ADR 目录", "docs/adr", yes),
+        "rules_dir": ask("7/10 规则目录", ".ai/rules", yes),
         "host": ask("8/10 宿主（qoder / codex / opencode / claude / copilot / cursor）— 回车＝本机当前宿主，不确定就填你实际在用的那一个", "", yes),
-        "preflight_gate": ask("9/10 收工门禁脚本（相对仓根；本项目没有就回车留 null，别抄别仓的门名）",
-                             "", yes),
+        "finish_gate": ask("9/10 收尾门命令（本项目没有就回车留 null，别抄别仓的门名）",
+                           "", yes),
         "boom_summary_ticket": ask("10/10 想法池汇总票号（可留空）", "", yes),
     }
 
@@ -146,13 +146,12 @@ def drop_placeholders(node, path=""):
 GUESS_PATHS = (  # 模板缺省＝框架猜测，不是问答答案：盘上没有就 null，别把猜测写成项目事实
     ("registry.rules.dir", "repo"),
     ("registry.skills.project_skills_dir", "repo"),
-    ("registry.skills.loop_dir", "repo"),
     ("runtime.deps.check_dir_rel", "repo"),
     ("runtime.backend_python.fallback.rel", "main_tree"),
     ("runtime.node.rel", "main_tree"),
 )
 ON_DEMAND_PATHS = (  # 问答答案或框架自有命名空间：现在没有是正常的，按需生成，不抹成 null
-    "paths.day_tables_dir", "paths.handoff_dir", "paths.ideas_dir", "paths.state_dir",
+    "paths.handoff_dir", "paths.ideas_dir", "paths.state_dir",
 )
 
 
@@ -210,18 +209,15 @@ def resolve_guesses(cfg: dict, repo: str):
 
 def apply(cfg: dict, ans: dict) -> dict:
     cfg["project"] = ans.get("project") or cfg.get("project")
-    cfg["ship_mode"] = "tower"
     reg = cfg.setdefault("registry", {})
     reg.setdefault("adrs", {})["dir"] = ans.get("adr_dir") or "docs/adr"
+    reg.setdefault("rules", {})["dir"] = ans.get("rules_dir") or ".ai/rules"
     paths = cfg.setdefault("paths", {})
-    paths["day_tables_dir"] = ans.get("day_tables_dir") or ".ai/tasks"
-    paths["day_table_pattern"] = "YYYY-MM-DD-{lane}.md"
-    paths["lanes"] = ["main", "deputy", "second", "ace"]
     paths["handoff_dir"] = ans.get("handoff_dir") or "handoff"
     paths["ideas_dir"] = ans.get("ideas_dir") or "ideas"
     gates = cfg.setdefault("gates", {})
-    gate = (ans.get("preflight_gate") or "").strip()
-    gates["captain_preflight"] = gate or None
+    gate = (ans.get("finish_gate") or "").strip()
+    gates["finish_cmd"] = gate or None
     issue = cfg.setdefault("issue", {})
     issue["platform"] = "none" if ans.get("ticket_source") == "none" else "github"
     if ans.get("repo_slug"):
@@ -376,13 +372,13 @@ def main() -> int:
         print(f"  handoff {len(h_spec['slots'])} 槽（{h_spec['board_slot']} 用子目录；其余按月）")
     print(f"  {adr_rel}/（{adr_state}）+ {spec['glossary']['to']}（已存在则不覆盖）")
     print("\n== 关键取值 ==")
-    for k in ("project", "ship_mode"):
+    for k in ("project",):
         print(f"  {k} = {cfg.get(k)}")
     for k, v in (cfg.get("paths") or {}).items():
         if not k.startswith("_note"):
             print(f"  paths.{k} = {v}")
     print(f"  registry.adrs.dir = {(cfg.get('registry') or {}).get('adrs', {}).get('dir')}")
-    print(f"  gates.captain_preflight = {cfg.get('gates', {}).get('captain_preflight')}")
+    print(f"  gates.finish_cmd = {cfg.get('gates', {}).get('finish_cmd')}")
 
     if a.dry_run:
         print("\n（dry-run，未写盘）")
@@ -394,11 +390,11 @@ def main() -> int:
 
     print(f"\n已写 {os.path.relpath(out, repo)}（{len(files)} 个组件文件）")
     print("\n== 下一棒 ==")
-    print("  1) 补门禁：gates 三键（captain_preflight/scope_check/close_gate）按本仓实情填，缺的留 null；项目要加别的门就扩键")
+    print("  1) 补收尾门：gates.finish_cmd 按本仓实情填，没有就留 null（V2 发货时跳过并注明）")
     print("     值可带子命令（读取端按 `python <值>` 直接插值），例：scripts/scope-check.py close-gate")
     print("  2) 补记录面：paths.audit_dir / module_cards / dashboard 填本仓实有落点，没有的留 null（读取端如实报缺件，不猜路径）")
-    print("  3) 跑 python <kai-mode 仓>/scripts/doctor.py 确认本仓绿；在目标仓跑一轮角色自证")
-    print("  4) 日表目录下写今日 -main.md / -deputy.md / -second.md，再由塔台排班")
+    print("  3) 跑 python <kai-mode 仓>/scripts/doctor.py 确认本仓绿；在目标仓跑一次舰桥自证")
+    print("  4) 在项目 CLAUDE.md / AGENTS.md 写上「默认入口＝舰桥」，见 set-kai-mode 第 3 步")
     return 0
 
 

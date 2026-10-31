@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:,">
 <title>看进度 · kai-mode 使用手册</title>
-<meta name="description" content="去 Issue、日表和看板看现在在飞什么、卡在哪、什么时候发货。">
+<meta name="description" content="去 Issue、run 状态和看板看现在在跑什么、卡在哪、什么时候发货。">
 <link rel="stylesheet" href="assets/manual.css">
 </head>
 <body>
@@ -20,19 +20,19 @@
   <main class="page">
     <p class="kicker">日常</p>
     <h1>看进度</h1>
-    <p class="lede">不要问“做完了吗”。去看三个地方：Issue 说状态，日表说谁在跑，看板把两者画成一张图。</p>
+    <p class="lede">不要问“做完了吗”。去看三个地方：Issue 说验收，<code>coding status</code> 说 run 跑到哪，看板把两者画成一张图。</p>
 
     <h2>三个地方，各看什么</h2>
-    <svg class="diagram" viewBox="0 0 900 250" role="img" aria-label="四种记录：Issue 评论、日表、项目记录、分支与提交">
+    <svg class="diagram" viewBox="0 0 900 250" role="img" aria-label="四种记录：Issue 评论、run 状态、项目记录、分支与提交">
       <rect class="d-box-accent" x="25" y="45" width="195" height="105" rx="10"/>
       <text class="d-t" x="122" y="75" text-anchor="middle">Issue 评论</text>
       <text class="d-s" x="122" y="99" text-anchor="middle">票与状态的唯一事实源</text>
       <text class="d-s" x="122" y="119" text-anchor="middle">开工 / 待发货 / 卡点</text>
 
       <rect class="d-box" x="250" y="45" width="195" height="105" rx="10"/>
-      <text class="d-t" x="347" y="75" text-anchor="middle">日表</text>
+      <text class="d-t" x="347" y="75" text-anchor="middle">run 状态</text>
       <text class="d-s" x="347" y="99" text-anchor="middle">谁在跑哪张票</text>
-      <text class="d-s" x="347" y="119" text-anchor="middle">主道 / 副道 / 二副 / 王牌</text>
+      <text class="d-s" x="347" y="119" text-anchor="middle">普通槽 / 加急槽</text>
 
       <rect class="d-box" x="475" y="45" width="195" height="105" rx="10"/>
       <text class="d-t" x="572" y="75" text-anchor="middle">项目记录</text>
@@ -44,7 +44,7 @@
       <text class="d-s" x="787" y="99" text-anchor="middle">代码与回执</text>
       <text class="d-s" x="787" y="119" text-anchor="middle">只在发货时合并推送</text>
 
-      <text class="d-l" x="450" y="200" text-anchor="middle">断点三件套 = 日表 ＋ Issue 评论 ＋ 分支提交；换人接手，照着这三样续跑。</text>
+      <text class="d-l" x="450" y="200" text-anchor="middle">断点三件 = run 状态 ＋ Issue 评论 ＋ 分支提交；换人接手，照着这三样续跑。</text>
     </svg>
 
     <div class="cards">
@@ -53,12 +53,12 @@
         <p>每张票的评论里会写：开工、施工完成、审查完成、待发货、卡点。这是唯一事实源。</p>
       </div>
       <div class="card">
-        <h3>日表：谁在飞</h3>
-        <p>主道、副道、二副道三张正常日表由塔台写；王牌写自己的加急日表。票进日表就算被领取。</p>
+        <h3>run 状态：谁在跑</h3>
+        <p><code>coding status</code> 列出每个 run 的阶段、任务、槽位与 worktree；状态只由 <code>coding</code> 写，AI 不手改。</p>
       </div>
       <div class="card">
         <h3>看板：一眼看全</h3>
-        <p>看板把票、日表、交接和 Issue 汇总成一页；列就是阶段，另有“待发货”队列和塔台灯。</p>
+        <p><code>coding status --html</code> 把 run、Issue 与交接汇总成一页；列就是阶段，另有待发货与阻塞。</p>
       </div>
     </div>
 
@@ -67,7 +67,7 @@
 
     <div class="callout">
       <span class="label">“待发货”是什么意思</span>
-      <p>施工和审查都过了，但塔台还没合并、推送、关票。票在这一格时，机长的名额已经释放，可以继续拿下一张；只有塔台还没发。</p>
+      <p>施工和审查都过了，但还没合并、推送、关票。此时槽位已释放，可以继续派下一张；只有发货还没做。</p>
     </div>
 
     <h2>看板是怎么更新的</h2>
@@ -82,7 +82,7 @@
       <summary>给技术同事：看板的数据与产物</summary>
       <div class="fold-body">
         <p>一块板 ＝ 一个 SQLite 库 ＋ 一份板配置 ＋ 两个产物。配置在 <code>board.config.json</code>，必填 <code>name</code>、<code>output.root</code>、<code>sources[]</code>、<code>stages[]</code>、<code>stage_rules[]</code>；<code>stage_rules</code> 按顺序取第一条命中，最后必须是 <code>else</code>。</p>
-        <p>产物在 <code>&lt;output.root&gt;/&lt;板名&gt;/</code>：<code>board.db</code>、<code>board.json</code>（AI 只读，≤25KB）、<code>index.html</code>（人读）。展示层只读各源，不改票面、不改日表、不写回卡片。</p>
+        <p>产物在 <code>&lt;output.root&gt;/&lt;板名&gt;/</code>：<code>board.db</code>、<code>board.json</code>（AI 只读，≤25KB）、<code>index.html</code>（人读）。展示层只读各源，不改票面、不改 run 状态、不写回卡片。</p>
         <p>模块依赖是单向的：<code>db</code> / <code>stage</code> / <code>sources</code> / <code>collect</code> / <code>render</code> / <code>config</code>；加一个源＝在 <code>sources/</code> 放一个模块并在 <code>REGISTRY</code> 加一行。</p>
         <p>技能正本：<code>board/skills/flight-info/SKILL.md</code>；命令：<code>/refresh</code>。</p>
       </div>

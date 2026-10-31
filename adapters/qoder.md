@@ -38,45 +38,27 @@
 
 ## 2. 叫什么都
 
-Qoder 没有 Claude Code 那种 `/plugin:command` 命名空间。角色用两种叫法：
+Qoder 没有 Claude Code 那种 `/plugin:command` 命名空间。舰桥用两种叫法：
 
-1. **自然语言**：说「机长开工」「塔台出货」「王牌加急」——技能 `description` 里的触发词负责命中。
-2. **显式提示词**：把命令正文（`<plugin>/commands/<role>.md` 去掉 frontmatter）作为 prompt，
-   或直接写：
+1. **自然语言**：说「舰桥」「开工」「发货」「清理脏文件」——技能 `description` 里的触发词负责命中。
+2. **显式提示词**：
 
 ```text
-读取并执行 <项目>/airport/skills/pilot/SKILL.md 全文；只做该文件写的动作。
+读取并执行 <项目>/.qoder/skills/bridge/SKILL.md 全文；只做该文件写的动作。
 ```
 
 - 如果本机 CLI 支持 `--with-claude-config`，Claude 风格的命令名会一并被读到；**先 `qoder --help` 确认**。
-- 命令里不放长规则；规则只住 `SKILL.md`。
+- 提示词里不放长规则；规则只住 `SKILL.md`。
 
-## 3. 定时唤醒塔台（主形状）
+## 3. 默认入口（不装定时器）
 
-```text
-Qoder CLI 定时任务（每 60 分钟，enabled）
-  ├─ cwd：项目仓根
-  ├─ prompt 薄壳：先跑 tower/scripts/wake-gate.py；rc=10 收场，rc=0 才读 airport/skills/tower/SKILL.md 全文（本轮启用道 lanes=1+2）
-  └─ 任务名：kai-tower-<日期>-<时分>
+机场体系下线后没有塔台轮巡，也没有 60 分钟唤醒定时器。
+
+- 在项目 `CLAUDE.md` / `AGENTS.md` 末尾写一段「默认入口＝舰桥」；
+- 用户按需起会话；会话里不打斜杠命令时，读 `bridge` 技能执行；
+- 施工由 `coding jump` 起独立进程，不靠宿主定时任务。
+
 ```
-
-- 落点：`<项目>/.qoder/scheduled_tasks.json`；也可用 `/loop` 把间隔语法转成 cron。
-- 任务字段（从 `set-kai-mode` 下沉到这里，2026-10-28 体检 M2）：
-  - **执行模式** `outputMode=independent`（独立会话，不占当前回合）；
-  - **授权档** `executionAuthorization=true`（Full Access，与既有定时任务同档；不擅自提权）；
-  - cwd ＝ 主树绝对路径；周期 `0 * * * *`（默认 1 小时，周期只改这一处）。
-- **prompt 用门卫薄壳**（同 `adapters/claude.md` §定时口）：先跑 `scripts/wake-gate.py`，
-  `rc=10` 只回一行即结束、不读技能；`rc=0` 才读塔台技能全文。没活或上一轮还在跑时零模型调用。
-- 建完必回读：`/crontab` 或任务列表看 `enabled` 与下次执行时间；`pauseReason=manual` ＝ 有人手动停，别自动重开。
-- IDE 用户可用「Automations」建同样的 60 分钟任务；它没有公开的 cron 表达式语法，按 UI 填。
-- **只唤醒塔台**；角色之间不互相拉起（唤醒围栏）。
-
-## 内置子代理
-
-- 公开文档没有内置子代理清单 ⇒ **按「无内置可覆盖」处理**：七个模板一律按**自建**装到 `.qoder/agents/<名>.md`，
-  名字保持（`Explore`／`Plan`／`general-purpose` 也可用，只是不覆盖任何东西）。
-- frontmatter 至少 `name`／`description`；`model`／`effort`／`maxTurns` 认不认按当机版本实测，不认就把该字段去掉并登记。
-
 ## 4. 新上下文（审查腿）
 
 - 首选 Qoder 原生 subagent：`.qoder/agents/<名>.md`，frontmatter 至少 `name`／`description`；
@@ -90,11 +72,11 @@ Qoder CLI 定时任务（每 60 分钟，enabled）
 ```bash
 qoder --version                      # 入口与版本
 qoder --help                         # 确认 plugins / scheduled / --with-claude-config 是否在
-test -f .qoder/skills/pilot/SKILL.md && echo skill-ok
+test -f .qoder/skills/bridge/SKILL.md && echo skill-ok
 test -f .qoder-plugin/plugin.json && echo plugin-ok
 ```
 
-再跑一次真实角色提示词，确认它能读到技能并只做技能里的事；做不到的写「未测」，不算完成。
+再跑一次真实舰桥提示词，确认它能读到技能并只做技能里的事；做不到的写「未测」，不算完成。
 
 ## 6. 降级与缺件
 
@@ -103,13 +85,12 @@ test -f .qoder-plugin/plugin.json && echo plugin-ok
 | 没有 `qoder` 入口 | `no-launcher` | 换 Codex／OpenCode 或人工 |
 | 没有命令口 | — | 用角色提示词；不算缺件 |
 | 没有原生 subagent | `no-new-context` | 另起新会话；再不行停审查腿并登记 |
-| 没有定时任务 | `no-timer` | 人工 `/tower`；不假装有定时器 |
 | `--with-claude-config` 不存在 | — | 手动复制技能与命令正文 |
 | 优先级与文档冲突 | `soft-permission-only`（如涉及权限） | 以实际加载到的那份为准，回执留读数 |
 
 ## 7. 边界
 
-- 不替角色施工；只把角色按契约跑起来。
+- 不替舰桥施工；只把舰桥按契约跑起来。
 - 不建/删其他宿主的定时任务。
 - 付费／额度未授权 ⇒ `paid-not-authorized`，不偷偷换模型。
 - 版本、认证状态与探针读数写进项目本机配置，不回写框架正文。

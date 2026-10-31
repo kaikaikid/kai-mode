@@ -1,8 +1,7 @@
 {
-  "schema": 4,
-  "_note_0": "kai-mode 项目差异层实例模板（schema 4）。落点：<项目仓根>/.ai/kai-mode.project.json（tracked）。唯一项目差异事实源：技能运行时读它拿路径/宿主/平台；读不到 rc!=0 报缺件，永不猜路径。schema 4 的准入判据＝活契约真按名读这个键（ADR-0015）；没被问答填到的字段一律 null，本仓的门名/包管理命令/宿主偏好不得作缺省写进用户实例。写者＝scripts/init-project.py（由 set-kai-mode 驱动十问）；_note_* 键与注释值读取端忽略；字段语义写在对应段的 _note 里。",
+  "schema": 5,
+  "_note_0": "kai-mode 项目差异层实例模板（schema 5）。落点：<项目仓根>/.ai/kai-mode.project.json（tracked）。唯一项目差异事实源：技能运行时读它拿路径/宿主/平台；读不到 rc!=0 报缺件，永不猜路径。schema 5 删除了机场体系（V1）的日表、车道、塔台定时器与三键门禁；准入判据仍是活契约真按名读这个键（ADR-0015），没被问答填到的字段一律 null，本仓的门名/包管理命令/宿主偏好不得作缺省写进用户实例。写者＝scripts/init-project.py（由 set-kai-mode 驱动十问）；_note_* 键与注释值读取端忽略；字段语义写在对应段的 _note 里。",
   "project": "<project-name>",
-  "ship_mode": "tower",
   "host": {
     "_note": "宿主选择器：只记用哪份宿主适配说明，不记宿主字段名、不记模型。换宿主时改这一处；宿主差异仍住适配说明。",
     "adapter": "<填你实际在用的宿主：qoder|codex|opencode|claude|copilot|cursor>"
@@ -11,39 +10,14 @@
     "_note": "①判据/剧本注册面：剧本登记行全量收编于此（原登记面文件退役），新增剧本只在 playbooks[] 加一行，入口与技能不复述；判据落点 registry.adrs / registry.rules。路径相对项目仓根。",
     "playbooks": [
       {
-        "name": "tower",
-        "trigger": "/塔台 或 唤醒定时器（周期看 tower_cron.interval_min）",
-        "route": "tower",
-        "notes": "先发货后补排班；push 与关票独占"
-      },
-      {
-        "name": "pilot",
-        "trigger": "/机长",
-        "route": "pilot",
-        "notes": "读 -main 日表；执行帽口径见协议 §一（worker 预算）"
-      },
-      {
-        "name": "copilot",
-        "trigger": "/副机长",
-        "route": "copilot",
-        "notes": "同一条 loop 的另一分支，读 -deputy 日表"
-      },
-      {
-        "name": "second-officer",
-        "trigger": "/second-officer",
-        "route": "second-officer",
-        "notes": "同一条 loop 的第三条机长道，读 -second 日表"
-      },
-      {
-        "name": "ground-crew",
-        "trigger": "/地勤",
-        "route": "ground-crew",
-        "notes": "对话、规划、开票、收想法；开票权归它"
+        "name": "bridge",
+        "trigger": "/bridge、/舰桥，或未显式点名其它技能时的默认入口",
+        "route": "bridge",
+        "notes": "唯一对话面；判断、开票、开 run、清场、发货、回报"
       }
     ],
     "skills": {
-      "project_skills_dir": ".ai/skills/project-skills",
-      "loop_dir": ".ai/skills/loop"
+      "project_skills_dir": ".ai/skills/project-skills"
     },
     "adrs": {
       "dir": "<adr-dir>"
@@ -53,15 +27,7 @@
     }
   },
   "paths": {
-    "_note": "②日表/记录面落点：技能正文一律从这里读，不写死。day_table_pattern 中 {lane} 取 lanes 之一；塔台是 day_tables_dir 唯一写者，机长/地勤只读。本项目没有的记录面写 null，消费方读到 null 如实报「该项目无此记录面」，不猜路径；state_dir 是框架自己的运行态命名空间。",
-    "day_tables_dir": "<day-tables-dir>",
-    "day_table_pattern": "YYYY-MM-DD-{lane}.md",
-    "lanes": [
-      "main",
-      "deputy",
-      "second",
-      "ace"
-    ],
+    "_note": "②记录面落点：技能正文一律从这里读，不写死。本项目没有的记录面写 null，消费方读到 null 如实报「该项目无此记录面」，不猜路径；state_dir 是框架自己的运行态命名空间（V2 的 run 状态另住仓根 .coding/，见 v2 安装说明）。",
     "handoff_dir": "handoff",
     "ideas_dir": "ideas",
     "audit_dir": null,
@@ -69,7 +35,7 @@
     "dashboard": null,
     "state_dir": ".git/kai-mode"
   },
-    "runtime": {
+  "runtime": {
     "_note": "④运行时环境三项＝发现方式，不是机器路径。main_tree＝由 git worktree 公共目录反推主树正本，任意 worktree 内都能解析回主树；backend_python 优先环境变量 KAI_BACKEND_PYTHON，退回主树相对路径；依赖一律在各自 worktree 离线装，绝不 junction/软链主树 node_modules 后跑包管理器。discover 取值：env | main_tree。",
     "backend_python": {
       "discover": "env",
@@ -89,20 +55,13 @@
     }
   },
   "gates": {
-    "_note": "项目仓门/脚本注册（只列活契约真读的三个）：相对项目仓根。null＝本项目无此门，消费方跑到时 rc!=0 报缺件，不许猜路径；项目要加别的门就在这里扩键，模板不预置别仓的门名。",
-    "captain_preflight": null,
-    "scope_check": null,
-    "close_gate": null
+    "_note": "项目仓收尾门：相对项目仓根或可直接执行的命令。null＝本项目无收尾门，V2 发货时跳过并在回执里注明；项目要加别的门就在 .coding/config.json 或项目自己的脚本里扩，不在实例里预置别仓的门名。",
+    "finish_cmd": null
   },
   "issue": {
-    "_note": "⑤票平台：platform ∈ github | gitlab | jira | azure-boards | none；repo 为平台仓标识（github=owner/name）。verdict_marker=发货判词行首（塔台只认它）；boom_summary_ticket=想法池汇总票号，没有则 null。门票标与里程碑闸门是角色判据，住技能正文与分诊标签规范，不在实例里抄第二份。",
+    "_note": "⑤票平台：platform ∈ github | gitlab | jira | azure-boards | none；repo 为平台仓标识（github=owner/name）。boom_summary_ticket=想法池汇总票号，没有则 null。门票标与里程碑闸门是角色判据，住技能正文与分诊标签规范，不在实例里抄第二份。",
     "platform": "github",
-    "repo": "<owner>/<repo>",
-    "verdict_marker": "verdict=pass",
+    "repo": "<owner/name>",
     "boom_summary_ticket": null
-  },
-  "tower_cron": {
-    "_note": "唤醒定时器：只负责每 interval_min 分钟唤醒塔台一轮；塔台是独立岗位，无定时器时由人工唤醒。任务提示词与授权位由装机方（set-kai-mode）按宿主写法当场决定，不在实例里预置。",
-    "interval_min": 60
   }
 }

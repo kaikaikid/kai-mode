@@ -5,16 +5,10 @@
   },
   "plugins": [
     {
-      "name": "airport",
-      "displayName": "机场体系",
-      "source": "./airport",
-      "description": "六岗位机场剧本：地勤开票、塔台排班发货、机长/副机长/二副滚动施工、王牌加急。"
-    },
-    {
       "name": "core",
-      "displayName": "入口与安装",
+      "displayName": "舰桥与安装",
       "source": "./core",
-      "description": "统一入口、装机、交接与七条原则；不含岗位流程。"
+      "description": "舰桥（唯一对话面与默认入口）、装机、升级、交接与七条原则。"
     },
     {
       "name": "board",
@@ -50,7 +44,7 @@
       "name": "v2",
       "displayName": "V2 执行内核",
       "source": "./v2",
-      "description": "一个 issue 一个 run：主会话规划与验收，物理子会话执行；命令入口 /coding，与机场体系并存。"
+      "description": "一个 issue 一个 run：主会话规划与验收，物理子会话执行；舰桥用 /jump 驱动。"
     }
   ]
 }

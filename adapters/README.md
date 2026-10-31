@@ -4,14 +4,14 @@
 > **① 怎么把插件/技能/命令装到宿主**（`<宿主>.md`）；
 > **② 怎么在宿主上起一段新上下文**（子代理／独立进程／新会话）；
 > **③ 缺什么怎么登记**（三格，不猜）。
-> 人格文件已退役：框架不再定义 per-agent 人格；派活规则住 `airport/skills/loop/references/dispatch.md`。
+> 人格文件已退役：框架不再定义 per-agent 人格；派活规则住 `v2/skills/coding/SKILL.md`。
 
 ## 0. 三层分工
 
 | 层 | 谁写 | 写在哪 |
 |---|---|---|
 | 插件与技能 | 框架 | `.claude-plugin/marketplace.json` ＋ `<plugin>/skills/<名>/SKILL.md` |
-| 命令 | 框架 | `<plugin>/commands/<role>.md`（只做加载） |
+| 默认入口 | 框架 | `core/skills/bridge/SKILL.md` ＋ 项目指令文件一段 |
 | 落法 | 装机 agent | 本文 §2 表 + 现场实测；不写回框架正文 |
 
 **框架仓不保存任何宿主产物**（那是每台机器现场生成的），也不发明模型 slug。
@@ -31,9 +31,9 @@
 
 | 宿主 | 插件清单 | 技能落点 | 命令 | 新上下文 | 定时口 |
 |---|---|---|---|---|---|
-| Claude Code | `.claude-plugin/marketplace.json` | `.claude/skills/<名>/SKILL.md` 或中央库副本 | `<plugin>/commands/<role>.md` | 原生子代理（`.claude/agents/` 可选，宿主自有格式） | 无内置；人工或外部调度 |
-| Qoder | `.qoder-plugin/plugin.json` | `.qoder/skills/<名>/SKILL.md`（项目）／`~/.qoder/skills/`（用户） | 角色提示词；CLI 可用 `--with-claude-config` 读 Claude 命令 | 原生 subagent `.qoder/agents/<名>.md` 或新会话 | CLI `.qoder/scheduled_tasks.json`／`/loop`；IDE Automations |
-| Codex | 无 | 项目技能目录；`codex exec` 读 `SKILL.md` | 无；用 prompt 指向技能 | 独立 `codex exec -s read-only` 进程 | 无 |
+| Claude Code | `.claude-plugin/marketplace.json` | `.claude/skills/<名>/SKILL.md` 或中央库副本 | 无角色命令；`bridge` 为默认入口 | 原生子代理或独立进程 | 无内置；人工按需起 |
+| Qoder | `.qoder-plugin/plugin.json` | `.qoder/skills/<名>/SKILL.md`（项目）／`~/.qoder/skills/`（用户） | 自然语言或显式提示词指向 `bridge` | 原生 subagent 或新会话 | 可不用；人工按需起 |
+| Codex | 无 | 项目技能目录；`codex exec` 读 `SKILL.md` | 无；用 prompt 指向 `bridge` | 独立 `codex exec -s read-only` 进程 | 无 |
 | OpenCode | 无 | 项目技能目录（`registry.skills.project_skills_dir`） | 无；用 prompt | 独立 `opencode run` 进程 | 无 |
 | Copilot | 无 | `.github/agents/<名>.agent.md`（宿主自有） | 无 | 宿主 agent | 视版本 |
 | Cursor | 无 | `.cursor/agents/<名>.md`（宿主自有） | 无 | 宿主 agent | 视版本 |
@@ -62,7 +62,7 @@
 - **各宿主的内置子代理清单、覆盖机制与档位命名，归 `adapters/<宿主>.md`「内置子代理」节**；
   `set-kai-mode` 按那一节决定「同名覆盖」还是「按自建装」。没有该节的宿主一律按自建处理，不假设能覆盖。
 - 写默认串行；同一文件域同一时刻只一个写者。
-- 工作树按车道：`lane-main`／`lane-deputy`／`lane-second`／`lane-ace` 各一棵，票在树里换分支；推送用登记式临时工位。
+- 工作树按 run：`.coding/worktrees/<run-id>/`，一个 run 一棵、一个分支；run 收尾自动回收。
   宿主不支持工作树时减少并行写入，不硬上。
 
 ## 6. 缺件登记（三格）
@@ -81,7 +81,7 @@ missing: <kind>
 
 1. 起一个只读上下文，让它写一个临时文件 → **必须被拒**；被写入＝权限没落住。
 2. 起一个可写上下文做一次最小可回滚写 → 通过即说明可写侧也通。
-3. 角色命令能从技能目录读到 `SKILL.md`，且命令本身不含长规则。
+3. `bridge` 技能能从技能目录读到，且默认入口段指向它。
 4. 回执写实测读数；做不到的写「未测」，不算完成。
 
 ## 8. 边界

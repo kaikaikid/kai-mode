@@ -4,15 +4,13 @@ status: active
 approved_by: human:kaikaikid
 approved: 2026-10-24
 sources:
-  - resource: "../../../airport/skills/ground-crew/SKILL.md"
-    note: "想法分流的角色口径：全文进项目配置 paths.ideas_dir，想法池汇总票只留简述"
   - resource: "上游 mattpocock/skills 的 boom-idea-log（项目专用版，未入库）"
     note: "源件指针；本文件去掉了写死的票号与目录名"
 description: >
   收想法：全文落项目配置 paths.ideas_dir 下的一天一份文件，想法池汇总票只贴简述（不回堆长文）。
   只收不开票、不改代码；分发是整理会话的事。
-  触发：`/ground-crew` 分流到想法；用户说「记个想法／丢进想法池」。
-version: 0.1.3
+  触发：舰桥分流到想法；用户说「记个想法／丢进想法池」。
+version: 0.1.4
 updated: 2026-10-26
 allowed-tools: Bash(gh:*) Bash(git:*) Read Grep Write
 compatibility: Requires git, gh CLI
@@ -118,5 +116,5 @@ gh issue view <汇总票号> --json comments --jq '.comments[-1].url'
 
 ## 指针
 
-- 分流口径：`airport/skills/ground-crew/SKILL.md`「工作流 · 分流」
+- 分流口径：`../../../core/skills/bridge/SKILL.md`「判断走哪条」
 - 源件：`docs/skill-sources/workflow-skills.md#boom-idea-log`

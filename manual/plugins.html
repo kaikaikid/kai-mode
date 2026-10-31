@@ -22,13 +22,14 @@
     <h1>插件与装配</h1>
     <p class="lede">这一页回答“这套东西由什么组成、装的时候发生了什么”。日常使用不需要读；想改它、排查它、或者想知道技能从哪来，再往下看。</p>
 
-    <h2>六个插件</h2>
+    <h2>七个插件</h2>
     <div class="table-wrap">
       <table>
         <thead><tr><th>插件</th><th>显示名</th><th>技能</th><th>命令</th><th>管什么</th></tr></thead>
         <tbody>
-          <tr><td><code>airport</code></td><td>机场体系</td><td>7</td><td>6 个岗位口令</td><td>地勤开票、塔台排班发货、机长 / 副机长 / 二副施工、王牌加急</td></tr>
-          <tr><td><code>core</code></td><td>入口与安装</td><td>10</td><td>3 个</td><td>总入口、安装、交接、语义体检、六条原则</td></tr>
+          <tr><td><code>core</code></td><td>舰桥与安装</td><td>14</td><td>1 个（<code>/bridge</code>）</td><td>舰桥入口、规划方法、安装、升级、交接、语义体检、七条原则</td></tr>
+          <tr><td><code>v2</code></td><td>执行内核</td><td>1</td><td><code>coding</code> 命令</td><td>一个 issue 一个 run；任务图、worktree、验收、发货</td></tr>
+          <tr><td><code>methods</code></td><td>方法库</td><td>9</td><td>技能名即口令</td><td>通用方法：TDD、审查、诊断、领域建模、拆票、写文档、安全审计、对比、技能运维</td></tr>
           <tr><td><code>studio</code></td><td>文娱集团</td><td>7</td><td>技能名即口令</td><td>共享协议，加企划 / 主笔 / 主美 / 导演 / 终审 / 宣发</td></tr>
           <tr><td><code>intake</code></td><td>想法池</td><td>1</td><td>1 个</td><td>收想法，全文落盘，汇总票只贴简述</td></tr>
           <tr><td><code>ops</code></td><td>事故与运维</td><td>2</td><td>2 个</td><td>事故分级、时间线、复盘补票；可重复运维步骤</td></tr>
@@ -36,7 +37,7 @@
         </tbody>
       </table>
     </div>
-    <p>合计 28 个插件技能；另有 7 个随仓库自带的外部方法。逐条清单见 <a href="skills.html">技能速查</a>。</p>
+    <p>合计 35 个插件技能。逐条清单见 <a href="skills.html">技能速查</a>。</p>
 
     <h2>三层打包边界</h2>
     <div class="cards">
@@ -56,8 +57,8 @@
 
     <h2>装配链路</h2>
     <p>市场清单是唯一分发清单；安装档位和版本锁是两种“护栏”；安装器把技能从插件目录搬到中央库，再链到宿主；项目里只生成自己的骨架。</p>
-    <pre><code>marketplace.json（6 个插件）
-  → install-profiles.json（core 10 / full 27）
+    <pre><code>marketplace.json（7 个插件）
+  → install-profiles.json（core 7 / full 34）
   → plugins.lock.json（版本与摘要）
   → set-kai-mode + magpie-sync.py
   → Magpie 中央库（library.json）

@@ -55,7 +55,7 @@ LINK_RE = re.compile(r"\[[^\]]*\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
 ALLOW_MARK = "# doctor:allow-machine-path"
 
 # ── 14 解耦门（ADR-0004「代价与迁移」）：项目硬路径不许回流进框架正本 ──────────
-DECOUPLE_DIRS = ("airport", "core", "board", "intake", "ops", "templates")
+DECOUPLE_DIRS = ("core", "board", "intake", "ops", "templates")
 DECOUPLE_EXT = (".md", ".py", ".json", ".bat", ".tsv")
 # 模式按 ADR 判据的 grep 口径（大小写敏感）；命中行报「文件:行号:模式」。
 DECOUPLE_PATTERNS = ("kai-vass", ".ai/router", ".ai/tasks", "docs/artifacts/adrs", ".ai/scope", "kai-vass-v2")
@@ -350,7 +350,7 @@ def chk_machine_path(root, ms):
     # 2026-10-28：扫描面从根 skills/ 扩到插件 skills×5 ＋ templates/adapters/manifests。
     # 旧扫描面在本仓只含一个 .vbs（不在 TEXT_EXT）——循环 0 次执行、构造性恒绿（体检 H5）。
     scan_roots = [os.path.join(root, "skills")]
-    scan_roots += [os.path.join(root, p, "skills") for p in ("airport", "core", "board", "intake", "ops")]
+    scan_roots += [os.path.join(root, p, "skills") for p in ("core", "board", "intake", "ops")]
     scan_roots += [os.path.join(root, d) for d in ("templates", "adapters", "manifests")]
     scan_roots = [d for d in scan_roots if os.path.isdir(d)]
     if not scan_roots:
@@ -584,25 +584,7 @@ def chk_version_readme(root, ms):
         text = f.read()
     if ver not in text:
         return "fail", f"VERSION={ver} 没出现在 README.md（两处版本口径不一致）"
-    # 协议版本号三方核对（体检 H2：README v9 ↔ 正本标题 v10 ↔ 正文 v11 曾并存）。
-    # 正本标题的（vN）与 README 里 `loop-protocol.md`（vN）的引用必须一致，否则角色照旧版名额施工。
-    proto_ver = "无标题版本"
-    proto = os.path.join(root, "airport", "skills", "loop", "references", "loop-protocol.md")
-    if os.path.isfile(proto):
-        try:
-            with open(proto, encoding="utf-8") as f:
-                first_line = f.readline()
-        except OSError:
-            first_line = ""
-        m_title = re.search(r"（v(\d+)）", first_line)
-        if m_title:
-            title_ver = m_title.group(1)
-            proto_ver = "v" + title_ver
-            readme_vers = sorted(set(re.findall(r"loop-protocol\.md`?（v(\d+)）", text)))
-            if readme_vers and set(readme_vers) != {title_ver}:
-                return "fail", (f"协议版本漂移：正本标题 v{title_ver}，"
-                                f"README 引用 {'、'.join('v' + v for v in readme_vers)}")
-    return "ok", f"VERSION={ver} 出现在 README.md；协议版本 {proto_ver} 与 README 一致"
+    return "ok", f"VERSION={ver} 出现在 README.md"
 
 
 def chk_skill_tests(root, ms):
@@ -979,9 +961,9 @@ def chk_package_layout(root: str, ms):
         os.makedirs(target)
         answers = {
             "project": "layout-probe", "ticket_source": "github", "repo_slug": "probe/probe",
-            "day_tables_dir": ".ai/tasks", "handoff_dir": "handoff", "ideas_dir": "ideas",
-            "adr_dir": spec["adr_dir"], "host": "qoder",
-            "preflight_gate": "scripts/captain-preflight.py",
+            "handoff_dir": "handoff", "ideas_dir": "ideas",
+            "adr_dir": spec["adr_dir"], "rules_dir": ".ai/rules", "host": "qoder",
+            "finish_gate": "scripts/finish.py",
             "boom_summary_ticket": "", "agent_models": None,
         }
         apath = os.path.join(tmp, "answers.json")
@@ -1035,7 +1017,7 @@ def chk_package_layout(root: str, ms):
                   f"{len(expected)} 件与清单逐件一致")
 
 
-CFG_ASKED_GATES = ("captain_preflight",)
+CFG_ASKED_GATES = ("finish_cmd",)
 MACHINE_PATH_RE = re.compile(r"^([A-Za-z]:[\\/]|[\\\\]{2})")
 
 
@@ -1099,8 +1081,8 @@ def chk_config_instance(root: str, ms):
             return "skip", "git 不可用（不适用）"
         answers = {
             "project": "doctor-probe", "ticket_source": "github", "repo_slug": "probe/proj",
-            "day_tables_dir": ".ai/tasks", "handoff_dir": "handoff", "ideas_dir": "ideas",
-            "adr_dir": "docs/adr", "host": "qoder", "preflight_gate": "",
+            "handoff_dir": "handoff", "ideas_dir": "ideas",
+            "adr_dir": "docs/adr", "rules_dir": ".ai/rules", "host": "qoder", "finish_gate": "",
             "boom_summary_ticket": "", "agent_models": None,
         }
         ans_file = os.path.join(tmp, "answers.json")
@@ -1634,7 +1616,7 @@ def chk_canon(root, ms):
 
 
 # ── 宿主中立（ADR-0008）：宿主专有 token 只许住 adapters/ ─────────────────
-HOST_NEUTRAL_DIRS = ("airport", "core", "board", "intake", "ops", "methods", "skills")
+HOST_NEUTRAL_DIRS = ("core", "board", "intake", "ops", "methods", "skills")
 HOST_TOKENS = (
     (re.compile(r"\$\{?CLAUDE_"), "CLAUDE_*"),
     (re.compile(r"\$\{?ARGUMENTS\}?"), "$ARGUMENTS"),
@@ -1868,7 +1850,6 @@ def chk_command_surface(root: str, ms=None):
 
 BUDGETS = (  # 层 → (glob 列表, 上限字节)。与项目仓治理体量的上限同尺，项目可更严、不可更松
     ("AGENTS.md", ("AGENTS.md",), 12 * 1024),
-    ("协议正本", ("airport/skills/loop/references/*.md",), 40 * 1024),  # loops/*.md 已死路径，2026-10-28 清（M7）
     ("适配说明", ("adapters/*.md",), 16 * 1024),
     ("安装面 SKILL.md", ("*/skills/*/SKILL.md", "skills/*/SKILL.md"), 40 * 1024),
     ("技能内其它 md", ("*/skills/**/*.md", "skills/**/*.md"), 64 * 1024),
@@ -1939,8 +1920,6 @@ POINTER_ALLOW = {
     ".claude/agents/general-purpose.md",
     ".qoder-plugin/plugin.json",
     ".qoder/scheduled_tasks.json",
-    "tower/scripts/wake-gate.py",
-    "scripts/wake-gate.py",
     # 项目仓脚本：技能正文明写「脚本在项目仓」，框架仓不提供
     "scripts/env-doctor.py",
     "scripts/framework-gate.py",

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""校验项目仓里那份配置实例（schema 4）。
+"""校验项目仓里那份配置实例（schema 5）。
 
 与 doctor 的 `config-instance` 分工：那一项实跑初始化器、校**新生成**的实例；本脚本校**盘上既有**的实例
 （装机验收、迁移对账、日常改了实例之后跑一遍）。键口径直接 import doctor，不写第二把尺。
@@ -15,8 +15,7 @@
   ③ 零机器绝对路径（盘符 / UNC）
   ④ 登记落点逐个 stat：路径型键必须在盘上；门禁值按「脚本 + 子命令」解析后 stat 脚本；
      `issue.repo` 与 git remote 对账。按需生成的落点只提示不判红。
-  ⑤ 日表对账：按 `day_table_pattern` + `lanes` 找文件——一个都匹配不上＝红（目录或 pattern 写错），
-     匹配得上但今天没有＝提示（今天可能就是不排班）。
+  ⑤ 退役键清零：schema 4 的机场体系键（日表、车道、塔台定时器、三键门禁）不得再出现。
 
 退出码：0 全绿（可含提示）／1 有红／2 缺件（仓根、实例或模板读不到）。
 """
@@ -24,7 +23,6 @@
 from __future__ import annotations
 
 import argparse
-import datetime as dt
 import importlib.util
 import json
 import os
@@ -38,14 +36,14 @@ TEMPLATE = os.path.join(ROOT, "templates", "kai-mode.project.json")
 INSTANCE_REL = os.path.join(".ai", "kai-mode.project.json")
 
 PATH_KEYS = (
-    "paths.day_tables_dir", "paths.handoff_dir", "paths.ideas_dir", "paths.audit_dir",
+    "paths.handoff_dir", "paths.ideas_dir", "paths.audit_dir",
     "paths.module_cards", "paths.dashboard",
     "registry.adrs.dir", "registry.rules.dir", "registry.skills.project_skills_dir",
 )
-ON_DEMAND_KEYS = ("paths.state_dir", "registry.skills.loop_dir")
-# 问答答案型落点：刚装完还没建是正常的（塔台排班／地勤收想法时才生成），只提示不判红
-PENDING_OK_KEYS = ("paths.day_tables_dir", "paths.ideas_dir", "paths.handoff_dir")
-GATE_KEYS = ("gates.captain_preflight", "gates.scope_check", "gates.close_gate")
+ON_DEMAND_KEYS = ("paths.state_dir",)
+# 问答答案型落点：刚装完还没建是正常的（舰桥开票／收想法时才生成），只提示不判红
+PENDING_OK_KEYS = ("paths.ideas_dir", "paths.handoff_dir")
+GATE_KEYS = ("gates.finish_cmd",)
 MAIN_TREE_REL_KEYS = ("runtime.backend_python.fallback.rel", "runtime.node.rel", "runtime.deps.check_dir_rel")
 PLACEHOLDER = re.compile(r"<[^<>\n]{1,40}>")
 MACHINE_PATH = re.compile(r"^([A-Za-z]:[\\/]|[\\\\]{2})")
@@ -172,7 +170,8 @@ def main() -> int:
         if not v:
             rep.add("注", f"④ {key} = null（本项目无此门）")
             continue
-        script = str(v).split()[0]
+        parts = str(v).split()
+        script = parts[1] if len(parts) > 1 and parts[0] in ("python", "python3", "bash", "sh", "node") else parts[0]
         p = os.path.join(repo, *script.split("/"))
         statted += 1
         rep.add("绿" if os.path.isfile(p) else "红",
@@ -198,36 +197,14 @@ def main() -> int:
                 f"④ issue.repo = {want}" + (f"（git remote 一致：{slug}）" if slug.lower() == want.lower()
                                             else f"（git remote 是 {slug or '解析不出'}）"))
 
-    dtd = getpath(cfg, "paths.day_tables_dir")
-    pat = getpath(cfg, "paths.day_table_pattern")
-    lanes = getpath(cfg, "paths.lanes") or []
-    known_lanes = ("main", "deputy", "second", "ace")
-    if lanes:
-        unknown = [x for x in lanes if x not in known_lanes]
-        if unknown:
-            rep.add("红", f"⑤ paths.lanes 有不认识的道：{unknown}（只认 main/deputy/second/ace）")
-        if "main" not in lanes:
-            rep.add("红", "⑤ paths.lanes 必须含 main（主机长道是兜底，关掉它排班无处可去）")
-    if dtd and pat and lanes:
-        d = os.path.join(repo, *str(dtd).split("/"))
-        if not os.path.isdir(d):
-            rep.add("注", f"⑤ 日表：{dtd} 尚未创建（塔台排班时生成，pattern {pat} 暂无从验证）")
-        else:
-            names = os.listdir(d)
-            rx = re.compile("^" + re.escape(str(pat)).replace(re.escape("YYYY"), r"\d{4}")
-                            .replace(re.escape("MM"), r"\d{2}").replace(re.escape("DD"), r"\d{2}")
-                            .replace(re.escape("{lane}"), "(" + "|".join(re.escape(str(x)) for x in lanes) + ")")
-                            .replace(re.escape("*"), r"[^/]*") + "$")
-            matched = [n for n in names if rx.match(n)]
-            today = dt.date.today().strftime("%Y-%m-%d")
-            todays = [n for n in matched if n.startswith(today)]
-            if not matched:
-                rep.add("红", f"⑤ 日表：{dtd} 下 {len(names)} 个文件，按 pattern {pat}＋lanes {lanes} 匹配上 0 个（目录或 pattern 写错）")
-            elif not todays:
-                rep.add("注", f"⑤ 日表：pattern 匹配上 {len(matched)} 个，今天（{today}）没有——塔台排班后才有")
-            else:
-                rep.add("绿", f"⑤ 日表：匹配 {len(matched)} 个，今天 {len(todays)} 张（{', '.join(sorted(todays))}）")
-            statted += len(matched)
+    retired = (
+        "ship_mode", "paths.day_tables_dir", "paths.day_table_pattern", "paths.lanes",
+        "tower_cron", "issue.verdict_marker", "registry.skills.loop_dir",
+        "gates.captain_preflight", "gates.scope_check", "gates.close_gate",
+    )
+    leftovers = [k for k in retired if getpath(cfg, k) is not None]
+    rep.add("红" if leftovers else "绿",
+            "⑤ 退役键：" + ("仍在实例里：" + "、".join(leftovers) if leftovers else "已清零（机场体系已下线）"))
 
     if a.json:
         print(json.dumps({"repo": repo, "red": rep.red, "note": rep.note, "green": rep.green,
