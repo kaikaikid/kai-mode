@@ -35,13 +35,13 @@ dependencies:
 
 ### A. 登记（inventory）
 
-列出宿主已装插件，与 `v2/mods/`、`scripts/mod-zh.py` 等个人补丁对账，登记到 `.mods/registry.md`。
+列出宿主已装插件，与 `v2/mods/`、`scripts/mod-zh.py` 等个人补丁对账，登记到 `<项目根>/.mods/registry.md`。
 
 ```
 /kai-mods inventory
 ```
 
-做：`claude plugin list --json` → 对账 `v2/mods/` 与 `scripts/mod-*` → 写 `.mods/registry.md`。
+做：`claude plugin list --json` → 对账 `v2/mods/` 与 `scripts/mod-*` → 写 `<项目根>/.mods/registry.md`。
 
 ### B. 更新（update）
 

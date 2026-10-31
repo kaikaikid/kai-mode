@@ -25,7 +25,7 @@
     },
     "core": {
       "version": "1.2.0",
-      "digest": "a3fb08fde55816bd93192bbffda32287b0831920349b7aa98f1d6e0fc9ab43b6",
+      "digest": "df08ab1464506cd51a5a672b1f052a0b97ed74fc1dcee669f196ba03504360b7",
       "skills": {
         "harness-audit": "0.2.0",
         "kai-handoff": "0.3.5",
@@ -86,7 +86,7 @@
     },
     "v2": {
       "version": "0.1.0",
-      "digest": "48b1143147bacf92ab08f358017fda16b9a3bb505a28973053fc35a5db0a8e5d",
+      "digest": "70699f28b9b12ade9a2f00af35caacf50c56e6b3b518b22f96202ebcb0081fe7",
       "skills": {
         "coding": "0.1.0"
       }
