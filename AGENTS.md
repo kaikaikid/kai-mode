@@ -58,8 +58,8 @@ skill runs bridge's method. Source of truth: `docs/adr/0028-bridge-entry-and-air
 | Kind | Only home | Elsewhere |
 |---|---|---|
 | Non-negotiable constraints (red lines) | this file | pointer |
-| Run-level protocol (slots, fail/retry counts, receipt, shipping) | `v2/skills/coding/SKILL.md` | pointer |
-| Dispatch (when to delegate, context budget, report shape) | `v2/skills/coding/SKILL.md` | pointer |
+| Run-level protocol (slots, fail/retry counts, receipt, shipping) | `v2/skills/travel/SKILL.md` | pointer |
+| Dispatch (when to delegate, context budget, report shape) | `v2/skills/travel/SKILL.md` | pointer |
 | Method (how to explore / review / plan / implement) | `methods/skills/kai-*/SKILL.md` | pointer |
 | Output structure (which carrier: L1 text / L2 diagram / L3 single-file HTML / L4 explainer video) | `core/skills/principle-output-structure/SKILL.md` | pointer |
 | Host differences (launcher per role, how a persona becomes a native agent file, permissions, model) | `adapters/README.md` + `adapters/<host>.md` | pointer |
@@ -81,11 +81,11 @@ mechanically. To write about a retired mechanism on purpose, mark that line `can
 |---|---|
 | Skill layout & frontmatter contract | `docs/skill-layout.md` |
 | Writing a SKILL / AGENTS doc | skill `kai-writing-for-agents`（fork 自上游；溯源见 `docs/skill-sources/workflow-skills.md`） |
-| Sub-session dispatch contract (depth, context budget, report shape) | `v2/skills/coding/SKILL.md` |
+| Sub-session dispatch contract (depth, context budget, report shape) | `v2/skills/travel/SKILL.md` |
 | Handoff docs & cross-agent board | `handoff/README.md` · `handoff/60-board/README.md` |
 | External skills kept as reference material | `docs/skill-sources/README.md` |
 | Architecture decisions | `docs/adr/` |
-| Run lifecycle (one issue, one run) | `v2/skills/coding/SKILL.md` |
+| Run lifecycle (one issue, one run) | `v2/skills/travel/SKILL.md` |
 
 ## Issue tracker
 

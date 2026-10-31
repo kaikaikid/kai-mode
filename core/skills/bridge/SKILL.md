@@ -4,7 +4,7 @@ status: active
 approved_by: human:kaikaikid
 approved: 2026-10-31
 sources:
-  - resource: "../../../v2/skills/coding/SKILL.md"
+  - resource: "../../../v2/skills/travel/SKILL.md"
     note: "施工与发货的内核命令；舰桥只做对话与决策，状态推进走它"
   - resource: "../../../intake/skills/kai-boom-idea-log/SKILL.md"
     note: "还没成形、不能开工的想法落这里"
@@ -201,6 +201,6 @@ push 目标默认 `dev`；推成功以远端回读为准。
 
 ## 正本
 
-- 施工与发货内核：`../../../v2/skills/coding/SKILL.md`
+- 施工与发货内核：`../../../v2/skills/travel/SKILL.md`
 - 想法分流：`../../../intake/skills/kai-boom-idea-log/SKILL.md`
 - 施工方法（TDD、审查、诊断）：`../../../methods/skills/` 下对应技能

@@ -157,8 +157,8 @@ def main() -> int:
             if not command and skill == "harness-audit":
                 command = "手动技能"
             if not trigger:
-                if skill == "coding":
-                    trigger = "由舰桥触发 /jump"
+                if skill == "travel":
+                    trigger = "由舰桥触发 /warp 或 /jump"
                 elif skill == "studio":
                     trigger = "随六个创作口令自动带入"
                 elif skill.startswith("principle-"):

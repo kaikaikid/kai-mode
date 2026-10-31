@@ -1,5 +1,5 @@
 ---
-name: coding
+name: travel
 status: active
 approved_by: human:kaikaikid
 approved: 2026-10-31

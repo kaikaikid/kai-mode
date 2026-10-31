@@ -62,5 +62,5 @@ metadata:
 | 仪式随规模塌缩 | `../principle-ceremony-collapses-with-scale/SKILL.md` |
 | 术语与 ADR | `../../../methods/skills/kai-domain-modeling/SKILL.md` |
 | 拆票 | `../../../methods/skills/kai-to-tickets/SKILL.md` |
-| 施工与发货 | `../../../v2/skills/coding/SKILL.md` |
+| 施工与发货 | `../../../v2/skills/travel/SKILL.md` |
 | 统一入口 | `../bridge/SKILL.md` |

@@ -6,7 +6,7 @@ approved: 2026-10-21
 sources:
   - resource: "../bridge/SKILL.md"
     note: "对外唯一入口；本技能负责把它装到宿主并设为默认"
-  - resource: "../../../v2/skills/coding/SKILL.md"
+  - resource: "../../../v2/skills/travel/SKILL.md"
     note: "施工与发货内核；装舰桥时一并装它"
   - resource: "scripts/magpie-sync.py"
     note: "技能正本 → 中央库 → 各家宿主链接的回写口"
@@ -123,7 +123,7 @@ python scripts/init-project.py --repo <目标仓> --answers a.json   # 机器填
 - 正本全部住在仓库里（中立层），任何宿主一进仓库即生效：
   - 入口：`core/skills/bridge/SKILL.md`
   - 规划方法：`core/skills/kai-mode/SKILL.md`
-  - V2 执行内核：`v2/skills/coding/SKILL.md`（命令 `v2/bin/coding`；安装见 `v2/README.md`）
+  - V2 执行内核：`v2/skills/travel/SKILL.md`（命令 `v2/bin/coding`；安装见 `v2/README.md`）
   - 方法库：`methods/skills/kai-*`
   - 想法池：`intake/skills/kai-boom-idea-log/SKILL.md`
   - 看板（可选）：`board/skills/flight-info/SKILL.md`；V2 进度优先用 `coding status --html`
@@ -297,7 +297,7 @@ schema 5 删掉了 V1 的日表、车道、塔台定时器与三键门禁；保�
 |---|---|
 | 用户入口、清场、发货 | `../bridge/SKILL.md` |
 | 规划与拷问方法 | `../kai-mode/SKILL.md` |
-| 施工与发货命令 | `../../../v2/skills/coding/SKILL.md` |
+| 施工与发货命令 | `../../../v2/skills/travel/SKILL.md` |
 | 方法库 | `../../../methods/skills/` |
 | 想法池 | `../../../intake/skills/kai-boom-idea-log/SKILL.md` |
 | 看板（可选） | `../../../board/skills/flight-info/SKILL.md` |

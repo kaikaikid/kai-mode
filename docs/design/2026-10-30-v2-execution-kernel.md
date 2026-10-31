@@ -484,7 +484,7 @@ interface Capabilities {
 | 加急撞文件 | urgent 与在飞 touchset 重叠 | 不抢文件，排队到该任务验收 | 构造重叠 touchset |
 | worktree 收尾 | 连续跑 5 个 run | 每个 done 后自动回收，最多 5 棵 | 跑 5 个并查 `coding status` |
 | gc 兜底 | 残留 paused/cancelled | `coding gc` 一次清干净 | 构造残留后跑 gc |
-| 晚激活 | 已有未提交改动才敲 `/coding` | 询问接管/丢弃，接管后从当前状态跑 | 造脏工作区再激活 |
+| 晚激活 | 已有未提交改动才敲 `/warp` | 询问接管/丢弃，接管后从当前状态跑 | 造脏工作区再激活 |
 | 脚本调度 | 任务图有多种依赖 | `coding next` 算出正确 ready 任务，幂等 | 重复调用对比结果 |
 | 心跳僵死 | 子会话进程挂起 | 脚本按心跳超时判定并重试 | 暂停子进程再等超时 |
 | 加急预留槽 | 普通槽 2 个占满时来 urgent | 走预留槽，普通 run 不受影响 | 占满普通槽后开 urgent |
@@ -522,7 +522,7 @@ interface Capabilities {
 
 1. **装 V2 不顺手卸 V1**。卸载是单独动作，必须人明确要求。
 2. **两套状态不共享**：V1 用 `handoff/`、日表；V2 用 `.coding/runs/`。
-3. **命令不冲突**：V1 是 `/pilot` `/tower` `/ace` 等，V2 是 `/coding`。
+3. **命令不冲突**：V1 是 `/pilot` `/tower` `/ace` 等，V2 是 `/warp` `/jump`。
 4. **共享契约只读**：AC 写法、发货权分离、续跑指针格式可以互相参考，但不互相写。
 5. **升级互不影响**：`upgrade-kai-mode` 只升 V1；V2 有自己的升级路径。
 6. **卸载不删数据**：卸 V2 保留 `.coding/` 供复盘；要删得单独跑 `coding gc --all`。
@@ -535,25 +535,25 @@ V2 只有一个交互角色，但必须有独立入口，否则跟创作体系
 
 | 命令 | 作用 |
 |---|---|
-| `/coding <任务>` | 进入 V2 主会话，开一个 run |
-| `/coding status` | 看板（见下节） |
-| `/coding resume <run-id>` | 从 `state.json` 续跑 |
-| `/coding stop <run-id>` | 停一个 run，保留状态 |
-| `/coding gc` | 清掉已收尾的 worktree、分支与残留状态 |
-| `/coding adopt` | 把当前工作区的未提交改动接管为一个 run 的 baseline |
+| `/warp <任务>` / `/jump <任务>` | 进入 V2，拉起舰队（1–3 艘舰船） |
+| `travel status` | 看板（见下节） |
+| `travel resume <run-id>` | 从 `state.json` 续跑 |
+| `travel stop <run-id>` | 停一个 run，保留状态 |
+| `travel gc` | 清掉已收尾的 worktree、分支与残留状态 |
+| `travel adopt` | 把当前工作区的未提交改动接管为一个 run 的 baseline |
 
-**激活语义**：一次 `/coding <任务>` 激活管一个 run 的全生命周期——规划、派工、
-验收、发货都在同一 run 内，不需要反复激活。中途加任务 = 再敲一次 `/coding`
-开新 run，不打断当前的；`/coding resume` 也算一次激活。
+**激活语义**：一次 `/warp`（或 `/jump`）激活管一个 run 的全生命周期——规划、派工、
+验收、发货都在同一 run 内，不需要反复激活。中途加任务 = 再敲一次 `/warp`（或 `travel run`）
+开新 run，不打断当前的；`travel resume` 也算一次激活。
 
-**issue 来源**：`/coding <任务>` 直接给文本；`/coding --issue <url>` 关联 GitHub
+**issue 来源**：`/warp <任务>` 直接给文本；`travel run --issue <url>` 关联 GitHub
 issue，AC 从 issue 正文抽。两种都落成 `state.json` 的 `issue` 字段。
 **AC 归属**：AI 规划时写 AC，G0 时人可以改；G0 通过后 AC 锁定，验收按锁定的版本核。
 
 **忘了先激活（晚激活）**：不会出错，但会丢三样东西——任务图、token 预算计数、
 G0 计划门。补救办法：
 
-- `/coding` 检测到工作区有未提交改动时，先问一句「接管为 baseline 还是丢弃」；
+- `travel` 检测到工作区有未提交改动时，先问一句「接管为 baseline 还是丢弃」；
 - 选接管 → 把现有改动快照成 `baseline`，开 run 时首个任务从当前状态开始，
   不追溯前期；
 - 晚激活的 run 没有 G0（计划已过），只剩 G1（若碰 UI）和 G2（发货）。
@@ -561,7 +561,7 @@ G0 计划门。补救办法：
 所以晚激活不是错误路径，只是少了几道门和一份任务图。**建议还是先激活**，
 因为前期拆的任务图、预算、门禁记录补不回来。
 
-**边界**：`/coding` 管代码开发；创作体系管作品交付。两套命令不互相调用，
+**边界**：`travel` 管代码开发；创作体系管作品交付。两套命令不互相调用，
 也不共用角色名。机场体系的 `/pilot` `/tower` `/ace` 等留在 V1，V2 不提供。
 激活命令是体系路由的锚点：没有它，「做个落地页」无法判断走开发还是创作。
 
@@ -607,7 +607,7 @@ r-4e8b   重构 auth 模块       blocked      2/5    G0    1h
 3. 多 run 时是否需要常驻总控？（已定：不需要常驻。脚本 `coding next` 负责槽位与资源分配，总控只在人工排查时按需拉起）
 4. 跨宿主的工具名与 tier 如何映射到具体模型？（建议先只做 claude-cli + generic，tier 映射表随 adapter 走，其余按需）
 5. V2 目录落 `v2/` 还是 `core/v2/`？（建议顶层 `v2/`，表明是新体系）
-6. 激活命令已定为 `/coding`（用户 2026-10-30 拍板）。
+6. 激活命令：2026-10-30 定为 `/coding`；2026-11-01 用户改为 `/warp`（曲速）与 `/jump`（跃迁），控制面二进制 `travel`。
 7. 控制平面脚本用什么写？（建议 Python 3 标准库，零第三方依赖，跨宿主都能跑）
 
 ## 十六、曲速 / 跃迁模式（V2 autopilot）

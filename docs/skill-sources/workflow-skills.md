@@ -41,13 +41,13 @@
 
 | 方法技能 | 用在工作流的哪一步 | 本仓承载「流程」的那一份（不复制方法） |
 |---|---|---|
-| `methods/skills/kai-tdd` | 施工：先红后绿 | `v2/skills/coding/SKILL.md`（接缝＝任务 AC 里的验证命令、一测例一提交） |
+| `methods/skills/kai-tdd` | 施工：先红后绿 | `v2/skills/travel/SKILL.md`（接缝＝任务 AC 里的验证命令、一测例一提交） |
 | `methods/skills/kai-code-review` | 审查：双轴出判词 | 同文件 §四（机器门／语义门、判词四要素） |
 | `methods/skills/kai-diagnosing-bugs` | 连续失败／原因不明 | 同文件 §七／§八（卡点、止损、等待纪律） |
 | `methods/skills/kai-domain-modeling` | 定稿第 2 步：术语与 ADR | `core/skills/kai-mode/SKILL.md` 定稿段 ＋ `docs/adr/` |
 | `methods/skills/kai-to-tickets` | 定稿第 3 步：拆票草案 | `core/skills/kai-mode/SKILL.md` 定稿段 ＋ `core/skills/bridge/SKILL.md` 开票六件套 |
 | `methods/skills/kai-writing-for-agents` | 写 SKILL／AGENTS 文档 | `docs/skill-layout.md`（八字段、<500 行）＋ `scripts/doctor.py` |
-| `methods/skills/kai-security-audit` | 审查：安全专项（六阶段漏洞猎取） | `v2/skills/coding/SKILL.md` 的只读审查与报告契约 |
+| `methods/skills/kai-security-audit` | 审查：安全专项（六阶段漏洞猎取） | `v2/skills/travel/SKILL.md` 的只读审查与报告契约 |
 
 `methods/skills/kai-security-audit` 额外三条（与其他六个不同）：
 上游 `cloudflare/security-audit-skill`（MIT，`LICENSE` 随件），**需要 node**（两个零依赖校验器）与**OS 沙箱**（真跑目标代码）；
@@ -68,7 +68,7 @@
 | 源 | 理由 |
 |---|---|
 | `research` | 全文只有「起后台代理、查一手来源、落一份 md」；研究纪律现住 `core/skills/kai-mode/SKILL.md` 与 `core/skills/bridge/SKILL.md`（人格层已退役） |
-| `implement` | 15 行薄壳，内容＝按票实现→tdd→code-review；`v2/skills/coding/SKILL.md` 已写死同样顺序 |
+| `implement` | 15 行薄壳，内容＝按票实现→tdd→code-review；`v2/skills/travel/SKILL.md` 已写死同样顺序 |
 | `grilling` | 「一次一问逐个确认」判据正本已是 `skills/principle-ask-one-question-at-a-time/` |
 
 ## 7. 对账（30 天一次）

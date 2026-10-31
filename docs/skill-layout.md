@@ -166,5 +166,5 @@ python scripts/doctor.py --with-tests   # 一条命令验全仓
 ## 10. 人格层已退役
 
 旧的 `agents/` 人格层（七个人格文件 ＋ `dispatch.md`）已按 ADR-0021 退役。
-派活规则与裁决形状住 [`v2/skills/coding/SKILL.md`](../v2/skills/coding/SKILL.md)。
+派活规则与裁决形状住 [`v2/skills/travel/SKILL.md`](../v2/skills/travel/SKILL.md)。
 审查独立性由「另一段新上下文」保证；宿主上怎么起新上下文见 [`adapters/`](../adapters/README.md)。
