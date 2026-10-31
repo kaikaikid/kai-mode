@@ -13,6 +13,11 @@ Windows，2026-10-31）：-p 模式下 Edit/Write 的路径级规则【全部失
 结论：Windows 上「工人写不了控制面」无法靠工具规则机械保证，残余风险交由控制面
 对账（报告 vs diff vs commit）与后续沙箱方案兜底。哪天 CC 修好路径匹配，本脚本
 --live 应转为全绿；届时 deny 规则才可信。
+
+另（2026-10-31 实测）：-p 模式对非内置模型串（如 magpie 组 id `group/cc-fast[1m]`）
+打 stderr 警告 unrecognized_model，属良性——rc=0、请求照发、路由照常；验证某次
+工人的模型分层，看 worker stderr.log 首行 --model 带的组即可。Bash 子进程不带
+ANTHROPIC_AUTH_TOKEN，适配器合并 settings env 是登录命脉，不可删。
 """
 
 import json

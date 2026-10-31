@@ -30,6 +30,9 @@ def claude_cmd() -> list[str]:
         return [p]
     return ["claude"]
 
+# tier→模型：值可直接填 magpie 模型组 id（如 group/cc-fast[1m]）。
+# CLI 对非内置模型串会打 unrecognized_model stderr 警告，属良性（2026-10-31 实测
+# rc=0、正常路由）；验证某次 spawn 的分层，看 worker stderr.log 首行的 --model 值。
 TIER_MODEL = {
     "light": os.environ.get("CODING_MODEL_LIGHT", ""),
     "medium": os.environ.get("CODING_MODEL_MEDIUM", ""),
