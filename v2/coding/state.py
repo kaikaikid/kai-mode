@@ -47,6 +47,12 @@ def new_run_id() -> str:
     return f"r-{int(time.time()):x}{suffix}"
 
 
+def new_fleet_id() -> str:
+    """舰队 ID：宿主前缀 + 时间戳 + 随机后缀（谁拉舰队就谁的 ID）。"""
+    suffix = "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(4))
+    return f"{host_id()}-{int(time.time()):x}{suffix}"
+
+
 def _atomic_write(path: Path, data: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + f".tmp.{os.getpid()}")
@@ -82,8 +88,8 @@ def load(run_id: str, root: Path | None = None, verify: bool = True) -> dict[str
     if verify and state.get("integrity") is not None and state["integrity"] != _state_digest(state):
         raise RuntimeError(
             f"state.json integrity check failed for {run_id}: state was modified outside "
-            f"`coding` commands. Inspect {p} manually; `coding status` still lists it, "
-            f"`coding stop` still works."
+            f"`travel` commands. Inspect {p} manually; `travel status` still lists it, "
+            f"`travel stop` still works."
         )
     migrate(state)
     return state
@@ -93,9 +99,17 @@ def migrate(state: dict[str, Any]) -> dict[str, Any]:
     v = int(state.get("schema_version", 0))
     if v > SCHEMA_VERSION:
         raise RuntimeError(
-            f"state schema {v} is newer than this coding ({SCHEMA_VERSION}); upgrade coding first"
+            f"state schema {v} is newer than this travel ({SCHEMA_VERSION}); upgrade travel first"
         )
-    # v0 -> v1: no structural change yet, just stamp.
+    # v0/v1 -> v2: add fleet fields
+    if "fleet_id" not in state:
+        state["fleet_id"] = host_id()
+    if "ship_limit" not in state:
+        state["ship_limit"] = 2
+    if "crew_limit" not in state:
+        state["crew_limit"] = 5
+    if "ships" not in state:
+        state["ships"] = []
     state["schema_version"] = SCHEMA_VERSION
     return state
 
@@ -187,7 +201,7 @@ def sweep(root: Path | None = None) -> list[str]:
             if hb.exists() and now - hb.stat().st_mtime > 3600:
                 hb.unlink(missing_ok=True)
         if run.get("phase") in TERMINAL_PHASES and now - _mtime(state_path(rid, root)) > 24 * 3600:
-            done.append(f"{rid}: terminal run older than 24h (use coding gc)")
+            done.append(f"{rid}: terminal run older than 24h (use travel gc)")
     return done
 
 
@@ -215,3 +229,18 @@ def _mtime(p: Path) -> float:
         return p.stat().st_mtime
     except OSError:
         return time.time()
+
+
+def host_id() -> str:
+    """从 TRAVEL_HOST / TREK_HOST 或 git config user.name 推断宿主。"""
+    import os, subprocess
+    h = os.environ.get("TRAVEL_HOST") or os.environ.get("TREK_HOST")
+    if h:
+        return h.strip().lower().replace(" ", "-")
+    try:
+        r = subprocess.run(["git", "config", "user.name"], capture_output=True, text=True)
+        if r.returncode == 0 and r.stdout.strip():
+            return r.stdout.strip().lower().replace(" ", "-")
+    except Exception:
+        pass
+    return "unknown"

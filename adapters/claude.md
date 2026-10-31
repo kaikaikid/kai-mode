@@ -57,7 +57,7 @@ claude -p "读取并执行 <项目仓根>/.claude/skills/bridge/SKILL.md 全文�
 
 - **默认入口**：在项目 `CLAUDE.md` / `AGENTS.md` 末尾写一段「默认入口＝舰桥」；这是让用户「忘了触发也进舰桥」的机械落点。
 - 不装定时器：没有塔台轮巡，也没有 60 分钟唤醒。用户按需起会话。
-- 施工由 `coding jump` 起独立进程/子会话；本会话不替子会话写代码。
+- 施工由 `travel warp`/`travel jump` 起独立进程/子会话；本会话不替子会话写代码。
 
 ## 开票归属钩子（PreToolUse）
 

@@ -1,6 +1,6 @@
-"""coding 命令行：控制平面入口。
+"""travel 命令行：控制平面入口。
 
-用法见 `coding --help`。所有状态变更都经过这里，AI 不直接改 state.json。
+用法见 `travel --help`。所有状态变更都经过这里，AI 不直接改 state.json。
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ from . import adapters, dirty, scheduler, state as st, worktree
 
 
 def _err(msg: str) -> "NoReturn":
-    print(f"coding: {msg}", file=sys.stderr)
+    print(f"travel: {msg}", file=sys.stderr)
     raise SystemExit(1)
 
 
@@ -216,38 +216,47 @@ def _report_path(run_id: str, tid: str) -> Path:
 
 def cmd_run(args: argparse.Namespace) -> None:
     root = _root()
-    with st.lock(root):
-        rid = st.new_run_id()
-        s = {
-            "schema_version": st.SCHEMA_VERSION,
-            "run_id": rid,
-            "issue": args.issue,
-            "phase": "queued",
-            "priority": "urgent" if args.urgent else "normal",
-            "fleet_id": getattr(args, "fleet", None) or "default",
-            "created_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
-            "base_branch": args.base or worktree.base_branch(root),
-            "branch": worktree.branch_name(rid),
-            "worktree": str(worktree.worktree_path(rid, root)),
-            "depends_on_runs": args.depends or [],
-            "autopilot": bool(getattr(args, "autopilot", False)),
-            "budget": {"max_tokens": args.max_tokens, "used_tokens": 0},
-            "gates": {"g0": "pending", "g1": "pending", "g2": "pending"},
-            "tasks": [],
-            "touchset": [],
-            "resources": [],
-            "resume": {"last_accepted": None, "next_action": "plan"},
-        }
-        ok, why = scheduler.can_start(s, root)
-        if ok:
-            worktree.create(rid, s["base_branch"], root)
-            s["phase"] = "planning"
-            s["resume"]["next_action"] = "plan"
-        else:
-            s["resume"]["next_action"] = f"waiting: {why}"
-        _save(s)
+    ships = max(1, min(3, getattr(args, "ships", None) or 1))
+    fleet = getattr(args, "fleet", None) or st.new_fleet_id()
+    crew = max(1, min(5, getattr(args, "crew", None) or 5))
+    ids: list[str] = []
+    for _ in range(ships):
+        with st.lock(root):
+            rid = st.new_run_id()
+            s = {
+                "schema_version": st.SCHEMA_VERSION,
+                "run_id": rid,
+                "issue": args.issue,
+                "phase": "queued",
+                "priority": "urgent" if args.urgent else "normal",
+                "fleet_id": fleet,
+                "ship_limit": ships,
+                "crew_limit": crew,
+                "created_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                "base_branch": args.base or worktree.base_branch(root),
+                "branch": worktree.branch_name(rid),
+                "worktree": str(worktree.worktree_path(rid, root)),
+                "depends_on_runs": args.depends or [],
+                "autopilot": bool(getattr(args, "autopilot", False)),
+                "budget": {"max_tokens": args.max_tokens, "used_tokens": 0},
+                "gates": {"g0": "pending", "g1": "pending", "g2": "pending"},
+                "tasks": [],
+                "touchset": [],
+                "resources": [],
+                "resume": {"last_accepted": None, "next_action": "plan"},
+            }
+            ok, why = scheduler.can_start(s, root)
+            if ok:
+                worktree.create(rid, s["base_branch"], root)
+                s["phase"] = "planning"
+                s["resume"]["next_action"] = "plan"
+            else:
+                s["resume"]["next_action"] = f"waiting: {why}"
+            _save(s)
+            ids.append(rid)
+    for rid in ids:
         print(rid)
-        return rid
+    return ids[0]
 
 
 def cmd_warp(args: argparse.Namespace) -> None:
@@ -262,15 +271,20 @@ def cmd_warp(args: argparse.Namespace) -> None:
         args.base = "dev" if _r.returncode == 0 else None
     args.max_tokens = getattr(args, "max_tokens", 200000)
     args.depends = getattr(args, "depends", [])
+    if getattr(args, "ships", None) is None:
+        args.ships = 2
+    before = {r["run_id"] for r in st.list_runs(_root())}
     rid = cmd_run(args)
-    with st.lock(_root()):
-        s = st.load(rid, _root())
-        s["autopilot"] = True
-        s["can_ship"] = bool(getattr(args, "urgent", False))
-        st.save(s, _root())
+    ids = [r["run_id"] for r in st.list_runs(_root()) if r["run_id"] not in before]
+    for one in ids:
+        with st.lock(_root()):
+            s = st.load(one, _root())
+            s["autopilot"] = True
+            s["can_ship"] = bool(getattr(args, "urgent", False))
+            st.save(s, _root())
     if getattr(args, "tasks", None):
         cmd_plan(argparse.Namespace(run_id=rid, file=args.tasks))
-    print(f"warp run {rid} autopilot=True")
+    print(f"warp run {' '.join(ids)} autopilot=True")
 
 
 def cmd_jump(args: argparse.Namespace) -> None:
@@ -293,7 +307,9 @@ def cmd_adopt(args: argparse.Namespace) -> None:
             "issue": args.issue,
             "phase": "planning",
             "priority": "normal",
-            "fleet_id": "default",
+            "fleet_id": st.new_fleet_id(),
+            "ship_limit": 2,
+            "crew_limit": 5,
             "created_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
             "base_branch": worktree.base_branch(root),
             "branch": worktree.branch_name(rid),
@@ -875,6 +891,23 @@ def promote_queued(root: "Path") -> list[str]:
     return promoted
 
 
+def cmd_assimilate(args: argparse.Namespace) -> None:
+    """吞并外部分支：需要用户明确同意。"""
+    root = _root()
+    branch = args.branch
+    # 用户确认门：必须显式 --approve
+    if not getattr(args, "approve", False):
+        print(json.dumps({"ok": False, "reason": "user approval required: re-run with --approve"}, ensure_ascii=False))
+        return
+    # merge
+    r = worktree._git("merge", "--no-ff", "-m", f"assimilate {branch}", branch, cwd=root, check=False)
+    if r.returncode != 0:
+        worktree._git("merge", "--abort", cwd=root, check=False)
+        print(json.dumps({"ok": False, "reason": (r.stderr or r.stdout).strip()[:300]}, ensure_ascii=False))
+        return
+    print(json.dumps({"ok": True, "message": "assimilated " + branch}, ensure_ascii=False))
+
+
 def cmd_drive(args: argparse.Namespace) -> None:
     """全自动驱动：脚本循环 spawn → report → review → accept，直到所有 run 到终态或 blocked。"""
     root = _root()
@@ -937,11 +970,13 @@ def cmd_drive(args: argparse.Namespace) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="coding", description="V2 execution kernel control plane")
+    p = argparse.ArgumentParser(prog="travel", description="V2 execution kernel control plane")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     r = sub.add_parser("run", help="create a run")
     r.add_argument("--fleet", default=None, help="fleet id; slots are per-fleet")
+    r.add_argument("--ships", type=int, default=None, help="ship count 1-3 (default 2)")
+    r.add_argument("--crew", type=int, default=None, help="crew cap 1-5 (default 5)")
     r.add_argument("issue")
     r.add_argument("--urgent", action="store_true")
     r.add_argument("--base")
@@ -1042,6 +1077,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     wp = sub.add_parser("warp", help="autopilot run: warp mode (no ship)")
     wp.add_argument("--fleet", default=None, help="fleet id; slots are per-fleet")
+    wp.add_argument("--ships", type=int, default=None, help="ship count 1-3 (default 2)")
+    wp.add_argument("--crew", type=int, default=None, help="crew cap 1-5 (default 5)")
     wp.add_argument("issue")
     wp.add_argument("--urgent", action="store_true")
     wp.add_argument("--base")
@@ -1051,11 +1088,19 @@ def build_parser() -> argparse.ArgumentParser:
 
     jp = sub.add_parser("jump", help="urgent autopilot run (ships)")
     jp.add_argument("--fleet", default=None, help="fleet id; slots are per-fleet")
+    jp.add_argument("--ships", type=int, default=None, help="ship count 1-3 (default 2)")
+    jp.add_argument("--crew", type=int, default=None, help="crew cap 1-5 (default 5)")
     jp.add_argument("issue")
     jp.add_argument("--base")
     jp.add_argument("--depends", nargs="*", default=[])
     jp.add_argument("--tasks", help="task graph JSON file; plan immediately")
     jp.set_defaults(func=cmd_jump)
+
+    asp = sub.add_parser("assimilate", help="merge an external branch (needs user approval)")
+    asp.add_argument("branch")
+    asp.add_argument("--run", default=None, help="run id")
+    asp.add_argument("--approve", action="store_true", help="user approved assimilation")
+    asp.set_defaults(func=cmd_assimilate)
 
     dr = sub.add_parser("drive", help="run the whole loop unattended")
     dr.add_argument("--run")

@@ -9,9 +9,9 @@ sources:
   - resource: "../../../intake/skills/kai-boom-idea-log/SKILL.md"
     note: "还没成形、不能开工的想法落这里"
 description: >
-  舰桥：用户唯一的对话面与最高权限角色，取代 /coding 成为默认入口。
-  听懂一句话 → 判断是热修还是开票开 run → 清场（分类并安全处置脏文件）→ 施工（可触发 /warp 全自动）→ 发货（合并、push、关票）→ 用白话回报。
-  不写产品代码、不替用户做产品取舍；红线先问。触发：`/bridge`、`/舰桥`、`/warp <任务>`、`/jump <任务>`；
+  舰桥：用户唯一的对话面与最高权限角色，取代旧的 /coding 入口成为默认入口。
+  听懂一句话 → 判断是热修还是开票开舰队 → 清场（分类并安全处置脏文件）→ 施工（可触发 /warp 曲速、/jump 跃迁）→ 发货（合并、push、关票）→ 用白话回报。
+  不写产品代码、不替用户做产品取舍；红线先问。触发：`/bridge`、`/舰桥`、`/warp <任务>`、`/jump <任务>`（`曲速-N-任务`、`跃迁-N-任务` 简写也认）；
   中文「开工」「发货」「清理脏文件」也认；用户没显式点名其它技能时默认进入舰桥。
 version: 0.1.0
 updated: 2026-10-31
@@ -37,7 +37,7 @@ metadata:
 ## 默认模式（用户忘了触发时）
 
 - 用户没点名任何技能、没打斜杠命令，**就按本技能执行**。开场不必宣告身份。
-- 开场先静默看三样，不汇报：`coding status`、`git status --short`、当前分支。
+- 开场先静默看三样，不汇报：`travel status`、`git status --short`、当前分支。
 - 用户说「开工 / 做吧 / 继续 / 发货 / 清理脏文件 / 现在到哪了」，都按本技能处理。
 
 ## 一次对话怎么走
@@ -52,9 +52,9 @@ metadata:
 | 情况 | 走法 |
 |---|---|
 | 小修：≤2 个文件、无可见 UI、无迁移、一句话能验收 | 免票热修：直接改、跑验证、回报；不 push 就不算发货 |
-| 要做成一件有验收标准的事 | 开票 → 开 run → 施工 → 发货 |
+| 要做成一件有验收标准的事 | 开票 → 开舰队 → 施工 → 发货 |
 | 只是想法、方向还没定 | 记想法，不起工；问一句「先记下来，还是现在就做？」 |
-| 已有票 / 已有 run | `coding status` 找到它，从断点续跑 |
+| 已有票 / 已有舰队 | `travel status` 找到它，从断点续跑 |
 | 单纯问问题 | 直接答，不动仓库 |
 
 **开票六件套**（缺一件不开工）：目标一句话、AC 逐条可机检、允许修改、禁止修改、验证命令、依赖与红线。
@@ -65,34 +65,47 @@ metadata:
 主树有已跟踪脏件时 V2 拒绝发货。先分类，再处置：
 
 ```bash
-coding dirty --json
+travel dirty --json
 ```
 
 | 类别 | 判据 | 动作 |
 |---|---|---|
 | **记录件** | `.coding/`、`.ai/`、`handoff/`、日志、DB、缓存、构建产物 | 不碰、不提交、不阻塞 |
-| **任务自身在制** | 用户说「接着改这个」，脏件就是本次要做的东西 | `coding adopt <issue>` 接管为 baseline |
-| **无关产品改动** | 已跟踪、不属于本次任务 | `coding park -m "为什么收起"`；只收产品件，留 stash 回执 |
+| **任务自身在制** | 用户说「接着改这个」，脏件就是本次要做的东西 | `travel adopt <issue>` 接管为 baseline |
+| **无关产品改动** | 已跟踪、不属于本次任务 | `travel park -m "为什么收起"`；只收产品件，留 stash 回执 |
 | **未跟踪用户数据** | `??` 开头 | 不碰；V2 发货不拦未跟踪件 |
 | **拿不准** | 分不清归属 | 问一次：保留为任务基础 / 先收起 / 不动；推荐第一项 |
 
 **绝对禁止**：`git checkout --`、`git restore`、`git clean`、`git stash drop`、强推、删分支。
 每次处置留一行回执：路径、stash ref、`git stash apply <ref>` 恢复命令。
-放回用 `coding unpark <ref>` 或 `coding unpark --list` 先看。
+放回用 `travel unpark <ref>` 或 `travel unpark --list` 先看。
 
 ### 4. 施工
 
 用户说「开工 / 做吧 / 继续 / 用 V2 做」时：
 
 ```bash
-coding warp "<任务或票号>"            # 曲速：自动批门 + 施工 + 审查；不发货，停在 closing
-coding jump "<任务或票号>"        # 跃迁：加急 + 自动发货，唯一有发货权的全自动入口
+travel warp "<任务或票号>" [--ships 1-3]   # 曲速：自动批门 + 施工 + 审查；不发货，停在 closing
+travel jump "<任务或票号>" [--ships 1-3]   # 跃迁：加急 + 自动发货，唯一有发货权的全自动入口
 ```
 
 - 任务文本里有 `#123` 或 issue URL，发货时自动关票；没有票也能跑，只是不关票。
 - 有明确任务图时加 `--tasks tasks.json`；没有就由主会话现场拆。
 - 一次触发跑到门点才停；只有红线、异常、或可见 UI 取舍才回来找用户。
-- 进度看 `coding status`；断点续跑用 `coding resume <run>`。
+- 进度看 `travel status`；断点续跑用 `travel resume <run>`。
+
+**舰队 / 舰船 / 船员**（用户只说大白话，词义在这里）：
+
+| 词 | 含义 | 节制 |
+|---|---|---|
+| 舰队 (fleet) | 一个舰桥一次拉起的任务集合；ID 带宿主前缀 | 数量由用户控制（开几个舰桥就几个舰队） |
+| 舰船 (ship) | 一个 run = 一个独立 worktree + 分支 | 每舰队 1–3，默认 2（`--ships N` 一次拉起 N 艘） |
+| 船员 (crew) | 真正在跑的子代理（子会话） | 每舰队 1–5，默认 5，跨舰船共享（`--crew`） |
+
+- 用户说「曲速 2 船」「跃迁 1 船」「晚上用 3 船」→ 舰桥翻译成 `--ships N`，不问第二遍。
+- 混搭（曲速 2 + 跃迁 1）→ 三条命令传同一个 `--fleet <ID>`，舰队总数仍受 `--ships` 上限约束。
+- 用户说「把 X 的成果合并过来」→ 先复述并征得同意，再 `travel assimilate <branch> --approve`；未获同意不执行。
+- 槽位按舰队独立计：别的舰桥 / agent 框架在跑，不影响本舰队的槽位。
 
 ### 5. 盯到停
 
@@ -106,15 +119,15 @@ coding jump "<任务或票号>"        # 跃迁：加急 + 自动发货，唯一
 
 ### 6. 发货
 
-发货权在舰桥：普通 `coding warp` 停在 closing（无发货权），由舰桥执行发货链：
+发货权在舰桥：普通 `travel warp` 停在 closing（无发货权），由舰桥执行发货链：
 merge → 收尾门 → push → 关票。只有 `jump` 自动发货。
 手动挡需要单独发货时：
 
 ```bash
-coding gate <run> g2 approve
+travel gate <run> g2 approve
 ```
 
-发货失败不硬撑：产出保留、run 转 blocked、告诉用户卡在哪、下一步谁来做。
+发货失败不硬撑：产出保留、舰队转 blocked、告诉用户卡在哪、下一步谁来做。
 push 目标默认 `dev`；推成功以远端回读为准。
 
 ### 7. 回报
@@ -133,15 +146,15 @@ push 目标默认 `dev`；推成功以远端回读为准。
 
 | 命令 | 作用 |
 |---|---|
-| `coding warp <任务>` | 曲速：开工到 closing（不发货） |
-| `coding jump <任务>` | 跃迁：加急 + 自动发货 |
-| `coding status [--html]` | 现在有哪些 run、到哪一步 |
-| `coding resume <run>` | 从断点续跑 |
-| `coding dirty [--json]` | 主树脏件分类 |
-| `coding park [-m 理由]` | 收起无关产品改动（可逆） |
-| `coding unpark [ref] [--list]` | 放回收起的改动 |
-| `coding gc [--all]` | 清理已收尾的 worktree 与分支 |
-| `coding doctor` | 状态与 git 对账 |
+| `travel warp <任务> [--ships 1-3]` | 曲速：开工到 closing（不发货） |
+| `travel jump <任务> [--ships 1-3]` | 跃迁：加急 + 自动发货 |
+| `travel status [--html]` | 现在有哪些 run、到哪一步 |
+| `travel resume <run>` | 从断点续跑 |
+| `travel dirty [--json]` | 主树脏件分类 |
+| `travel park [-m 理由]` | 收起无关产品改动（可逆） |
+| `travel unpark [ref] [--list]` | 放回收起的改动 |
+| `travel gc [--all]` | 清理已收尾的 worktree 与分支 |
+| `travel doctor` | 状态与 git 对账 |
 | `gh issue create --repo <owner/name> ...` | 开票（必须显式带 `--repo`） |
 
 ## 失败与停止
@@ -164,8 +177,8 @@ push 目标默认 `dev`；推成功以远端回读为准。
 - 开票、改票、挂里程碑、打标签、关票。
 - 开 run、拆任务图、派子会话、验收、打回、重跑。
 - 合并、push、关票（发货链内）。
-- 分类并收起脏文件（`coding park`），前提是可逆且留回执。
-- 在 `/warp` 里自动批 G0/G1/G2。
+- 分类并收起脏文件（`travel park`），前提是可逆且留回执。
+- 在 `/warp` `/jump` 里自动批 G0/G1/G2。
 - 读所有 Issue、分支、run 状态、日表（若有）。
 
 **不可以**
@@ -181,7 +194,7 @@ push 目标默认 `dev`；推成功以远端回读为准。
 | 内容 | 落点 |
 |---|---|
 | 需求与验收标准 | GitHub Issue（票面六件套） |
-| 施工状态与断点 | `.coding/runs/<run>/state.json`（只由 `coding` 写） |
+| 施工状态与断点 | `.coding/runs/<run>/state.json`（只由 `travel` 写；run = 舰船） |
 | 收起的脏件 | `.coding/parked/<时间>.json`（stash ref + 恢复命令） |
 | 给用户的回话 | 对话；结论先写，三行以内 |
 | 想法 | 项目想法目录 + 想法池汇总票（有则用） |

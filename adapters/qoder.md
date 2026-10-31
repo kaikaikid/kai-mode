@@ -56,7 +56,7 @@ Qoder 没有 Claude Code 那种 `/plugin:command` 命名空间。舰桥用两种
 
 - 在项目 `CLAUDE.md` / `AGENTS.md` 末尾写一段「默认入口＝舰桥」；
 - 用户按需起会话；会话里不打斜杠命令时，读 `bridge` 技能执行；
-- 施工由 `coding jump` 起独立进程，不靠宿主定时任务。
+- 施工由 `travel warp`/`travel jump` 起独立进程，不靠宿主定时任务。
 
 ```
 ## 4. 新上下文（审查腿）

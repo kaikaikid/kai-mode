@@ -610,20 +610,44 @@ r-4e8b   重构 auth 模块       blocked      2/5    G0    1h
 6. 激活命令已定为 `/coding`（用户 2026-10-30 拍板）。
 7. 控制平面脚本用什么写？（建议 Python 3 标准库，零第三方依赖，跨宿主都能跑）
 
-## 十六、跃迁模式（V2 autopilot）
+## 十六、曲速 / 跃迁模式（V2 autopilot）
 
-`/jump` 是 V2 的全自动挡：G0/G1/G2 由门卫子代理自批，人只在红线与异常时被叫醒。
+`/warp`（曲速）是 V2 的全自动挡：G0/G1/G2 由门卫子代理自批，人只在红线与异常时被叫醒；`/jump`（跃迁）在曲速之上加急并自动发货。
 
-- **命令**：`/warp <issue> [--tasks f.json]`；`/PRI-jump` 走加急预留槽。
-- **并发**：普通槽 3 + 加急槽 2；每 run 2 个子代理；全局 10。排队 run 在槽位空出后由
+- **命令**：`/warp <issue> [--ships 1-3] [--tasks f.json]`；`/jump <issue> [--ships 1-3]` 走加急槽并自动发货。
+- **并发（按舰队独立计）**：舰船数（run）1–3，默认 2；船员数（并发子代理）1–5，默认 5，跨舰船共享。
+  不同舰桥 / agent 框架互不抢占槽位；touchset 冲突检测仍全局。排队 run 在槽位空出后由
   `promote_queued` 自动提升。
 - **门卫**：`coding review` 起一个独立上下文、只读工具的子代理，读实际 diff 对照 AC，
   输出 `accept|return`；`--apply` 把裁决写回任务状态。
 - **发货（全脚本化）**：切到 base（默认 `dev`）→ merge → 收尾门（`.coding/config.json`
   的 `finish_cmd`）→ `git push origin <base>` → 自动识别 `#123` / GitHub issue URL 并关票。
-- **无人值守驱动**：`coding drive` 循环 `spawn → report → review → accept`，直到所有 run
+- **无人值守驱动**：`travel drive` 循环 `spawn → report → review → accept`，直到所有 run
   终态或 blocked；不依赖 AI 主会话逐步敲命令。
 - **打断条件**：红线写操作、连续 return 3 轮、merge 冲突（自动 rebase 一次后仍冲突）、
   收尾门失败、push 被拒、无可用宿主。预算门不启用。
 - **与 V1 的关系**：权限等价于塔台（合并/push/关票），但状态不共享；V2 的 run 仍落
   `.coding/runs/`，V1 的日表与 Issue 评论不受影响。
+
+
+## 十七、舰队 / 舰船 / 船员（2026-11-01）
+
+```
+舰队 (fleet)
+├── 舰船 1 (ship = run) — 独立 worktree + 分支 travel/<run-id>
+│   └── 船员槽（子代理）
+├── 舰船 2 (ship)
+└── 舰船 3 (ship, 上限)
+```
+
+| 词 | 定义 | 节制 |
+|---|---|---|
+| 舰队 fleet | 一个舰桥一次拉起的任务集合；`fleet_id` = `TRAVEL_HOST` 或 git config 推断的宿主 + 时间戳后缀 | 数量由用户控制（开几个舰桥就几个舰队） |
+| 舰船 ship | 一个 run；独立 worktree + 分支 | 每舰队 1–3，默认 2（`--ships N` 一次拉起 N 艘） |
+| 船员 crew | 真正在跑的子代理（子会话）；每舰船 1 个 | 每舰队 1–5，默认 5，跨舰船共享（`--crew`） |
+
+- **槽位按舰队独立计数**：`slot_usage` 过滤 `fleet_id`，别的舰桥 / agent 框架在跑不影响本舰队。
+- **混搭**：曲速与跃迁共用同一舰船配额；两条命令传同一个 `--fleet <ID>` 即并入同一舰队。
+- **touchset 冲突仍全局**：文件冲突与舰队无关，跨舰队重叠照常排队。
+- **吞并货物**：`travel assimilate <branch> --approve`，必须用户明确同意；不自动合并他舰队分支。
+- **旧词映射**：原 `jump`（不发货）→ `warp`（曲速）；原 `PRI-jump`（发货）→ `jump`（跃迁）。

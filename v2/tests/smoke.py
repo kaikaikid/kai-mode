@@ -134,7 +134,7 @@ def main() -> None:
             if (repo / ".coding" / "runs" / r / "state.json").exists():
                 run(repo, "stop", r)
         git(repo, "checkout", "--", "a.txt")
-        rid4 = run(repo, "warp", "warp path", "--base", "main").splitlines()[0]
+        rid4 = run(repo, "warp", "warp path", "--base", "main", "--ships", "1").splitlines()[0]
         plan(repo, rid4, [{"id": "t1", "title": "a", "brief": "x", "tier": "light",
                            "touchset": ["j.txt"], "ac": ["ok"]}])
         run(repo, "spawn", rid4, "t1", "--adapter", "mock")
@@ -151,7 +151,7 @@ def main() -> None:
         checks.append("jump autopilot")
 
         # 9. drive：脚本无人值守跑完整条流水线（PRI-jump 有发货权，能一路到 done）
-        rid5 = run(repo, "jump", "drive path", "--base", "main").splitlines()[0]
+        rid5 = run(repo, "jump", "drive path", "--base", "main", "--ships", "1").splitlines()[0]
         plan(repo, rid5, [
             {"id": "t1", "title": "a", "brief": "x", "tier": "light", "touchset": ["d1.txt"], "ac": ["ok"]},
             {"id": "t2", "title": "b", "brief": "y", "tier": "light", "deps": ["t1"], "touchset": ["d2.txt"], "ac": ["ok"]},

@@ -7,10 +7,9 @@ from typing import Any
 
 from . import state as st
 
-NORMAL_SLOTS = 2
-URGENT_SLOTS = 1
 PER_RUN_SESSIONS = 1
-GLOBAL_SESSIONS = 3
+FLEET_MAX_SHIPS = 3
+FLEET_MAX_CREW = 5  # 每舰队最多 5 个子代理（crew）
 
 TASK_TERMINAL = {"accepted", "abandoned"}
 TASK_INFLIGHT = {"ready", "running", "review", "returned"}
@@ -97,11 +96,12 @@ def _fleet_id(run: dict[str, Any]) -> str:
 
 
 def slot_usage(root: Path | None = None, fleet_id: str | None = None) -> dict[str, int]:
+    # ship_limit 从该舰队的 run 里取（默认 2）
     # 槽位上限按舰队（fleet）独立计：不同舰桥/agent 框架互不抢占槽位，
     # 但 touchset 冲突检测仍全局生效（文件冲突与舰队无关）。
     if fleet_id is None:
         import os as _os
-        fleet_id = _os.environ.get("CODING_FLEET_ID", "default")
+        fleet_id = _os.environ.get("TRAVEL_FLEET_ID", "default")
     normal = urgent = sessions = 0
     for r in st.list_runs(root):
         if r.get("phase") in st.TERMINAL_PHASES:
@@ -119,13 +119,12 @@ def slot_usage(root: Path | None = None, fleet_id: str | None = None) -> dict[st
 
 
 def can_start(run: dict[str, Any], root: Path | None = None) -> tuple[bool, str]:
+    # 舰船数：同一舰队（fleet_id）在飞 run 数达到 ship_limit（1–3，默认 2）就排队。
+    # 曲速 / 跃迁共用同一配额，可混搭（warp-2 + jump-1）。
+    ship_limit = max(1, min(FLEET_MAX_SHIPS, int(run.get("ship_limit") or 2)))
     u = slot_usage(root, fleet_id=run.get("fleet_id"))
-    if run.get("priority") == "urgent":
-        if u["urgent"] >= URGENT_SLOTS:
-            return False, "urgent slot busy"
-    else:
-        if u["normal"] >= NORMAL_SLOTS:
-            return False, "normal slots busy"
+    if u["normal"] + u["urgent"] >= ship_limit:
+        return False, "fleet ship limit reached"
     for dep in run.get("depends_on_runs", []):
         try:
             d = st.load(dep, root)
@@ -137,9 +136,12 @@ def can_start(run: dict[str, Any], root: Path | None = None) -> tuple[bool, str]
 
 
 def can_spawn(run: dict[str, Any], task: dict[str, Any], root: Path | None = None) -> tuple[bool, str]:
+    # 每舰船 1 个子代理；舰队船员上限（1–5，默认 5）跨舰船共享。
     running = sum(1 for t in run.get("tasks", []) if t.get("status") == "running")
     if running >= PER_RUN_SESSIONS:
-        return False, "per-run session limit"
-    if slot_usage(root, fleet_id=run.get("fleet_id"))["sessions"] >= GLOBAL_SESSIONS:
-        return False, "global session limit"
+        return False, "per-ship crew limit (1)"
+    crew_limit = int(run.get("crew_limit") or FLEET_MAX_CREW)
+    crew_limit = max(1, min(FLEET_MAX_CREW, crew_limit))
+    if slot_usage(root, fleet_id=run.get("fleet_id"))["sessions"] >= crew_limit:
+        return False, "fleet crew limit reached"
     return True, "ok"

@@ -1,7 +1,7 @@
 # kai-mode —— 舰桥入口的 V2 执行框架
 
 > **状态：0.37.0（2026-10-31 机场体系下线：`airport` 插件整体退役，`/bridge` 舰桥成为唯一对话面与默认入口，
-> `/coding` 降为内核控制面，`/jump` 由舰桥触发；配置实例升 schema 5，删掉日表、车道、塔台定时器与三键门禁；
+> `/coding` 降为内核控制面，`/warp` 曲速与 `/jump` 跃迁由舰桥触发；配置实例升 schema 5，删掉日表、车道、塔台定时器与三键门禁；
 > 见 [ADR-0028](docs/adr/0028-bridge-entry-and-airport-retirement.md)）。上一版 0.36.0（2026-10-30 正常车道两固定槽与 flight-info 看板皮肤回写）。**
 >
 > 本仓是宿主装机正本（`magpie-sync apply --root <本仓>`，按市场清单的插件目录装齐，当前 35 条自动件），
@@ -44,7 +44,7 @@ kai-mode 是「一句话需求 → 判断 → 票 → run → 施工 → 审查 
               └─ 要做成一件有验收标准的事
                     → 开票（目标/AC/允许/禁止/验证）
                     → 清场（dirty 分类；无关产品改动 park 成可逆 stash）
-                    → coding jump（自动批门 → 子会话施工 → 门卫只读审查）
+                    → travel warp（自动批门 → 子会话施工 → 门卫只读审查）
                     → 发货（merge → 收尾门 → push → 关票）
                     → 三行白话回报
 ```
@@ -94,7 +94,7 @@ CHANGELOG.md  版本变更记录
 1. 项目根写 `.ai/kai-mode.project.json`（从 `templates/` 复制），填运行时**发现方式**与收尾门；机器绝对路径不入库。
 2. `/set-kai-mode` 装 `bridge`、`coding` 与方法技能；按 `core`／`full` 档位（`manifests/install-profiles.json`），缺件如实登记。
 3. 在项目 `CLAUDE.md` / `AGENTS.md` 写「默认入口＝舰桥」，见 set-kai-mode 第 3 步。
-4. 用一件真事走通「舰桥 → 开票 → `/jump` → 发货」做自证。
+4. 用一件真事走通「舰桥 → 开票 → `/warp` 或 `/jump` → 发货」做自证。
 5. 项目专用路径、票号、job id 只进项目配置与本机文件，不进本仓技能正文。
 
 ## 加一个技能（四步）

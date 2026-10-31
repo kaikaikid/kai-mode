@@ -33,12 +33,17 @@ def claude_cmd() -> list[str]:
 # tier→模型：值可直接填 magpie 模型组 id（如 group/cc-fast[1m]）。
 # CLI 对非内置模型串会打 unrecognized_model stderr 警告，属良性（2026-10-31 实测
 # rc=0、正常路由）；验证某次 spawn 的分层，看 worker stderr.log 首行的 --model 值。
+def _env(name: str, default: str = "") -> str:
+    """TRAVEL_* 优先，CODING_* 兼容一版。"""
+    return os.environ.get(f"TRAVEL_{name}") or os.environ.get(f"CODING_{name}", default)
+
+
 TIER_MODEL = {
-    "light": os.environ.get("CODING_MODEL_LIGHT", ""),
-    "medium": os.environ.get("CODING_MODEL_MEDIUM", ""),
-    "careful": os.environ.get("CODING_MODEL_CAREFUL", ""),
-    "heavy": os.environ.get("CODING_MODEL_HEAVY", ""),
-    "fable": os.environ.get("CODING_MODEL_FABLE", ""),
+    "light": _env("MODEL_LIGHT"),
+    "medium": _env("MODEL_MEDIUM"),
+    "careful": _env("MODEL_CAREFUL"),
+    "heavy": _env("MODEL_HEAVY"),
+    "fable": _env("MODEL_FABLE"),
 }
 
 # 工具面是机械保证，不是提示词约定：Bash 只开测试/构建/git 本地白名单——
@@ -46,7 +51,8 @@ TIER_MODEL = {
 WORKER_BASH = ("Bash(git add:*),Bash(git commit:*),Bash(git diff:*),Bash(git status:*),"
                "Bash(git log:*),Bash(git show:*),Bash(python:*),Bash(pytest:*),Bash(npm:*)")
 WORKER_DENY = ("Bash(rm:*),Bash(rmdir:*),Bash(git push:*),Bash(git reset:*),"
-               "Bash(git clean:*),Bash(git rebase:*),Bash(coding:*),Bash(coding.cmd:*),"
+               "Bash(git clean:*),Bash(git rebase:*),Bash(travel:*),Bash(travel.cmd:*),"
+               "Bash(coding:*),Bash(coding.cmd:*),"
                "Bash(npm publish:*),Bash(python -c:*),Bash(python3 -c:*)")
 
 
@@ -115,7 +121,7 @@ class ClaudeCli(Adapter):
         cmd = worker_cmd(read_only=read_only, model=TIER_MODEL.get(tier))
         # 从宿主 settings.json 读 env（magpie / API key / base URL 等），
         # 路径按优先级探测：env KAI_AGENT_DATA_ROOT → ~/.claude/settings.json → 项目 .claude/settings.json
-        _env = {**os.environ, "CODING_WORKER": "1"}
+        _env = {**os.environ, "TRAVEL_WORKER": "1"}
         try:
             import json as _j
             from pathlib import Path as _P
@@ -129,13 +135,13 @@ class ClaudeCli(Adapter):
             if _sp is not None:
                 _d = _j.load(open(_sp, encoding="utf-8"))
                 _env.update(_d.get("env", {}) or {})
-                _env["CODING_WORKER"] = "1"
+                _env["TRAVEL_WORKER"] = "1"
             else:
                 import sys as _sys
-                print("[coding:warn] no settings.json found; worker may lack auth env", file=_sys.stderr)
+                print("[travel:warn] no settings.json found; worker may lack auth env", file=_sys.stderr)
         except Exception as _e:
             import sys as _sys
-            print(f"[coding:warn] could not read settings.json env: {_e}", file=_sys.stderr)
+            print(f"[travel:warn] could not read settings.json env: {_e}", file=_sys.stderr)
         with open(brief_path, "r", encoding="utf-8") as fin:
             proc = subprocess.Popen(
                 cmd, cwd=str(cwd), stdin=fin, stdout=out, stderr=err,
@@ -208,17 +214,17 @@ class Mock(Adapter):
 
 
 class Generic(Adapter):
-    """stdin 写 brief，stdout 读报告。命令由 CODING_GENERIC_CMD 指定。"""
+    """stdin 写 brief，stdout 读报告。命令由 TRAVEL_GENERIC_CMD 指定（CODING_GENERIC_CMD 兼容一版）。"""
 
     name = "generic"
 
     def probe(self):
-        return {"ok": bool(os.environ.get("CODING_GENERIC_CMD")), "version": "generic", "maxConcurrent": 4}
+        return {"ok": bool(_env("GENERIC_CMD")), "version": "generic", "maxConcurrent": 4}
 
     def spawn(self, brief, cwd, session_dir, tier="medium", timeout=1800, read_only=False):
-        cmd = os.environ.get("CODING_GENERIC_CMD")
+        cmd = _env("GENERIC_CMD")
         if not cmd:
-            raise RuntimeError("CODING_GENERIC_CMD not set")
+            raise RuntimeError("TRAVEL_GENERIC_CMD not set")
         session_dir.mkdir(parents=True, exist_ok=True)
         out = open(session_dir / "stdout.log", "w", encoding="utf-8")
         err = open(session_dir / "stderr.log", "w", encoding="utf-8")
@@ -252,7 +258,7 @@ REGISTRY = {"claude-cli": ClaudeCli, "mock": Mock, "generic": Generic}
 def get(name: str) -> Adapter:
     if name in REGISTRY:
         return REGISTRY[name]()
-    if os.environ.get("CODING_GENERIC_CMD"):
+    if _env("GENERIC_CMD"):
         return Generic()
     raise RuntimeError(f"adapter not available: {name}")
 

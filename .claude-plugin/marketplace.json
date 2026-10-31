@@ -44,7 +44,7 @@
       "name": "v2",
       "displayName": "V2 执行内核",
       "source": "./v2",
-      "description": "一个 issue 一个 run：主会话规划与验收，物理子会话执行；舰桥用 /jump 驱动。"
+      "description": "一个 issue 一个 run：主会话规划与验收，物理子会话执行；舰桥用 /warp 曲速或 /jump 跃迁驱动。"
     }
   ]
 }

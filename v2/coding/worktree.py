@@ -26,7 +26,7 @@ def worktree_path(run_id: str, root: Path | None = None) -> Path:
 
 
 def branch_name(run_id: str) -> str:
-    return f"coding/{run_id}"
+    return f"travel/{run_id}"
 
 
 def base_branch(root: Path | None = None) -> str:
@@ -84,7 +84,7 @@ def changed_files(run_id: str, base: str, root: Path | None = None) -> list[str]
 def merge(run_id: str, base: str, root: Path | None = None) -> tuple[bool, str]:
     """在主干合并 run 分支。返回 (ok, message)。"""
     root = root or repo_root()
-    r = _git("merge", "--no-ff", "-m", f"merge coding/{run_id}", branch_name(run_id), cwd=root, check=False)
+    r = _git("merge", "--no-ff", "-m", f"merge travel/{run_id}", branch_name(run_id), cwd=root, check=False)
     if r.returncode != 0:
         _git("merge", "--abort", cwd=root, check=False)
         return False, (r.stderr or r.stdout).strip()[:500]
@@ -108,7 +108,7 @@ def ship(run_id: str, base: str, root: Path | None = None,
         r = _git("checkout", base, cwd=root, check=False)
         if r.returncode != 0:
             return False, f"checkout {base} failed: {(r.stderr or r.stdout).strip()[:300]}"
-    r = _git("merge", "--no-ff", "-m", f"merge coding/{run_id}", branch_name(run_id), cwd=root, check=False)
+    r = _git("merge", "--no-ff", "-m", f"merge travel/{run_id}", branch_name(run_id), cwd=root, check=False)
     if r.returncode != 0:
         _git("merge", "--abort", cwd=root, check=False)
         # 自动 rebase 一次：把 run 分支 rebase 到 base 上再重试合并
@@ -121,7 +121,7 @@ def ship(run_id: str, base: str, root: Path | None = None,
             else:
                 _git("rebase", "--abort", cwd=wt, check=False)
         if rebased:
-            r = _git("merge", "--no-ff", "-m", f"merge coding/{run_id}", branch_name(run_id), cwd=root, check=False)
+            r = _git("merge", "--no-ff", "-m", f"merge travel/{run_id}", branch_name(run_id), cwd=root, check=False)
             if r.returncode != 0:
                 _git("merge", "--abort", cwd=root, check=False)
                 return False, f"merge conflict after rebase: {(r.stderr or r.stdout).strip()[:400]}"

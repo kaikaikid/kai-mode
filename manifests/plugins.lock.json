@@ -11,7 +11,7 @@
     },
     "core": {
       "version": "1.3.0",
-      "digest": "464ccfa55568cad72c478ed0737bec3aca9faa21462f80953f05cea5ff540f2d",
+      "digest": "39c916e0260ee2cc74b8f2769b8607f73001c4e0fbbd044a7f3b4cdf297ad954",
       "skills": {
         "bridge": "0.1.0",
         "harness-audit": "0.2.0",
@@ -74,7 +74,7 @@
     },
     "v2": {
       "version": "0.2.0",
-      "digest": "5af1409a9dd7fa04f8c20fcd99b5c12e3bb4017efa1d02d6b7d41dd15b247471",
+      "digest": "71e52a26646a41862e5c980ce8d9ac86c8a3176923ee5b25ca988d31a6bc44bf",
       "skills": {
         "coding": "0.1.0"
       }

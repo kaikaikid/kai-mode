@@ -121,7 +121,7 @@ def format_human(info: dict) -> str:
     for e in info["untracked"]:
         lines.append(f"  [untracked] {e['path']}")
     if info["blocks_ship"]:
-        lines.append("action: coding park  # parks product changes only, reversible")
+        lines.append("action: travel park  # parks product changes only, reversible")
     else:
         lines.append("action: none needed (untracked files do not block shipping)")
     return "\n".join(lines)
