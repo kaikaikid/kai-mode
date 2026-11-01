@@ -183,6 +183,10 @@ def advance(s: dict[str, Any], root: "Path | None" = None) -> None:
             # 让 drive 接手；任务全终态（真 blocked）或 ship 失败的 run 不在此复活。
             if any(t.get("status") in {"pending", "ready", "running", "review", "returned"} for t in tasks):
                 s["phase"] = "delegating"
+            elif tasks and all(t.get("status") in {"accepted", "abandoned"} for t in tasks):
+                # 全验收后才被卡 blocked 的 run（验收发生在 blocked 期间）：回 reviewing
+                # 走常规 reviewing→closing 推进，ship 才有触发点。
+                s["phase"] = "reviewing"
 
         if s.get("phase") == before:
             break
