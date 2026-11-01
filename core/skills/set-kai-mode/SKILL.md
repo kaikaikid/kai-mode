@@ -15,9 +15,9 @@ sources:
 description: >
   kai-mode 的初始化安装入口（不是日常施工）：先看缺什么、列出推荐清单跟用户确认，再只装缺的。
   覆盖：装舰桥与 V2 内核、把舰桥设为默认入口、worktree 环境自检、项目配置实例生成/校验/迁移、
-  开票归属守卫、缺件如实登记。触发：新 agent 接手装配、换宿主、修技能落点、迁旧配置实例、
+  开票归属守卫、飞书桥（可选）、缺件如实登记。触发：新 agent 接手装配、换宿主、修技能落点、迁旧配置实例、
   问「这套东西都住在哪」。不做日常施工。
-version: 6.1.0
+version: 6.2.0
 updated: 2026-10-31
 allowed-tools: Bash(*) Read Write Edit
 compatibility: Requires python3, git
@@ -83,11 +83,14 @@ python scripts/init-project.py --repo <目标仓> --answers a.json   # 机器填
 **脚本顺手铺两个组件**：`handoff/` 八槽 ＋ 规范与模板；`docs/adr/` ＋ `GLOSSARY.md` 骨架。
 已存在的一律**不覆盖**。缺件（如票源选 github 但没 slug）脚本直接拒绝，不生成半成品实例。
 
+**飞书的配置不进这个实例**（见 §7.3）：app 绑定、白名单、`chat_id`、token 变量名都是机器事实，
+住 `<数据根>/kai-mode/feishu.json`；项目实例只记项目差异。
+
 ## 一步配置（装完即可用）
 
 **铁律：先看缺什么，再装。** 进本技能第一件事是跑「第 0 步 · 缺口扫描」（全只读），
 把现状列成**缺口清单**——已就位的明确标「跳过，不重复装」，缺的才列成「推荐处理项」。
-**先把清单念给用户听，用户点头才执行对应步骤**；不闷头把七步全跑一遍。
+**先把清单念给用户听，用户点头才执行对应步骤**；不闷头按顺序全跑一遍。
 
 | # | 装什么 | 验收 |
 |---|---|---|
@@ -98,7 +101,8 @@ python scripts/init-project.py --repo <目标仓> --answers a.json   # 机器填
 | 4 | worktree 环境自检（解释器 / node / 依赖三项） | 三项都有明确读数 |
 | 5 | doctor | 项目仓门禁全绿或如实点红 |
 | 6 | 开票归属守卫（宿主 PreToolUse 钩子） | 无 `--repo` 的 `gh issue create` 被拒；带 `--repo` 放行 |
-| 7 | 缺件登记与安装回执 | 缺件按三格登记，回执含宿主落点核对 |
+| 7 | 飞书桥（可选，用户点名才装） | 机器人已进群、配置被 gitignore、有界收发各验一条 |
+| 8 | 缺件登记与安装回执 | 缺件按三格登记，回执含宿主落点核对 |
 
 ### 0. 缺口扫描（只读）
 
@@ -114,6 +118,7 @@ python scripts/init-project.py --repo <目标仓> --answers a.json   # 机器填
 | 8 同名技能冲突 | `magpie-sync.py check --json` 看 `conflicts[]` | 无冲突 | 有冲突 → 逐条问用户去留，不静默覆盖 |
 | 9 开票归属守卫 | 读宿主 `settings.json` 的 `hooks.PreToolUse` | 钩子已挂且自测 ok | 未挂 → 列进推荐清单 |
 | 10 旧 V1 残留 | `python <本技能目录>/scripts/uninstall-v1.py [--repo <项目仓>]`（只读探测） | 七个 V1 技能全为「—」，无待人工项 | 有命中 → 走「卸载 V1」腿，用户点头后 `--apply` |
+| 11 飞书桥（可选） | 按 §7 的只读探法跑一遍：`lark-cli --version`、`auth status`、`event list`、`im +chat-list --as bot`、群成员 `bots[]` | 命令在、app 已绑定、bot 在配置的群里、配置被 gitignore | 未装且用户没点名＝「未装（可选）」，不列推荐；点名了或配置在但探针红＝缺件，按三格登记 |
 
 **产出与动作**：把清单念给用户；已就位逐项说「跳过」；需处理项附原因。
 用户点头后才执行对应步骤。**能只读判定的，绝不做写操作。**
@@ -221,10 +226,80 @@ python scripts/framework-gate.py --selftest
    加 `--repo <实例里的仓>` → 放行。
 4. **不碰**：不自动改用户其它 hook，不替项目仓写 `.githooks/`，只拦开票/开 PR 两类。
 
-### 7. 缺件登记与交接
+### 7. 飞书桥（可选）
+
+> 让用户在飞书里发起任务、看进度、点按钮拍板。设计正本住框架仓 `docs/design/`（不随技能分发）；
+> 本节自足：只写**装**与**验收**，运行时实现另排。
+
+**触发**：用户点名「接飞书」，或缺口扫描第 11 项探到「已配但探针红」。
+
+#### 7.1 只读探测（全 read，不做写操作）
+
+```bash
+lark-cli --version
+lark-cli auth status --json      # 看 appId / brand；没有 user login 不算缺件
+lark-cli event list              # 三个事件 key 是否可用
+lark-cli im +chat-list --as bot  # 机器人进了哪些群
+lark-cli im +chat-members-list --chat-id <id> --as bot --json   # 有配置时才跑：看 bots[] / users[]
+```
+
+**探测阶段不做 `event consume`**（会起常驻总线）、不建群、不发消息，最多 `--dry-run`。
+
+#### 7.2 建群与拉机器人
+
+- **优先新建**：`lark-cli im +chat-create --name "kai-mode · <项目名>" --as bot`——机器人是创建者，
+  自动在群；把群分享链接交给用户加入。
+- **用既有群**：机器人不在群时无法自拉，必须由群主/管理员在飞书里添加；安装 agent 只说明
+  「需要谁点哪一步」，不假装已拉入。
+- 验收分两看：`+chat-members-list` 的 `bots[]` 含当前应用（机器人在群）；
+  `users[]` 含用户（人在群）。**只满足前者就写「群已建、人未进」**，不写已就位。
+
+#### 7.3 写配置（用户点头后）
+
+先念字段再写。机器级 `<数据根>/kai-mode/feishu.json`：
+
+| 键 | 说明 |
+|---|---|
+| `app_id` | 仅回执与自检比对，不是密钥 |
+| `allow.users[]` / `allow.chats[]` | open_id / chat_id 白名单；**空 = 谁都不认** |
+| `allow.dm` / `require_mention` | 允许私聊 / 群里必须 @机器人 |
+| `default_chat_id` | 本地发起 run 的播报群 |
+| `serve.url` / `serve.token_env` | 受控写端点地址；token **只记变量名**，不记值 |
+| `notify.poll_s` / `notify.debounce_s` / `notify.gate_reminder_min` | 状态轮询、稳定窗口、待拍板提醒间隔 |
+| `wake.adapter` / `wake.cooldown_s` / `wake.timeout_s` / `wake.max_tokens` | 唤醒用哪个宿主适配器、冷却、超时、单次预算 |
+
+项目级 `.coding/feishu.json`（可选）：本仓接不接、发哪个群。
+写后跑 `git check-ignore -v .coding/feishu.json`，必须有输出；app_secret、token、chat_id
+不进任何 tracked 文件。
+
+#### 7.4 有界自检
+
+1. **收**：`lark-cli event consume <用户消息事件 key> --timeout 30s`（**有界**，跑完即退），
+   请用户在白名单群 @机器人 发一条 `状态`，确认 30 秒内收到一条事件；
+2. **发**：`lark-cli im +messages-send --chat-id <id> --text "kai-mode 自检"`，确认到达；
+3. **点**：卡片按钮单独标「未验」，等运行时实现后补。
+
+自检只证明**通道可用**，不证明桥在跑——桥没实现也能过这三条。
+
+#### 7.5 回执与缺件
+
+回执写：lark-cli 版本、appId、brand、`chat_id`／群名、`bots[]`/`users[]` 证据、用户是否在群、
+三个事件 key 的可用性、配置路径与 gitignore 读数、三条自检的结果与未验项。
+
+| 缺什么 | 卡在哪 | 要谁拍 |
+|---|---|---|
+| 没装 lark-cli | 探测、建群、收发都做不了 | 用户点头装；装法与版本按机器定 |
+| app 未绑定 / 无 bot 身份 | 发消息与订阅都报未授权 | 用户提供 app_id/app_secret 或确认已有 profile；agent 只报字段名与配置路径，不抄值 |
+| 机器人不在群 | 收不到群消息、发不出去 | 新建群由 agent 建；既有群由群主/管理员拉入 |
+| 事件权限没开 | 有界自检收不到事件 | 飞书开放平台管理员加 scope／开事件；agent 只报缺哪项 |
+
+**运行时桥不碰群成员**：不建群、不拉人、不退群、不发欢迎语。
+
+### 8. 缺件登记与交接
 
 - 缺件登记判据见 `../principle-report-missing-parts/SKILL.md`；本步管交接。
 - 装完交一张「安装回执」：装了哪几件技能、默认入口落在哪个文件、三项环境读数、doctor 结果、缺件清单、宿主落点核对。
+  装了飞书桥就**追加 §7.5 的读数**（appId、群、`bots[]`/`users[]`、事件 key、配置路径、自检三条）。
 - **宿主落点核对**：① `bridge` 与 `coding` 在宿主技能目录；② 新上下文口可用（子代理／独立进程／新会话至少一条），
   不可用就登记 `no-new-context`；③ 旧 V1 链接已摘或已列清单。
 - 不把状态写进本地台账：票状态只看 GitHub；run 状态只看 `.coding/runs/`。

@@ -11,7 +11,7 @@ description: >
   与机场体系（V1）并存，不调用其角色。
   触发：`/warp <任务>`、`/jump <任务>`（斜杠入口）；控制面命令 `travel <子命令>`（`coding` 兼容一版）；中文「用 V2 做」「开个 run」也认。
   本地监工服务：`travel serve`（只读 API + 受控 gate/stop/drive，默认只绑 127.0.0.1，Windows 静默）。
-version: 0.2.0
+version: 0.3.0
 updated: 2026-11-01
 allowed-tools: Read Grep Bash
 compatibility: Host-agnostic
@@ -79,6 +79,7 @@ compatibility: Host-agnostic
 | `travel assimilate <branch> --approve` | 吞并外部分支（必须显式 `--approve`） |
 | `travel drive [--run r] [--adapter a] [--review-adapter b]` | 脚本无人值守跑完整条流水线 |
 | `travel serve [--port 8765] [--board-dir …] [--token …] [--drive]` | 本地监工服务：只读 API + 受控 gate/stop/drive；默认只绑 127.0.0.1，Windows 静默 |
+| `travel harness [check\|list\|verify <名>\|trust <名>]` | 宿主适配器：看现状 / 清单 / 真跑用例验收 / 登记信任（换宿主时自举用） |
 
 ## 本地监工服务
 
@@ -90,6 +91,25 @@ compatibility: Host-agnostic
 - 默认只绑 `127.0.0.1`；要防本机其他进程可加 `--token`；
 - **Windows 不许弹黑窗**：子进程用 `CREATE_NO_WINDOW`，后台用 `pythonw` / 计划任务
   （`wscript //B` + `.vbs`），不用 `start /min python`。
+
+## 宿主自举（换宿主时）
+
+worker 是**物理子进程**，由「宿主适配器」启动。内建三个：`claude-cli`（参考实现）、
+`mock`（测试）、`generic`（stdin/stdout 兜底，需 `TRAVEL_GENERIC_CMD`）。
+
+换到一个还没有适配器的宿主时，**由当前 AI 自己写**，内核不用为新宿主打补丁：
+
+| 步 | 命令 | 判据 |
+|---|---|---|
+| 1 | `travel harness check` | 看当前会选谁、适配器目录在哪 |
+| 2 | 按契约写 `<项目根>/.coding/adapters/<宿主>.py` | 实现 probe/spawn/wait/read/kill，能力如实申报 |
+| 3 | `travel harness verify <宿主>` | 用例全过：能写、能报、能读（只给目录）、只读时工作目录零改动 |
+| 4 | `travel harness trust <宿主>` | 登记文件 sha256；**没登记的文件不会被 import** |
+| 5 | `.coding/config.json` 写 `{"adapter": "<宿主>"}` | `check` 里的 selected 变成它 |
+
+契约正本：[host-adapter.md](host-adapter.md)（本技能目录）。申报 `supportsTools=false` 的适配器，
+`travel spawn` 会打警告——那种适配器只适合只读审查，不要拿来跑发货链路。
+显式点名（`--adapter`／`TRAVEL_ADAPTER`／配置）的适配器起不来会直接报错，不会偷偷换回别的宿主。
 
 ## 任务图
 

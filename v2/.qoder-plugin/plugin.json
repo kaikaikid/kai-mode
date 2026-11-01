@@ -1,6 +1,6 @@
 {
   "name": "v2",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "V2 执行内核：一个 issue 一个 run；舰桥是入口；/warp 曲速施工，/jump 跃迁发货。",
   "author": {
     "name": "kaikaikid"

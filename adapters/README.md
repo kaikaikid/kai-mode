@@ -6,6 +6,10 @@
 > **③ 缺什么怎么登记**（三格，不猜）。
 > 人格文件已退役：框架不再定义 per-agent 人格；派活规则住 `v2/skills/travel/SKILL.md`。
 
+> **执行侧不在这里。** 本文管「怎么把技能装到宿主」；「怎么让宿主跑 worker」由宿主适配器
+> 负责，契约见 [`v2/skills/travel/host-adapter.md`](../v2/skills/travel/host-adapter.md)，
+> 现场用 `travel harness check` / `travel harness verify <名>` 自举与验收。
+
 ## 0. 三层分工
 
 | 层 | 谁写 | 写在哪 |

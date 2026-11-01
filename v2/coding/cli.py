@@ -26,6 +26,14 @@ def _err(msg: str) -> "NoReturn":
     raise SystemExit(1)
 
 
+def _warn_weak_adapter(adapter: "adapters.Adapter") -> None:
+    """工具面没有硬拦的适配器只适合只读/建议，别拿它跑发货链路（契约 §3）。"""
+    cap = adapters.capabilities(adapter)
+    if cap.get("ok") and not cap.get("supportsTools"):
+        print(f"[travel:warn] adapter '{adapter.name}' declares supportsTools=false: "
+              f"worker tool surface is prompt-only, do not use it for shipping", file=sys.stderr)
+
+
 def _root() -> Path:
     return st.repo_root()
 
@@ -476,6 +484,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
             _err("deps not done")
 
         adapter = adapters.pick(args.adapter)
+        _warn_weak_adapter(adapter)
         sid = _new_sid()
         sdir = _session_dir(s["run_id"], sid)
         brief = _build_brief(s, t)
@@ -528,7 +537,10 @@ def cmd_report(args: argparse.Namespace) -> None:
         if not sess:
             _err("session record missing")
         sdir = _session_dir(s["run_id"], sid)
-        adapter = adapters.get(sess["adapter"])
+        try:
+            adapter = adapters.get(sess["adapter"])
+        except Exception as e:
+            _err(f"cannot reopen adapter '{sess.get('adapter')}' recorded in state: {e}")
         pid = 0
         pidf = sdir / "pid"
         if pidf.exists():
@@ -632,6 +644,7 @@ def cmd_review(args: argparse.Namespace) -> None:
         if t.get("status") != "review":
             _err(f"task {t['id']} is {t.get('status')}, not review")
         adapter = adapters.pick(args.adapter)
+        _warn_weak_adapter(adapter)
         sid = _new_sid()
         sdir = _session_dir(s["run_id"], sid)
         brief = _build_review_brief(s, t)
@@ -873,6 +886,45 @@ def cmd_doctor(args: argparse.Namespace) -> None:
         raise SystemExit(2)
 
 
+def cmd_harness(args: argparse.Namespace) -> None:
+    """宿主适配器自举：check 看现状，verify 真跑用例，trust 登记放行。
+
+    契约见 v2/skills/travel/host-adapter.md。
+    """
+    root = _root()
+    action = getattr(args, "action", None) or "check"
+    if action in {"check", "list"}:
+        print(json.dumps(adapters.inventory(root), ensure_ascii=False, indent=2))
+        return
+    name = getattr(args, "name", None)
+    if not name:
+        _err(f"harness {action} needs an adapter name")
+    if action == "verify":
+        res = adapters.verify(name, root, timeout=getattr(args, "timeout", None))
+        print(json.dumps(res, ensure_ascii=False, indent=2))
+        if not res.get("ok"):
+            raise SystemExit(1)
+        print(f"travel: verified. Next: travel harness trust {name}", file=sys.stderr)
+        return
+    if action == "trust":
+        rec = adapters.trust(name, root)
+        print(json.dumps(rec, ensure_ascii=False, indent=2))
+        receipt = Path(rec["path"]).with_suffix(".verify.json")
+        ok = False
+        if receipt.is_file():
+            try:
+                v = json.loads(receipt.read_text(encoding="utf-8"))
+                ok = bool(v.get("ok")) and v.get("sha256") == rec["sha256"] and v.get("adapter") == name
+            except Exception:
+                ok = False
+        if not ok:
+            print(f"[travel:warn] {name} has no passing verify receipt for THIS file "
+                  f"(verified or unread receipt only); you are trusting an unverified adapter. "
+                  f"Read it first.", file=sys.stderr)
+        return
+    _err(f"unknown harness action: {action}")
+
+
 # ---------------------------------------------------------------------------
 # argparse
 
@@ -1086,6 +1138,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     d = sub.add_parser("doctor", help="reconcile state with git")
     d.set_defaults(func=cmd_doctor)
+
+    hz = sub.add_parser("harness", help="host adapters: check / list / verify / trust")
+    hz.add_argument("action", nargs="?", default="check", choices=["check", "list", "verify", "trust"])
+    hz.add_argument("name", nargs="?", default=None, help="adapter name (for verify / trust)")
+    hz.add_argument("--timeout", type=int, default=None, help="per-probe timeout seconds (default 180)")
+    hz.set_defaults(func=cmd_harness)
 
     wp = sub.add_parser("warp", help="autopilot run: warp mode (no ship)")
     wp.add_argument("--fleet", default=None, help="fleet id; slots are per-fleet")

@@ -588,7 +588,7 @@ def chk_version_readme(root, ms):
 
 
 def chk_skill_tests(root, ms):
-    """12 --with-tests：跑各技能自带测试 + 仓级 `scripts/tests`。
+    """12 --with-tests：跑各技能自带测试 + 仓级 `scripts/tests`、`v2/tests`。
     有 pytest 用 pytest；技能测试在没有 pytest 时退化到标准库 unittest；
     仓级测试是 doctor 自己的回归网，pytest 不可用即如实报红，不静默跳过。"""
     skills_dir = os.path.join(root, "skills")
@@ -610,10 +610,11 @@ def chk_skill_tests(root, ms):
             if os.path.isdir(d) and d not in seen:
                 seen.add(d)
                 targets.append((name, d))
-    repo_tests = os.path.join(root, "scripts", "tests")
-    has_repo_tests = os.path.isdir(repo_tests)
+    repo_tests_dirs = [os.path.join(root, "scripts", "tests"), os.path.join(root, "v2", "tests")]
+    repo_tests_dirs = [d for d in repo_tests_dirs if os.path.isdir(d)]
+    has_repo_tests = bool(repo_tests_dirs)
     if not targets and not has_repo_tests:
-        return "skip", "没有技能自带的测试目录，也没有 scripts/tests"
+        return "skip", "没有技能自带的测试目录，也没有仓级测试目录"
 
     def _run(args):
         return subprocess.run([sys.executable] + args, capture_output=True, text=True,
@@ -631,18 +632,22 @@ def chk_skill_tests(root, ms):
             tail = ((p.stdout or "") + (p.stderr or "")).strip().splitlines()[-1:] or [""]
             bad.append(f"{name}：{tail[0][:120]}")
     if has_repo_tests:
-        p = _run(["-m", "pytest", repo_tests, "-q", "-p", "no:cacheprovider"])
-        if p.returncode != 0 and "No module named pytest" in (p.stderr or ""):
-            bad.append("仓级 scripts/tests：pytest 不可用，未跑")
-        elif p.returncode != 0:
-            tail = ((p.stdout or "") + (p.stderr or "")).strip().splitlines()[-1:] or [""]
-            bad.append(f"仓级 scripts/tests：{tail[0][:120]}")
-        else:
-            mode = mode or "pytest"
+        for repo_tests in repo_tests_dirs:
+            label = "仓级 " + os.path.relpath(repo_tests, root).replace(os.sep, "/")
+            p = _run(["-m", "pytest", repo_tests, "-q", "-p", "no:cacheprovider"])
+            if p.returncode != 0 and "No module named pytest" in (p.stderr or ""):
+                bad.append(f"{label}：pytest 不可用，未跑")
+            elif p.returncode != 0:
+                tail = ((p.stdout or "") + (p.stderr or "")).strip().splitlines()[-1:] or [""]
+                bad.append(f"{label}：{tail[0][:120]}")
+            else:
+                mode = mode or "pytest"
     if bad:
         return "fail", "；".join(bad[:6]) + (f"（共 {len(bad)} 处）" if len(bad) > 6 else "")
     label = f"{len(targets)} 个技能测试目录" if targets else "无技能测试目录"
-    return "ok", f"{label} ＋ 仓级 scripts/tests 全绿（跑法 {mode or 'pytest'}）"
+    repo_label = " ＋ ".join("仓级 " + os.path.relpath(d, root).replace(os.sep, "/")
+                            for d in repo_tests_dirs)
+    return "ok", f"{label} ＋ {repo_label} 全绿（跑法 {mode or 'pytest'}）"
 
 
 def chk_install_sync(root, ms):
@@ -1964,7 +1969,10 @@ def chk_pointer_targets(root, ms):
         except (OSError, UnicodeDecodeError):
             continue
         scanned += 1
-        tokens = {m.group(1).strip() for m in BACKTICK_RE.finditer(text)}
+        # `.coding/` 是运行期目录（gitignore，永不进仓）：指向它的指针不可能是仓内文件，
+        # 指过去是「让读的人去自己的仓里找」，不是死链。
+        tokens = {m.group(1).strip() for m in BACKTICK_RE.finditer(text)
+                  if not m.group(1).strip().startswith(".coding/")}
         for fb in FENCE_RE.finditer(text):
             for line in fb.group(1).splitlines():
                 for rx in (PY_SCRIPT_RE, PS1_SCRIPT_RE):
