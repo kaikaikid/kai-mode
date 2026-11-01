@@ -243,6 +243,7 @@ consumer 退出后按 1s/2s/5s/10s/30s 退避重启；`bridge.pid` 单实例。
 | lark-cli 封装（含 `--profile` 多机器人、静默子进程） | `feishu/lark.py` | ✅ |
 | 事件消费（长连接 + 退避重启） | `feishu/consumer.py` | ✅ |
 | 状态播报（指纹比对，完成/卡住/等拍板） | `feishu/notify.py` | ✅ |
+| 出站可靠投递（先落库、退避重试、死信、按机器人 profile 发） | `feishu/outbox.py` + `travel feishu outbox` | ✅ |
 | 桥编排（分诊执行、会话续接、预算、审计） | `feishu/bridge.py` | ✅ |
 | 唤醒（复用宿主适配器，支持 resume） | `feishu/wake.py` | ✅ |
 | 主循环 | `feishu/runner.py` + `travel feishu run` | ✅ |
@@ -251,12 +252,17 @@ consumer 退出后按 1s/2s/5s/10s/30s 退避重启；`bridge.pid` 单实例。
 还没做（照实写，不假装）：
 
 - **卡片原地更新**：每次状态变化发新卡（幂等键防重）；原地更新依赖 30 分钟 token 的实测
-- **出站重试**：发送已带幂等键（`kaimode:<dedup_key>` / `kaimode:<run>:<指纹>`），但退避重试还没接（失败只记 stderr）
 - **看板常驻消息**：`travel feishu board` 能出卡片 JSON，还没实现「群里一条消息原地刷新」
 - **消息历史补读**：断线只记缺口，不补读
 - **多维表格看板**：未做
-- **`notify.debounce_s` / `gate_reminder_min`**：配置项在，逻辑还没接（现在是状态一变就发）
-- **`wake.max_tokens`**：唤醒结果带 `over_budget` 标记，桥还没据此换会话
+- **`notify.debounce_s` / `gate_reminder_min`**：配置项在，逻辑还没接（现在是状态一变就发；
+  播报本身只对「完成/卡住/等拍板」出卡，抖动量有限）
+
+出站投递的规则（已实现）：任何发送动作之前消息已在 sqlite `outbox` 表；失败按
+30s → 1m → 2m … 退避，封顶 15 分钟，共 8 次后进 `dead`；死信不删，`travel feishu outbox`
+可查，`--retry` 复活。`publish()` 的顺序是「算卡 → 入队 → 推进指纹 → 试发一轮」，
+崩在入队与推进之间只会重算同一张卡，幂等键挡掉重复。`wake` 返回 `over_budget` 时
+桥会丢掉当前会话，下条消息从新上下文开始。
 
 ## 15. 待实测确认
 

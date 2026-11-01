@@ -7,14 +7,14 @@ import json
 import os
 import re
 import secrets
-import sys
+import threading
 import time
 import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Any, Callable
 
-from . import cards, config as fcfg, lark, ledger as fledger, notify, policy, triage
+from . import cards, config as fcfg, lark, ledger as fledger, notify, outbox, policy, triage
 
 RUN_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 RATE_PER_MIN = 10
@@ -46,6 +46,7 @@ class Bridge:
         self.wake_fn = wake_fn
         self.serve_fn = serve_fn
         self._last_wake: dict[str, float] = {}
+        self._flush_lock = threading.Lock()
         self._secret = self._load_secret()
 
     def now(self) -> float:
@@ -74,6 +75,11 @@ class Bridge:
         key = ev.get("dedup_key") or ""
         if not key:
             return []
+        # 消息去重按机器人分开：多个机器人在同一个群被同时 @ 时，同一条 message_id
+        # 对每个机器人都是「第一次见」，各该回各的。按钮动作不走这里——它由下方
+        # act:<nonce> 全局去重，两个机器人不会把同一个门点批两次。
+        if ev.get("kind") == "message":
+            key = f"{ev.get('bot') or ''}|{key}"
         # 先鉴权再记账：未授权的人点了同一张卡，不能把共享的 nonce 消耗掉，
         # 否则他一次误点就能让主人的点击永远变成「已处理」。
         if not policy.allowed(self.cfg, ev):
@@ -85,7 +91,8 @@ class Bridge:
         if not self.ledger.remember_event(key, ev.get("bot", ""), ev.get("kind", "")):
             # 重复事件不重复执行；按钮重复点给一句回执，消息重投保持安静。
             if ev.get("kind") == "card_action":
-                return [self._out(ev, text="已处理。")]
+                # 用独立幂等键：否则「已处理。」会和第一次的回执撞键被队列吞掉。
+                return [self._out(ev, text="已处理。", suffix=":dup")]
             return []
         if ev.get("kind") == "card_action":
             return self._on_action(ev)
@@ -283,6 +290,9 @@ class Bridge:
                 self.ledger.touch_session(binding, 1, tokens)
         if tokens:
             self.ledger.bump("chat:tokens", day, tokens)
+        if res.get("over_budget"):
+            # 一次唤醒就烧穿单次预算：这条会话别再续了，下条消息从干净上下文开始。
+            self.ledger.drop_session(binding)
         reply = str(res.get("text") or "").strip() or "（没有输出）"
         return [self._out(ev, text=reply[:3000])]
 
@@ -326,10 +336,13 @@ class Bridge:
         return card
 
     # ── 出站 ────────────────────────────────────────────────
-    def _out(self, ev: dict[str, Any], text: str = "", card: "dict[str, Any] | None" = None) -> dict[str, Any]:
+    def _out(self, ev: dict[str, Any], text: str = "", card: "dict[str, Any] | None" = None,
+             suffix: str = "") -> dict[str, Any]:
         chat_id = ev.get("chat_id") or ""
         user_id = "" if chat_id else str(ev.get("sender") or "")      # 私聊没有 chat_id，用 open_id 发
-        idem = f"kaimode:{ev.get('dedup_key')}"[:50]
+        # 幂等键带机器人名与后缀：不同机器人的回话不能互相顶掉，
+        # 后缀放在最前面，避免被 50 字上限截掉。
+        idem = f"kaimode{suffix}:{ev.get('bot') or ''}:{ev.get('dedup_key')}"[:50]
         return {"chat_id": chat_id, "user_id": user_id, "bot": ev.get("bot") or "",
                 "message_id": ev.get("message_id") or "", "text": text, "idem": idem,
                 "card": self._sign_card(card)}
@@ -349,8 +362,51 @@ class Bridge:
         ok = getattr(r, "returncode", 1) == 0
         return ok, (getattr(r, "stderr", "") or "").strip()[:300]
 
+    # ── 出站队列：先落库，再发；发失败的退避重试 ─────────────
+    def enqueue(self, outs: "list[dict[str, Any]]") -> int:
+        """把待发消息写进 sqlite；返回新入队条数（重复的幂等键不算）。"""
+        n = 0
+        for out in outs or []:
+            if not (out.get("chat_id") or out.get("user_id")):
+                continue
+            idem = str(out.get("idem") or "") or f"adhoc:{secrets.token_hex(8)}"
+            # 生成的幂等键要写回 payload：deliver 读的是 payload 里的 idem，
+            # 不写回去重试时就会丢掉飞书侧的幂等键。
+            payload = json.dumps({**out, "idem": idem}, ensure_ascii=False)
+            if self.ledger.enqueue(idem, str(out.get("bot") or ""), str(out.get("chat_id") or ""),
+                                   payload):
+                n += 1
+        return n
+
+    def flush(self, limit: int = 20) -> "dict[str, int]":
+        """发到点的行；多机器人各用各的 profile。
+
+        多个 consumer 线程与主循环都会来要活：串行化，免得同一行被两条线同时发出。
+        """
+        with self._flush_lock:
+            return outbox.flush(self.ledger, self.deliver, self.cfg, self.now(), limit)
+
     # ── 播报（状态变化）─────────────────────────────────────
     def tick(self) -> "list[dict[str, Any]]":
+        """只看本轮有哪些播报，直接标记已播（不进队列；编排请用 publish）。"""
+        outs, prev = self._scan()
+        notify.save_snapshots(self.dir / "snapshots.json", prev)
+        return outs
+
+    def publish(self) -> "dict[str, int]":
+        """播报的可靠路径：算卡片 → 落库 → 推进指纹 → 立刻试发一轮。
+
+        顺序很关键：先入队再推进指纹。崩在两者之间时，下一轮会按旧指纹重新生成
+        同样的卡片，幂等键相同，队列里已有就不会重复。
+        """
+        outs, prev = self._scan()
+        n = self.enqueue(outs)
+        notify.save_snapshots(self.dir / "snapshots.json", prev)
+        stats = self.flush()
+        stats["enqueued"] = n
+        return stats
+
+    def _scan(self) -> "tuple[list[dict[str, Any]], dict[str, str]]":
         snap_path = self.dir / "snapshots.json"
         prev = notify.load_snapshots(snap_path)
         rows = notify.run_rows(self.root)
@@ -359,13 +415,17 @@ class Bridge:
             row, fp, kind = t["row"], t["fingerprint"], t["kind"]
             if prev.get(row["run_id"]) == fp:
                 continue
-            nonce = secrets.token_hex(8)
             bot = fcfg.bot_for(self.cfg)
-            out = {"chat_id": bot.get("chat_id") or "", "bot": bot.get("name") or "",
+            if not bot.get("chat_id"):
+                # 没有落点：这一轮不发，也不推进指纹——等 chat_id 配上再补发，
+                # 不能因为配置缺项就把通知吞掉。
+                continue
+            nonce = secrets.token_hex(8)
+            name = str(bot.get("name") or "")
+            out = {"chat_id": bot.get("chat_id") or "", "bot": name,
                    "message_id": "", "text": "",
-                   "idem": f"kaimode:{row['run_id']}:{fp}",
+                   "idem": f"kaimode:{name}:{row['run_id']}:{fp}"[:50],
                    "card": self._sign_card(notify.render(kind, row, nonce))}
             outs.append(out)
             prev[row["run_id"]] = fp
-        notify.save_snapshots(snap_path, prev)
-        return outs
+        return outs, prev

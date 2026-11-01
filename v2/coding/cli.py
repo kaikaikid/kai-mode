@@ -16,7 +16,7 @@ from typing import Any
 
 from . import adapters, dirty, scheduler, service, state as st, worktree
 from .feishu import cards as fcards, config as fcfg, lark as flark, notify as fnotify
-from .feishu import runner as frunner, triage as ftriage
+from .feishu import ledger as fledger, runner as frunner, triage as ftriage
 
 
 # ---------------------------------------------------------------------------
@@ -892,8 +892,12 @@ def cmd_doctor(args: argparse.Namespace) -> None:
         raise SystemExit(2)
 
 
+def _feishu_ledger(root):
+    return fledger.Ledger(Path(root) / ".coding" / "feishu" / "ledger.sqlite3")
+
+
 def cmd_feishu(args: argparse.Namespace) -> None:
-    """飞书桥：状态 / 自检 / 分诊预览 / 起桥。运行时实现见 v2/coding/feishu/。"""
+    """飞书桥：状态 / 自检 / 分诊预览 / 出站队列 / 起桥。运行时实现见 v2/coding/feishu/。"""
     root = _root()
     action = getattr(args, "action", None) or "status"
     cfg = fcfg.load(root)
@@ -915,11 +919,17 @@ def cmd_feishu(args: argparse.Namespace) -> None:
     if action == "doctor":
         v = flark.version()
         chats = flark.chats("")
+        led = _feishu_ledger(root)
+        try:
+            box = led.outbox_stats()
+        finally:
+            led.close()
         print(json.dumps({
             "lark_cli": (v.stdout or v.stderr or "").strip(),
             "cli_ok": v.returncode == 0,
             "chats_rc": chats.returncode,
             "problems": fcfg.problems(cfg),
+            "outbox": box,
             "config": str(fcfg.machine_path()),
         }, ensure_ascii=False, indent=2))
         return
@@ -931,6 +941,20 @@ def cmd_feishu(args: argparse.Namespace) -> None:
 
     if action == "board":
         print(json.dumps(fcards.board(fnotify.run_rows(root)), ensure_ascii=False, indent=2))
+        return
+
+    if action == "outbox":
+        led = _feishu_ledger(root)
+        try:
+            revived = led.revive() if getattr(args, "retry", False) else 0
+            rows = led.outbox_rows(str(getattr(args, "status", "") or ""),
+                                   limit=int(getattr(args, "limit", None) or 20))
+            for r in rows:
+                r["payload"] = str(r.get("payload") or "")[:200]
+            print(json.dumps({"stats": led.outbox_stats(), "revived": revived, "rows": rows},
+                             ensure_ascii=False, indent=2))
+        finally:
+            led.close()
         return
 
     if action == "send-test":
@@ -1211,11 +1235,15 @@ def build_parser() -> argparse.ArgumentParser:
     hz.add_argument("--timeout", type=int, default=None, help="per-probe timeout seconds (default 180)")
     hz.set_defaults(func=cmd_harness)
 
-    fs = sub.add_parser("feishu", help="feishu bridge: status / doctor / triage / board / send-test / run")
+    fs = sub.add_parser("feishu",
+                        help="feishu bridge: status / doctor / triage / board / outbox / send-test / run")
     fs.add_argument("action", nargs="?", default="status",
-                    choices=["status", "doctor", "triage", "board", "send-test", "run"])
+                    choices=["status", "doctor", "triage", "board", "outbox", "send-test", "run"])
     fs.add_argument("text", nargs="*", default=[], help="text for triage / send-test")
     fs.add_argument("--once", action="store_true", help="run: do one notify tick and exit")
+    fs.add_argument("--status", default="", help="outbox: only rows in this status (pending / sent / dead)")
+    fs.add_argument("--limit", type=int, default=20, help="outbox: max rows to show (default 20)")
+    fs.add_argument("--retry", action="store_true", help="outbox: revive dead letters and resend")
     fs.set_defaults(func=cmd_feishu)
 
     wp = sub.add_parser("warp", help="autopilot run: warp mode (no ship)")

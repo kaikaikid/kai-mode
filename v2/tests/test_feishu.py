@@ -3,16 +3,16 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
-import time
 from pathlib import Path
 
 import pytest
 
 from v2.coding import adapters
 from v2.coding.feishu import bridge as fbridge
-from v2.coding.feishu import cards, config as fcfg, ledger as fledger, notify, policy, triage
+from v2.coding.feishu import cards, config as fcfg, ledger as fledger, notify, outbox, policy, triage
 from v2.coding.feishu import wake as fwake
 
 REPO = Path(__file__).resolve().parents[2]
@@ -233,6 +233,7 @@ def bridge(tmp_path, monkeypatch):
     cfg = fcfg.load(tmp_path)
     cfg["allow"] = {"users": ["ou_me"], "chats": ["oc_1"], "dm": True, "require_mention": True}
     cfg["enabled"] = True
+    cfg["bots"] = [{"name": "work", "profile": "", "chat_id": "oc_1"}]   # 播报要有落点
     woken = []
 
     def wake(brief, cwd, resume=None):
@@ -514,3 +515,309 @@ def test_unauthorized_click_does_not_consume_the_nonce(bridge):
               "action": {**payload, "sig": sig}}
     out = bridge.handle(policy.normalize(ok_raw, "card.action.trigger", "work"))
     assert calls == ["/api/runs/r-1/gate"] and "已提交" in out[0]["text"]
+
+
+# ---------------------------------------------------------------------------
+# 出站队列：先落库、退避重试、死信
+
+
+@pytest.fixture
+def outbox_bridge(tmp_path, monkeypatch):
+    """可控时钟 + 可控发送结果：能精确量退避，不用真的等 30 秒。"""
+    monkeypatch.setenv("KAI_AGENT_DATA_ROOT", str(tmp_path / "data"))
+    cfg = fcfg.load(tmp_path)
+    cfg["enabled"] = True
+    cfg["allow"] = {"users": ["ou_me"], "chats": ["oc_1"], "dm": True, "require_mention": True}
+    cfg["bots"] = [{"name": "work", "profile": "p-work", "chat_id": "oc_1"}]
+    sent = []
+    state = {"fail": True}
+
+    def sender(out, profile=""):
+        if state["fail"]:
+            return False, "network down"
+        sent.append({"out": out, "profile": profile})
+        return True, ""
+
+    clock = {"t": 1_000.0}
+    b = fbridge.Bridge(tmp_path, cfg, sender=sender, now=lambda: clock["t"])
+    b.sent = sent                        # type: ignore[attr-defined]
+    b.state = state                      # type: ignore[attr-defined]
+    b.clock = clock                      # type: ignore[attr-defined]
+    yield b
+    b.ledger.close()
+
+
+def _out_msg(idem="kaimode:x", **kw):
+    out = {"chat_id": "oc_1", "bot": "work", "idem": idem, "text": "hi"}
+    out.update(kw)
+    return out
+
+
+def test_backoff_grows_and_caps():
+    assert outbox.backoff(1) == 30 and outbox.backoff(2) == 60 and outbox.backoff(5) == 480
+    assert outbox.backoff(50) == outbox.RETRY_CAP_S
+
+
+def test_outbox_keeps_row_when_send_fails(outbox_bridge):
+    b = outbox_bridge
+    b.enqueue([_out_msg()])
+    assert b.flush() == {"sent": 0, "retried": 1, "dead": 0}
+    row = b.ledger.outbox_rows()[0]
+    assert row["status"] == "pending" and row["attempts"] == 1
+    assert row["next_attempt_at"] == pytest.approx(b.clock["t"] + 30)
+
+
+def test_outbox_waits_for_backoff_then_sends(outbox_bridge):
+    b = outbox_bridge
+    b.enqueue([_out_msg()])
+    b.flush()
+    assert b.flush() == {"sent": 0, "retried": 0, "dead": 0}   # 没到点，不发也不记账
+    b.state["fail"] = False
+    b.clock["t"] += 31
+    assert b.flush()["sent"] == 1
+    assert b.sent[0]["profile"] == "p-work"                    # 按机器人自己的身份发
+    assert b.ledger.outbox_stats().get("sent") == 1
+    assert b.ledger.due(b.clock["t"]) == []
+
+
+def test_outbox_buries_after_max_attempts(outbox_bridge):
+    b = outbox_bridge
+    b.enqueue([_out_msg()])
+    for _ in range(outbox.MAX_ATTEMPTS):
+        b.clock["t"] += outbox.RETRY_CAP_S + 1
+        stats = b.flush()
+    assert stats == {"sent": 0, "retried": 0, "dead": 1}
+    assert b.ledger.outbox_stats() == {"dead": 1}
+    b.clock["t"] += 10_000
+    assert b.flush() == {"sent": 0, "retried": 0, "dead": 0}   # 死信不再重试
+
+
+def test_revive_dead_letters(outbox_bridge):
+    b = outbox_bridge
+    b.enqueue([_out_msg()])
+    for _ in range(outbox.MAX_ATTEMPTS):
+        b.clock["t"] += outbox.RETRY_CAP_S + 1
+        b.flush()
+    assert b.ledger.revive() == 1
+    assert b.ledger.outbox_stats() == {"pending": 1}
+    assert b.ledger.outbox_rows()[0]["attempts"] == 0
+
+
+def test_outbox_dedups_by_idempotency_key(outbox_bridge):
+    b = outbox_bridge
+    assert b.enqueue([_out_msg("kaimode:dup")]) == 1
+    assert b.enqueue([_out_msg("kaimode:dup")]) == 0
+    b.state["fail"] = False
+    b.flush()
+    assert len(b.sent) == 1
+
+
+def test_outbox_row_without_target_dies_immediately(outbox_bridge):
+    b = outbox_bridge
+    # 桥自己就不收没落点的消息；这里模拟库里已经有的一条，验证 flush 不会让它无限重试。
+    b.ledger.enqueue("kaimode:nowhere", "work", "", json.dumps({"bot": "work", "text": "hi"}))
+    assert b.flush() == {"sent": 0, "retried": 0, "dead": 1}
+    assert b.sent == []
+    assert "没有落点" in b.ledger.outbox_rows()[0]["error"]
+
+
+def test_bridge_enqueue_skips_messages_without_target(outbox_bridge):
+    b = outbox_bridge
+    assert b.enqueue([{"bot": "work", "idem": "kaimode:nowhere", "text": "hi"}]) == 0
+    assert b.ledger.outbox_stats() == {}
+
+
+def test_outbox_dm_targets_open_id(outbox_bridge):
+    b = outbox_bridge
+    b.state["fail"] = False
+    b.enqueue([{"user_id": "ou_me", "bot": "work", "idem": "kaimode:dm", "text": "hi"}])
+    assert b.flush()["sent"] == 1
+
+
+def test_publish_persists_card_before_advancing_snapshot(outbox_bridge, tmp_path):
+    b = outbox_bridge
+    _state(tmp_path, "r-9", "done", tasks=("t1",))
+    stats = b.publish()
+    assert stats["enqueued"] == 1 and stats["retried"] == 1
+    assert b.ledger.outbox_stats() == {"pending": 1}           # 发失败，卡片还在队列里
+    assert b.publish()["enqueued"] == 0                        # 指纹已推进，不重复生成
+    b.state["fail"] = False
+    b.clock["t"] += 31
+    assert b.flush()["sent"] == 1
+    assert b.sent[0]["out"]["card"]["header"]["title"]["content"] == "完成"
+
+
+def test_purge_keeps_pending_and_dead(outbox_bridge):
+    b = outbox_bridge
+    b.state["fail"] = False
+    b.enqueue([_out_msg("a")])
+    b.flush()
+    b.state["fail"] = True
+    b.enqueue([_out_msg("b")])
+    b.flush()
+    b.ledger.enqueue("dead-one", "work", "oc_1", "not-json")
+    b.flush()                                                  # 坏 payload 进死信
+    assert b.ledger.outbox_stats() == {"sent": 1, "pending": 1, "dead": 1}
+    assert b.ledger.purge_outbox(b.clock["t"] + 1) == 1         # 只清已发成功的
+    assert sorted(r["idem"] for r in b.ledger.outbox_rows()) == ["b", "dead-one"]
+
+
+def test_ledger_migrates_old_outbox_schema(tmp_path):
+    import sqlite3
+
+    p = tmp_path / "old.sqlite3"
+    db = sqlite3.connect(str(p))
+    db.executescript(
+        "CREATE TABLE outbox (id INTEGER PRIMARY KEY AUTOINCREMENT, idem TEXT UNIQUE,"
+        " bot TEXT, chat_id TEXT, payload TEXT, status TEXT DEFAULT 'pending',"
+        " attempts INTEGER DEFAULT 0, created_at REAL, sent_at REAL, error TEXT);")
+    db.execute("INSERT INTO outbox(idem, payload) VALUES('old', '{}')")
+    db.commit()
+    db.close()
+
+    led = fledger.Ledger(p)
+    try:
+        due = led.due(1e12)
+        assert len(due) == 1 and due[0]["next_attempt_at"] == 0
+    finally:
+        led.close()
+
+
+def test_outbox_buries_unparseable_payload(outbox_bridge):
+    b = outbox_bridge
+    b.ledger.enqueue("kaimode:bad", "work", "oc_1", "not-json")
+    assert b.flush() == {"sent": 0, "retried": 0, "dead": 1}
+
+
+def test_wake_over_budget_starts_fresh_session(tmp_path, monkeypatch):
+    monkeypatch.setenv("KAI_AGENT_DATA_ROOT", str(tmp_path / "data"))
+    cfg = fcfg.load(tmp_path)
+    cfg["enabled"] = True
+    cfg["allow"] = {"users": ["ou_me"], "chats": ["oc_1"], "dm": True, "require_mention": True}
+
+    def wake(brief, cwd, resume=None):
+        return {"text": "ok", "session_id": resume or "s-1", "tokens": 10, "over_budget": True}
+
+    b = fbridge.Bridge(tmp_path, cfg, wake_fn=wake)
+    try:
+        ev = _event(b, message_id="om_ob", content="@_user_1 聊聊")
+        assert b.handle(ev)[0]["text"] == "ok"
+        assert b.ledger.session(policy.binding_key(ev)) is None   # 烧穿预算就换会话
+    finally:
+        b.ledger.close()
+
+
+def test_concurrent_flush_sends_each_row_once(outbox_bridge):
+    """两个 consumer 线程 + 主循环会同时来要活：同一行只能发一次。"""
+    import threading
+
+    b = outbox_bridge
+    b.state["fail"] = False
+    for i in range(10):
+        b.enqueue([_out_msg(f"k{i}")])
+    threads = [threading.Thread(target=b.flush) for _ in range(4)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert len(b.sent) == 10
+    assert sorted(r["out"]["idem"] for r in b.sent) == [f"k{i}" for i in range(10)]
+
+
+def test_publish_defers_until_chat_id_configured(outbox_bridge, tmp_path):
+    """没配落点时不推进指纹：配上之后同一张卡还能补发，不被配置缺项吞掉。"""
+    b = outbox_bridge
+    b.state["fail"] = False
+    b.cfg["bots"] = [{"name": "work", "profile": "p-work", "chat_id": ""}]
+    _state(tmp_path, "r-7", "done", tasks=("t1",))
+    assert b.publish()["enqueued"] == 0
+    assert b.ledger.outbox_stats() == {}
+    b.cfg["bots"][0]["chat_id"] = "oc_1"
+    stats = b.publish()
+    assert stats["enqueued"] == 1 and stats["sent"] == 1
+
+
+def test_retry_policy_constants_are_pinned():
+    """规格是「30s 起步、封顶 15 分钟、共 8 次」，别拿实现常量自证。"""
+    assert (outbox.RETRY_BASE_S, outbox.RETRY_CAP_S, outbox.MAX_ATTEMPTS) == (30, 900, 8)
+
+
+def test_flush_survives_deliver_exception(outbox_bridge):
+    """lark-cli 超时抛的是异常，不是 returncode：不能让它穿出去，也不能不记账。"""
+    b = outbox_bridge
+
+    def boom(out, profile=""):
+        raise TimeoutError("lark-cli timed out")
+
+    b.deliver = boom
+    b.enqueue([_out_msg("t1")])
+    assert b.flush() == {"sent": 0, "retried": 1, "dead": 0}
+    row = b.ledger.outbox_rows()[0]
+    assert row["status"] == "pending" and row["attempts"] == 1
+    assert "Timeout" in row["error"] and row["next_attempt_at"] > b.clock["t"]
+
+
+def test_publish_does_not_advance_snapshot_when_enqueue_fails(outbox_bridge, tmp_path):
+    b = outbox_bridge
+    _state(tmp_path, "r-8", "done")
+
+    def boom(outs):
+        raise RuntimeError("disk full")
+
+    b.enqueue = boom
+    with pytest.raises(RuntimeError):
+        b.publish()
+    assert notify.load_snapshots(b.dir / "snapshots.json") == {}
+
+
+def test_snapshot_write_is_atomic(tmp_path):
+    p = tmp_path / "snaps.json"
+    notify.save_snapshots(p, {"r-1": "abc"})
+    assert json.loads(p.read_text(encoding="utf-8")) == {"r-1": "abc"}
+    assert not (tmp_path / "snaps.json.tmp").exists()
+
+
+def test_same_message_from_two_bots_each_gets_a_reply(bridge):
+    """多个机器人同在一个群被同时 @：同一条 message_id 各自都要回。"""
+    raw = {"chat_id": "oc_1", "chat_type": "group", "sender_id": "ou_me",
+           "message_id": "om_multi", "content": "@_user_1 状态", "mentions": [{"id": "ou_bot"}]}
+    a = bridge.handle(policy.normalize(raw, "im.message.receive_v1", "botA"))
+    b = bridge.handle(policy.normalize(raw, "im.message.receive_v1", "botB"))
+    assert a and b
+    assert a[0]["idem"] != b[0]["idem"]
+
+
+def test_duplicate_click_receipt_has_its_own_idempotency_key(bridge):
+    bridge.serve_fn = lambda path, body: (True, "200")
+    payload = {"kind": "gate", "run_id": "r-1", "gate": "g2", "decision": "approve", "nonce": "n-dup"}
+    sig = policy.sign(bridge._secret, payload)
+    raw = {"chat_id": "oc_1", "chat_type": "group", "sender_id": "ou_me", "message_id": "om_d1",
+           "action": {**payload, "sig": sig}}
+    first = bridge.handle(policy.normalize(raw, "card.action.trigger", "work"))[0]
+    second = bridge.handle(policy.normalize({**raw, "message_id": "om_d2"},
+                                            "card.action.trigger", "work"))[0]
+    assert "已提交" in first["text"] and second["text"] == "已处理。"
+    assert first["idem"] != second["idem"]
+    assert bridge.enqueue([first, second]) == 2          # 回执不会被队列吞掉
+
+
+def test_adhoc_idempotency_key_is_written_into_payload(outbox_bridge):
+    b = outbox_bridge
+    b.state["fail"] = False
+    b.enqueue([{"chat_id": "oc_1", "bot": "work", "text": "no idem here"}])
+    b.flush()
+    assert b.sent[0]["out"]["idem"].startswith("adhoc:")
+
+
+def test_runner_refuses_when_another_bridge_is_alive(tmp_path, monkeypatch):
+    from v2.coding.feishu import consumer as fconsumer, runner as frunner
+
+    pid_path = tmp_path / ".coding" / "feishu" / "bridge.pid"
+    fconsumer.write_pid(pid_path, 999_999)
+    monkeypatch.setattr(frunner.consumer, "pid_alive", lambda pid: True)
+    assert frunner._acquire(tmp_path)[0] is None
+
+    monkeypatch.setattr(frunner.consumer, "pid_alive", lambda pid: False)
+    path, other = frunner._acquire(tmp_path)
+    assert path is not None and other == 0
+    assert path.read_text(encoding="utf-8").strip() == str(os.getpid())

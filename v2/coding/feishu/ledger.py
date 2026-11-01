@@ -29,7 +29,8 @@ CREATE TABLE IF NOT EXISTS outbox (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   idem TEXT UNIQUE, bot TEXT, chat_id TEXT, payload TEXT,
   status TEXT DEFAULT 'pending', attempts INTEGER DEFAULT 0,
-  created_at REAL, sent_at REAL, error TEXT
+  created_at REAL, sent_at REAL, error TEXT,
+  next_attempt_at REAL DEFAULT 0
 );
 """
 
@@ -45,6 +46,15 @@ class Ledger:
         self._lock = threading.RLock()
         self.db.executescript(SCHEMA)
         self.db.commit()
+        self._migrate()
+
+    def _migrate(self) -> None:
+        """老库补列：outbox 先于退避重试存在，没有 next_attempt_at。"""
+        cols = {str(r["name"]) for r in self.db.execute("PRAGMA table_info(outbox)").fetchall()}
+        if "next_attempt_at" not in cols:
+            with self._lock:
+                self.db.execute("ALTER TABLE outbox ADD COLUMN next_attempt_at REAL DEFAULT 0")
+                self.db.commit()
 
     def _write(self, sql: str, params=()) -> "sqlite3.Cursor":
         with self._lock:
@@ -119,8 +129,10 @@ class Ledger:
 
     # ── 出站队列 ──────────────────────────────────────────────
     def enqueue(self, idem: str, bot: str, chat_id: str, payload: str) -> bool:
+        """落一条待发消息；idem 相同视为同一条（幂等键就是去重键）。"""
         cur = self._write(
-            "INSERT OR IGNORE INTO outbox(idem, bot, chat_id, payload, created_at) VALUES(?,?,?,?,?)",
+            "INSERT OR IGNORE INTO outbox(idem, bot, chat_id, payload, created_at, next_attempt_at)"
+            " VALUES(?,?,?,?,?,0)",
             (idem, bot, chat_id, payload, self.clock()))
         return cur.rowcount == 1
 
@@ -129,13 +141,53 @@ class Ledger:
             "SELECT * FROM outbox WHERE status='pending' ORDER BY id LIMIT ?", (limit,)).fetchall()
         return [dict(r) for r in rows]
 
+    def due(self, now: float, limit: int = 20) -> "list[dict[str, Any]]":
+        """到点该发的行：新入队的 next_attempt_at=0，退避中的等到期才出现。"""
+        rows = self.db.execute(
+            "SELECT * FROM outbox WHERE status='pending' AND COALESCE(next_attempt_at, 0) <= ?"
+            " ORDER BY id LIMIT ?", (float(now), limit)).fetchall()
+        return [dict(r) for r in rows]
+
     def mark_sent(self, row_id: int) -> None:
         self._write("UPDATE outbox SET status='sent', sent_at=?, attempts=attempts+1 WHERE id=?",
                     (self.clock(), row_id))
 
-    def mark_failed(self, row_id: int, error: str) -> None:
-        self._write("UPDATE outbox SET attempts=attempts+1, error=? WHERE id=?", (error[:400], row_id))
+    def reschedule(self, row_id: int, error: str, next_attempt_at: float) -> None:
+        """这次没发出去：记次数与原因，等到点再试（不是丢掉）。"""
+        self._write(
+            "UPDATE outbox SET attempts=attempts+1, error=?, next_attempt_at=? WHERE id=?",
+            (error[:400], float(next_attempt_at), row_id))
 
     def bury(self, row_id: int, error: str) -> None:
+        """重试用尽：进死信，留在库里等人看，不静默删。"""
         self._write("UPDATE outbox SET status='dead', attempts=attempts+1, error=? WHERE id=?",
                     (error[:400], row_id))
+
+    def revive(self, row_id: "int | None" = None) -> int:
+        """死信复活：给 row_id 只救那一条，不给就全救。返回实际复活条数。"""
+        if row_id is None:
+            cur = self._write(
+                "UPDATE outbox SET status='pending', attempts=0, next_attempt_at=0 WHERE status='dead'")
+        else:
+            cur = self._write(
+                "UPDATE outbox SET status='pending', attempts=0, next_attempt_at=0"
+                " WHERE id=? AND status='dead'", (int(row_id),))
+        return cur.rowcount
+
+    def outbox_stats(self) -> "dict[str, int]":
+        rows = self.db.execute("SELECT status, COUNT(*) AS c FROM outbox GROUP BY status").fetchall()
+        return {str(r["status"]): int(r["c"]) for r in rows}
+
+    def outbox_rows(self, status: str = "", limit: int = 50) -> "list[dict[str, Any]]":
+        if status:
+            rows = self.db.execute(
+                "SELECT * FROM outbox WHERE status=? ORDER BY id DESC LIMIT ?", (status, limit)).fetchall()
+        else:
+            rows = self.db.execute("SELECT * FROM outbox ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
+        return [dict(r) for r in rows]
+
+    def purge_outbox(self, before: float) -> int:
+        """只清已经发成功的旧行；待发与死信一律留痕。"""
+        cur = self._write("DELETE FROM outbox WHERE status='sent' AND COALESCE(sent_at, 0) < ?",
+                          (float(before),))
+        return cur.rowcount

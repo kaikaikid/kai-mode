@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -62,9 +63,12 @@ def load_snapshots(path: "Path | str") -> dict[str, str]:
 
 
 def save_snapshots(path: "Path | str", snap: dict[str, str]) -> None:
+    """原子写：写一半断电会让整份快照变成空，下一轮把所有 run 当新变化重发。"""
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps(snap, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp = p.with_suffix(p.suffix + ".tmp")
+    tmp.write_text(json.dumps(snap, ensure_ascii=False, indent=2), encoding="utf-8")
+    os.replace(tmp, p)
 
 
 def transitions(previous: dict[str, str], rows: "list[dict[str, Any]]") -> "list[dict[str, Any]]":

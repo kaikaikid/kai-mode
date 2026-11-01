@@ -80,7 +80,7 @@ compatibility: Host-agnostic
 | `travel drive [--run r] [--adapter a] [--review-adapter b]` | 脚本无人值守跑完整条流水线 |
 | `travel serve [--port 8765] [--board-dir …] [--token …] [--drive]` | 本地监工服务：只读 API + 受控 gate/stop/drive；默认只绑 127.0.0.1，Windows 静默 |
 | `travel harness [check\|list\|verify <名>\|trust <名>]` | 宿主适配器：看现状 / 清单 / 真跑用例验收 / 登记信任（换宿主时自举用） |
-| `travel feishu [status\|doctor\|triage <文本>\|board\|send-test\|run]` | 飞书桥：配置现状 / 自检 / 分诊预览（不产生副作用）/ 看板 JSON / 发测试消息 / 起桥 |
+| `travel feishu [status\|doctor\|triage <文本>\|board\|outbox [--status s] [--retry]\|send-test\|run]` | 飞书桥：配置现状 / 自检 / 分诊预览（不产生副作用）/ 看板 JSON / 出站队列（死信可复活）/ 发测试消息 / 起桥 |
 
 ## 本地监工服务
 
@@ -120,7 +120,9 @@ worker 是**物理子进程**，由「宿主适配器」启动。内建三个：
 - 配置：`<数据根>/kai-mode/feishu.json`（机器级）；项目级 `.coding/feishu.json` 可选覆盖
 - 默认全拒：`allow.users` / `allow.chats` 空 = 谁都不认
 - 对话模式默认开：同一条飞书会话续同一个宿主会话；空闲 45 分钟 / 20 轮 / 6 万 token 任一触发即换新
-- 自助排查：`travel feishu status`、`travel feishu triage <一句话>`
+- 出站可靠投递：消息先落 sqlite 队列再发；发失败按 30s→1m→2m… 退避，封顶 15 分钟、共 8 次，
+  用尽进死信（不静默丢）；`travel feishu outbox` 查看，`--retry` 复活重发。幂等键随行，重试不刷屏
+- 自助排查：`travel feishu status`、`travel feishu triage <一句话>`、`travel feishu outbox`
 
 ## 任务图
 
