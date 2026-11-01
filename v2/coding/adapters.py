@@ -38,6 +38,14 @@ def _env(name: str, default: str = "") -> str:
     return os.environ.get(f"TRAVEL_{name}") or os.environ.get(f"CODING_{name}", default)
 
 
+def no_window_kwargs() -> dict:
+    """Windows 上子进程不弹控制台（ADR-0029 D5）：无控制台宿主（pythonw/计划任务）下
+    不带这组旗标会闪黑窗。POSIX 返回空 dict。"""
+    if os.name == "nt":
+        return {"creationflags": getattr(subprocess, "CREATE_NO_WINDOW", 0)}
+    return {}
+
+
 TIER_MODEL = {
     "light": _env("MODEL_LIGHT"),
     "medium": _env("MODEL_MEDIUM"),
@@ -145,7 +153,7 @@ class ClaudeCli(Adapter):
         with open(brief_path, "r", encoding="utf-8") as fin:
             proc = subprocess.Popen(
                 cmd, cwd=str(cwd), stdin=fin, stdout=out, stderr=err,
-                env=_env,
+                env=_env, **no_window_kwargs(),
             )
         (session_dir / "pid").write_text(str(proc.pid), encoding="utf-8")
         (session_dir / "heartbeat").write_text(str(time.time()), encoding="utf-8")
@@ -229,7 +237,8 @@ class Generic(Adapter):
         out = open(session_dir / "stdout.log", "w", encoding="utf-8")
         err = open(session_dir / "stderr.log", "w", encoding="utf-8")
         proc = subprocess.Popen(cmd, shell=True, cwd=str(cwd), stdin=subprocess.PIPE,
-                                stdout=out, stderr=err, text=True, encoding="utf-8")
+                                stdout=out, stderr=err, text=True, encoding="utf-8",
+                                **no_window_kwargs())
         proc.stdin.write(brief)
         proc.stdin.close()
         (session_dir / "pid").write_text(str(proc.pid), encoding="utf-8")

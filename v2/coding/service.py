@@ -8,8 +8,12 @@
 """
 from __future__ import annotations
 
+import html as _html
+import hmac
 import json
 import os
+import re
+import socket
 import subprocess
 import sys
 import threading
@@ -22,6 +26,11 @@ from typing import Any
 MAIN = Path(__file__).resolve().parents[1] / "coding_main.py"
 TERMINAL = {"done", "cancelled", "failed"}
 DRIVE_LOCK = ".coding/drive.lock"
+# run_id 的合法形状：控制面生成的是 r-<hex><rand>，别的字符一律不是 run_id。
+RUN_ID_OK = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
+MAX_BODY = 64 * 1024
+# 超限请求也要把 body 读掉再回 413：直接关连接会让客户端 ConnectionAborted。
+HARD_BODY = 8 * 1024 * 1024
 
 
 # ---------------------------------------------------------------------------
@@ -35,8 +44,12 @@ def no_window_kwargs() -> dict[str, Any]:
     return {}
 
 
-def run_travel(root: Path, args: list[str], timeout: int = 600) -> dict[str, Any]:
-    """调用控制平面（同一份 coding_main.py），返回 rc/stdout/stderr。"""
+def run_travel(root: Path, args: list[str], timeout: int | None = None) -> dict[str, Any]:
+    """调用控制平面（同一份 coding_main.py），返回 rc/stdout/stderr。
+
+    timeout 默认 None＝不限时：drive 单个 worker 就能跑 1800s，编排器不能比工人先死。
+    真要限时的调用方（如 refresh）自己传秒数。
+    """
     cmd = [sys.executable, str(MAIN), *args]
     try:
         r = subprocess.run(cmd, cwd=str(root), capture_output=True, text=True,
@@ -102,7 +115,14 @@ def run_summary(state: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def run_id_safe(run_id: str) -> bool:
+    """run_id 只许 `[A-Za-z0-9._-]`：路径拼接前先挡穿越（..%2F、..\\、盘符）。"""
+    return bool(RUN_ID_OK.match(run_id or ""))
+
+
 def find_run(root: Path, run_id: str) -> dict[str, Any] | None:
+    if not run_id_safe(run_id):
+        return None
     p = _runs_dir(root) / run_id / "state.json"
     if not p.is_file():
         return None
@@ -140,24 +160,35 @@ def _pid_alive(pid: int) -> bool:
 
 
 def acquire_pid(root: Path) -> Path:
-    """单实例：`.coding/service.pid` 存在且进程活着就拒绝。"""
+    """单实例：O_CREAT|O_EXCL 建 `.coding/service.pid`，两个实例只有一个建得成。
+
+    旧 pid 文件残留时按进程存活判：死了先接管（删掉重建），活着就拒绝。
+    """
     p = root / ".coding" / "service.pid"
     p.parent.mkdir(parents=True, exist_ok=True)
-    if p.exists():
+    while True:
         try:
-            old = int(p.read_text(encoding="utf-8").strip())
-        except Exception:
-            old = 0
-        if _pid_alive(old):
-            raise RuntimeError(f"service already running (pid {old})")
-    p.write_text(str(os.getpid()), encoding="utf-8")
+            fd = os.open(p, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            break
+        except FileExistsError:
+            try:
+                old = int(p.read_text(encoding="utf-8").strip())
+            except Exception:
+                old = 0
+            if _pid_alive(old):
+                raise RuntimeError(f"service already running (pid {old})")
+            p.unlink(missing_ok=True)   # 死进程的残留，接管
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(str(os.getpid()))
     return p
 
 
 def release_pid(p: Path) -> None:
+    """只删自己写的那份：内容不是本 pid 就不动（防误删后来者）。"""
     try:
-        p.unlink(missing_ok=True)
-    except OSError:
+        if int(p.read_text(encoding="utf-8").strip()) == os.getpid():
+            p.unlink(missing_ok=True)
+    except (OSError, ValueError):
         pass
 
 
@@ -230,17 +261,40 @@ class Handler(BaseHTTPRequestHandler):
     def _body(self) -> dict[str, Any]:
         try:
             n = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            return {}
+        if n > HARD_BODY:
+            return {"__too_large__": True}
+        try:
             raw = self.rfile.read(n) if n else b"{}"
+        except Exception:
+            return {}
+        if len(raw) > MAX_BODY:
+            return {"__too_large__": True}
+        try:
             data = json.loads(raw.decode("utf-8"))
             return data if isinstance(data, dict) else {}
         except Exception:
             return {}
 
+    def _host_ok(self) -> bool:
+        """Host 必须是本机回环名/IP：防 DNS rebinding（Origin/Host 互比可被同值伪造）。"""
+        host = (self.headers.get("Host") or "").split(":", 1)[0].strip().lower()
+        if not host:
+            return False
+        if host in {"127.0.0.1", "localhost", "::1", "[::1]"}:
+            return True
+        try:
+            return host == socket.gethostbyname("localhost")
+        except OSError:
+            return False
+
     def _token_ok(self) -> bool:
         want = self.cfg.get("token")
         if not want:
-            return True
-        return self.headers.get("X-Travel-Token") == want
+            return False            # 空白 token 不再等于"免鉴权"
+        got = self.headers.get("X-Travel-Token") or ""
+        return hmac.compare_digest(str(want), got)
 
     def _root(self) -> Path:
         return self.cfg["root"]
@@ -302,8 +356,9 @@ class Handler(BaseHTTPRequestHandler):
     def _index(self):
         runs = list_runs(self._root())
         rows = "".join(
-            f"<li><b>{s.get('run_id')}</b> · {s.get('phase')} · "
-            f"{(s.get('issue') or '')[:80]}</li>" for s in runs)
+            "<li><b>" + _html.escape(str(s.get("run_id") or "")) + "</b> · "
+            + _html.escape(str(s.get("phase") or "")) + " · "
+            + _html.escape(str(s.get("issue") or "")[:80]) + "</li>" for s in runs)
         html = ("<!doctype html><meta charset=utf-8><title>travel serve</title>"
                 "<style>body{font:14px system-ui;background:#111;color:#eee;padding:24px}"
                 "li{margin:6px 0}</style><h1>V2 监工服务</h1>"
@@ -312,21 +367,24 @@ class Handler(BaseHTTPRequestHandler):
 
     # -- POST ------------------------------------------------------------
     def do_POST(self):
-        if not self._origin_ok():
-            self._error(403, "cross-origin request refused")
+        if not self._host_ok() or not self._origin_ok():
+            self._error(403, "request refused (host/origin)")
             return
         if not self._token_ok():
             self._error(403, "bad token")
             return
         path = urllib.parse.urlparse(self.path).path
         body = self._body()
+        if body.get("__too_large__"):
+            self._error(413, "body too large")
+            return
         if path == "/api/drive":
             self._drive()
             return
         if path.startswith("/api/runs/"):
             rest = urllib.parse.unquote(path[len("/api/runs/"):].strip("/"))
             rid, _, action = rest.partition("/")
-            if not rid:
+            if not rid or not run_id_safe(rid):
                 self._error(404, "run not found")
                 return
             if action == "stop":
@@ -343,16 +401,20 @@ class Handler(BaseHTTPRequestHandler):
         self._error(404, "not found")
 
     def _drive(self):
-        if self.cfg["drive_running"].is_set():
+        cfg = self.cfg
+        lock: DriveLock = cfg["drive_lock"]
+        # 检查+占位必须原子：两个并发 POST 只能有一个过；loop 也用同一把锁。
+        if not lock.acquire():
             self._json({"ok": False, "error": "drive already running"}, 409)
             return
+        cfg["drive_running"].set()
 
         def work():
-            self.cfg["drive_running"].set()
             try:
-                self.cfg["last_drive"] = run_travel(self._root(), ["drive"])
+                cfg["last_drive"] = run_travel(cfg["root"], ["drive"])
             finally:
-                self.cfg["drive_running"].clear()
+                cfg["drive_running"].clear()
+                lock.release()
 
         threading.Thread(target=work, daemon=True).start()
         self._json({"ok": True, "started": True})
@@ -366,15 +428,21 @@ def serve(args, root: Path) -> None:
     host = args.host or "127.0.0.1"
     if host not in {"127.0.0.1", "localhost", "::1"} and not getattr(args, "allow_remote", False):
         raise SystemExit("refusing non-loopback host; pass --allow-remote to override")
+    token = getattr(args, "token", None)
+    if not token:
+        raise SystemExit("travel serve requires --token: the write endpoints start "
+                         "merges and drives, and must not be open without a shared secret")
+    if host not in {"127.0.0.1", "localhost", "::1"}:
+        pass  # --allow-remote 已由上面要求 token；这里 token 一定非空
     board_dir = Path(args.board_dir).resolve() if getattr(args, "board_dir", None) else None
     pid_path = acquire_pid(root)
     lock = DriveLock(root)
     stop = threading.Event()
     cfg: dict[str, Any] = {
         "root": root, "board_dir": str(board_dir) if board_dir else None,
-        "token": getattr(args, "token", None), "started": time.time(),
+        "token": token, "started": time.time(),
         "drive_running": threading.Event(), "last_drive": None,
-        "stop": stop,
+        "drive_lock": lock, "stop": stop,
     }
     httpd = Server((host, int(args.port)), Handler)
     httpd.cfg = cfg  # type: ignore[attr-defined]
@@ -406,7 +474,8 @@ def serve(args, root: Path) -> None:
 
     if getattr(args, "drive", False) or getattr(args, "refresh_cmd", None):
         threading.Thread(target=loop, daemon=True).start()
-    print(f"travel serve: http://{host}:{args.port}/  root={root}")
+    if sys.stdout:  # pythonw 下 stdout 为 None，print 会直接炸
+        print(f"travel serve: http://{host}:{args.port}/  root={root}")
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

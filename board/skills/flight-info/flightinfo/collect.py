@@ -157,6 +157,17 @@ def run_sources(config: dict, ctx: dict, conn, run_id: str) -> dict:
 
     db.replace_handoffs(conn, run_id, all_handoffs)
     db.replace_coding(conn, run_id, all_coding)
+    # run 目录被 gc 删掉后，coding_run 里按 run_id 主键的旧行不会自然消失：
+    # 只保留本轮快照见到的 run（stale 残留=幽灵 run，比少显示更坏）。
+    if all_coding:
+        seen = {r.get("run_id") for r in all_coding if r.get("run_id")}
+        if seen:
+            conn.execute(
+                "DELETE FROM coding_run WHERE seen_run != ? AND run_id NOT IN (%s)"
+                % ",".join("?" * len(seen)),
+                (run_id, *seen))
+        else:
+            conn.execute("DELETE FROM coding_run WHERE seen_run != ?", (run_id,))
 
     merged = merge_flights(all_records)
     rules = config.get("stage_rules") or []

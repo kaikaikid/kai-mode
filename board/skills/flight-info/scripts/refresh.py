@@ -54,6 +54,9 @@ def run_refresh(repo_root: str, config_path: str, quiet: bool = False,
         if render.append_history(bdir, run_id, payload["kpi"], payload["sources"],
                                  coding_trend=payload.get("coding", {}).get("counts")):
             payload["trend"] = render.read_trend(bdir)
+            # coding.trend 也要含本轮：build 时 history 还没有本轮
+            payload["coding"]["trend"] = render._coding_trend(render.read_trend(
+                bdir, keep=render.CODING_TREND_KEEP))
         paths = render.write_outputs(bdir, payload, cfg)
         db.record_board_run(conn, run_id, payload["kpi"], payload["sources"],
                             paths["board.json"]["sha256"], paths["index.html"]["sha256"])

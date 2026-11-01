@@ -18,6 +18,7 @@ def _git(*args: str, cwd: Path | None = None, check: bool = True) -> subprocess.
         encoding="utf-8",
         errors="replace",
         check=check,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
     )
 
 

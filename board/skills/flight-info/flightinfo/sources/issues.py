@@ -7,15 +7,18 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 
 FIELDS = "number,title,state,labels,assignees,milestone,updatedAt,closedAt,url"
 
 
 def _gh(args: list[str], cwd: str, timeout: int = 60) -> tuple[int, str, str]:
+    # Windows 无控制台宿主（pythonw/计划任务）下不带旗标会闪黑窗
+    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) if os.name == "nt" else 0
     try:
         r = subprocess.run(["gh"] + args, capture_output=True, text=True,
-                           timeout=timeout, cwd=cwd, check=False)
+                           timeout=timeout, cwd=cwd, check=False, creationflags=flags)
         return r.returncode, r.stdout, r.stderr
     except FileNotFoundError:
         return 127, "", "gh 不在 PATH"

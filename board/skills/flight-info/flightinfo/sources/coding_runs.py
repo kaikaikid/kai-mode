@@ -76,7 +76,10 @@ def _rel(path: str, repo_root: str) -> str:
 
 def _session_summary(state: dict) -> list[dict]:
     out = []
-    for s in state.get("sessions") or []:
+    sessions = state.get("sessions")
+    if not isinstance(sessions, list):
+        return out
+    for s in sessions:
         if not isinstance(s, dict):
             continue
         out.append({
@@ -86,6 +89,22 @@ def _session_summary(state: dict) -> list[dict]:
             "pid": s.get("pid") or 0,
         })
     return out
+
+
+def _as_int(value, default: int = 0) -> int:
+    """脏数据的 int：'x'/None/list 都归默认值，不让一条 run 静默消失。"""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _as_dict(value) -> dict:
+    return value if isinstance(value, dict) else {}
+
+
+def _as_list(value) -> list:
+    return value if isinstance(value, list) else []
 
 
 def _run_record(state: dict, run_id: str, repo_root: str) -> dict | None:
@@ -121,17 +140,18 @@ def _run_record(state: dict, run_id: str, repo_root: str) -> dict | None:
         "issue": issue,
         "phase": phase,
         "stage": stage,
-        "gates": state.get("gates") or {},
-        "ship": state.get("ship") or {},
+        "gates": _as_dict(state.get("gates")),
+        "ship": _as_dict(state.get("ship")),
         "tasks_total": len(tasks),
         "tasks_done": sum(1 for x in statuses if x in TASK_DONE),
         "tasks_running": sum(1 for x in statuses if x in TASK_RUNNING),
         "tasks_blocked": sum(1 for x in statuses if x in TASK_BLOCKED),
-        "next_action": (state.get("resume") or {}).get("next_action") or "",
+        "next_action": (state.get("resume") or {}).get("next_action") or ""
+        if isinstance(state.get("resume"), dict) else "",
         "priority": state.get("priority") or "normal",
         "fleet_id": state.get("fleet_id") or "",
-        "ship_limit": int(state.get("ship_limit") or 0),
-        "crew_limit": int(state.get("crew_limit") or 0),
+        "ship_limit": _as_int(state.get("ship_limit")),
+        "crew_limit": _as_int(state.get("crew_limit")),
         "branch": state.get("branch") or "",
         "worktree": _rel(str(state.get("worktree") or ""), repo_root) if state.get("worktree") else "",
         "sessions": _session_summary(state),
@@ -155,7 +175,7 @@ def collect(cfg: dict, ctx: dict) -> dict:
         return {"flights": [], "coding": [], "schedules": [], "status": "absent",
                 "detail": ".coding/runs 不存在（还没跑过 V2）"}
 
-    flights, coding, bad, total = [], [], 0, 0
+    flights, coding, bad, total, bad_names = [], [], 0, 0, []
     for child in sorted(os.listdir(runs_dir)):
         run_dir = os.path.join(runs_dir, child)
         state_path = os.path.join(run_dir, "state.json")
@@ -173,14 +193,15 @@ def collect(cfg: dict, ctx: dict) -> dict:
                 raise ValueError("state.json 缺 phase")
             flights.append(rec)
             coding.append(_coding_row(rec))
-        except Exception:
+        except Exception as e:
             bad += 1
+            bad_names.append(f"{child}: {e}")
 
     if total and not flights:
         return {"flights": [], "coding": [], "schedules": [], "status": "fail",
-                "detail": f"{bad} 个 state.json 都读不了"}
+                "detail": f"{bad} 个 state.json 都读不了：{'; '.join(bad_names[:3])}"}
     detail = f"{len(flights)} 个 run"
     if bad:
-        detail += f"（{bad} 个读不了）"
+        detail += f"（{bad} 个读不了：{'; '.join(bad_names[:2])}）"
     return {"flights": flights, "coding": coding, "schedules": [],
             "status": "ok", "detail": detail}

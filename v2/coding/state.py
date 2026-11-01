@@ -60,7 +60,16 @@ def _atomic_write(path: Path, data: str) -> None:
         f.write(data)
         f.flush()
         os.fsync(f.fileno())
-    os.replace(tmp, path)
+    # Windows：别人（看板/服务）正开着目标文件时 os.replace 抛 WinError 5。
+    # 短退避重试几轮：读者是毫秒级的，让一让就过去了。
+    for attempt in range(6):
+        try:
+            os.replace(tmp, path)
+            return
+        except PermissionError:
+            if attempt == 5:
+                raise
+            time.sleep(0.05 * (attempt + 1))
 
 
 def _state_digest(state: dict[str, Any]) -> str:
@@ -213,6 +222,7 @@ def _pid_alive(pid: int) -> bool:
             out = subprocess.run(
                 ["tasklist", "/FI", f"PID eq {pid}", "/NH"],
                 capture_output=True, text=True, timeout=5,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
             )
             return str(pid) in out.stdout
         except Exception:

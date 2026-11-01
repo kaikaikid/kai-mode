@@ -47,15 +47,30 @@
 2. 系统健康吗？（源状态、控制面状态、worker 存活、看板新鲜度）
 3. 这件事的来龙去脉？（issue、任务图、gate、session、report、ship）
 
-`board.json` 保持字节预算：`coding.runs` 最多 20 条，`needs_person` 最多 8 条，完整任务图
-只走服务 API 或 `state.json`，不塞进 AI 面。
+`board.json` 保持字节预算：`coding.runs` 人面最多 20 条、`needs_person` 最多 8 条；
+AI 面再收到 `ai_coding_runs`（默认 8）与 `ai_coding_needs`（默认 5），两种截断都记
+`counts.truncated`。完整任务图只走服务 API 或 `state.json`，不塞进 AI 面。
+
+同一件事在板上可能两行（`github-issues` 源一行、`coding-runs` 源一行）：
+`uid` 是 `run:<id>` 与 `issue:<n>`，各自独立。**本轮不做按 ticket 合并**——
+两条记录的证据与状态是不同事实（票的状态 vs run 的状态），合并会掩盖差异；
+需要时在 Phase 4 做「关联标注」而不是合并。
 
 ### D4 轻服务按需：不搬 DSH
 
 - 只在需要事件驱动接活、无人值守长跑或"点按钮"执行 gate/drive/stop 时才做。
+### D4 轻服务按需：不搬 DSH
+
 - 形态：`v2/coding/service.py` + `travel serve`，只用 Python 标准库
   （`http.server` + `threading` + `subprocess`）；绑 `127.0.0.1`，默认端口 `8765`；
-  单实例 pid 锁；写端点一律调用 `travel` 命令，不直接改 `state.json`。
+  单实例 pid 锁（`O_CREAT|O_EXCL`）；写端点一律调用 `travel` 命令，不直接改 `state.json`。
+- **写端点默认要求 `--token`**：没有 token 服务拒绝启动（写端点能触发 merge/drive，
+  不能裸奔）；token 用 `hmac.compare_digest` 比较。
+- 请求校验三道：`Host` 必须是回环名/IP（防 DNS rebinding）、带 `Origin` 时须同源、
+  `run_id` 必须匹配 `[A-Za-z0-9._-]` 且落在 `.coding/runs/` 下（防路径穿越）；
+  body 上限 64 KB。
+- drive 单实例用文件锁（HTTP 与后台轮询共用同一把），`run_travel` 默认不限时——
+  单个 worker 就能跑 1800 秒，编排器不能比工人先死。
 - 不引入 FastAPI/React/WebSocket/多用户/远程访问；60 秒轮询足够。
 - Windows 用 `pythonw`/计划任务，POSIX 用 `nohup`/systemd；不依赖 `tmux`/`fcntl`。
 

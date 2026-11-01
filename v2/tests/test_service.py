@@ -5,11 +5,13 @@ from __future__ import annotations
 import json
 import os
 import sys
+import http.client
 import tempfile
 import threading
 import time
 import unittest
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from unittest.mock import patch
@@ -38,7 +40,7 @@ def write_run(root: Path, run_id: str = "r-a", phase: str = "delegating") -> Non
 class ServerFixture:
     """起一个临时 HTTP 服务；子类只写自己的 test_*。"""
     board_dir: Path | None = None
-    token: str | None = None
+    token: str | None = "test-token"
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -52,6 +54,7 @@ class ServerFixture:
             "started": time.time(),
             "drive_running": threading.Event(),
             "last_drive": None,
+            "drive_lock": service.DriveLock(self.root),
         }
         self.port = self.httpd.server_address[1]
         self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
@@ -71,9 +74,12 @@ class ServerFixture:
 
     def post(self, path: str, body: dict | None = None, headers: dict | None = None):
         data = json.dumps(body or {}).encode("utf-8")
+        hdrs = {"Content-Type": "application/json"}
+        if self.token:
+            hdrs["X-Travel-Token"] = self.token
+        hdrs.update(headers or {})
         req = urllib.request.Request(
-            f"http://127.0.0.1:{self.port}{path}", data=data, method="POST",
-            headers={"Content-Type": "application/json", **(headers or {})})
+            f"http://127.0.0.1:{self.port}{path}", data=data, method="POST", headers=hdrs)
         try:
             with urllib.request.urlopen(req, timeout=5) as r:
                 return r.status, json.loads(r.read().decode("utf-8"))
@@ -153,25 +159,66 @@ class ServerCase(ServerFixture, unittest.TestCase):
         req = urllib.request.Request(
             f"http://127.0.0.1:{self.port}/api/runs/r-a/stop",
             data=b"{}", method="POST",
-            headers={"Content-Type": "application/json", "Origin": "http://evil.example"})
+            headers={"Content-Type": "application/json",
+                     "X-Travel-Token": self.token,
+                     "Origin": "http://evil.example"})
         try:
             urllib.request.urlopen(req, timeout=5)
             self.fail("expected 403")
         except urllib.error.HTTPError as e:
             self.assertEqual(e.code, 403)
 
+    def test_rebinding_host_is_403(self):
+        """Host 是外部域名（DNS rebinding 形态）的写请求一律拒，即使 Origin 同值。"""
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+        conn.request("POST", "/api/runs/r-a/stop", body=b"{}",
+                     headers={"Host": "evil.example:8765",
+                              "Origin": "http://evil.example:8765",
+                              "Content-Type": "application/json",
+                              "X-Travel-Token": self.token})
+        r = conn.getresponse()
+        self.assertEqual(r.status, 403)
+        conn.close()
+
+    def test_encoded_traversal_is_404(self):
+        """%2F 编码穿越：urllib 会归一化 /../，这里用 http.client 发原始路径。"""
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+        conn.request("GET", "/api/runs/..%2F..%2Fsecret")
+        r = conn.getresponse()
+        self.assertEqual(r.status, 404)
+        conn.close()
+
+    def test_run_id_shape_guard(self):
+        status, _ = self.get("/api/runs/" + urllib.parse.quote("../x"))
+        self.assertEqual(status, 404)
+        self.assertIsNotNone(service.run_id_safe("r-a1b2"))
+        self.assertFalse(service.run_id_safe("../x"))
+        self.assertFalse(service.run_id_safe("a/b"))
+        self.assertFalse(service.run_id_safe(""))
+
+    def test_body_too_large_is_413(self):
+        status, body = self.post("/api/runs/r-a/gate",
+                                 {"gate": "g0", "decision": "approve", "pad": "x" * 100_000})
+        self.assertEqual(status, 413)
+
+    def test_blank_token_means_no_writes(self):
+        """token 未配置时写端点必须全拒（不再等于免鉴权）。"""
+        self.httpd.cfg["token"] = None
+        status, _ = self.post("/api/runs/r-a/stop", headers={"X-Travel-Token": ""})
+        self.assertEqual(status, 403)
+
 
 class TokenCase(ServerFixture, unittest.TestCase):
     token = "s3cret"
 
     def test_post_without_token_is_403(self):
-        status, _ = self.post("/api/runs/r-a/stop")
+        status, _ = self.post("/api/runs/r-a/stop", headers={"X-Travel-Token": ""})
         self.assertEqual(status, 403)
 
     def test_post_with_token(self):
         with patch.object(service, "run_travel",
                           return_value={"ok": True, "rc": 0, "stdout": "", "stderr": ""}):
-            status, _ = self.post("/api/runs/r-a/stop", headers={"X-Travel-Token": "s3cret"})
+            status, _ = self.post("/api/runs/r-a/stop")
         self.assertEqual(status, 200)
 
 

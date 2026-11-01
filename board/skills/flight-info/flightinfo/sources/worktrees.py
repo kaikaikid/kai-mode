@@ -6,6 +6,7 @@
 """
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 
@@ -18,6 +19,7 @@ def _worktrees(repo_root: str) -> list[str]:
         out = subprocess.run(
             ["git", "-C", repo_root, "worktree", "list", "--porcelain"],
             capture_output=True, text=True, timeout=20, check=False,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0) if os.name == "nt" else 0,
         )
     except (OSError, subprocess.SubprocessError):
         return []
@@ -36,6 +38,7 @@ def _local_branches(repo_root: str) -> list[str]:
             ["git", "-C", repo_root, "for-each-ref", "--format=%(refname:short)",
              "refs/heads"],
             capture_output=True, text=True, timeout=20, check=False,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0) if os.name == "nt" else 0,
         )
     except (OSError, subprocess.SubprocessError):
         return []
@@ -54,6 +57,7 @@ def _branch_dates(repo_root: str) -> dict[str, str]:
              "--format=%(refname:short)%09%(committerdate:iso8601-strict)",
              "refs/heads"],
             capture_output=True, text=True, timeout=20, check=False,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0) if os.name == "nt" else 0,
         )
     except (OSError, subprocess.SubprocessError):
         return {}

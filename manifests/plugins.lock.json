@@ -4,7 +4,7 @@
   "plugins": {
     "board": {
       "version": "1.3.0",
-      "digest": "577e1e55f7854a7a0191622c1de77e4bf48dd72e69bb3edb8b8eaed6a6ff35aa",
+      "digest": "07769fddc0614798bca7f7c9c0c6303f5976c7af15f38ed50a97379e55c64463",
       "skills": {
         "flight-info": "1.6.0"
       }
@@ -74,7 +74,7 @@
     },
     "v2": {
       "version": "0.3.0",
-      "digest": "ee159026c70cc6ef702c23e6c959d25714c4fa36742f0c942380e58ac64b8ba0",
+      "digest": "547e223b2cbf8e39b1f3613f5321a65c07c736a8a9490abd0cc9269a1e016d09",
       "skills": {
         "travel": "0.2.0"
       }

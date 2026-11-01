@@ -196,12 +196,14 @@ def _coding_needs(row: dict) -> tuple[str, str]:
     gates = row.get("gates") or {}
     if phase == "blocked":
         return "blocked", row.get("next_action") or "run blocked"
-    if phase == "closing" and gates.get("g2") == "pending":
-        return "gate", "等 G2 发货"
-    if phase == "planning" and gates.get("g0") == "pending":
-        return "gate", "等 G0 计划"
-    if phase == "design" and gates.get("g1") == "pending":
-        return "gate", "等 G1 设计"
+    # rejected 门也是停点：cmd_gate reject 后 run 停在该阶段等人重定，
+    # 只认 pending 会让被拒的 run 永久卡死在页面外。
+    if phase == "closing" and gates.get("g2") in {"pending", "rejected"}:
+        return "gate", "等 G2 发货" if gates.get("g2") == "pending" else "G2 被拒 · 回审查后重发货"
+    if phase == "planning" and gates.get("g0") in {"pending", "rejected"}:
+        return "gate", "等 G0 计划" if gates.get("g0") == "pending" else "G0 被拒 · 等重规划"
+    if phase == "design" and gates.get("g1") in {"pending", "rejected"}:
+        return "gate", "等 G1 设计" if gates.get("g1") == "pending" else "G1 被拒 · 等改设计"
     for s in row.get("sessions") or []:
         if s.get("status") == "failed":
             return "session", f"{s.get('task_id') or 'worker'} 失败"
@@ -212,12 +214,14 @@ def _coding_needs(row: dict) -> tuple[str, str]:
 
 
 def _coding_gate_waiting(row: dict) -> bool:
-    """只有「当前阶段真的在等的那道门」才算 gate_pending；别的门 pending 是正常态。"""
+    """只有「当前阶段真的在等的那道门」才算 gate_pending；别的门 pending 是正常态。
+    rejected 也算等门：run 停在那里等人，与 pending 同性质。"""
     phase = row.get("phase") or ""
     gates = row.get("gates") or {}
-    return ((phase == "planning" and gates.get("g0") == "pending")
-            or (phase == "design" and gates.get("g1") == "pending")
-            or (phase == "closing" and gates.get("g2") == "pending"))
+    waiting = {"pending", "rejected"}
+    return ((phase == "planning" and gates.get("g0") in waiting)
+            or (phase == "design" and gates.get("g1") in waiting)
+            or (phase == "closing" and gates.get("g2") in waiting))
 
 
 def _coding_run_view(row: dict) -> dict:
@@ -229,10 +233,10 @@ def _coding_run_view(row: dict) -> dict:
         "priority": row.get("priority") or "normal",
         "fleet_id": row.get("fleet_id") or "",
         "gates": row.get("gates") or {},
-        "tasks": {"total": int(row.get("tasks_total") or 0),
-                  "done": int(row.get("tasks_done") or 0),
-                  "running": int(row.get("tasks_running") or 0),
-                  "blocked": int(row.get("tasks_blocked") or 0)},
+        "tasks": {"total": _safe_int(row.get("tasks_total")),
+                  "done": _safe_int(row.get("tasks_done")),
+                  "running": _safe_int(row.get("tasks_running")),
+                  "blocked": _safe_int(row.get("tasks_blocked"))},
         "sessions": row.get("sessions") or [],
         "ship": row.get("ship") or {},
         "next_action": row.get("next_action") or "",
@@ -270,11 +274,12 @@ def _build_coding(rows: list[dict], cfg: dict, history: list[dict] | None = None
         fid = row.get("fleet_id") or "default"
         f = fleets.setdefault(fid, {"fleet_id": fid, "ships": 0, "ship_limit": 0,
                                     "crew": 0, "crew_limit": 0, "urgent": 0})
-        if row.get("phase") not in {"done", "cancelled", "failed"}:
+        # 与控制面 slot_usage 同一口径：queued 不占舰位（排队不算在飞）。
+        if row.get("phase") not in {"done", "cancelled", "failed", "queued"}:
             f["ships"] += 1
-            f["ship_limit"] = max(f["ship_limit"], int(row.get("ship_limit") or 0))
-        f["crew"] += int(row.get("tasks_running") or 0)
-        f["crew_limit"] = max(f["crew_limit"], int(row.get("crew_limit") or 0))
+            f["ship_limit"] = max(f["ship_limit"], _safe_int(row.get("ship_limit")))
+        f["crew"] += _safe_int(row.get("tasks_running"))
+        f["crew_limit"] = max(f["crew_limit"], _safe_int(row.get("crew_limit")))
         if row.get("priority") == "urgent":
             f["urgent"] += 1
 
@@ -295,6 +300,13 @@ def _build_coding(rows: list[dict], cfg: dict, history: list[dict] | None = None
 
 
 CODING_TREND_KEEP = 12
+
+
+def _safe_int(value, default: int = 0) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
 
 
 def _coding_trend(history: list[dict] | None) -> list[dict]:
@@ -351,6 +363,9 @@ def build_summary(conn, cfg: dict, board_dir: str | None = None) -> dict:
     runtime = db.fetch_runtime(conn)
     coding_rows = db.fetch_coding(conn, run) if run else []
     trend = read_trend(board_dir)
+    # 本轮 coding 计数先算出来，append_history 写进 history 后 trend 才含本轮；
+    # 顺序反了会永远少一轮（审查发现）。
+    coding_payload = _build_coding(coding_rows, cfg, history=trend)
 
     # 按阶段链顺序排（库只按 stage 字母序，链序只有配置知道）；同阶段内新的在前
     order = _chain_order(cfg)
@@ -424,7 +439,7 @@ def build_summary(conn, cfg: dict, board_dir: str | None = None) -> dict:
         },
         "sources": sources,
         "runtime": runtime,
-        "coding": _build_coding(coding_rows, cfg, history=trend),
+        "coding": coding_payload,
         "blocked": blocked,
         "milestones": milestones,
         "handoffs": db.fetch_handoffs(conn, run) if run else [],
@@ -1042,13 +1057,16 @@ def _sidebar(cfg: dict, payload: dict, kpi: dict) -> str:
     """侧栏＝纯导航。读数、源灯、搜索框一律不进这里（用户令）。"""
     face = payload.get("all_open") or []
     u = payload.get("urgent") or {}
-    secs = [("s-urgent", "▲", "紧急任务",
-             len({(r.get("ticket") or "") for r in (u.get("rows") or [])}
-                 | {(x.get("ticket") or "") for x in (u.get("tickets") or [])})),
-            ("s-shift", "▤", "塔台排班", len(payload.get("schedules") or [])),
-            ("s-board", "✈", "航班信息表", len(face)),
-            ("s-mile", "◎", "里程碑", len(payload.get("milestones") or [])),
-            ("s-hand", "▥", "交接日报", len(payload.get("handoffs") or []))]
+    coding = payload.get("coding") or {}
+    coding_runs_n = (coding.get("counts") or {}).get("runs") or len(coding.get("runs") or [])
+    secs = ([("s-coding", "⏱", "V2 监工", coding_runs_n)] if coding_runs_n else []) + [
+        ("s-urgent", "▲", "紧急任务",
+         len({(r.get("ticket") or "") for r in (u.get("rows") or [])}
+             | {(x.get("ticket") or "") for x in (u.get("tickets") or [])})),
+        ("s-shift", "▤", "塔台排班", len(payload.get("schedules") or [])),
+        ("s-board", "✈", "航班信息表", len(face)),
+        ("s-mile", "◎", "里程碑", len(payload.get("milestones") or [])),
+        ("s-hand", "▥", "交接日报", len(payload.get("handoffs") or []))]
     nav = "".join(f'<a href="#{key}" data-sec="{key}"><span class="ic" aria-hidden="true">'
                   f'{ic}</span>{_esc(lab)}<span class="c">{n}</span></a>'
                   for key, ic, lab, n in secs)
@@ -1191,8 +1209,11 @@ def _coding_section(payload: dict, cfg: dict) -> str:
                 + _esc((n.get("issue") or "")[:60])
                 + '<em>' + _esc(n.get("why") or "") + ' · '
                 + _esc(_coding_age(n.get("age_min"))) + '</em></li>')
+        total_needs = counts.get("needs_person")
+        head = str(len(needs)) if not total_needs or int(total_needs) == len(needs) \
+            else f"{len(needs)}/{total_needs}"
         need_html = ('<div class="coding-needs"><div class="hd"><b>需要人</b><span>'
-                     + str(len(needs)) + ' 件</span></div><ol>' + "".join(items)
+                     + head + ' 件</span></div><ol>' + "".join(items)
                      + '</ol></div>')
 
     fleet_html = ""
@@ -1215,10 +1236,10 @@ def _coding_section(payload: dict, cfg: dict) -> str:
     cards = []
     for r in runs:
         tasks = r.get("tasks") or {}
-        total = int(tasks.get("total") or 0)
-        done = int(tasks.get("done") or 0)
-        running = int(tasks.get("running") or 0)
-        blocked = int(tasks.get("blocked") or 0)
+        total = _safe_int(tasks.get("total"))
+        done = _safe_int(tasks.get("done"))
+        running = _safe_int(tasks.get("running"))
+        blocked = _safe_int(tasks.get("blocked"))
         pct = int(round(100 * done / total)) if total else 0
         kind, why = _coding_needs(r)
         cls = "coding-card needs" if kind else "coding-card"
@@ -1813,8 +1834,19 @@ def write_outputs(board_dir: str, payload: dict, cfg: dict) -> dict:
     paths = {}
     for key, data in (("board.json", bj), ("index.html", html_text)):
         p = os.path.join(board_dir, key)
-        with open(p, "wb") as f:
+        # 原子替换：服务/浏览器可能正在读，半截文件比旧文件坏得多。
+        tmp = p + f".tmp.{os.getpid()}"
+        with open(tmp, "wb") as f:
             f.write(data)
+        for attempt in range(6):
+            try:
+                os.replace(tmp, p)
+                break
+            except PermissionError:
+                if attempt == 5:
+                    raise
+                import time as _t
+                _t.sleep(0.05 * (attempt + 1))
         paths[key] = {"path": p, "sha256": hashlib.sha256(data).hexdigest(),
                       "bytes": len(data)}
     return paths

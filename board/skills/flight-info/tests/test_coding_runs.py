@@ -13,18 +13,15 @@ if SKILL_ROOT not in sys.path:
 from flightinfo import collect, db, render, stage  # noqa: E402
 from flightinfo.sources import coding_runs  # noqa: E402
 
-V2_RULES = [
-    {"when": "state_closed", "stage": "closed"},
-    {"when": "label_equals", "value": "v2:closed", "stage": "closed"},
-    {"when": "label_equals", "value": "v2:hold", "stage": "hold"},
-    {"when": "label_equals", "value": "v2:to_ship", "stage": "to_ship"},
-    {"when": "label_equals", "value": "v2:review", "stage": "review"},
-    {"when": "label_equals", "value": "v2:flying", "stage": "flying"},
-    {"when": "label_equals", "value": "v2:queued", "stage": "queued"},
-    {"when": "no_issue", "stage": "unresolved"},
-    {"when": "branch_exists", "stage": "flying"},
-    {"when": "else", "stage": "queued"},
-]
+
+def _template_rules():
+    """直接读样例模板的 stage_rules：模板被改坏（v2 规则掉到 no_issue 之后）要在这里红。"""
+    with open(os.path.join(SKILL_ROOT, "templates", "board.config.example.json"),
+              encoding="utf-8") as f:
+        return json.load(f)["stage_rules"]
+
+
+V2_RULES = _template_rules()
 
 
 def write_run(root, run_id, phase, **fields):
@@ -66,11 +63,20 @@ class TestCodingRuns(unittest.TestCase):
 
     def test_stage_rules_precede_heuristics(self):
         """V2 行带分支/无 url 时也不能被 no_issue 判成残留分支。"""
+        rules = _template_rules()
+        # 模板契约：六条 v2 规则必须都在 no_issue 之前
+        whens = [r.get("when") for r in rules]
+        first_no_issue = whens.index("no_issue")
+        for value in ("v2:closed", "v2:hold", "v2:to_ship", "v2:review",
+                      "v2:flying", "v2:queued"):
+            idx = next(i for i, r in enumerate(rules)
+                       if r.get("value") == value)
+            self.assertLess(idx, first_no_issue, value)
         for phase, expected in (("delegating", "flying"), ("blocked", "hold"),
                                 ("closing", "to_ship"), ("reviewing", "review")):
             rec = {"uid": "run:x", "labels": [f"v2:{coding_runs._phase_stage(phase)}"],
                    "branches": ["travel/r-x"], "url": "", "closed": False}
-            st, _ = stage.decide(V2_RULES, rec)
+            st, _ = stage.decide(rules, rec)
             self.assertEqual(st, expected, phase)
 
     def test_issue_number_and_url(self):
@@ -136,6 +142,46 @@ class TestCodingRuns(unittest.TestCase):
             res = coding_runs.collect({}, {"repo_root": repo})
             self.assertEqual(res["status"], "fail")
             self.assertEqual(res["flights"], [])
+
+    def test_type_garbage_degrades_not_crashes(self):
+        """gates 是 list、ship_limit 是字符串：整条 run 不能消失、也不能炸整板。"""
+        with tempfile.TemporaryDirectory() as repo:
+            write_run(repo, "r-bad", "delegating", gates=[1, 2], ship_limit="x",
+                      crew_limit=None, ship="oops", sessions="nope")
+            res = coding_runs.collect({}, {"repo_root": repo})
+            self.assertEqual(res["status"], "ok")
+            self.assertEqual(len(res["flights"]), 1)
+            f = res["flights"][0]
+            self.assertEqual(f["gates"], {})
+            self.assertEqual(f["ship"], {})
+            self.assertEqual(f["ship_limit"], 0)
+            self.assertEqual(f["sessions"], [])
+            # 走完 build 不抛
+            out = render._build_coding(res["coding"], {"summary": {}})
+            self.assertEqual(out["counts"]["runs"], 1)
+
+    def test_rejected_gate_is_a_need(self):
+        rows = [{"run_id": "r-a", "phase": "closing", "gates": {"g2": "rejected"},
+                 "tasks_total": 1, "tasks_done": 1, "tasks_running": 0,
+                 "tasks_blocked": 0, "sessions": [], "ship": {},
+                 "next_action": "", "age_min": 30, "fleet_id": "f",
+                 "ship_limit": 0, "crew_limit": 0, "priority": "normal"}]
+        out = render._build_coding(rows, {"summary": {}})
+        self.assertEqual(out["needs_person"][0]["kind"], "gate")
+        self.assertIn("G2 被拒", out["needs_person"][0]["why"])
+        self.assertEqual(out["counts"]["gate_pending"], 1)
+
+    def test_queued_not_counted_in_fleet_ships(self):
+        """与控制面 slot_usage 同口径：queued 不占舰位。"""
+        rows = [{"run_id": "r-q", "phase": "queued", "gates": {}, "tasks_total": 0,
+                 "tasks_done": 0, "tasks_running": 0, "tasks_blocked": 0,
+                 "sessions": [], "ship": {}, "next_action": "", "age_min": 1,
+                 "fleet_id": "f", "ship_limit": 2, "crew_limit": 5,
+                 "priority": "normal"}]
+        out = render._build_coding(rows, {"summary": {}})
+        self.assertEqual(out["fleets"][0]["ships"], 0)
+        # ship_limit 只由在飞 run 刷新：全队 queued 时 limit 未知，显示 0 比猜一个诚实
+        self.assertEqual(out["fleets"][0]["ship_limit"], 0)
 
     def test_unknown_phase_is_hold_not_queued(self):
         with tempfile.TemporaryDirectory() as repo:

@@ -91,7 +91,7 @@ def _close_issue(s: dict[str, Any], root: "Path") -> tuple[bool, str]:
         r = _sp.run(["gh", "issue", "close", num, "--comment",
                      f"Shipped by V2 run {s.get('run_id')} (autopilot)."],
                     cwd=str(root), capture_output=True, text=True, encoding="utf-8", errors="replace",
-                    timeout=30)
+                    timeout=30, creationflags=getattr(_sp, "CREATE_NO_WINDOW", 0))
         if r.returncode != 0:
             return False, (r.stderr or r.stdout).strip()[:300]
         return True, f"closed #{num}"
@@ -103,7 +103,8 @@ def _kill_tree(pid: int) -> None:
     """杀进程树。Windows 上 .cmd 包装进程不带走子进程，必须 /T；POSIX 直接 SIGKILL。"""
     if os.name == "nt":
         import subprocess as _sp
-        _sp.run(["taskkill", "/PID", str(pid), "/T", "/F"], capture_output=True)
+        _sp.run(["taskkill", "/PID", str(pid), "/T", "/F"], capture_output=True,
+                creationflags=getattr(_sp, "CREATE_NO_WINDOW", 0))
     else:
         import signal as _signal
         try:
