@@ -284,6 +284,39 @@ def pick(preferred: str | None = None) -> Adapter:
 
 
 JSON_RE = re.compile(r"\{.*\}", re.S)
+DECODER = json.JSONDecoder()
+
+
+def _extract_json_objects(text: str) -> list[dict[str, Any]]:
+    """在自由文本里找**所有**能独立解析的 JSON 对象（按出现位置，左到右）。
+
+    为什么不用 `JSON_RE.finditer`：那是贪婪匹配 `{.*}`，文本里只要有一个更早的
+    花括号（Findings 里的 `{a:1}`、示例代码片段），就会从它一路吃到末尾，
+    末尾真正的报告反而解析不出来（#1939 现场就是这样被冤枉成 partial）。
+    这里逐个 `{` 试 `raw_decode`，解析成功才算一个候选。
+    """
+    out: list[dict[str, Any]] = []
+    i = text.find("{")
+    while i >= 0:
+        try:
+            obj, end = DECODER.raw_decode(text, i)
+        except ValueError:
+            i = text.find("{", i + 1)
+            continue
+        if isinstance(obj, dict):
+            out.append(obj)
+            i = text.find("{", end)
+        else:
+            i = text.find("{", i + 1)
+    return out
+
+
+def _pick_report(cands: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """从候选里取**最后一个带 result 的对象**（报告总在末尾）。"""
+    for obj in reversed(cands):
+        if "result" in obj:
+            return obj
+    return None
 
 
 def parse_report(text: str) -> dict[str, Any]:
@@ -312,15 +345,8 @@ def parse_report(text: str) -> dict[str, Any]:
                 inner = None
             if not (isinstance(inner, dict) and "result" in inner):
                 # 内层常带前后缀文本（如 Findings 段落 + 末尾 verdict JSON）：
-                # 在 result 文本里回退提取最后一个裸 JSON，取不到才判 partial。
-                for raw in reversed([m.group(0) for m in JSON_RE.finditer(whole["result"])]):
-                    try:
-                        cand = json.loads(raw)
-                    except Exception:
-                        continue
-                    if isinstance(cand, dict) and "result" in cand:
-                        inner = cand
-                        break
+                # 逐位置提取所有 JSON 对象，取最后一个带 result 的；取不到才判 partial。
+                inner = _pick_report(_extract_json_objects(whole["result"]))
             if isinstance(inner, dict) and "result" in inner:
                 for k in ("usage", "total_cost_usd"):
                     if whole.get(k) is not None:
@@ -329,12 +355,7 @@ def parse_report(text: str) -> dict[str, Any]:
             return _partial("envelope result not parseable")
         if "result" in whole:
             return whole
-    candidates = [m.group(0) for m in JSON_RE.finditer(text)]
-    for raw in reversed(candidates):
-        try:
-            obj = json.loads(raw)
-            if isinstance(obj, dict) and "result" in obj:
-                return obj
-        except Exception:
-            continue
+    found = _pick_report(_extract_json_objects(text))
+    if found is not None:
+        return found
     return _partial("report not parseable; read diff")
