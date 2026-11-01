@@ -20,10 +20,11 @@
 三面判据（全部现算，不靠印象）：
   · 内容面 正本目录逐文件 SHA-256 == 库副本逐文件（缺件/多件都算漂移）
   · 落点面 凡已把 anchor（`kai-mode`）链到本库的宿主家目录，必须同样有该条且解引用回库
-  · 注册面 `library.json` 的 `skills[]` 有条目，且每个铺了 anchor 的 `applied[*].skills` 含该名
+  · 注册面 `library.json` 的 `skills[]` 有条目，且每个铺了 anchor 的 `applied[*].skills` 含该名；
+    条目另带 `source`（`kind`／`repo`／`path`）——Magpie 资源库页按它分组，缺了就落「本机」（只报 warn 不判红）
 
 安全：只新增、只覆盖同路径文件，**绝不删除**库里多出来的东西；`library.json` 走临时档 + `os.replace`
-原子替换，且写前自证「本次改动只允许新增条目」，自证不过就中止不写。
+原子替换，且写前自证「本次改动只允许末尾追加条目、或给缺 `source` 的既有条目补 `source`」，自证不过就中止不写。
 """
 
 from __future__ import annotations
@@ -83,6 +84,9 @@ REQUIRED_ENTRY_FIELDS = ("name", "path", "kind", "scope", "install", "summary")
 # 装机来源标记：中央库记住「自己是从哪个仓装来的」——谁跑装机器都回那个仓，不被 cwd 里的项目仓顶掉。
 SOURCE_MARKER_NAME = ".kai-mode-source.json"
 SOURCE_SCHEMA = "kai-mode-source/1"
+# 注册档每条的 `source.kind` 取值：Magpie 资源库页按 `source.repo`＋`source.path` 的父目录分组，
+# 没有 `source` 的条目一律落「本机」。只认 GitHub 一种，别的远端不猜。
+LIBRARY_SOURCE_KIND = "github"
 PROFILES_REL = os.path.join("manifests", "install-profiles.json")
 PROFILES_SCHEMA = "kai-mode-install-profiles/1"
 BACKUP_DIR = ".backups"
@@ -637,6 +641,51 @@ def source_commit(root: str) -> str | None:
     return p.stdout.strip() if p.returncode == 0 and p.stdout.strip() else None
 
 
+_REPO_INFO_CACHE: dict = {}
+
+
+def github_repo_info(root: str) -> tuple:
+    """读 remote origin 得 `(owner/repo, 仓顶层目录)`；不是 GitHub 仓 ⇒ `(None, None)`：
+    宁可不贴来源标签，也不猜一个出处（贴错＝界面上把它归到别人的组里）。
+    顶层目录单独取是有原因的——正本根按运行位置可能是仓根本身，也可能是仓里的某个插件目录
+    （`resolve_root` 两条路），标签里的 `path` 必须对**仓**成立，不然同一个仓会分出自两种组名。
+    按 root 缓存，一次 apply 只问一次 git。"""
+    key = os.path.normcase(os.path.abspath(root))
+    if key in _REPO_INFO_CACHE:
+        return _REPO_INFO_CACHE[key]
+    info = (None, None)
+    try:
+        top = subprocess.run(["git", "-C", root, "rev-parse", "--show-toplevel"],
+                             capture_output=True, text=True, encoding="utf-8",
+                             errors="replace", timeout=10)
+        url = subprocess.run(["git", "-C", root, "config", "--get", "remote.origin.url"],
+                             capture_output=True, text=True, encoding="utf-8",
+                             errors="replace", timeout=10)
+        m = re.search(r"github\.com[:/]?([\w.-]+)/([\w.-]+?)(?:\.git)?/?$",
+                      (url.stdout or "").strip() if url.returncode == 0 else "")
+        toplevel = (top.stdout or "").strip() if top.returncode == 0 else ""
+        if m and toplevel:
+            info = (f"{m.group(1)}/{m.group(2)}", os.path.normpath(toplevel))
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        info = (None, None)
+    _REPO_INFO_CACHE[key] = info
+    return info
+
+
+def skill_source(root: str, name: str, plan: dict | None = None) -> dict | None:
+    """某条技能该贴的来源标签；仓没有 GitHub remote、或正本目录找不到 ⇒ None（不贴，别编）。
+    `path` 取 `family_src` 真正解析到的那个正本目录，**相对仓顶层**、正斜杠：框架仓布局就是
+    `<插件>/skills/<名>`，资源库页第二级分组（`core/skills` 那一档）即由此而来。"""
+    repo, toplevel = github_repo_info(root)
+    if not repo:
+        return None
+    src = family_src(root, name, plan)
+    if not os.path.isdir(src):
+        return None
+    return {"kind": LIBRARY_SOURCE_KIND, "repo": repo,
+            "path": os.path.relpath(src, toplevel).replace(os.sep, "/")}
+
+
 def _backup_root(library: str) -> str:
     return os.path.join(library_root(library), BACKUP_DIR)
 
@@ -911,10 +960,14 @@ def check(root: str, library: str, home: str | None = None, plan: dict | None = 
         rows.append(("注册档", "读不出", reg_err, "", "red"))
     else:
         names = {s.get("name") for s in data.get("skills", []) if isinstance(s, dict)}
+        reg = {s.get("name"): s for s in data.get("skills", []) if isinstance(s, dict)}
         for name in plan:
             if name not in names:
                 drifted = True
                 rows.append((name, "注册缺条目", registry_path(library), "", "red"))
+            elif not (reg.get(name) or {}).get("source"):
+                # 只报不判红：仓本来没有 GitHub remote 时就该没有标签，判红会让 apply 把整包回滚
+                rows.append((name, "缺来源标签", "资源库页把它落在「本机」；跑 apply 会自动补", "", "warn"))
     return rows, drifted, len(faces)
 
 
@@ -941,18 +994,30 @@ def copy_family(root: str, library: str, name: str, dry: bool, plan: dict | None
 
 
 def _only_additions(before: dict, after: dict, names) -> str | None:
-    """注册档允许的改动＝末尾追加条目；越界就报原因（宁可中止也不猜）。"""
+    """注册档允许的改动＝末尾追加条目，＋给原来没有 `source` 的既有条目补 `source`；
+    越界就报原因（宁可中止也不猜）。"""
     if set(before) != set(after):
         return "顶层键集合变了"
     for key in before:
         b, a = before[key], after[key]
         if key == "skills" and isinstance(b, list) and isinstance(a, list):
-            if a[: len(b)] != b:
-                return "skills[] 既有条目被改写或换序"
+            if len(a) < len(b):
+                return "skills[] 条目变少"
+            for i, old in enumerate(b):
+                new = a[i]
+                if old == new:
+                    continue
+                ok = (isinstance(old, dict) and isinstance(new, dict)
+                      and "source" not in old and isinstance(new.get("source"), dict)
+                      and set(new) - set(old) == {"source"}
+                      and all(new.get(k) == old[k] for k in old))
+                if not ok:
+                    who = old.get("name") if isinstance(old, dict) else f"#{i}"
+                    return f"skills[] 既有条目 {who} 只许补 source，别的字段与顺序都不许动"
             known = {x.get("name") for x in b if isinstance(x, dict)}
             for extra in a[len(b):]:
                 if not isinstance(extra, dict) or extra.get("name") not in names or extra["name"] in known:
-                    return "skills[] 追加项不是本次三件"
+                    return "skills[] 追加项不在本次名单"
         elif key == "applied" and isinstance(b, dict) and isinstance(a, dict):
             for plat, val in b.items():
                 new = a.get(plat)
@@ -969,7 +1034,9 @@ def _only_additions(before: dict, after: dict, names) -> str | None:
     return None
 
 
-def patch_registry(library: str, names, dry: bool = False) -> list:
+def patch_registry(library: str, names, dry: bool = False, sources: dict | None = None) -> list:
+    """注册面写入：新条目末尾追加（带来源标签），既有条目只补缺失的 `source`，别的字段一律不动。
+    `sources`＝{技能名: {"kind","repo","path"}}；给 None 或没这个键 ⇒ 该条不贴标签（照旧工作）。"""
     path = registry_path(library)
     before, err = read_registry(library)
     if err:
@@ -978,15 +1045,23 @@ def patch_registry(library: str, names, dry: bool = False) -> list:
     anchor_entry = next((s for s in before.get("skills", []) if s.get("name") == ANCHOR), {})
     agents = list(anchor_entry.get("agents") or [])
     added = []
-    existing = {s.get("name") for s in after.get("skills", []) if isinstance(s, dict)}
+    sources = sources or {}
+    by_name = {s.get("name"): s for s in after.get("skills", []) if isinstance(s, dict)}
     for name in names:
-        if name in existing:
+        src = sources.get(name)
+        entry = by_name.get(name)
+        if entry is None:
+            new = {"name": name}
+            if src:
+                new["source"] = dict(src)
+            if agents:
+                new["agents"] = list(agents)
+            after.setdefault("skills", []).append(new)
+            added.append(f"skills[] += {name}" + ("（带来源）" if src else ""))
             continue
-        entry = {"name": name}
-        if agents:
-            entry["agents"] = list(agents)
-        after.setdefault("skills", []).append(entry)
-        added.append(f"skills[] += {name}")
+        if src and "source" not in entry:
+            entry["source"] = dict(src)
+            added.append(f"skills[] ~ {name} 补来源 → {src['repo']} 的 {src['path']}")
     for plat, val in (after.get("applied") or {}).items():
         if not isinstance(val, dict) or ANCHOR not in (val.get("skills") or []):
             continue
@@ -1064,13 +1139,14 @@ def apply(root: str, library: str, dry: bool, home: str | None = None,
             written += copy_family(root, library, name, dry, plan)
             if not dry:
                 pruned += [f"{name}/{rel}" for rel in prune_payload_excluded(library, name, rules)]
+        sources = {n: s for n, s in ((n, skill_source(root, n, plan)) for n in targets) if s}
         if dry:
             try:
-                added = patch_registry(library, list(targets), dry=True)
+                added = patch_registry(library, list(targets), dry=True, sources=sources)
             except SystemExit as exc:
                 print(f"  注册档预演被自证挡下：{exc}")
         else:
-            added = patch_registry(library, list(targets))
+            added = patch_registry(library, list(targets), sources=sources)
         made, failed = link_faces(library, list(targets), home, dry)
         if not dry:
             hashes = {name: tree_digest(family_src(root, name, plan), rules) for name in targets}
@@ -1382,6 +1458,82 @@ def selftest() -> int:
         for name in ("manual-x", "none-x"):
             if name in reg_names:
                 fails.append(f"注册档多了非 auto 条目 {name}")
+        # 来源标签：Magpie 资源库页按 `source.repo`＋`source.path` 的父目录分组，没有它就落「本机」。
+        # 有 GitHub remote ⇒ 新条目带标签、既有缺标签的条目要被补上；没有 remote ⇒ 一律不贴（不猜出处）。
+        if any(s.get("source") for s in reg_after["skills"]):
+            fails.append("仓没有 GitHub remote 时竟贴了来源标签（该保持不贴）")
+        gt_root = os.path.join(tmp, "gtrepo")
+        gt_library = os.path.join(tmp, "gtdata", "library", "skills")
+        gt_face = os.path.join(home, ".gtagent", "skills")
+        gt_names = (ANCHOR, "tagged-x")
+        for n in gt_names:
+            d = os.path.join(gt_root, "skills", n)
+            os.makedirs(d, exist_ok=True)
+            with open(os.path.join(d, "SKILL.md"), "w", encoding="utf-8") as f:
+                f.write(f"---\nname: {n}\n---\n# 正本\n")
+        with open(os.path.join(gt_root, REGISTRY_NAME), "w", encoding="utf-8") as f:
+            json.dump({"schema": REGISTRY_SCHEMA, "version": 1, "skills": [
+                {"name": n, "path": f"skills/{n}", "kind": "framework", "scope": "global",
+                 "install": "auto", "summary": n} for n in gt_names]}, f, ensure_ascii=False)
+        gi = subprocess.run(["git", "-C", gt_root, "init", "-q"], capture_output=True, text=True)
+        gr = subprocess.run(["git", "-C", gt_root, "remote", "add", "origin",
+                             "https://github.com/acme/widget.git"],
+                            capture_output=True, text=True) if gi.returncode == 0 else None
+        if gi.returncode != 0 or gr is None or gr.returncode != 0:
+            print("  （跳过来源标签用例：本机 git 起不来）")
+        else:
+            os.makedirs(os.path.join(gt_library, ANCHOR))
+            with open(os.path.join(gt_library, ANCHOR, "SKILL.md"), "w", encoding="utf-8") as f:
+                f.write("---\nname: t\n---\n# 库内旧版\n")
+            os.makedirs(gt_face)
+            os.symlink(os.path.join(gt_library, ANCHOR), os.path.join(gt_face, ANCHOR),
+                       target_is_directory=True)
+            with open(registry_path(gt_library), "w", encoding="utf-8") as f:
+                json.dump({"skills": [{"name": ANCHOR, "agents": ["fake"]}],
+                           "icons": {"x": 1}, "applied": {}}, f, ensure_ascii=False)
+            rows_gt, _drift_gt, _n_gt = check(gt_root, gt_library, home)
+            if not any(r[1] == "缺来源标签" for r in rows_gt):
+                fails.append("既有条目缺 source 时 check 没报「缺来源标签」")
+            rc_gt = apply(gt_root, gt_library, dry=False, home=home)
+            if rc_gt != 0:
+                fails.append(f"有 remote 的 apply 没收敛 rc={rc_gt}")
+            with open(registry_path(gt_library), encoding="utf-8") as f:
+                gt_after = {s["name"]: s for s in json.load(f)["skills"]}
+            if gt_after[ANCHOR].get("source") != {"kind": LIBRARY_SOURCE_KIND, "repo": "acme/widget",
+                                                  "path": f"skills/{ANCHOR}"}:
+                fails.append(f"既有条目的 source 没按仓补上：{gt_after[ANCHOR].get('source')}")
+            if (gt_after.get("tagged-x") or {}).get("source", {}).get("repo") != "acme/widget":
+                fails.append(f"新条目没带 source：{gt_after.get('tagged-x')}")
+            # 标签的 path 要对「仓」成立：正本根换成仓里的子目录（插件目录），分组名不能跟着变
+            sub = os.path.join(gt_root, "inner")
+            sub_skill = os.path.join(sub, "skills", "tagged-x")
+            os.makedirs(sub_skill, exist_ok=True)
+            with open(os.path.join(sub_skill, "SKILL.md"), "w", encoding="utf-8") as f:
+                f.write("---\nname: tagged-x\n---\n# 子目录里的正本\n")
+            got_sub = skill_source(sub, "tagged-x", install_plan(sub))
+            if (got_sub or {}).get("path") != "inner/skills/tagged-x" or (got_sub or {}).get("repo") != "acme/widget":
+                fails.append(f"从仓内子目录跑，标签没按仓顶层算：{got_sub}")
+            # 尺会响：除「给缺 source 的条目补 source」以外，注册面任何改动都要被自证挡下
+            b1 = {"skills": [{"name": "s1", "agents": ["a"]}]}
+            b2 = {"skills": [{"name": "s1", "agents": ["a"], "source": {"kind": "github"}}]}
+            if _only_additions(b1, {"skills": [{"name": "s1", "agents": ["a"],
+                                                "source": {"kind": "github"}}]}, ["s1"]):
+                fails.append("给缺 source 的条目补 source 被自证误挡")
+            if _only_additions(b2, {"skills": [dict(x) for x in b2["skills"]]}, ["s1"]):
+                fails.append("注册档逐字不动却被自证误挡")
+            for label, bad in (
+                ("改 agents", {"skills": [{"name": "s1", "agents": ["a", "b"], "source": {"kind": "github"}}]}),
+                ("改 name", {"skills": [{"name": "s2", "agents": ["a"], "source": {"kind": "github"}}]}),
+                ("删字段", {"skills": [{"name": "s1", "source": {"kind": "github"}}]}),
+                ("改写已有 source", {"skills": [{"name": "s1", "agents": ["a"], "source": {"kind": "folder"}}]}),
+                ("补 source 外再加键", {"skills": [{"name": "s1", "agents": ["a"],
+                                                    "source": {"kind": "github"}, "hash": "x"}]}),
+                ("条目变少", {"skills": []}),
+                ("追加不在名单", {"skills": [{"name": "s1", "agents": ["a"], "source": {"kind": "github"}},
+                                             {"name": "zzz"}]}),
+            ):
+                if not _only_additions(b2, bad, ["s1"]):
+                    fails.append(f"自证对「{label}」没响（应中止不写）")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     print("SELFTEST", "ok" if not fails else "FAIL")

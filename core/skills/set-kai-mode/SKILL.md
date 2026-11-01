@@ -148,6 +148,9 @@ python $S apply --profile core             # 正本 → 库 → 各家链接；�
   `full`（全部自动件）。`apply/check --profile core|full`。
 - **安装回执**：库根 `.kai-mode-source.json` 记来源根、HEAD、档位、技能清单与每技能哈希。
   写库前整包备份到 `<库根>/.backups/`（保留 5 份），失败自动还原。
+- **来源标签**：`apply` 还给每条在 `library.json` 里写/补 `source{kind,repo,path}`（仓的 GitHub remote 与
+  正本在仓内的目录）——Magpie 资源库页按它分「哪个仓／哪个文件夹」，缺了就落「本机」。仓没有 GitHub remote
+  就不贴（不猜出处），`check` 只报 warn 不判红。判据住 `magpie-sync.py`，此处只写流程位。
 - **旧 V1 技能下线**：标准路径走 `scripts/uninstall-v1.py`（见「卸载 V1」节）；它内部调 `magpie-sync.py` 的退役函数，
   把指定技能移到 `<库根>/.retired/<时间>/` 并摘掉宿主链接。只摘符号链接，实体目录只报告不动。写前整包备份。
 - 手动件（如 `harness-audit`）不进档位；需要时单独 `install:manual` 装。
