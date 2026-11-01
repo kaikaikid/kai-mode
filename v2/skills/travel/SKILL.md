@@ -10,9 +10,9 @@ description: >
   一次触发连续跑到门点才停。用 `travel` 控制平面推进（`coding` 兼容别名一版），不直接改 state.json。
   与机场体系（V1）并存，不调用其角色。
   触发：`/warp <任务>`、`/jump <任务>`（斜杠入口）；控制面命令 `travel <子命令>`（`coding` 兼容一版）；中文「用 V2 做」「开个 run」也认。
-  中文「用 V2 做」「开个 run」也认。
-version: 0.1.0
-updated: 2026-10-31
+  本地监工服务：`travel serve`（只读 API + 受控 gate/stop/drive，默认只绑 127.0.0.1，Windows 静默）。
+version: 0.2.0
+updated: 2026-11-01
 allowed-tools: Read Grep Bash
 compatibility: Host-agnostic
 ---
@@ -78,6 +78,18 @@ compatibility: Host-agnostic
 | `travel jump <issue> [--ships 1-3]` | 跃迁全自动：加急 + 自动发货，唯一有发货权的全自动入口 |
 | `travel assimilate <branch> --approve` | 吞并外部分支（必须显式 `--approve`） |
 | `travel drive [--run r] [--adapter a] [--review-adapter b]` | 脚本无人值守跑完整条流水线 |
+| `travel serve [--port 8765] [--board-dir …] [--token …] [--drive]` | 本地监工服务：只读 API + 受控 gate/stop/drive；默认只绑 127.0.0.1，Windows 静默 |
+
+## 本地监工服务
+
+`travel serve` 起一个只用标准库的本地 HTTP 服务：
+
+- `GET /api/health`、`/api/runs`、`/api/runs/<id>`、`/board.json`；
+- `POST /api/runs/<id>/gate`、`/api/runs/<id>/stop`、`/api/drive`；
+- 写端点走 `travel` 命令，不直接改 `state.json`；
+- 默认只绑 `127.0.0.1`；要防本机其他进程可加 `--token`；
+- **Windows 不许弹黑窗**：子进程用 `CREATE_NO_WINDOW`，后台用 `pythonw` / 计划任务
+  （`wscript //B` + `.vbs`），不用 `start /min python`。
 
 ## 任务图
 

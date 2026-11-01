@@ -41,6 +41,7 @@ V1 的安装、定时器、角色技能都不受影响；装 V2 不会卸载或�
 | `travel warp <issue> [--ships 1-3] [--tasks f.json]` | 曲速全自动：自动批门 + 施工，**不发货**（停在 closing） |
 | `travel jump <issue> [--ships 1-3]` | 跃迁全自动：加急 + 自动发货，唯一有发货权的全自动入口 |
 | `travel drive [--run r]` | 无人值守驱动整条流水线 |
+| `travel serve [--port 8765] [--board-dir …]` | 本地监工服务：只读 API + 受控 gate/stop/drive |
 | `travel status [--html]` | 看板 |
 | `travel doctor` | 状态与 git 对账 |
 | `travel gc [--all]` | 清理已收尾资源 |
@@ -59,6 +60,19 @@ V1 的安装、定时器、角色技能都不受影响；装 V2 不会卸载或�
 
 全部在 `.coding/runs/<run-id>/state.json`，脚本原子写。中断后 `travel resume` 从
 `resume.last_accepted` / `next_action` 接着跑。
+
+## 本地监工服务（travel serve）
+
+```bash
+travel serve --port 8765 --board-dir .design/flight-board
+```
+
+- 只读 API：`/api/health`、`/api/runs`、`/api/runs/<id>`、`/board.json`；
+- 受控动作：`POST /api/runs/<id>/gate`、`/api/runs/<id>/stop`、`/api/drive`；
+- 默认只绑 `127.0.0.1`；写端点可加 `--token` 要求 `X-Travel-Token`；
+- 所有写操作调用 `travel`，不直接改 `state.json`；
+- **Windows 静默**：子进程用 `CREATE_NO_WINDOW`，定时任务用 `wscript //B` + `.vbs`，
+  不弹任何黑窗；后台启动用 `pythonw` 或计划任务。
 
 ## 曲速模式（warp）
 

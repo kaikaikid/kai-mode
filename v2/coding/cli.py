@@ -14,7 +14,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from . import adapters, dirty, scheduler, state as st, worktree
+from . import adapters, dirty, scheduler, service, state as st, worktree
 
 
 # ---------------------------------------------------------------------------
@@ -969,6 +969,11 @@ def cmd_drive(args: argparse.Namespace) -> None:
     print(json.dumps(summary, ensure_ascii=False, indent=2))
 
 
+def cmd_serve(args: argparse.Namespace) -> None:
+    """本地监工服务：只读 API + 受控 gate/stop/drive；默认只绑 127.0.0.1。"""
+    service.serve(args, _root())
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="travel", description="V2 execution kernel control plane")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -1110,6 +1115,18 @@ def build_parser() -> argparse.ArgumentParser:
     dr.add_argument("--timeout", type=int, default=1800)
     dr.add_argument("--review-timeout", type=int, default=900)
     dr.set_defaults(func=cmd_drive)
+
+    sv = sub.add_parser("serve", help="local supervisor service (read API + controlled actions)")
+    sv.add_argument("--host", default="127.0.0.1")
+    sv.add_argument("--port", type=int, default=8765)
+    sv.add_argument("--token", default=None, help="require X-Travel-Token on POST")
+    sv.add_argument("--board-dir", default=None, help="serve index.html/board.json from here")
+    sv.add_argument("--drive", action="store_true", help="run `travel drive` periodically")
+    sv.add_argument("--drive-interval", type=int, default=60)
+    sv.add_argument("--refresh-cmd", default=None, help="command to refresh the board")
+    sv.add_argument("--max-age", type=int, default=30, help="board age before refresh (minutes)")
+    sv.add_argument("--allow-remote", action="store_true")
+    sv.set_defaults(func=cmd_serve)
 
     return p
 

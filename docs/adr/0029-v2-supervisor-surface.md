@@ -53,9 +53,9 @@
 ### D4 轻服务按需：不搬 DSH
 
 - 只在需要事件驱动接活、无人值守长跑或"点按钮"执行 gate/drive/stop 时才做。
-- 形态：`v2/service/server.py`，只用 Python 标准库（`http.server` + `threading` + `subprocess`）；
-  绑 `127.0.0.1`，默认端口 `8765`；单实例 pid 锁；写端点一律调用 `travel` 命令，
-  不直接改 `state.json`。
+- 形态：`v2/coding/service.py` + `travel serve`，只用 Python 标准库
+  （`http.server` + `threading` + `subprocess`）；绑 `127.0.0.1`，默认端口 `8765`；
+  单实例 pid 锁；写端点一律调用 `travel` 命令，不直接改 `state.json`。
 - 不引入 FastAPI/React/WebSocket/多用户/远程访问；60 秒轮询足够。
 - Windows 用 `pythonw`/计划任务，POSIX 用 `nohup`/systemd；不依赖 `tmux`/`fcntl`。
 
