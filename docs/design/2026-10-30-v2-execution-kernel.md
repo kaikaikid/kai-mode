@@ -620,7 +620,7 @@ r-4e8b   重构 auth 模块       blocked      2/5    G0    1h
   `promote_queued` 自动提升。
 - **门卫**：`coding review` 起一个独立上下文、只读工具的子代理，读实际 diff 对照 AC，
   输出 `accept|return`；`--apply` 把裁决写回任务状态。
-- **发货（全脚本化）**：切到 base（默认 `dev`）→ merge → 收尾门（`.coding/config.json`
+- **发货（全脚本化）**：切到 base（默认 `dev`；仓里没有 dev 就用当前分支）→ merge → 收尾门（`.coding/config.json`
   的 `finish_cmd`）→ `git push origin <base>` → 自动识别 `#123` / GitHub issue URL 并关票。
 - **无人值守驱动**：`travel drive` 循环 `spawn → report → review → accept`，直到所有 run
   终态或 blocked；不依赖 AI 主会话逐步敲命令。

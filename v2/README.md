@@ -79,7 +79,7 @@ travel serve --port 8765 --board-dir .design/flight-board
 `travel warp <issue> [--tasks f.json]`：
 
 - 自动批 G0/G1/G2，门卫子代理（`travel review`）独立只读审查；
-- 发货 = 切到 base（默认 `dev`）→ merge → 收尾门 → push → 关票，全脚本化；
+- 发货 = 切到 base（默认 `dev`，仓里没有 dev 就用当前分支）→ merge → 收尾门 → push → 关票，全脚本化；
 - 收尾门在 `.coding/config.json` 配 `{"finish_cmd": "..."}`，留空则跳过；
 - issue 文本里的 `#123` 或 GitHub issue URL 会自动关票，识别不到则跳过；
 - 并发：普通槽 2 + 加急槽 1，每 run 1 个子代理，全局 3；排队的 run 槽位空出后自动提升。

@@ -126,7 +126,7 @@ compatibility: Host-agnostic
 - return 上限 3 轮，failed 重试 2 次，merge 冲突自动 rebase 一次。
 - 发货权只归加急：普通 `/warp` 停在 closing（next_action 注明等发货），由舰桥或人工 `gate g2 approve` 发货；
   `/jump` 才自动发货 = merge → 收尾门 → push → 关票，全脚本化。
-- push 目标默认 `dev`（dev 不存在则退回当前分支）。
+- push 目标默认 `dev`；仓里没有 dev（如本仓已并入 main）则用当前分支。
 - issue 引用自动识别：任务文本里的 `#123` 或 GitHub issue URL 会自动关票；识别不到则跳过，不阻塞发货。
 - 吞并他人成果：`travel assimilate <branch> --approve`，必须用户同意后才执行。
 - `travel drive` 是零干预驱动：脚本循环 spawn → report → review → accept，槽位空出自动提升排队 run，直到全部终态或 blocked。

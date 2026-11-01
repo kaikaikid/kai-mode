@@ -272,9 +272,10 @@ def cmd_warp(args: argparse.Namespace) -> None:
     args.autopilot = True
     args.urgent = getattr(args, "urgent", False)
     if getattr(args, "base", None) is None:
-        # 默认推到 dev；dev 不存在才退回当前分支
+        # base 优先级：显式 --base > 仓里还有 dev 就用 dev（老仓的约定）> 当前分支。
+        # 本仓已把 dev 并进 main 并删掉，所以这里会落到 main。
         _r = worktree._git("rev-parse", "--verify", "dev", cwd=_root(), check=False)
-        args.base = "dev" if _r.returncode == 0 else None
+        args.base = "dev" if _r.returncode == 0 else worktree.base_branch(_root())
     args.max_tokens = getattr(args, "max_tokens", 200000)
     args.depends = getattr(args, "depends", [])
     if getattr(args, "ships", None) is None:
