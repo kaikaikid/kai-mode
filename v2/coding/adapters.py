@@ -305,10 +305,22 @@ def parse_report(text: str) -> dict[str, Any]:
         whole = None
     if isinstance(whole, dict):
         if whole.get("type") == "result" and isinstance(whole.get("result"), str):
+            inner = None
             try:
                 inner = json.loads(whole["result"])
             except Exception:
                 inner = None
+            if not (isinstance(inner, dict) and "result" in inner):
+                # 内层常带前后缀文本（如 Findings 段落 + 末尾 verdict JSON）：
+                # 在 result 文本里回退提取最后一个裸 JSON，取不到才判 partial。
+                for raw in reversed([m.group(0) for m in JSON_RE.finditer(whole["result"])]):
+                    try:
+                        cand = json.loads(raw)
+                    except Exception:
+                        continue
+                    if isinstance(cand, dict) and "result" in cand:
+                        inner = cand
+                        break
             if isinstance(inner, dict) and "result" in inner:
                 for k in ("usage", "total_cost_usd"):
                     if whole.get(k) is not None:

@@ -168,6 +168,11 @@ def advance(s: dict[str, Any], root: "Path | None" = None) -> None:
         elif phase == "reviewing":
             if tasks and all(t.get("status") in {"accepted", "abandoned"} for t in tasks):
                 s["phase"] = "closing"
+        elif phase == "blocked":
+            # 救场出口：review inconclusive / rework 后任务仍有可继续的活 → 回 delegating
+            # 让 drive 接手；任务全终态（真 blocked）或 ship 失败的 run 不在此复活。
+            if any(t.get("status") in {"pending", "ready", "running", "review", "returned"} for t in tasks):
+                s["phase"] = "delegating"
 
         if s.get("phase") == before:
             break
