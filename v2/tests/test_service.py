@@ -148,6 +148,18 @@ class ServerCase(ServerFixture, unittest.TestCase):
                 time.sleep(0.02)
             self.assertFalse(self.httpd.cfg["drive_running"].is_set())
 
+    def test_cross_origin_post_is_403(self):
+        """带外站 Origin 的写请求一律拒（CSRF 面）；GET 不受影响。"""
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{self.port}/api/runs/r-a/stop",
+            data=b"{}", method="POST",
+            headers={"Content-Type": "application/json", "Origin": "http://evil.example"})
+        try:
+            urllib.request.urlopen(req, timeout=5)
+            self.fail("expected 403")
+        except urllib.error.HTTPError as e:
+            self.assertEqual(e.code, 403)
+
 
 class TokenCase(ServerFixture, unittest.TestCase):
     token = "s3cret"

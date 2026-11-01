@@ -205,6 +205,14 @@ class Handler(BaseHTTPRequestHandler):
         return
 
     # -- helpers ---------------------------------------------------------
+    def _origin_ok(self) -> bool:
+        """带 Origin 的请求只认本机同源（CSRF 面）；无 Origin 的客户端直接放行。"""
+        origin = self.headers.get("Origin")
+        if not origin:
+            return True
+        host = self.headers.get("Host") or ""
+        return origin.rstrip("/") in {f"http://{host}", f"https://{host}"}
+
     def _send(self, body: bytes, status: int = 200, ctype: str = "application/json; charset=utf-8"):
         self.send_response(status)
         self.send_header("Content-Type", ctype)
@@ -239,6 +247,9 @@ class Handler(BaseHTTPRequestHandler):
 
     # -- GET -------------------------------------------------------------
     def do_GET(self):
+        if not self._origin_ok():
+            self._error(403, "cross-origin request refused")
+            return
         path = urllib.parse.urlparse(self.path).path
         if path == "/api/health":
             runs = list_runs(self._root())
@@ -301,6 +312,9 @@ class Handler(BaseHTTPRequestHandler):
 
     # -- POST ------------------------------------------------------------
     def do_POST(self):
+        if not self._origin_ok():
+            self._error(403, "cross-origin request refused")
+            return
         if not self._token_ok():
             self._error(403, "bad token")
             return
