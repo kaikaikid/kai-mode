@@ -267,6 +267,7 @@ lark-cli im +chat-members-list --chat-id <id> --as bot --json   # 有配置时�
 | `serve.url` / `serve.token_env` | 受控写端点地址；token **只记变量名**，不记值 |
 | `notify.poll_s` / `notify.debounce_s` / `notify.gate_reminder_min` | 状态轮询、稳定窗口、待拍板提醒间隔 |
 | `wake.adapter` / `wake.cooldown_s` / `wake.timeout_s` / `wake.max_tokens` | 唤醒用哪个宿主适配器、冷却、超时、单次预算 |
+| `chat.enabled` / `chat.idle_min` / `chat.max_turns` / `chat.budget_tokens` | 对话模式（同一条会话续上下文）的开关、空闲换新、轮数与单会话预算；默认关闭 |
 
 项目级 `.coding/feishu.json`（可选）：本仓接不接、发哪个群。
 写后跑 `git check-ignore -v .coding/feishu.json`，必须有输出；app_secret、token、chat_id

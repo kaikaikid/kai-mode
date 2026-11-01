@@ -27,6 +27,19 @@ stays short on purpose, it is read every session):
 
 Explain professional problems in plain language — no jargon without explanation, use everyday analogies when possible. If a term is unavoidable, explain it first before using it.
 
+## Agent effort policy
+
+Sub-agents inherit the session's effort by default (currently max). To avoid wasting tokens, always pass `effort` explicitly when spawning agents:
+
+| Task type | effort | Examples |
+|---|---|---|
+| Mechanical (read files, grep, rename, run tests) | low | scan files, run doctor, read single file |
+| Standard work (bug fix, feature, code review) | medium | fix a bug, implement a function, review a PR |
+| Complex (architecture, root-cause debug, multi-file refactor) | high | diagnose hard bug, design module interface |
+| Extreme (deep reasoning, adversarial review) | xhigh/max | only when truly needed |
+
+Rule: never omit `effort` and let it inherit max. Pass it explicitly per task type.
+
 Outputs follow the L1–L4 carrier ladder (text → diagram → single-file HTML → explainer video, cheapest first). Source of truth: `core/skills/principle-output-structure/SKILL.md`.
 
 ## Red lines (the only hard stops; everything else is a default)

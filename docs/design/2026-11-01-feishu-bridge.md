@@ -154,6 +154,36 @@ consumer 退出后按 1s/2s/5s/10s/30s 退避重启；`bridge.pid` 单实例。
 - 输出必须经 `travel feishu reply --wake <id>` 回到原会话；AI 不能直接调飞书。
 - 状态变化、定时器、`bot_added`、未授权消息**一律不唤醒**。
 
+## 10.5 双通道：指令式 vs 对话式
+
+上面的「一次唤醒」是**一次性会话**：每条消息一个全新上下文，互相不记得。
+如果用户想在群里像跟人一样连着聊（「那这个呢？」「刚才那个再改改」），需要第二种模式：
+
+| 通道 | 绑定 | 上下文 | 成本 | 用法 |
+|---|---|---|---|---|
+| **指令**（默认） | 无 | 不延续 | 零或一次小分诊 | 命令词、`想法`、`票`、`曲速`、`批/停/发货` |
+| **对话** | 一个飞书会话 ↔ 一个宿主会话 id | 延续 | 每条消息都带上下文 | 私聊机器人，或群里 @机器人 说非命令的话 |
+
+**绑定键**：私聊用 `open_id`；群里用 `chat_id + thread_id`（没有 thread 就 `chat_id + root_message_id`）。
+一条飞书会话同一时刻只绑一个宿主会话。
+
+**续接怎么做**（依赖宿主能力，见下面的前置）：
+1. 首次消息：正常 spawn，从 CLI 的 JSON 信封里取出 `session_id` 记进 ledger；
+2. 后续消息：`spawn(..., resume=<session_id>)` —— 对 `claude` 就是 `-p --resume <id>`，上下文接着走；
+3. 空闲超时（默认 30 分钟）或明确说「换个话题」：下次重新开，并附一句「上次聊到 ……」的摘要；
+4. 轮数 / 累计 token 上限：到顶就提示开新话题，旧会话归档。
+
+**前置（现在还没做，是这套模式唯一的硬门槛）**：
+
+- 适配器契约要加一个 `resume` 能力：`spawn(..., resume=session_id | None)`，并把 CLI 输出里的
+  `session_id` 交给内核。内建的 `claude-cli` 已声明 `resume: false`，实测 CLI 支持
+  `-p --resume <id>`，补起来不大（约半天，含验收用例）。
+  宿主不支持续接 ⇒ 该宿主只能走指令通道，如实降级、不假装记得。
+- **同一会话不能并发**：一条消息还在跑时又来一条，排队串行；抢跑会让两轮上下文打架。
+
+**成本纪律**：对话模式即「拿 token 换连续上下文」。默认关闭；打开时必须有单会话预算与每日上限，
+超限自动降级为指令式并回一句说明——不静默烧钱。
+
 ## 11. 配置落点
 
 **机器级**：`<KAI_AGENT_DATA_ROOT>/kai-mode/feishu.json`（与宿主适配器的信任表同一层）——
@@ -161,6 +191,9 @@ consumer 退出后按 1s/2s/5s/10s/30s 退避重启；`bridge.pid` 单实例。
 不该跟着仓库走。
 
 **项目级（可选）**：`.coding/feishu.json` —— 这个仓接不接、发到哪个群。
+
+对话模式的开关与上限同在机器级配置：`chat.enabled`（默认 false）、`chat.idle_min`（默认 30）、
+`chat.max_turns`、`chat.budget_tokens`（单会话）、`chat.daily_budget_tokens`。
 
 **不动** `templates/kai-mode.project.json`，不升 schema：项目实例里放 open_id / chat_id / token
 等于把机器事实写进 tracked 文件，而且 schema 5→6 要连带改 init-project、check-instance 和所有旧实例迁移，
@@ -198,6 +231,8 @@ consumer 退出后按 1s/2s/5s/10s/30s 退避重启；`bridge.pid` 单实例。
 
 ## 15. 待实测确认
 
-事件字段路径（`event_id`/`open_id`/`chat_id`/`message_id`）、群消息是否仅 @ 时投递、
+事件字段路径（`dedup_key`/`open_id`/`chat_id`/`message_id`）、群消息是否仅 @ 时投递、
 撤回/编辑是否产生事件、卡片原地更新与 token 过期错误码、30 分钟后旧卡按钮是否仍投递、
-消息历史补读子命令、bus daemon 是否弹控制台、出站频率与卡片大小上限。
+消息历史补读子命令、bus daemon 是否弹控制台、出站频率与卡片大小上限；
+以及对话模式依赖的三件事：`claude -p --resume <id>` 的实际行为、`session_id` 在 JSON 输出的位置、
+并发续接同一会话会怎样。
