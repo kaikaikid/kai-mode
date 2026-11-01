@@ -15,6 +15,8 @@ from pathlib import Path
 from typing import Any
 
 from . import adapters, dirty, scheduler, service, state as st, worktree
+from .feishu import cards as fcards, config as fcfg, lark as flark, notify as fnotify
+from .feishu import runner as frunner, triage as ftriage
 
 
 # ---------------------------------------------------------------------------
@@ -886,6 +888,66 @@ def cmd_doctor(args: argparse.Namespace) -> None:
         raise SystemExit(2)
 
 
+def cmd_feishu(args: argparse.Namespace) -> None:
+    """飞书桥：状态 / 自检 / 分诊预览 / 起桥。运行时实现见 v2/coding/feishu/。"""
+    root = _root()
+    action = getattr(args, "action", None) or "status"
+    cfg = fcfg.load(root)
+
+    if action == "status":
+        problems = fcfg.problems(cfg)
+        rows = fnotify.run_rows(root)
+        print(json.dumps({
+            "enabled": bool(cfg.get("enabled")),
+            "bots": [{"name": b.get("name"), "profile": b.get("profile"),
+                      "chat_id": b.get("chat_id")} for b in cfg.get("bots") or []],
+            "chat": cfg.get("chat"),
+            "problems": problems,
+            "runs": rows,
+            "config": str(fcfg.machine_path()),
+        }, ensure_ascii=False, indent=2))
+        return
+
+    if action == "doctor":
+        v = flark.version()
+        chats = flark.chats("")
+        print(json.dumps({
+            "lark_cli": (v.stdout or v.stderr or "").strip(),
+            "cli_ok": v.returncode == 0,
+            "chats_rc": chats.returncode,
+            "problems": fcfg.problems(cfg),
+            "config": str(fcfg.machine_path()),
+        }, ensure_ascii=False, indent=2))
+        return
+
+    if action == "triage":
+        text = " ".join(getattr(args, "text", []) or [])
+        print(json.dumps(ftriage.decide(text), ensure_ascii=False, indent=2))
+        return
+
+    if action == "board":
+        print(json.dumps(fcards.board(fnotify.run_rows(root)), ensure_ascii=False, indent=2))
+        return
+
+    if action == "send-test":
+        bot = fcfg.bot_for(cfg)
+        chat = str(bot.get("chat_id") or "")
+        if not chat:
+            _err("no chat_id configured; set bots[0].chat_id in the feishu config")
+        r = flark.send_text(str(bot.get("profile") or ""), chat,
+                                  " ".join(getattr(args, "text", []) or []) or "kai-mode 自检")
+        print(json.dumps({"rc": r.returncode, "stderr": (r.stderr or "").strip()[:300]},
+                         ensure_ascii=False, indent=2))
+        if r.returncode != 0:
+            raise SystemExit(1)
+        return
+
+    if action == "run":
+        raise SystemExit(frunner.run(root, once=bool(getattr(args, "once", False))))
+
+    _err(f"unknown feishu action: {action}")
+
+
 def cmd_harness(args: argparse.Namespace) -> None:
     """宿主适配器自举：check 看现状，verify 真跑用例，trust 登记放行。
 
@@ -1144,6 +1206,13 @@ def build_parser() -> argparse.ArgumentParser:
     hz.add_argument("name", nargs="?", default=None, help="adapter name (for verify / trust)")
     hz.add_argument("--timeout", type=int, default=None, help="per-probe timeout seconds (default 180)")
     hz.set_defaults(func=cmd_harness)
+
+    fs = sub.add_parser("feishu", help="feishu bridge: status / doctor / triage / board / send-test / run")
+    fs.add_argument("action", nargs="?", default="status",
+                    choices=["status", "doctor", "triage", "board", "send-test", "run"])
+    fs.add_argument("text", nargs="*", default=[], help="text for triage / send-test")
+    fs.add_argument("--once", action="store_true", help="run: do one notify tick and exit")
+    fs.set_defaults(func=cmd_feishu)
 
     wp = sub.add_parser("warp", help="autopilot run: warp mode (no ship)")
     wp.add_argument("--fleet", default=None, help="fleet id; slots are per-fleet")

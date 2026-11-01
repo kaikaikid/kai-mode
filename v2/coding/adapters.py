@@ -67,7 +67,7 @@ WORKER_DENY = ("Bash(rm:*),Bash(rmdir:*),Bash(git push:*),Bash(git reset:*),"
                "Bash(npm publish:*),Bash(python -c:*),Bash(python3 -c:*)")
 
 
-def worker_cmd(read_only: bool = False, model: str = "") -> list[str]:
+def worker_cmd(read_only: bool = False, model: str = "", resume: str | None = None) -> list[str]:
     """构造 worker/reviewer 的 claude -p 命令行。
 
     worker：Bash 白名单 + Edit/Write（cwd 即 worktree，显式 deny `.coding/**`）。
@@ -88,6 +88,9 @@ def worker_cmd(read_only: bool = False, model: str = "") -> list[str]:
     ]
     if model:
         cmd += ["--model", model]
+    # 续接同一个宿主会话（对话模式）：上下文由宿主侧保存，我们只传 id。
+    if resume:
+        cmd += ["--resume", str(resume)]
     return cmd
 
 
@@ -98,7 +101,8 @@ class Adapter:
         raise NotImplementedError
 
     def spawn(self, brief: str, cwd: Path, session_dir: Path, tier: str = "medium",
-              timeout: int = 1800, read_only: bool = False) -> dict[str, Any]:
+              timeout: int = 1800, read_only: bool = False,
+              resume: str | None = None) -> dict[str, Any]:
         raise NotImplementedError
 
     def wait(self, handle: dict[str, Any], timeout: int) -> int:
@@ -114,7 +118,7 @@ class Adapter:
 class ClaudeCli(Adapter):
     name = "claude-cli"
     # 静态能力声明：没有 claude 二进制的机器上也能读到申报值（contract §3）
-    caps = {"maxConcurrent": 6, "supportsTools": True, "structuredOutput": True, "resume": False}
+    caps = {"maxConcurrent": 6, "supportsTools": True, "structuredOutput": True, "resume": True}
 
     def probe(self) -> dict[str, Any]:
         try:
@@ -123,7 +127,8 @@ class ClaudeCli(Adapter):
         except Exception as e:
             return {"ok": False, "error": str(e), **self.caps}
 
-    def spawn(self, brief, cwd, session_dir, tier="medium", timeout=1800, read_only=False):
+    def spawn(self, brief, cwd, session_dir, tier="medium", timeout=1800, read_only=False,
+              resume=None):
         session_dir.mkdir(parents=True, exist_ok=True)
         out = open(session_dir / "stdout.log", "w", encoding="utf-8")
         err = open(session_dir / "stderr.log", "w", encoding="utf-8")
@@ -131,7 +136,7 @@ class ClaudeCli(Adapter):
         # worker 只会收到 brief 的第一行（实测：只收到「You are a worker...」开场白）。
         brief_path = session_dir / "brief.txt"
         brief_path.write_text(brief, encoding="utf-8")
-        cmd = worker_cmd(read_only=read_only, model=TIER_MODEL.get(tier))
+        cmd = worker_cmd(read_only=read_only, model=TIER_MODEL.get(tier), resume=resume)
         # 从宿主 settings.json 读 env（magpie / API key / base URL 等），
         # 路径按优先级探测：env KAI_AGENT_DATA_ROOT → ~/.claude/settings.json → 项目 .claude/settings.json
         _env = {**os.environ, "TRAVEL_WORKER": "1"}
@@ -189,9 +194,10 @@ class Mock(Adapter):
 
     def probe(self):
         return {"ok": True, "version": "mock", "maxConcurrent": 6,
-                "supportsTools": True, "structuredOutput": True, "resume": False}
+                "supportsTools": True, "structuredOutput": True, "resume": True}
 
-    def spawn(self, brief, cwd, session_dir, tier="medium", timeout=1800, read_only=False):
+    def spawn(self, brief, cwd, session_dir, tier="medium", timeout=1800, read_only=False,
+              resume=None):
         session_dir.mkdir(parents=True, exist_ok=True)
         report = {
             "result": "done",
@@ -211,6 +217,7 @@ class Mock(Adapter):
                 "open_questions": [],
                 "notes": "mock reviewer",
             }
+        report.setdefault("session_id", resume or f"mock-{abs(hash(str(session_dir))) % 10**8}")
         (session_dir / "stdout.log").write_text(json.dumps(report), encoding="utf-8")
         (session_dir / "pid").write_text("0", encoding="utf-8")
         (session_dir / "heartbeat").write_text(str(time.time()), encoding="utf-8")
@@ -237,7 +244,9 @@ class Generic(Adapter):
         return {"ok": bool(_env("GENERIC_CMD")), "version": "generic", "maxConcurrent": 4,
                 "supportsTools": False, "structuredOutput": False, "resume": False}
 
-    def spawn(self, brief, cwd, session_dir, tier="medium", timeout=1800, read_only=False):
+    def spawn(self, brief, cwd, session_dir, tier="medium", timeout=1800, read_only=False,
+              resume=None):
+        # generic 不支持续接；调用方看 capabilities.resume 决定要不要传。
         cmd = _env("GENERIC_CMD")
         if not cmd:
             raise RuntimeError("TRAVEL_GENERIC_CMD not set")
@@ -763,7 +772,7 @@ def parse_report(text: str) -> dict[str, Any]:
                 # 逐位置提取所有 JSON 对象，取最后一个带 result 的；取不到才判 partial。
                 inner = _pick_report(_extract_json_objects(whole["result"]))
             if isinstance(inner, dict) and "result" in inner:
-                for k in ("usage", "total_cost_usd"):
+                for k in ("usage", "total_cost_usd", "session_id"):
                     if whole.get(k) is not None:
                         inner[k] = whole[k]
                 return inner

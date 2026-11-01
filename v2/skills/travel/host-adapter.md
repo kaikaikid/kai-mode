@@ -15,7 +15,8 @@ class Adapter:
     def probe(self) -> dict:
         """能不能用，以及能力申报。不许猜，能跑就跑一下。"""
 
-    def spawn(self, brief, cwd, session_dir, tier="medium", timeout=1800, read_only=False) -> dict:
+    def spawn(self, brief, cwd, session_dir, tier="medium", timeout=1800,
+              read_only=False, resume=None) -> dict:
         """起一个一次性子会话。返回 handle（至少含 pid / proc / dir）。"""
 
     def wait(self, handle, timeout) -> int: ...
@@ -28,6 +29,8 @@ class Adapter:
   进程对象早没了。`harness verify` 会专门用 `{"dir": …}` 调一次来验这条。
 - `read` 返回的文本里必须含有报告（见 §4）；日志另存 `stdout.log` / `stderr.log` 也行，
   但 `read` 要能把报告读出来。
+- `resume=<会话 id>` 表示续接同一个宿主会话（对话模式用）；做不到就申报 `resume: false`，
+  内核会退化成每次新会话，不假装记得。
 - `read_only=True` 表示门卫审查：这个模式下**不许写盘**。做不到就如实申报（见 §3）。
 
 ## 2. 放哪

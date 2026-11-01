@@ -42,7 +42,8 @@ V1 的安装、定时器、角色技能都不受影响；装 V2 不会卸载或�
 | `travel jump <issue> [--ships 1-3]` | 跃迁全自动：加急 + 自动发货，唯一有发货权的全自动入口 |
 | `travel drive [--run r]` | 无人值守驱动整条流水线 |
 | `travel serve [--port 8765] [--board-dir …]` | 本地监工服务：只读 API + 受控 gate/stop/drive |
-| `travel harness [check\|list\|verify <名>]` | 宿主适配器：看现状 / 清单 / 真跑用例验收 |
+| `travel harness [check\|list\|verify <名>\|trust <名>]` | 宿主适配器：看现状 / 清单 / 真跑用例验收 / 登记信任 |
+| `travel feishu [status\|doctor\|triage\|board\|send-test\|run]` | 飞书桥：配置 / 自检 / 分诊预览 / 看板 / 起桥 |
 | `travel status [--html]` | 看板 |
 | `travel doctor` | 状态与 git 对账 |
 | `travel gc [--all]` | 清理已收尾资源 |

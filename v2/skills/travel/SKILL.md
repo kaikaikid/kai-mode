@@ -80,6 +80,7 @@ compatibility: Host-agnostic
 | `travel drive [--run r] [--adapter a] [--review-adapter b]` | 脚本无人值守跑完整条流水线 |
 | `travel serve [--port 8765] [--board-dir …] [--token …] [--drive]` | 本地监工服务：只读 API + 受控 gate/stop/drive；默认只绑 127.0.0.1，Windows 静默 |
 | `travel harness [check\|list\|verify <名>\|trust <名>]` | 宿主适配器：看现状 / 清单 / 真跑用例验收 / 登记信任（换宿主时自举用） |
+| `travel feishu [status\|doctor\|triage <文本>\|board\|send-test\|run]` | 飞书桥：配置现状 / 自检 / 分诊预览（不产生副作用）/ 看板 JSON / 发测试消息 / 起桥 |
 
 ## 本地监工服务
 
@@ -110,6 +111,16 @@ worker 是**物理子进程**，由「宿主适配器」启动。内建三个：
 契约正本：[host-adapter.md](host-adapter.md)（本技能目录）。申报 `supportsTools=false` 的适配器，
 `travel spawn` 会打警告——那种适配器只适合只读审查，不要拿来跑发货链路。
 显式点名（`--adapter`／`TRAVEL_ADAPTER`／配置）的适配器起不来会直接报错，不会偷偷换回别的宿主。
+
+## 飞书桥
+
+`travel feishu run` 起一个常驻桥：飞书消息 → 分诊（确定性动作脚本直做；需要判断的醒一次 AI）→
+回话；run 状态变化自动发卡；卡片按钮走 `travel serve` 的受控端点，**不直写 state.json**。
+
+- 配置：`<数据根>/kai-mode/feishu.json`（机器级）；项目级 `.coding/feishu.json` 可选覆盖
+- 默认全拒：`allow.users` / `allow.chats` 空 = 谁都不认
+- 对话模式默认开：同一条飞书会话续同一个宿主会话；空闲 45 分钟 / 20 轮 / 6 万 token 任一触发即换新
+- 自助排查：`travel feishu status`、`travel feishu triage <一句话>`
 
 ## 任务图
 
