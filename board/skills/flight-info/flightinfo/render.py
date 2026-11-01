@@ -175,6 +175,120 @@ def append_history(board_dir: str, run_id: str, kpi: dict, sources: dict) -> boo
     return True
 
 
+# ── V2 监工面（coding-runs 源）─────────────────────────────────────
+#
+# 三问：现在需要我做什么 / 系统健康吗 / 这件事的来龙去脉。
+# 这里只做前两问的摘要；完整任务图仍在 .coding/runs/*/state.json。
+
+CODING_PHASE_ORDER = {"blocked": 0, "closing": 1, "reviewing": 2,
+                      "delegating": 3, "design": 4, "planning": 5,
+                      "queued": 6, "done": 7, "cancelled": 8, "failed": 9}
+CODING_NEEDS_ORDER = {"blocked": 0, "gate": 1, "session": 2, "ship": 3}
+
+
+def _coding_needs(row: dict) -> tuple[str, str]:
+    """一个 run 现在是否需要人；返回 (kind, why)，不需要返回 ("", "")。"""
+    phase = row.get("phase") or ""
+    gates = row.get("gates") or {}
+    if phase == "blocked":
+        return "blocked", row.get("next_action") or "run blocked"
+    if phase == "closing" and gates.get("g2") == "pending":
+        return "gate", "等 G2 发货"
+    if phase == "planning" and gates.get("g0") == "pending":
+        return "gate", "等 G0 计划"
+    if phase == "design" and gates.get("g1") == "pending":
+        return "gate", "等 G1 设计"
+    for s in row.get("sessions") or []:
+        if s.get("status") == "failed":
+            return "session", f"{s.get('task_id') or 'worker'} 失败"
+    ship = row.get("ship") or {}
+    if ship and ship.get("ok") is False:
+        return "ship", ship.get("message") or "发货失败"
+    return "", ""
+
+
+def _coding_gate_waiting(row: dict) -> bool:
+    """只有「当前阶段真的在等的那道门」才算 gate_pending；别的门 pending 是正常态。"""
+    phase = row.get("phase") or ""
+    gates = row.get("gates") or {}
+    return ((phase == "planning" and gates.get("g0") == "pending")
+            or (phase == "design" and gates.get("g1") == "pending")
+            or (phase == "closing" and gates.get("g2") == "pending"))
+
+
+def _coding_run_view(row: dict) -> dict:
+    return {
+        "run_id": row.get("run_id") or "",
+        "issue": row.get("issue") or "",
+        "phase": row.get("phase") or "",
+        "stage": row.get("stage") or "",
+        "priority": row.get("priority") or "normal",
+        "fleet_id": row.get("fleet_id") or "",
+        "gates": row.get("gates") or {},
+        "tasks": {"total": int(row.get("tasks_total") or 0),
+                  "done": int(row.get("tasks_done") or 0),
+                  "running": int(row.get("tasks_running") or 0),
+                  "blocked": int(row.get("tasks_blocked") or 0)},
+        "sessions": row.get("sessions") or [],
+        "ship": row.get("ship") or {},
+        "next_action": row.get("next_action") or "",
+        "updated_at": row.get("updated_at") or "",
+        "age_min": row.get("age_min"),
+        "branch": row.get("branch") or "",
+        "worktree": row.get("worktree") or "",
+    }
+
+
+def _build_coding(rows: list[dict], cfg: dict) -> dict:
+    """把 coding_run 行整理成监工面摘要；没有 run 时返回空壳。"""
+    summary_cfg = cfg.get("summary") or {}
+    max_runs = int(summary_cfg.get("coding_max_runs") or 20)
+    max_needs = int(summary_cfg.get("coding_needs_max") or 8)
+
+    needs = []
+    for row in rows:
+        kind, why = _coding_needs(row)
+        if kind:
+            needs.append({"run_id": row.get("run_id") or "", "issue": row.get("issue") or "",
+                          "phase": row.get("phase") or "", "kind": kind, "why": why,
+                          "age_min": row.get("age_min")})
+    needs.sort(key=lambda n: (CODING_NEEDS_ORDER.get(n["kind"], 9),
+                              -(n.get("age_min") or 0)))
+
+    ordered = sorted(rows, key=lambda r: (0 if _coding_needs(r)[0] else 1,
+                                          CODING_PHASE_ORDER.get(r.get("phase") or "", 99),
+                                          -(r.get("age_min") or 0)))
+    truncated = len(ordered) > max_runs
+    runs = [_coding_run_view(r) for r in ordered[:max_runs]]
+
+    fleets: dict[str, dict] = {}
+    for row in rows:
+        fid = row.get("fleet_id") or "default"
+        f = fleets.setdefault(fid, {"fleet_id": fid, "ships": 0, "ship_limit": 0,
+                                    "crew": 0, "crew_limit": 0, "urgent": 0})
+        if row.get("phase") not in {"done", "cancelled", "failed"}:
+            f["ships"] += 1
+            f["ship_limit"] = max(f["ship_limit"], int(row.get("ship_limit") or 0))
+        f["crew"] += int(row.get("tasks_running") or 0)
+        f["crew_limit"] = max(f["crew_limit"], int(row.get("crew_limit") or 0))
+        if row.get("priority") == "urgent":
+            f["urgent"] += 1
+
+    return {
+        "fleets": [fleets[k] for k in sorted(fleets)],
+        "needs_person": needs[:max_needs],
+        "runs": runs,
+        "counts": {
+            "runs": len(rows),
+            "blocked": sum(1 for r in rows if r.get("phase") == "blocked"),
+            "gate_pending": sum(1 for r in rows if _coding_gate_waiting(r)),
+            "urgent": sum(1 for r in rows if r.get("priority") == "urgent"),
+            "needs_person": len(needs),
+            "truncated": truncated,
+        },
+    }
+
+
 def build_summary(conn, cfg: dict, board_dir: str | None = None) -> dict:
     run = db.latest_run(conn)
     summary_cfg = cfg.get("summary") or {}
@@ -212,6 +326,7 @@ def build_summary(conn, cfg: dict, board_dir: str | None = None) -> dict:
     kpi = compute_kpi(all_flights)
     sources = db.fetch_sources(conn)
     runtime = db.fetch_runtime(conn)
+    coding_rows = db.fetch_coding(conn, run) if run else []
 
     # 按阶段链顺序排（库只按 stage 字母序，链序只有配置知道）；同阶段内新的在前
     order = _chain_order(cfg)
@@ -285,6 +400,7 @@ def build_summary(conn, cfg: dict, board_dir: str | None = None) -> dict:
         },
         "sources": sources,
         "runtime": runtime,
+        "coding": _build_coding(coding_rows, cfg),
         "blocked": blocked,
         "milestones": milestones,
         "handoffs": db.fetch_handoffs(conn, run) if run else [],
@@ -666,6 +782,30 @@ tr.flight[data-stage="to_ship"] .stg{color:var(--accent-text);font-weight:600}
 tr.flight[data-stage="stale"] .stg{color:var(--warn);font-weight:600}
 tr.flight[data-stage="hold"] .stg{color:var(--negative);font-weight:600}
 tr.flight[data-stage="flying"] .stg{color:var(--info);font-weight:600}
+/* V2 监工面：需要人优先；run 卡片只读，不参与拖拽 */
+.coding-needs{background:var(--bg-secondary);border-radius:var(--radius);padding:10px 14px;
+margin-bottom:10px;border-left:3px solid var(--negative)}
+.coding-needs .hd{display:flex;align-items:baseline;gap:8px;margin-bottom:4px}
+.coding-needs .hd b{font-size:13px;font-weight:600}
+.coding-needs .hd span{margin-left:auto;font-size:12px;color:var(--text-muted)}
+.coding-needs ol{margin:0;padding:0;list-style:none}
+.coding-needs li{padding:6px 0;font-size:13px;line-height:1.5}
+.coding-needs li+li{border-top:1px solid var(--border-light)}
+.coding-needs li em{display:block;font-style:normal;font-size:12px;color:var(--text-muted);margin-top:2px}
+.coding-fleets{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+.coding-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+.coding-card{background:var(--bg-secondary);border-radius:var(--radius);padding:10px 12px;
+border-left:3px solid var(--border)}
+.coding-card.needs{border-left-color:var(--negative)}
+.coding-card .chd{display:flex;align-items:baseline;gap:8px;font-size:13px;font-weight:600;
+line-height:1.4}
+.coding-card .chd b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.coding-card .chd .rid{margin-left:auto;font-family:ui-monospace,Consolas,monospace;
+font-size:11px;font-weight:400;color:var(--text-muted);white-space:nowrap}
+.coding-card .cmeta{font-size:12px;color:var(--text-muted);margin-top:4px;line-height:1.5}
+.coding-card .cbar{height:4px;background:var(--bg-card);border-radius:var(--radius-pill);
+margin-top:7px;overflow:hidden}
+.coding-card .cbar i{display:block;height:100%;background:var(--accent)}
 """
 
 
@@ -985,6 +1125,104 @@ def _shift_section(payload: dict, cfg: dict) -> str:
             '<span class="hint">置顶 · 先看今天谁飞什么 · 日表只由塔台写</span>'
             '<span class="arw" aria-hidden="true">收起</span></summary>'
             f'<div class="sect-body"><div class="shifts">{"".join(blocks)}</div></div></details>')
+
+
+def _coding_age(age_min) -> str:
+    if age_min is None:
+        return "—"
+    m = int(age_min)
+    if m < 1:
+        return "刚刚"
+    if m < 60:
+        return f"{m} 分钟前"
+    h = m // 60
+    return f"{h} 小时前" if h < 24 else f"{h // 24} 天前"
+
+
+def _coding_section(payload: dict, cfg: dict) -> str:
+    """V2 监工面：先「需要人」，再 fleet 用量，最后 run 卡片。
+
+    没有 run 时整段不出现——健康状态不占空间（借 dsh Panel 的「quiet by default」）。
+    """
+    coding = payload.get("coding") or {}
+    runs = coding.get("runs") or []
+    if not runs:
+        return ""
+    needs = coding.get("needs_person") or []
+    counts = coding.get("counts") or {}
+    fleets = coding.get("fleets") or []
+
+    need_html = ""
+    if needs:
+        items = []
+        kind_label = {"blocked": "挡住", "gate": "等门", "session": "会话", "ship": "发货"}
+        for n in needs:
+            items.append(
+                '<li><span class="tag hi">' + _esc(kind_label.get(n.get("kind"), n.get("kind")))
+                + '</span> <b>' + _esc(n.get("run_id")) + '</b> '
+                + _esc((n.get("issue") or "")[:60])
+                + '<em>' + _esc(n.get("why") or "") + ' · '
+                + _esc(_coding_age(n.get("age_min"))) + '</em></li>')
+        need_html = ('<div class="coding-needs"><div class="hd"><b>需要人</b><span>'
+                     + str(len(needs)) + ' 件</span></div><ol>' + "".join(items)
+                     + '</ol></div>')
+
+    fleet_html = ""
+    if fleets:
+        bits = []
+        for f in fleets:
+            ships = f"{f.get('ships', 0)}"
+            if f.get("ship_limit"):
+                ships += f"/{f['ship_limit']}"
+            crew = f"{f.get('crew', 0)}"
+            if f.get("crew_limit"):
+                crew += f"/{f['crew_limit']}"
+            bits.append(f'<span class="tag">{_esc(f.get("fleet_id") or "default")} · '
+                        f'舰 {_esc(ships)} · 船员 {_esc(crew)}</span>')
+        fleet_html = '<div class="coding-fleets">' + "".join(bits) + '</div>'
+
+    phase_label = {"queued": "排队", "planning": "规划", "design": "设计",
+                   "delegating": "施工", "reviewing": "审查", "closing": "待发货",
+                   "blocked": "挡住", "done": "完成", "cancelled": "取消", "failed": "失败"}
+    cards = []
+    for r in runs:
+        tasks = r.get("tasks") or {}
+        total = int(tasks.get("total") or 0)
+        done = int(tasks.get("done") or 0)
+        running = int(tasks.get("running") or 0)
+        blocked = int(tasks.get("blocked") or 0)
+        pct = int(round(100 * done / total)) if total else 0
+        kind, why = _coding_needs(r)
+        cls = "coding-card needs" if kind else "coding-card"
+        gates = r.get("gates") or {}
+        pending = []
+        if _coding_gate_waiting(r):
+            gate = {"planning": "G0", "design": "G1", "closing": "G2"}.get(r.get("phase"))
+            if gate:
+                pending = [gate]
+        gate_bit = (" · 等 " + "/".join(pending)) if pending else ""
+        fleet = r.get("fleet_id") or ""
+        prio = r.get("priority") or "normal"
+        prio_bit = '<span class="tag hi">加急</span>' if prio == "urgent" else ""
+        issue = (r.get("issue") or r.get("run_id") or "")[:70]
+        nxt = (r.get("next_action") or "")[:90]
+        cards.append(
+            f'<div class="{cls}"><div class="chd"><span class="tag" data-s="'
+            f'{_esc(r.get("stage") or "")}">{_esc(phase_label.get(r.get("phase"), r.get("phase")))}</span>'
+            f'<b>{_esc(issue)}</b>{prio_bit}<span class="rid">{_esc(r.get("run_id"))}</span></div>'
+            f'<div class="cmeta">任务 {done}/{total} · 在跑 {running} · 挡住 {blocked}'
+            f'{gate_bit}{(" · " + _esc(fleet)) if fleet else ""}</div>'
+            f'<div class="cbar"><i style="width:{pct}%"></i></div>'
+            + (f'<div class="cmeta">{_esc(why or nxt)}</div>' if (why or nxt) else "")
+            + f'<div class="cmeta">{_esc(_coding_age(r.get("age_min")))}</div></div>')
+
+    hint = (f'{counts.get("runs", len(runs))} 个 run · 需要人 {counts.get("needs_person", len(needs))}'
+            f' · 等门 {counts.get("gate_pending", 0)} · 加急 {counts.get("urgent", 0)}')
+    return ('<details class="sect" id="s-coding" open><summary><h2>V2 监工</h2>'
+            '<span class="hint">' + _esc(hint) + '</span>'
+            '<span class="arw" aria-hidden="true">收起</span></summary>'
+            '<div class="sect-body">' + need_html + fleet_html
+            + '<div class="coding-grid">' + "".join(cards) + '</div></div></details>')
 
 
 def _urgent_section(payload: dict, cfg: dict) -> str:
@@ -1418,6 +1656,7 @@ def render_html(payload: dict, cfg: dict) -> str:
   </div>
   {_flag(payload.get("degraded") or [])}
   {_bento(payload, kpi, cfg)}
+  {_coding_section(payload, cfg)}
   {_urgent_section(payload, cfg)}
   {_shift_section(payload, cfg)}
   {_queue_section(payload)}
@@ -1496,6 +1735,26 @@ def write_outputs(board_dir: str, payload: dict, cfg: dict) -> dict:
                                          why_cap=int((cfg.get("summary") or {}).get("ai_why_chars") or 160))
     ai_payload["blocked"] = [_cap_text(b, "why", int((cfg.get("summary") or {}).get("ai_why_chars") or 160))
                              for b in (payload.get("blocked") or [])]
+    # V2 监工面：人面可以全量，AI 面只留摘要（run 卡片 + 需要人），
+    # 否则一个大 run 的 issue 正文就能把 board.json 预算吃光。
+    coding = ai_payload.get("coding") or {}
+    if coding.get("runs"):
+        ai_runs = int((cfg.get("summary") or {}).get("ai_coding_runs") or 8)
+        ai_needs = int((cfg.get("summary") or {}).get("ai_coding_needs") or 5)
+        if len(coding["runs"]) > ai_runs:
+            coding["runs"] = coding["runs"][:ai_runs]
+            coding.setdefault("counts", {})["truncated"] = True
+        if len(coding.get("needs_person") or []) > ai_needs:
+            coding["needs_person"] = coding["needs_person"][:ai_needs]
+        cap = int((cfg.get("summary") or {}).get("ai_why_chars") or 160)
+        for r in coding.get("runs") or []:
+            for k in ("issue", "next_action"):
+                if len(r.get(k) or "") > cap:
+                    r[k] = r[k][:cap].rstrip() + "…"
+        for n in coding.get("needs_person") or []:
+            for k in ("issue", "why"):
+                if len(n.get(k) or "") > cap:
+                    n[k] = n[k][:cap].rstrip() + "…"
     # 趋势是给人画折线用的：全量正本在 history.jsonl，AI 面只留最近几轮。
     # 24 轮要 13 KB——占掉一半预算，航班全被挤没。
     trend_keep = int((cfg.get("summary") or {}).get("ai_trend_rounds") or 8)

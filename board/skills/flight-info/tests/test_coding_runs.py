@@ -10,7 +10,7 @@ SKILL_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if SKILL_ROOT not in sys.path:
     sys.path.insert(0, SKILL_ROOT)
 
-from flightinfo import stage  # noqa: E402
+from flightinfo import collect, db, render, stage  # noqa: E402
 from flightinfo.sources import coding_runs  # noqa: E402
 
 V2_RULES = [
@@ -149,6 +149,102 @@ class TestCodingRuns(unittest.TestCase):
             write_run(repo, "r-b", "planning", issue="#7")
             res = coding_runs.collect({}, {"repo_root": repo})
             self.assertEqual({f["uid"] for f in res["flights"]}, {"run:r-a", "run:r-b"})
+
+
+class TestCodingStoreAndRender(unittest.TestCase):
+    def _cfg(self):
+        return {"name": "t", "title": "T", "output": {"root": "boards"},
+                "stages": [{"key": "flying", "label": "在飞"},
+                           {"key": "hold", "label": "挡住"},
+                           {"key": "to_ship", "label": "待发货"},
+                           {"key": "review", "label": "审查"},
+                           {"key": "queued", "label": "排队"}],
+                "off_chain_stages": [],
+                "stage_rules": V2_RULES, "summary": {}, "view": {}, "repo": ""}
+
+    def _payload(self, coding):
+        return {"name": "t", "title": "T", "subtitle": "",
+                "generated_at": "2026-11-01T10:00:00", "run_id": "r1",
+                "kpi": render.compute_kpi([]), "all_open": [], "flights": [],
+                "degraded": [], "trend": [], "milestones": [], "handoffs": [],
+                "sources": {}, "runtime": {}, "blocked": [], "counts": {},
+                "schedules": [], "urgent": {}, "coding": coding,
+                "direction": "", "stage_chain": ""}
+
+    def test_collect_returns_coding_rows(self):
+        with tempfile.TemporaryDirectory() as repo:
+            write_run(repo, "r-a", "delegating",
+                      tasks=[{"id": "t1", "status": "running"}],
+                      gates={"g0": "approved", "g1": "skipped", "g2": "pending"},
+                      fleet_id="f1", ship_limit=2, crew_limit=5,
+                      resume={"next_action": "review t1"})
+            res = coding_runs.collect({}, {"repo_root": repo})
+            row = res["coding"][0]
+            self.assertEqual(row["run_id"], "r-a")
+            self.assertEqual(row["tasks_running"], 1)
+            self.assertEqual(row["gates"]["g2"], "pending")
+            self.assertEqual(row["ship_limit"], 2)
+
+    def test_run_sources_stores_coding_rows(self):
+        with tempfile.TemporaryDirectory() as repo:
+            write_run(repo, "r-a", "blocked", tasks=[{"id": "t1", "status": "blocked"}],
+                      resume={"next_action": "task(s) blocked: t1"})
+            conn = db.connect(os.path.join(repo, "board.db"))
+            db.migrate(conn, os.path.join(SKILL_ROOT, "schema"))
+            cfg = self._cfg()
+            cfg["sources"] = [{"id": "coding", "type": "coding-runs"}]
+            stats = collect.run_sources(cfg, {"repo_root": repo, "paths": {}}, conn, "run1")
+            rows = db.fetch_coding(conn, "run1")
+            conn.close()
+            self.assertEqual(stats["coding"], 1)
+            self.assertEqual(rows[0]["phase"], "blocked")
+            self.assertEqual(rows[0]["gates"], {})
+
+    def test_build_coding_needs_and_fleet(self):
+        rows = [
+            {"run_id": "r-a", "phase": "blocked", "gates": {}, "tasks_total": 2,
+             "tasks_done": 1, "tasks_running": 0, "tasks_blocked": 1,
+             "sessions": [], "ship": {}, "next_action": "task(s) blocked: t1",
+             "age_min": 42, "fleet_id": "f1", "ship_limit": 2, "crew_limit": 5,
+             "priority": "urgent"},
+            {"run_id": "r-b", "phase": "closing", "gates": {"g2": "pending"},
+             "tasks_total": 1, "tasks_done": 1, "tasks_running": 0,
+             "tasks_blocked": 0, "sessions": [], "ship": {}, "next_action": "",
+             "age_min": 5, "fleet_id": "f1", "ship_limit": 2, "crew_limit": 5,
+             "priority": "normal"},
+        ]
+        out = render._build_coding(rows, {"summary": {}})
+        self.assertEqual([n["kind"] for n in out["needs_person"]], ["blocked", "gate"])
+        self.assertEqual(out["counts"]["blocked"], 1)
+        self.assertEqual(out["counts"]["gate_pending"], 1)
+        self.assertEqual(out["fleets"][0]["fleet_id"], "f1")
+        self.assertEqual(out["fleets"][0]["ships"], 2)
+        self.assertEqual(out["fleets"][0]["ship_limit"], 2)
+
+    def test_coding_section_hidden_when_empty(self):
+        html = render.render_html(self._payload({}), self._cfg())
+        self.assertNotIn('id="s-coding"', html)
+
+    def test_coding_section_shows_needs_first(self):
+        coding = {
+            "runs": [{"run_id": "r-a", "issue": "修登录超时", "phase": "blocked",
+                      "stage": "hold", "priority": "urgent", "fleet_id": "f1",
+                      "gates": {}, "tasks": {"total": 2, "done": 1, "running": 0, "blocked": 1},
+                      "sessions": [], "ship": {}, "next_action": "task(s) blocked: t1",
+                      "updated_at": "", "age_min": 42, "branch": "", "worktree": ""}],
+            "needs_person": [{"run_id": "r-a", "issue": "修登录超时", "phase": "blocked",
+                              "kind": "blocked", "why": "task(s) blocked: t1", "age_min": 42}],
+            "fleets": [{"fleet_id": "f1", "ships": 1, "ship_limit": 2, "crew": 0,
+                        "crew_limit": 5, "urgent": 1}],
+            "counts": {"runs": 1, "blocked": 1, "gate_pending": 0, "urgent": 1,
+                       "needs_person": 1, "truncated": False},
+        }
+        html = render.render_html(self._payload(coding), self._cfg())
+        self.assertIn('id="s-coding"', html)
+        self.assertIn("需要人", html)
+        self.assertIn("r-a", html)
+        self.assertIn("task(s) blocked: t1", html)
+        self.assertLess(html.index("需要人"), html.index("coding-grid"))
 
 
 if __name__ == "__main__":

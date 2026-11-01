@@ -252,6 +252,10 @@
   "summary": {
     "max_flights": 20,
     "max_bytes": 25600,
+    "coding_max_runs": 20,
+    "coding_needs_max": 8,
+    "ai_coding_runs": 8,
+    "ai_coding_needs": 5,
     "flight_stages": [
       "to_ship",
       "flying",

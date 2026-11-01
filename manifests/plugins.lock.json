@@ -4,7 +4,7 @@
   "plugins": {
     "board": {
       "version": "1.3.0",
-      "digest": "9b3b4cf6fb19a9aac4050a55fa63365951ce240dd09c616cb48682ae4e566011",
+      "digest": "8eda6173b2e1c7ea6c1a74e6131d21750f24be7fa95e14abf0e6137723e52f51",
       "skills": {
         "flight-info": "1.6.0"
       }

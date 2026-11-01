@@ -222,6 +222,51 @@ def replace_handoffs(conn, run_id: str, rows: list[dict]) -> int:
     return len(rows)
 
 
+def replace_coding(conn, run_id: str, rows: list[dict]) -> int:
+    """一轮采集的 V2 run 快照整体替换（幂等，不累加）。"""
+    import json
+    conn.execute("DELETE FROM coding_run WHERE seen_run = ?", (run_id,))
+    for r in rows:
+        conn.execute(
+            "INSERT OR REPLACE INTO coding_run"
+            "(run_id, issue, phase, stage, priority, fleet_id, ship_limit, crew_limit,"
+            " gates_json, tasks_total, tasks_done, tasks_running, tasks_blocked, sessions_json,"
+            " ship_json, next_action, updated_at, age_min, branch, worktree, seen_run)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (r.get("run_id"), r.get("issue"), r.get("phase"), r.get("stage"),
+             r.get("priority"), r.get("fleet_id"),
+             int(r.get("ship_limit") or 0), int(r.get("crew_limit") or 0),
+             json.dumps(r.get("gates") or {}, ensure_ascii=False),
+             int(r.get("tasks_total") or 0), int(r.get("tasks_done") or 0),
+             int(r.get("tasks_running") or 0), int(r.get("tasks_blocked") or 0),
+             json.dumps(r.get("sessions") or [], ensure_ascii=False),
+             json.dumps(r.get("ship") or {}, ensure_ascii=False),
+             r.get("next_action"), r.get("updated_at"), r.get("age_min"),
+             r.get("branch"), r.get("worktree"), run_id),
+        )
+    return len(rows)
+
+
+def fetch_coding(conn, run_id: str) -> list[dict]:
+    """读一轮采集的 V2 run 快照；JSON 列解析成对象，坏 JSON 退回空值。"""
+    import json
+    out = []
+    for row in conn.execute(
+        "SELECT * FROM coding_run WHERE seen_run = ? ORDER BY run_id", (run_id,)
+    ):
+        d = dict(row)
+        for src, dst, default in (("gates_json", "gates", {}),
+                                  ("sessions_json", "sessions", []),
+                                  ("ship_json", "ship", {})):
+            raw = d.pop(src, None)
+            try:
+                d[dst] = json.loads(raw) if raw else default
+            except ValueError:
+                d[dst] = default
+        out.append(d)
+    return out
+
+
 # ── 读取（渲染层只用这些）─────────────────────────────────────────
 
 def latest_run(conn) -> str | None:

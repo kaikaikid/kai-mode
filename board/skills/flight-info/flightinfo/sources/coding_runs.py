@@ -118,8 +118,11 @@ def _run_record(state: dict, run_id: str, repo_root: str) -> dict | None:
         "kind": "task",
         # 扩展字段：不进 flight 表，供 Phase 2 的 coding 段使用
         "run_id": run_id,
+        "issue": issue,
         "phase": phase,
+        "stage": stage,
         "gates": state.get("gates") or {},
+        "ship": state.get("ship") or {},
         "tasks_total": len(tasks),
         "tasks_done": sum(1 for x in statuses if x in TASK_DONE),
         "tasks_running": sum(1 for x in statuses if x in TASK_RUNNING),
@@ -127,6 +130,8 @@ def _run_record(state: dict, run_id: str, repo_root: str) -> dict | None:
         "next_action": (state.get("resume") or {}).get("next_action") or "",
         "priority": state.get("priority") or "normal",
         "fleet_id": state.get("fleet_id") or "",
+        "ship_limit": int(state.get("ship_limit") or 0),
+        "crew_limit": int(state.get("crew_limit") or 0),
         "branch": state.get("branch") or "",
         "worktree": _rel(str(state.get("worktree") or ""), repo_root) if state.get("worktree") else "",
         "sessions": _session_summary(state),
@@ -134,14 +139,23 @@ def _run_record(state: dict, run_id: str, repo_root: str) -> dict | None:
     }
 
 
+def _coding_row(rec: dict) -> dict:
+    """从 flight 记录里摘出监工面字段（落 coding_run 表）。"""
+    keys = ("run_id", "issue", "phase", "stage", "priority", "fleet_id",
+            "ship_limit", "crew_limit", "gates", "tasks_total", "tasks_done",
+            "tasks_running", "tasks_blocked", "sessions", "ship", "next_action",
+            "updated_at", "age_min", "branch", "worktree")
+    return {k: rec.get(k) for k in keys}
+
+
 def collect(cfg: dict, ctx: dict) -> dict:
     repo_root = ctx["repo_root"]
     runs_dir = os.path.join(repo_root, ".coding", "runs")
     if not os.path.isdir(runs_dir):
-        return {"flights": [], "schedules": [], "status": "absent",
+        return {"flights": [], "coding": [], "schedules": [], "status": "absent",
                 "detail": ".coding/runs 不存在（还没跑过 V2）"}
 
-    flights, bad, total = [], 0, 0
+    flights, coding, bad, total = [], [], 0, 0
     for child in sorted(os.listdir(runs_dir)):
         run_dir = os.path.join(runs_dir, child)
         state_path = os.path.join(run_dir, "state.json")
@@ -158,13 +172,15 @@ def collect(cfg: dict, ctx: dict) -> dict:
             if rec is None:
                 raise ValueError("state.json 缺 phase")
             flights.append(rec)
+            coding.append(_coding_row(rec))
         except Exception:
             bad += 1
 
     if total and not flights:
-        return {"flights": [], "schedules": [], "status": "fail",
+        return {"flights": [], "coding": [], "schedules": [], "status": "fail",
                 "detail": f"{bad} 个 state.json 都读不了"}
     detail = f"{len(flights)} 个 run"
     if bad:
         detail += f"（{bad} 个读不了）"
-    return {"flights": flights, "schedules": [], "status": "ok", "detail": detail}
+    return {"flights": flights, "coding": coding, "schedules": [],
+            "status": "ok", "detail": detail}
