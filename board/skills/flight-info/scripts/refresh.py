@@ -51,7 +51,8 @@ def run_refresh(repo_root: str, config_path: str, quiet: bool = False,
         stats = collect.run_sources(cfg, ctx, conn, run_id)
         payload = render.build_summary(conn, cfg, bdir)
         # 趋势线：本轮 KPI 先落 history.jsonl，再把（含本轮的）近 N 轮塞回 payload
-        if render.append_history(bdir, run_id, payload["kpi"], payload["sources"]):
+        if render.append_history(bdir, run_id, payload["kpi"], payload["sources"],
+                                 coding_trend=payload.get("coding", {}).get("counts")):
             payload["trend"] = render.read_trend(bdir)
         paths = render.write_outputs(bdir, payload, cfg)
         db.record_board_run(conn, run_id, payload["kpi"], payload["sources"],

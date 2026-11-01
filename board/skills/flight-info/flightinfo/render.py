@@ -157,15 +157,19 @@ def read_trend(board_dir: str | None, keep: int = TREND_KEEP) -> list[dict]:
     return rows[-keep:]
 
 
-def append_history(board_dir: str, run_id: str, kpi: dict, sources: dict) -> bool:
+def append_history(board_dir: str, run_id: str, kpi: dict, sources: dict,
+                   coding_trend: dict | None = None) -> bool:
     """每轮追写一行 KPI（同一 run 幂等，只留一行）。写失败不阻断出板。"""
     path = os.path.join(board_dir, HISTORY_FILENAME)
     keep = [r for r in read_trend(board_dir, keep=100000)
             if r.get("run_id") != run_id]
-    keep.append({"run_id": run_id, "at": db.now_iso(),
-                 "kpi": {k: v for k, v in kpi.items() if k != "by_stage"},
-                 "by_stage": kpi.get("by_stage") or {},
-                 "degraded": [d["id"] for d in _degraded(sources)]})
+    row = {"run_id": run_id, "at": db.now_iso(),
+           "kpi": {k: v for k, v in kpi.items() if k != "by_stage"},
+           "by_stage": kpi.get("by_stage") or {},
+           "degraded": [d["id"] for d in _degraded(sources)]}
+    if coding_trend is not None:
+        row["coding_trend"] = coding_trend
+    keep.append(row)
     try:
         with open(path, "w", encoding="utf-8") as f:
             for r in keep:
@@ -239,7 +243,7 @@ def _coding_run_view(row: dict) -> dict:
     }
 
 
-def _build_coding(rows: list[dict], cfg: dict) -> dict:
+def _build_coding(rows: list[dict], cfg: dict, history: list[dict] | None = None) -> dict:
     """把 coding_run 行整理成监工面摘要；没有 run 时返回空壳。"""
     summary_cfg = cfg.get("summary") or {}
     max_runs = int(summary_cfg.get("coding_max_runs") or 20)
@@ -286,7 +290,26 @@ def _build_coding(rows: list[dict], cfg: dict) -> dict:
             "needs_person": len(needs),
             "truncated": truncated,
         },
+        "trend": _coding_trend(history),
     }
+
+
+CODING_TREND_KEEP = 12
+
+
+def _coding_trend(history: list[dict] | None) -> list[dict]:
+    """最近 N 轮的 V2 概览（给折线）：在飞 / 需要人 / blocked / 等门。
+
+    每轮刷板时 `coding_run` 表都被整表替换，历史从 history.jsonl 的 kpi 侧照不进来，
+    所以在 append_history 侧另记一份 coding 快照（`coding_trend` 键），这里只读。
+    老行没有该键 ⇒ 跳过，不冒充 0。
+    """
+    out = []
+    for r in (history or []):
+        ct = r.get("coding_trend")
+        if isinstance(ct, dict):
+            out.append({"at": r.get("at") or "", **ct})
+    return out[-CODING_TREND_KEEP:]
 
 
 def build_summary(conn, cfg: dict, board_dir: str | None = None) -> dict:
@@ -327,6 +350,7 @@ def build_summary(conn, cfg: dict, board_dir: str | None = None) -> dict:
     sources = db.fetch_sources(conn)
     runtime = db.fetch_runtime(conn)
     coding_rows = db.fetch_coding(conn, run) if run else []
+    trend = read_trend(board_dir)
 
     # 按阶段链顺序排（库只按 stage 字母序，链序只有配置知道）；同阶段内新的在前
     order = _chain_order(cfg)
@@ -400,7 +424,7 @@ def build_summary(conn, cfg: dict, board_dir: str | None = None) -> dict:
         },
         "sources": sources,
         "runtime": runtime,
-        "coding": _build_coding(coding_rows, cfg),
+        "coding": _build_coding(coding_rows, cfg, history=trend),
         "blocked": blocked,
         "milestones": milestones,
         "handoffs": db.fetch_handoffs(conn, run) if run else [],
@@ -806,6 +830,10 @@ font-size:11px;font-weight:400;color:var(--text-muted);white-space:nowrap}
 .coding-card .cbar{height:4px;background:var(--bg-card);border-radius:var(--radius-pill);
 margin-top:7px;overflow:hidden}
 .coding-card .cbar i{display:block;height:100%;background:var(--accent)}
+.coding-trend{display:flex;align-items:center;gap:6px;margin:0 0 10px;
+font-size:11px;color:var(--text-muted);flex-wrap:wrap}
+.coding-trend .ct-l{white-space:nowrap}
+.coding-trend .ct-b{letter-spacing:2px;font-size:10px;line-height:1;white-space:nowrap}
 """
 
 
@@ -1218,11 +1246,26 @@ def _coding_section(payload: dict, cfg: dict) -> str:
 
     hint = (f'{counts.get("runs", len(runs))} 个 run · 需要人 {counts.get("needs_person", len(needs))}'
             f' · 等门 {counts.get("gate_pending", 0)} · 加急 {counts.get("urgent", 0)}')
+    trend_html = _coding_trend_spark(coding.get("trend") or [])
     return ('<details class="sect" id="s-coding" open><summary><h2>V2 监工</h2>'
             '<span class="hint">' + _esc(hint) + '</span>'
             '<span class="arw" aria-hidden="true">收起</span></summary>'
-            '<div class="sect-body">' + need_html + fleet_html
+            '<div class="sect-body">' + need_html + fleet_html + trend_html
             + '<div class="coding-grid">' + "".join(cards) + '</div></div></details>')
+
+
+def _coding_trend_spark(trend: list[dict]) -> str:
+    """V2 概览迷你趋势：需要人 / 在飞 run 数，纯文本火花（与 KPI 火花同思路，零 JS）。"""
+    if len(trend) < 2:
+        return ""
+    blocks = "▮".join("1" if (t.get("needs_person") or 0) else "0"
+                      for t in trend[-12:])
+    flying = "▮".join("1" if (t.get("runs") or 0) else "0" for t in trend[-12:])
+    return ('<div class="coding-trend"><span class="ct-l">需要人 近'
+            + str(min(len(trend), 12)) + '轮</span>'
+            + '<span class="ct-b" title="每格一轮；亮＝有需要人的 run">' + blocks + '</span>'
+            + '<span class="ct-l">有run</span>'
+            + '<span class="ct-b" title="每格一轮；亮＝板上有 V2 run">' + flying + '</span></div>')
 
 
 def _urgent_section(payload: dict, cfg: dict) -> str:

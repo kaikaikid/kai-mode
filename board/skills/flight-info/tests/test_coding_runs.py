@@ -200,6 +200,24 @@ class TestCodingStoreAndRender(unittest.TestCase):
             self.assertEqual(rows[0]["phase"], "blocked")
             self.assertEqual(rows[0]["gates"], {})
 
+    def test_coding_trend_reads_history(self):
+        rows = [{"run_id": "r-a", "phase": "blocked", "gates": {}, "tasks_total": 0,
+                 "tasks_done": 0, "tasks_running": 0, "tasks_blocked": 0,
+                 "sessions": [], "ship": {}, "next_action": "", "age_min": 1,
+                 "fleet_id": "f", "ship_limit": 0, "crew_limit": 0, "priority": "normal"}]
+        history = [
+            {"at": "2026-11-01T08:00:00", "kpi": {}, "coding_trend":
+             {"runs": 1, "blocked": 0, "gate_pending": 0, "urgent": 0,
+              "needs_person": 0, "truncated": False}},
+            {"at": "2026-11-01T09:00:00", "kpi": {}},          # 老行没有该键 ⇒ 跳过
+            {"at": "2026-11-01T10:00:00", "kpi": {}, "coding_trend":
+             {"runs": 2, "blocked": 1, "gate_pending": 0, "urgent": 1,
+              "needs_person": 1, "truncated": False}},
+        ]
+        out = render._build_coding(rows, {"summary": {}}, history=history)
+        self.assertEqual(len(out["trend"]), 2)
+        self.assertEqual(out["trend"][-1]["blocked"], 1)
+
     def test_build_coding_needs_and_fleet(self):
         rows = [
             {"run_id": "r-a", "phase": "blocked", "gates": {}, "tasks_total": 2,
@@ -220,6 +238,14 @@ class TestCodingStoreAndRender(unittest.TestCase):
         self.assertEqual(out["fleets"][0]["fleet_id"], "f1")
         self.assertEqual(out["fleets"][0]["ships"], 2)
         self.assertEqual(out["fleets"][0]["ship_limit"], 2)
+
+    def test_coding_trend_spark_only_with_history(self):
+        self.assertEqual(render._coding_trend_spark([]), "")
+        self.assertEqual(render._coding_trend_spark([{"runs": 1}]), "")
+        html = render._coding_trend_spark([{"runs": 1, "needs_person": 0},
+                                           {"runs": 2, "needs_person": 1}])
+        self.assertIn("coding-trend", html)
+        self.assertIn("需要人", html)
 
     def test_coding_section_hidden_when_empty(self):
         html = render.render_html(self._payload({}), self._cfg())
