@@ -6,7 +6,7 @@
 """
 from __future__ import annotations
 
-from . import board_cards, handoff, issues, tasks, tower_state, worktrees
+from . import board_cards, coding_runs, handoff, issues, tasks, tower_state, worktrees
 
 REGISTRY = {
     "board-cards": board_cards,
@@ -15,6 +15,7 @@ REGISTRY = {
     "github-issues": issues,
     "handoff-index": handoff,
     "ship-queue": tower_state,
+    "coding-runs": coding_runs,
 }
 
 # tower-token 与 ship-queue 共用一个模块、两个入口：注册表按类型名分开指向

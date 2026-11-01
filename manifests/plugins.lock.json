@@ -3,15 +3,15 @@
   "_note": "版本钉死：由 scripts/plugin-check.py --bump 生成，不手改。digest 是插件安装面的内容摘要。",
   "plugins": {
     "board": {
-      "version": "1.2.1",
-      "digest": "3878e4c17a365b441279baab5fb8b2e724b16c212343cfbe87c7cf8f0dcb45bb",
+      "version": "1.3.0",
+      "digest": "9b3b4cf6fb19a9aac4050a55fa63365951ce240dd09c616cb48682ae4e566011",
       "skills": {
-        "flight-info": "1.5.1"
+        "flight-info": "1.6.0"
       }
     },
     "core": {
       "version": "1.3.0",
-      "digest": "74c8914856690dcffefaf6a34a6a8b558803967333695c3439db4aba54b38b58",
+      "digest": "faa9f18709d24c8e41c22db417b2e6c425da0831fb3c037d9c0f72e4fac28a63",
       "skills": {
         "bridge": "0.1.0",
         "harness-audit": "0.2.0",

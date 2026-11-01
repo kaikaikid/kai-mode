@@ -14,6 +14,10 @@
       "type": "board-cards"
     },
     {
+      "id": "coding",
+      "type": "coding-runs"
+    },
+    {
       "id": "tasks",
       "type": "tasks-table",
       "include": [
@@ -101,6 +105,42 @@
     {
       "when": "state_closed",
       "stage": "closed"
+    },
+    {
+      "when": "label_equals",
+      "value": "v2:closed",
+      "stage": "closed",
+      "why": "V2 run ended"
+    },
+    {
+      "when": "label_equals",
+      "value": "v2:hold",
+      "stage": "hold",
+      "why": "V2 run blocked"
+    },
+    {
+      "when": "label_equals",
+      "value": "v2:to_ship",
+      "stage": "to_ship",
+      "why": "V2 run closing"
+    },
+    {
+      "when": "label_equals",
+      "value": "v2:review",
+      "stage": "review",
+      "why": "V2 run reviewing"
+    },
+    {
+      "when": "label_equals",
+      "value": "v2:flying",
+      "stage": "flying",
+      "why": "V2 run delegating"
+    },
+    {
+      "when": "label_equals",
+      "value": "v2:queued",
+      "stage": "queued",
+      "why": "V2 run queued"
     },
     {
       "when": "label_equals",

@@ -12,11 +12,12 @@ description: >
   看板展示形态（Flight Information）：一块板 = 一个 SQLite 库 ＋ 一份板配置 ＋ 两个产物。
   采集各源 → 归一化落库 → 判阶段 → 出 board.json（AI 只读，≤25KB）与 index.html（人读）。
   模块化：db / stage / sources / collect / render / config 单向依赖，源按类型插件式增删。
+  可接 V2 执行内核的 `.coding/runs/*/state.json`（`coding-runs` 源），把 run 显示成航班。
   刷新靠 git 钩子打脏标记 ＋ 30 分钟脚本定时任务（`--max-age` 兜底 GitHub 侧更新）＋ 页面自刷新，
   零 token、跨 agent；任一源失败只降级点名，不整页崩。
   触发：/航班信息、刷新航班信息板、看现在在飞什么、给这个仓装一块板。
-version: 1.5.1
-updated: 2026-10-30
+version: 1.6.0
+updated: 2026-11-01
 allowed-tools: Bash(python:*) Bash(git:*) Read Write
 compatibility: Requires python3 (stdlib only), git
 metadata:
@@ -92,6 +93,7 @@ metadata:
 | `tasks-table` | `path`（缺省 `paths.day_tables_dir`）/ `include`（默认 `*-main.md`／`*-deputy.md`／`*-second.md`／`*-ace.md`）/ `lanes`（默认 `main`／`deputy`／`second`／`ace`） | 日表 markdown：列表行 `- [ ] #12 事 \| 备注`，或表格 `\| 序 \| 票号 \| 里程碑 \| 一句话 \| 备注 \|`（两种都认，可混用） |
 | `git-worktrees` | `branch_prefixes`（默认 `["exec/","land/"]`；也认单个 `branch_prefix`；`hotfix/` 不在此源，走王牌日表） | 本地 worktree/分支 → 在飞证据 |
 | `github-issues` | `repo` / `state`（`open`\|`closed`\|`none`）/ `limit` / `include_closed`＋`closed_limit` | 票面（`gh` 不可用则降级）。`include_closed: true` 顺带拉已关票——残留 `exec/` 分支只有靠「已关」才能归到已收尾 |
+| `coding-runs` | 无 | **V2 执行内核的 run**：只读 `.coding/runs/*/state.json`，一个 run 一条航班；阶段用 `v2:queued`／`v2:flying`／`v2:review`／`v2:to_ship`／`v2:hold`／`v2:closed` 标签映射，板配置里这些 `label_equals` 规则必须排在 `no_issue`／`branch_exists` 之前；`uid` 用 `run:<run_id>`，不用 issue 号（同一 issue 可开多个 run） |
 | `handoff-index` | `path`（缺省 `paths.handoff_dir`）/ `slots` / `limit`（默认 8） | 交接日报索引：只读 `handoff/<槽>/<YYYY-MM>/*.md` 的文件名＋首行标题，**不搬正文**；渲染成可点相对链接的「交接日报索引」区 | **文件名日期两种写法都认**：`YYYY-MM-DD-*.md` 与跨角色件常用的 `HANDOFF-YYYYMMDD-*.md`；解析不到日期会沉到月初、被 `limit` 挤掉（2026-10-27 实测：两份 HANDOFF-* 在板上完全隐形）。月/日做合法性校验，`12345678.md` 一类不当日期 |
 | `ship-queue` | 无（读 `paths.state_dir`） | **塔台待发货队列**：读 `.git/<框架>/ship-queue.json`（正本写者＝塔台 `ship-queue.py sync`），出 pending/hotfix/invalid 计数与逐票行；文件不在 ⇒ `absent`（「塔台还没跑过 sync」），不猜。不产生航班记录，只供「待发货队列」区块 |
 | `tower-token` | 无（读 `paths.state_dir`） | **塔台令牌**：读同目录 `tower-token.json`，出持牌人／心跳龄／是否已被判死；只做状态条的一枚灯，不改任何阶段判据 |
