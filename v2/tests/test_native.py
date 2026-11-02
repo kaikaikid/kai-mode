@@ -114,6 +114,36 @@ def test_claim_is_idempotent(tmp_path):
     assert st["tasks"][0]["status"] == "running"
 
 
+def test_claim_accepts_ready_and_returned_status(tmp_path):
+    for status in ("ready", "returned"):
+        root = tmp_path / status
+        root.mkdir()
+        write_state(root, tasks=[task(status=status)])
+
+        card = claim(root)
+
+        st = read_state(root)
+        assert st["tasks"][0]["status"] == "running"
+        assert st["tasks"][0]["session_id"] == st["sessions"][0]["id"]
+        assert card["task_id"] == "t1"
+
+
+def test_claim_on_old_state_without_sessions_key(tmp_path):
+    root = tmp_path / "repo"
+    root.mkdir()
+    p = write_state(root)
+    raw = json.loads(p.read_text(encoding="utf-8"))
+    del raw["sessions"]  # plan 之后、第一次 spawn 之前的旧 run 没有 sessions 键
+    p.write_text(json.dumps(raw, ensure_ascii=False), encoding="utf-8")
+
+    card = claim(root)
+
+    st = read_state(root)
+    assert len(st["sessions"]) == 1
+    assert st["sessions"][0]["mode"] == "native"
+    assert card["report_path"].endswith(f"{st['sessions'][0]['id']}/report.json")
+
+
 def test_claim_moves_run_out_of_planning(tmp_path):
     root = tmp_path / "repo"
     root.mkdir()
