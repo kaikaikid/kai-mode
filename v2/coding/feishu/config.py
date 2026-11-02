@@ -22,7 +22,10 @@ DEFAULTS: dict[str, Any] = {
     "bots": [{"name": "default", "profile": "", "app_id": "", "chat_id": ""}],
     "allow": {"users": [], "chats": [], "dm": True, "require_mention": True},
     "serve": {"url": "http://127.0.0.1:8765", "token_env": "KAI_TRAVEL_TOKEN"},
-    "notify": {"poll_s": 15, "debounce_s": 10, "gate_reminder_min": 20, "max_reminders": 3},
+    "notify": {"poll_s": 15, "debounce_s": 10, "gate_reminder_min": 20, "max_reminders": 3,
+               "board_min": 30},
+    # 断线补读：桥没跑时用户发的消息，起来后按水位补处理；首启用不回灌历史。
+    "backfill": {"enabled": True, "max_min": 180, "limit": 50},
     # 对话模式：同一条飞书会话续同一个宿主会话；默认开启（不带命令的话默认就是聊）。
     "chat": {"enabled": True, "idle_min": 45, "max_turns": 20,
              "budget_tokens": 60000, "daily_budget_tokens": 200000},

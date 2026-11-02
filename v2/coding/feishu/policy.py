@@ -116,6 +116,10 @@ def allowed(cfg: dict[str, Any], ev: dict[str, Any], bot_open_id: str = "") -> b
     if not chats or ev.get("chat_id") not in chats:
         return False                      # 空 chats 同样拒绝：默认全拒
     if allow.get("require_mention", True) and ev.get("kind") == "message":
+        # 补读的历史消息如果本来就带了 mentions，照常按 @ 判定；只有历史里没给 mentions
+        # 时才放行——否则账号在重启后会把「没对机器人说的」命令形态旧消息也执行了。
+        if ev.get("backfilled") and not ev.get("mentions"):
+            return True
         return mentioned_me(ev, bot_open_id)
     return True
 

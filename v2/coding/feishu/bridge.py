@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as _dt
+import hashlib
 import json
 import os
 import re
@@ -21,6 +22,59 @@ RATE_PER_MIN = 10
 RATE_PER_HOUR = 100
 
 AUDIT = "audit/unauthorized.ndjson"
+# 消息事件 key：policy.kind_of 按后缀认，含 "message.receive" 就算消息事件。
+MESSAGE_KEY = "im.message.receive_v1"
+
+
+def _iso(ts: float) -> str:
+    return _dt.datetime.fromtimestamp(ts, _dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _parse_iso(text: str) -> float:
+    try:
+        return _dt.datetime.fromisoformat(str(text).replace("Z", "+00:00")).timestamp()
+    except Exception:
+        return 0.0
+
+
+def _idem(prefix: str, *parts: str) -> str:
+    """幂等键 ≤50 字，且截断时不能把有区分度的部分吃掉：超长就换成哈希。"""
+    raw = ":".join([prefix, *[str(p) for p in parts]])
+    if len(raw) <= 50:
+        return raw
+    digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
+    return f"{prefix[:30]}:{digest}"[:50]
+
+
+def _msg_time(raw: dict[str, Any]) -> float:
+    """历史消息时间：create_time 可能是秒、毫秒或 ISO 字符串。"""
+    for key in ("create_time", "createTime", "timestamp"):
+        v = raw.get(key)
+        if isinstance(v, (int, float)) and v > 0:
+            return float(v) / 1000.0 if float(v) > 1e11 else float(v)
+        if isinstance(v, str) and v.strip():
+            try:
+                return float(v) / 1000.0 if float(v) > 1e11 else float(v)
+            except ValueError:
+                parsed = _parse_iso(v)
+                if parsed:
+                    return parsed
+    return 0.0
+
+
+def _history_text(raw: dict[str, Any]) -> str:
+    body = raw.get("body")
+    content = body.get("content") if isinstance(body, dict) else raw.get("content")
+    if not isinstance(content, str):
+        return ""
+    text = content.strip()
+    if not text.startswith("{"):
+        return text
+    try:
+        data = json.loads(text)
+    except Exception:
+        return ""
+    return str(data.get("text") or "").strip() if isinstance(data, dict) else ""
 
 
 def _slug(text: str, n: int = 40) -> str:
@@ -35,6 +89,8 @@ class Bridge:
                  ledger=None, sender: "Callable[..., Any] | None" = None,
                  wake_fn: "Callable[..., dict[str, Any]] | None" = None,
                  serve_fn: "Callable[..., tuple[bool, str]] | None" = None,
+                 patcher: "Callable[..., tuple[bool, str]] | None" = None,
+                 pin_fn: "Callable[..., Any] | None" = None,
                  now: "Callable[[], float] | None" = None):
         self.root = Path(root)
         self.cfg = cfg or fcfg.load(self.root)
@@ -43,6 +99,8 @@ class Bridge:
         self._clock = now or time.time
         self.ledger = ledger or fledger.Ledger(self.dir / "ledger.sqlite3", clock=lambda: self.now())
         self.sender = sender
+        self.patcher = patcher
+        self.pin_fn = pin_fn
         self.wake_fn = wake_fn
         self.serve_fn = serve_fn
         self._last_wake: dict[str, float] = {}
@@ -85,7 +143,8 @@ class Bridge:
         if not policy.allowed(self.cfg, ev):
             self._audit(ev)
             return []
-        if not self._rate_ok(ev):
+        if not ev.get("backfilled") and not self._rate_ok(ev):
+            # 补读不走限速：历史消息是成批回来的，限了会把它们丢掉且水位照样前进。
             self._audit(ev, decision="rate-limited")
             return []
         if not self.ledger.remember_event(key, ev.get("bot", ""), ev.get("kind", "")):
@@ -169,10 +228,47 @@ class Bridge:
         if payload.get("kind") == "noop":
             return [self._out(ev, text="好，先放着。")]
         if payload.get("kind") == "gate":
-            return [self._out(ev, text=self._gate({"run_id": payload.get("run_id"),
-                                                   "gate": payload.get("gate"),
-                                                   "decision": payload.get("decision")}))]
+            # 同一个门点可能有好几张卡（原卡 + 多次提醒）。nonce 去重只挡同一张卡，
+            # 这里按「run + 门」再挡一道，免得从两张不同的卡各批一次。
+            gk = f"gate:{payload.get('run_id')}:{payload.get('gate')}"
+            if self.ledger.has_event(gk):
+                return [self._out(ev, text="这个门点已经拍过板了。", suffix=":dup")]
+            self.ledger.remember_event(gk, ev.get("bot", ""), "gate")
+            text = self._gate({"run_id": payload.get("run_id"),
+                               "gate": payload.get("gate"),
+                               "decision": payload.get("decision")})
+            self._settle_card(payload, text)
+            return [self._out(ev, text=text)]
         return [self._out(ev, text="这个按钮我不认识。")]
+
+    def _settle_card(self, payload: dict[str, Any], text: str) -> None:
+        """拍板后把同一 run + 门点的所有卡原地改成结果：群里不留还能点的旧卡。"""
+        rid = str(payload.get("run_id") or "")
+        gate = str(payload.get("gate") or "")
+        done = "已提交" in text
+        card = cards.card("已拍板" if done else "没生效", text,
+                          template="green" if done else "grey")
+        rows = self.ledger.cards_for(rid, gate) if rid else []
+        rec = self.ledger.card_message(str(payload.get("nonce") or ""))
+        if rec and not rows:
+            rows = [rec]                             # 老数据没有 run/gate 字段时兜底
+        seen = set()
+        for row in rows:
+            mid = str(row.get("message_id") or "")
+            if not mid or mid in seen:
+                continue
+            seen.add(mid)
+            prof = str(fcfg.bot_for(self.cfg, str(row.get("bot") or "")).get("profile") or "")
+            self._patch(mid, card, prof)
+
+    def _patch(self, message_id: str, card: dict[str, Any], profile: str = "") -> "tuple[bool, str]":
+        if self.patcher is not None:
+            return self.patcher(message_id, card, profile)
+        try:
+            r = lark.patch_card(profile, message_id, card)
+        except Exception as e:                   # noqa: BLE001 —— 改卡失败不该影响回话
+            return False, f"{type(e).__name__}: {e}"
+        return getattr(r, "returncode", 1) == 0, (getattr(r, "stderr", "") or "").strip()[:300]
 
     # ── 执行面 ──────────────────────────────────────────────
     def _serve(self, path: str, body: dict[str, Any]) -> "tuple[bool, str]":
@@ -342,7 +438,7 @@ class Bridge:
         user_id = "" if chat_id else str(ev.get("sender") or "")      # 私聊没有 chat_id，用 open_id 发
         # 幂等键带机器人名与后缀：不同机器人的回话不能互相顶掉，
         # 后缀放在最前面，避免被 50 字上限截掉。
-        idem = f"kaimode{suffix}:{ev.get('bot') or ''}:{ev.get('dedup_key')}"[:50]
+        idem = _idem(f"kaimode{suffix}", str(ev.get("bot") or ""), str(ev.get("dedup_key") or ""))
         return {"chat_id": chat_id, "user_id": user_id, "bot": ev.get("bot") or "",
                 "message_id": ev.get("message_id") or "", "text": text, "idem": idem,
                 "card": self._sign_card(card)}
@@ -360,7 +456,24 @@ class Bridge:
             r = lark.send_text(profile, out.get("chat_id") or "", out.get("text") or "", idem,
                                user_id=out.get("user_id") or "")
         ok = getattr(r, "returncode", 1) == 0
+        if ok and out.get("card"):
+            self._remember_card(out, r)
         return ok, (getattr(r, "stderr", "") or "").strip()[:300]
+
+    def _remember_card(self, out: dict[str, Any], proc: Any) -> None:
+        """记住发出去的卡片消息 id：拍板后要原地改成「已处理」。"""
+        mid = lark.message_id_of(proc)
+        if not mid:
+            return
+        for el in (out.get("card") or {}).get("elements") or []:
+            if not isinstance(el, dict) or el.get("tag") != "action":
+                continue
+            for a in el.get("actions") or []:
+                v = a.get("value") if isinstance(a, dict) else None
+                if isinstance(v, dict) and v.get("nonce"):
+                    self.ledger.remember_card(str(v["nonce"]), mid, str(out.get("bot") or ""),
+                                              str(out.get("chat_id") or ""),
+                                              str(v.get("run_id") or ""), str(v.get("gate") or ""))
 
     # ── 出站队列：先落库，再发；发失败的退避重试 ─────────────
     def enqueue(self, outs: "list[dict[str, Any]]") -> int:
@@ -406,26 +519,214 @@ class Bridge:
         stats["enqueued"] = n
         return stats
 
-    def _scan(self) -> "tuple[list[dict[str, Any]], dict[str, str]]":
-        snap_path = self.dir / "snapshots.json"
-        prev = notify.load_snapshots(snap_path)
+    def _scan(self) -> "tuple[list[dict[str, Any]], dict[str, Any]]":
+        """算本轮该发哪些播报：带防抖（等状态稳定）与门点提醒（久等不批再喊一次）。
+
+        快照按 run 记一个字典：fp（指纹）/ since（这次变化首次见到的时间）/
+        sent（这一状态已播过）/ reminded（已提醒次数）/ last_remind。
+        老版本快照里是纯字符串指纹，读进来时补成字典。
+        """
+        now = self.now()
+        ncfg = self.cfg.get("notify") or {}
+        debounce = float(ncfg.get("debounce_s") or 0)
+        remind_min = float(ncfg.get("gate_reminder_min") or 0)
+        max_rem = int(ncfg.get("max_reminders") or 0)
+
+        prev = notify.load_snapshots(self.dir / "snapshots.json")
         rows = notify.run_rows(self.root)
-        outs = []
-        for t in notify.transitions(prev, rows):
-            row, fp, kind = t["row"], t["fingerprint"], t["kind"]
-            if prev.get(row["run_id"]) == fp:
+        bot = fcfg.bot_for(self.cfg)
+        chat = bot.get("chat_id") or ""
+        outs: list[dict[str, Any]] = []
+        seen = set()
+
+        for row in rows:
+            rid = row["run_id"]
+            seen.add(rid)
+            rec = prev.get(rid)
+            if not isinstance(rec, dict):
+                # 老版本快照里存的是纯字符串指纹，语义是「这个状态已经播过」。
+                rec = {"fp": str(rec or ""), "since": 0.0, "sent": bool(rec),
+                       "reminded": 0, "last_remind": 0.0}
+            fp = notify.fingerprint(row)
+            if rec.get("fp") != fp:
+                rec = {"fp": fp, "since": now, "sent": False, "reminded": 0, "last_remind": 0.0}
+                prev[rid] = rec
+            if not notify.should_notify(row):
+                prev.pop(rid, None)       # 不需要播报的阶段不占位，免得一直挂着
                 continue
-            bot = fcfg.bot_for(self.cfg)
-            if not bot.get("chat_id"):
-                # 没有落点：这一轮不发，也不推进指纹——等 chat_id 配上再补发，
-                # 不能因为配置缺项就把通知吞掉。
+            if not chat:
+                continue                  # 没落点：不推进快照，配上 chat_id 后补发
+            kind = notify.kind_of(row)
+            if not rec.get("sent"):
+                if debounce > 0 and now - float(rec.get("since") or 0) < debounce:
+                    continue              # 还在变，等它稳定下来再发
+                outs.append(self._notify_out(row, kind, bot, fp))
+                rec["sent"] = True
+                rec["last_remind"] = now
+                prev[rid] = rec
                 continue
-            nonce = secrets.token_hex(8)
-            name = str(bot.get("name") or "")
-            out = {"chat_id": bot.get("chat_id") or "", "bot": name,
-                   "message_id": "", "text": "",
-                   "idem": f"kaimode:{name}:{row['run_id']}:{fp}"[:50],
-                   "card": self._sign_card(notify.render(kind, row, nonce))}
-            outs.append(out)
-            prev[row["run_id"]] = fp
+            # 门点一直挂着：隔一阵再喊一次，但不超过 max_reminders 次。
+            if kind == "gate" and remind_min > 0 and int(rec.get("reminded") or 0) < max_rem:
+                if now - float(rec.get("last_remind") or 0) >= remind_min * 60:
+                    rec["reminded"] = int(rec.get("reminded") or 0) + 1
+                    rec["last_remind"] = now
+                    prev[rid] = rec
+                    outs.append(self._notify_out(row, kind, bot, fp,
+                                                 tag=f"r{rec['reminded']}", reminder=True))
+
+        for rid in list(prev):
+            if rid not in seen:
+                prev.pop(rid, None)
         return outs, prev
+
+    def _notify_out(self, row: dict[str, Any], kind: str, bot: dict[str, Any], fp: str,
+                    tag: str = "", reminder: bool = False) -> dict[str, Any]:
+        nonce = secrets.token_hex(8)
+        name = str(bot.get("name") or "")
+        prefix = f"kaimode{':' + tag if tag else ''}"
+        return {"chat_id": bot.get("chat_id") or "", "bot": name,
+                "message_id": "", "text": "",
+                "idem": _idem(prefix, name, str(row["run_id"]), fp),
+                "card": self._sign_card(notify.render(kind, row, nonce, reminder=reminder))}
+
+    # ── 置顶看板：每个群发一次、置顶、之后原地刷新 ───────────
+    def ensure_board(self) -> "dict[str, str]":
+        """每个配了 chat_id 的机器人各有一块看板；返回 {机器人: 结果}。"""
+        card = cards.board(notify.run_rows(self.root))
+        out: dict[str, str] = {}
+        for bot in self.cfg.get("bots") or []:
+            chat = str(bot.get("chat_id") or "")
+            if not chat:
+                continue
+            out[str(bot.get("name") or chat)] = self._ensure_one_board(bot, card)
+        return out
+
+    def _ensure_one_board(self, bot: dict[str, Any], card: dict[str, Any]) -> str:
+        name = str(bot.get("name") or "")
+        chat = str(bot.get("chat_id") or "")
+        prof = str(bot.get("profile") or "")
+        key = f"board:{name}:{chat}"
+        misses = f"{key}:miss"
+        pinned = f"{key}:pinned"
+        old = self.ledger.meta_get(key)
+        if old:
+            ok, err = self._patch(old, card, prof)
+            if ok:
+                self.ledger.meta_del(misses)
+                if self.ledger.meta_get(pinned, "1") != "1":
+                    if self._pin(old, prof):
+                        self.ledger.meta_set(pinned, "1")     # 上次没钉上，补钉
+                        return "pinned"
+                return "updated"
+            # 一次失败可能只是网络：连续三次才认定这张卡没了，免得临时故障就再钉一块。
+            n = int(self.ledger.meta_get(misses, "0") or 0) + 1
+            self.ledger.meta_set(misses, str(n))
+            if n < 3:
+                return f"patch failed: {err}"
+        ok, err, mid = self._send_card(prof, chat, card, _idem("kaimode:board", name))
+        if not ok or not mid:
+            return f"send failed: {err or 'no message_id'}"
+        self.ledger.meta_set(key, mid)
+        self.ledger.meta_del(misses)
+        if old and old != mid:
+            self._unpin(old, prof)          # 新板发成功才摘旧钉，中途断网至少还有一块
+        if not self._pin(mid, prof):
+            self.ledger.meta_set(pinned, "0")           # 下轮补钉
+            return "sent but pin failed"
+        self.ledger.meta_set(pinned, "1")
+        return "pinned"
+
+    def _pin(self, message_id: str, profile: str = "") -> bool:
+        if self.pin_fn is not None:
+            return bool(self.pin_fn(message_id, profile))
+        try:
+            r = lark.pin(profile, message_id)
+        except Exception:                 # noqa: BLE001
+            return False
+        return getattr(r, "returncode", 1) == 0
+
+    def _unpin(self, message_id: str, profile: str = "") -> None:
+        try:
+            lark.unpin(profile, message_id)
+        except Exception:             # noqa: BLE001 —— 取旧钉失败不影响新看板
+            pass
+
+    def _send_card(self, profile: str, chat_id: str, card: dict[str, Any],
+                   idem: str) -> "tuple[bool, str, str]":
+        if self.sender is not None:
+            ok, err = self.sender({"chat_id": chat_id, "card": card, "idem": idem,
+                                   "bot": fcfg.bot_for(self.cfg).get("name", "")}, profile)
+            return ok, err, ""
+        try:
+            r = lark.send_card(profile, chat_id, card, idem)
+        except Exception as e:            # noqa: BLE001
+            return False, f"{type(e).__name__}: {e}", ""
+        return (getattr(r, "returncode", 1) == 0,
+                (getattr(r, "stderr", "") or "").strip()[:300], lark.message_id_of(r))
+
+    # ── 断线补读 ────────────────────────────────────────────
+    def backfill(self) -> int:
+        """桥没跑时用户发的消息，起来后补处理；首启只记水位，不回灌历史。
+
+        只补「像指令」的群消息（命令/想法/批拒），旧闲聊不叫醒 AI。
+        """
+        cfg = self.cfg.get("backfill") or {}
+        if not cfg.get("enabled", True):
+            return 0
+        now = self.now()
+        limit = int(cfg.get("limit") or 50)
+        max_min = float(cfg.get("max_min") or 180)
+        chats = set((self.cfg.get("allow") or {}).get("chats") or [])
+        total = 0
+        for bot in self.cfg.get("bots") or []:
+            chat = str(bot.get("chat_id") or "")
+            if not chat or chat not in chats:
+                continue
+            key = f"backfill:{bot.get('name')}:{chat}"
+            mark = self.ledger.meta_get(key)
+            if not mark:
+                self.ledger.meta_set(key, _iso(now))
+                continue
+            start = max(_parse_iso(mark), now - max_min * 60)
+            try:
+                items = lark.history_items(
+                    lark.history(str(bot.get("profile") or ""), chat, _iso(start), limit))
+            except Exception:               # noqa: BLE001 —— 补读失败不该拦住启动
+                items = None
+            if items is None:
+                continue                    # 读失败 ≠ 没有消息：水位不动，下次再补
+            for raw in items:
+                ev = self._event_from_history(raw, chat, bot)
+                if ev is None:
+                    continue
+                total += self.enqueue(self.handle(ev))
+            # 只推进到这一页最新那条：积压超过一页时下次接着补，不跳过去。
+            newest = max((_msg_time(x) for x in items), default=0.0)
+            mark_next = newest if (len(items) >= limit and newest > 0) else now
+            self.ledger.meta_set(key, _iso(max(mark_next, _parse_iso(mark))))
+        if total:
+            self.flush()
+        return total
+
+    def _event_from_history(self, raw: dict[str, Any], chat: str,
+                            bot: dict[str, Any]) -> "dict[str, Any] | None":
+        sender = raw.get("sender") if isinstance(raw.get("sender"), dict) else {}
+        if str(sender.get("sender_type") or raw.get("sender_type") or "") in {"app", "bot"}:
+            return None                                   # 不回自己的话
+        sid = str(sender.get("id") or sender.get("open_id") or raw.get("sender_id") or "")
+        mid = str(raw.get("message_id") or raw.get("open_message_id") or raw.get("id") or "")
+        text = _history_text(raw)
+        if not sid or not mid or not text:
+            return None
+        chat_type = str(raw.get("chat_type") or "group")
+        # 分诊前先剥 @ 占位：历史里的正文是「@_user_1 状态」，不剥会被当成闲聊丢掉。
+        if chat_type != "p2p" and triage.decide(policy.strip_mentions(text))["kind"] == "chat":
+            return None                                   # 旧闲聊不叫醒 AI
+        ev = policy.normalize(
+            {"chat_id": chat, "chat_type": chat_type, "sender_id": sid, "message_id": mid,
+             "content": text, "mentions": [m for m in (raw.get("mentions") or [])
+                                           if isinstance(m, dict)]},
+            MESSAGE_KEY, str(bot.get("name") or ""))
+        if ev is not None:
+            ev["backfilled"] = True
+        return ev

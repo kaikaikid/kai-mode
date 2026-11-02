@@ -234,6 +234,7 @@ def bridge(tmp_path, monkeypatch):
     cfg["allow"] = {"users": ["ou_me"], "chats": ["oc_1"], "dm": True, "require_mention": True}
     cfg["enabled"] = True
     cfg["bots"] = [{"name": "work", "profile": "", "chat_id": "oc_1"}]   # 播报要有落点
+    cfg["notify"] = {**cfg["notify"], "debounce_s": 0, "gate_reminder_min": 0}  # 单轮即发
     woken = []
 
     def wake(brief, cwd, resume=None):
@@ -529,6 +530,7 @@ def outbox_bridge(tmp_path, monkeypatch):
     cfg["enabled"] = True
     cfg["allow"] = {"users": ["ou_me"], "chats": ["oc_1"], "dm": True, "require_mention": True}
     cfg["bots"] = [{"name": "work", "profile": "p-work", "chat_id": "oc_1"}]
+    cfg["notify"] = {**cfg["notify"], "debounce_s": 0, "gate_reminder_min": 0}
     sent = []
     state = {"fail": True}
 
@@ -821,3 +823,422 @@ def test_runner_refuses_when_another_bridge_is_alive(tmp_path, monkeypatch):
     path, other = frunner._acquire(tmp_path)
     assert path is not None and other == 0
     assert path.read_text(encoding="utf-8").strip() == str(os.getpid())
+
+
+# ---------------------------------------------------------------------------
+# 防抖 / 门点提醒 / 置顶看板 / 原地改卡 / 补读
+
+
+def test_debounce_waits_for_stable_state(outbox_bridge, tmp_path):
+    b = outbox_bridge
+    b.state["fail"] = False
+    b.cfg["notify"]["debounce_s"] = 30
+    _state(tmp_path, "r-db", "done")
+    assert b.publish()["enqueued"] == 0            # 刚变，先等
+    b.clock["t"] += 20
+    assert b.publish()["enqueued"] == 0            # 还没稳 30 秒
+    b.clock["t"] += 11
+    assert b.publish()["enqueued"] == 1 and b.publish()["enqueued"] == 0
+
+
+def test_debounce_restarts_when_state_changes_again(outbox_bridge, tmp_path):
+    b = outbox_bridge
+    b.state["fail"] = False
+    b.cfg["notify"]["debounce_s"] = 30
+    _state(tmp_path, "r-db2", "done")
+    b.publish()
+    b.clock["t"] += 20
+    _state(tmp_path, "r-db2", "blocked")           # 又变了：重新计时
+    assert b.publish()["enqueued"] == 0
+    b.clock["t"] += 29
+    assert b.publish()["enqueued"] == 0
+    b.clock["t"] += 2
+    assert b.publish()["enqueued"] == 1
+    assert b.sent[-1]["out"]["card"]["header"]["title"]["content"] == "卡住了"
+
+
+def test_gate_reminder_after_waiting(outbox_bridge, tmp_path):
+    b = outbox_bridge
+    b.state["fail"] = False
+    b.cfg["notify"].update({"debounce_s": 0, "gate_reminder_min": 20, "max_reminders": 2})
+    _state(tmp_path, "r-g", "closing", gates={"g2": "pending"})
+    assert b.publish()["sent"] == 1
+    b.clock["t"] += 19 * 60
+    assert b.publish()["enqueued"] == 0            # 还没到提醒间隔
+    b.clock["t"] += 60
+    assert b.publish()["sent"] == 1
+    assert "还在等你拍板" in b.sent[-1]["out"]["card"]["header"]["title"]["content"]
+    assert b.sent[0]["out"]["idem"] != b.sent[1]["out"]["idem"]
+
+    b.clock["t"] += 20 * 60
+    assert b.publish()["sent"] == 1                # 第二次提醒
+    b.clock["t"] += 20 * 60
+    assert b.publish()["enqueued"] == 0            # 到上限就不再喊
+
+
+def test_reminder_counter_resets_on_change(outbox_bridge, tmp_path):
+    b = outbox_bridge
+    b.state["fail"] = False
+    b.cfg["notify"].update({"debounce_s": 0, "gate_reminder_min": 20, "max_reminders": 1})
+    _state(tmp_path, "r-g2", "closing", gates={"g2": "pending"})
+    b.publish()
+    b.clock["t"] += 20 * 60
+    assert b.publish()["sent"] == 1                # 提醒一次
+    b.clock["t"] += 20 * 60
+    assert b.publish()["enqueued"] == 0            # 用完了
+    _state(tmp_path, "r-g2", "closing", gates={"g2": "pending"}, tasks=("t1",))  # 指纹变了
+    assert b.publish()["sent"] == 1                # 重新计
+    b.clock["t"] += 20 * 60
+    assert b.publish()["sent"] == 1
+
+
+def test_board_pinned_once_then_updated(outbox_bridge, monkeypatch):
+    from v2.coding.feishu import lark as flark
+
+    calls = {"send": 0, "patch": 0}
+
+    class P:
+        returncode = 0
+        stderr = ""
+        stdout = json.dumps({"data": {"message_id": "om_board"}})
+
+    def fake_send(*a, **k):
+        calls["send"] += 1
+        return P()
+
+    def fake_patch(*a, **k):
+        calls["patch"] += 1
+        return P()
+
+    monkeypatch.setattr(flark, "send_card", fake_send)
+    monkeypatch.setattr(flark, "patch_card", fake_patch)
+    b = outbox_bridge
+    b.sender = None
+    pins = []
+    b.pin_fn = lambda mid, prof: (pins.append(mid) or True)
+    assert b.ensure_board() == {"work": "pinned"}
+    assert pins == ["om_board"] and calls["send"] == 1
+    assert b.ensure_board() == {"work": "updated"}
+    assert calls["send"] == 1 and calls["patch"] == 1
+
+
+def test_gate_action_patches_original_card(bridge):
+    patches = []
+    bridge.patcher = lambda mid, card, prof: (patches.append((mid, card)), (True, ""))[1]
+    bridge.serve_fn = lambda path, body: (True, "200")
+    bridge.ledger.remember_card("n-settle", "om_card1", "work", "oc_1", "r-1", "g2")
+    payload = {"kind": "gate", "run_id": "r-1", "gate": "g2", "decision": "approve", "nonce": "n-settle"}
+    sig = policy.sign(bridge._secret, payload)
+    raw = {"chat_id": "oc_1", "chat_type": "group", "sender_id": "ou_me", "message_id": "om_s",
+           "action": {**payload, "sig": sig}}
+    out = bridge.handle(policy.normalize(raw, "card.action.trigger", "work"))
+    assert "已提交" in out[0]["text"]
+    assert patches and patches[0][0] == "om_card1"
+    assert "已拍板" in patches[0][1]["header"]["title"]["content"]
+
+
+def test_deliver_records_card_message_id(bridge):
+    class P:
+        returncode = 0
+        stderr = ""
+        stdout = json.dumps({"message_id": "om_x"})
+
+    out = bridge._out(_event(bridge, message_id="om_c"),
+                      card=cards.gate_request("r-1", "g2", "x", "n-rec"))
+    bridge._remember_card(out, P())
+    rec = bridge.ledger.card_message("n-rec")
+    assert rec and rec["message_id"] == "om_x" and rec["gate"] == "g2"
+
+
+def test_backfill_first_run_sets_watermark_then_replays_commands(outbox_bridge, monkeypatch):
+    import subprocess as sp
+
+    from v2.coding.feishu import lark as flark
+    b = outbox_bridge
+    b.state["fail"] = False
+    assert b.backfill() == 0                       # 首启：只记水位，不回灌历史
+    assert b.ledger.meta_get("backfill:work:oc_1")
+
+    items = [
+        {"message_id": "om_h1", "chat_type": "group",
+         "sender": {"id": "ou_me", "sender_type": "user"},
+         "body": {"content": json.dumps({"text": "状态"})}},
+        {"message_id": "om_h2", "chat_type": "group",
+         "sender": {"id": "ou_me", "sender_type": "user"},
+         "body": {"content": json.dumps({"text": "今天天气不错"})}},
+        {"message_id": "om_h3", "chat_type": "group",
+         "sender": {"id": "ou_bot", "sender_type": "app"},
+         "body": {"content": json.dumps({"text": "状态"})}},
+    ]
+    monkeypatch.setattr(flark, "history",
+                        lambda *a, **k: sp.CompletedProcess([], 0, json.dumps({"items": items}), ""))
+    b.clock["t"] += 600
+    assert b.backfill() == 1                       # 只补「状态」：闲聊与自己发的都不补
+    from v2.coding.feishu.bridge import _iso
+    assert b.ledger.meta_get("backfill:work:oc_1") == _iso(b.clock["t"])
+
+
+def test_backfill_ignores_old_messages_beyond_window(outbox_bridge, monkeypatch):
+    import subprocess as sp
+
+    from v2.coding.feishu import lark as flark
+    b = outbox_bridge
+    b.state["fail"] = False
+    b.cfg["backfill"]["max_min"] = 60
+    b.backfill()                                   # 记水位
+    seen = []
+
+    def fake_history(prof, chat, start_iso="", limit=50):
+        seen.append(start_iso)
+        return sp.CompletedProcess([], 0, "{}", "")
+
+    monkeypatch.setattr(flark, "history", fake_history)
+    b.clock["t"] += 10 * 3600                      # 十小时后才起来
+    b.backfill()
+    from v2.coding.feishu.bridge import _iso
+    assert seen and seen[-1] == _iso(b.clock["t"] - 60 * 60)   # 只取窗口内那一小时
+
+
+def test_board_repins_only_after_repeated_patch_failures(outbox_bridge, monkeypatch):
+    from v2.coding.feishu import lark as flark
+
+    calls = {"send": 0, "patch": 0, "unpin": 0}
+
+    class BAD:
+        returncode = 1
+        stderr = "message not found"
+        stdout = ""
+
+    def fake_send(*a, **k):
+        calls["send"] += 1
+        proc = type("P", (), {})()
+        proc.returncode = 0
+        proc.stderr = ""
+        proc.stdout = json.dumps({"data": {"message_id": f"om_board{calls['send']}"}})
+        return proc
+
+    def bump(key, proc):
+        calls[key] += 1
+        return proc
+
+    monkeypatch.setattr(flark, "send_card", fake_send)
+    monkeypatch.setattr(flark, "patch_card", lambda *a, **k: bump("patch", BAD()))
+    monkeypatch.setattr(flark, "unpin", lambda *a, **k: (calls.__setitem__("unpin", calls["unpin"] + 1)))
+    b = outbox_bridge
+    b.sender = None
+    pins = []
+    b.pin_fn = lambda mid, prof: (pins.append(mid) or True)
+
+    assert b.ensure_board() == {"work": "pinned"}
+    assert b.ensure_board()["work"].startswith("patch failed")   # 第一次失败：先忍
+    assert b.ensure_board()["work"].startswith("patch failed")
+    assert b.ensure_board()["work"] == "pinned"                  # 连续三次：重发重钉
+    assert calls["send"] == 2 and calls["unpin"] == 1 and pins == ["om_board1", "om_board2"]
+
+
+def test_backfill_is_not_throttled_by_rate_limit(outbox_bridge, monkeypatch):
+    """历史消息成批回来：限速会把它们丢掉，而水位照样前进，等于永久丢失。"""
+    import subprocess as sp
+
+    from v2.coding.feishu import lark as flark
+    b = outbox_bridge
+    b.state["fail"] = False
+    b.backfill()                                   # 记水位
+    items = [{"message_id": f"om_r{i}", "chat_type": "group",
+              "sender": {"id": "ou_me", "sender_type": "user"},
+              "body": {"content": json.dumps({"text": "状态"})}} for i in range(11)]
+    monkeypatch.setattr(flark, "history",
+                        lambda *a, **k: sp.CompletedProcess([], 0, json.dumps({"items": items}), ""))
+    b.clock["t"] += 600
+    assert b.backfill() == 11                      # 超过每分钟 10 条也一条不丢
+
+
+# ---------------------------------------------------------------------------
+# 审查修掉的坑：门点语义 / 幂等键截断 / 老快照 / 多卡同门 / 补读边界
+
+
+def test_gate_is_not_waiting_until_phase_reaches_it(outbox_bridge, tmp_path):
+    """建 run 时三个门都是 pending：只有 phase 走到那一阶段才算真的在等人。"""
+    b = outbox_bridge
+    b.state["fail"] = False
+    _state(tmp_path, "r-mid", "delegating",
+           gates={"g0": "approved", "g1": "skipped", "g2": "pending"})
+    assert b.publish()["enqueued"] == 0
+    _state(tmp_path, "r-mid", "closing",
+           gates={"g0": "approved", "g1": "skipped", "g2": "pending"})
+    assert b.publish()["enqueued"] == 1
+    assert "G2" in b.sent[-1]["out"]["card"]["header"]["title"]["content"]
+
+
+def test_idem_keeps_discriminator_when_truncated():
+    from v2.coding.feishu.bridge import _idem
+    assert _idem("kaimode", "work", "r-1", "abc") == "kaimode:work:r-1:abc"
+    a = _idem("kaimode", "a" * 40, "x" * 40, "fp1")
+    b = _idem("kaimode", "a" * 40, "x" * 40, "fp2")
+    assert len(a) <= 50 and a != b
+
+
+def test_legacy_string_snapshot_does_not_resend(outbox_bridge, tmp_path):
+    b = outbox_bridge
+    b.state["fail"] = False
+    _state(tmp_path, "r-old", "done")
+    fp = notify.fingerprint(notify.run_rows(tmp_path)[0])
+    notify.save_snapshots(b.dir / "snapshots.json", {"r-old": fp})
+    assert b.publish()["enqueued"] == 0            # 老快照的语义是「已经播过」
+
+
+def _click(bridge, run_id, gate, decision, nonce, message_id="om_c"):
+    payload = {"kind": "gate", "run_id": run_id, "gate": gate,
+               "decision": decision, "nonce": nonce}
+    sig = policy.sign(bridge._secret, payload)
+    raw = {"chat_id": "oc_1", "chat_type": "group", "sender_id": "ou_me",
+           "message_id": message_id, "action": {**payload, "sig": sig}}
+    return bridge.handle(policy.normalize(raw, "card.action.trigger", "work"))
+
+
+def test_gate_action_settles_every_card_and_blocks_second_submit(bridge):
+    patches = []
+    bridge.patcher = lambda mid, card, prof: (patches.append(mid), (True, ""))[1]
+    calls = []
+    bridge.serve_fn = lambda path, body: (calls.append(path) or (True, "200"))
+    bridge.ledger.remember_card("n1", "om_1", "work", "oc_1", "r-1", "g2")
+    bridge.ledger.remember_card("n2", "om_2", "work", "oc_1", "r-1", "g2")
+
+    assert "已提交" in _click(bridge, "r-1", "g2", "approve", "n2")[0]["text"]
+    assert sorted(patches) == ["om_1", "om_2"]     # 原卡 + 提醒卡都改成已处理
+
+    out = _click(bridge, "r-1", "g2", "reject", "n1", message_id="om_c2")
+    assert out[0]["text"] == "这个门点已经拍过板了。"
+    assert calls == ["/api/runs/r-1/gate"]          # 只提交过一次
+
+
+def test_gate_failure_settles_card_as_not_applied(bridge):
+    patches = []
+    bridge.patcher = lambda mid, card, prof: (patches.append((mid, card)), (True, ""))[1]
+    bridge.serve_fn = lambda path, body: (False, "HTTP 400")
+    bridge.ledger.remember_card("n-bad", "om_bad", "work", "oc_1", "r-9", "g2")
+    out = _click(bridge, "r-9", "g2", "approve", "n-bad")
+    assert "失败" in out[0]["text"]
+    assert patches[0][1]["header"]["title"]["content"] == "没生效"
+
+
+def test_pin_failure_is_retried_on_next_round(outbox_bridge, monkeypatch):
+    from v2.coding.feishu import lark as flark
+
+    calls = {"send": 0, "patch": 0}
+
+    def fake_send(*a, **k):
+        calls["send"] += 1
+        proc = type("P", (), {})()
+        proc.returncode, proc.stderr = 0, ""
+        proc.stdout = json.dumps({"message_id": "om_b1"})
+        return proc
+
+    def fake_patch(*a, **k):
+        calls["patch"] += 1
+        proc = type("P", (), {})()
+        proc.returncode, proc.stderr, proc.stdout = 0, "", "{}"
+        return proc
+
+    monkeypatch.setattr(flark, "send_card", fake_send)
+    monkeypatch.setattr(flark, "patch_card", fake_patch)
+    b = outbox_bridge
+    b.sender = None
+    b.pin_fn = lambda mid, prof: False
+    assert b.ensure_board()["work"] == "sent but pin failed"
+    b.pin_fn = lambda mid, prof: True
+    assert b.ensure_board()["work"] == "pinned"     # 补钉，不重发
+    assert calls["send"] == 1 and calls["patch"] == 1
+    assert b.ledger.meta_get("board:work:oc_1:miss", "") == ""   # 失败计数清零
+
+
+def test_each_bot_gets_its_own_board(outbox_bridge, monkeypatch):
+    from v2.coding.feishu import lark as flark
+    ids = iter(["om_a", "om_b"])
+
+    def fake_send(*a, **k):
+        proc = type("P", (), {})()
+        proc.returncode, proc.stderr = 0, ""
+        proc.stdout = json.dumps({"message_id": next(ids)})
+        return proc
+
+    monkeypatch.setattr(flark, "send_card", fake_send)
+    b = outbox_bridge
+    b.sender = None
+    b.pin_fn = lambda mid, prof: True
+    b.cfg["bots"] = [{"name": "work", "profile": "p1", "chat_id": "oc_1"},
+                     {"name": "home", "profile": "p2", "chat_id": "oc_2"}]
+    assert b.ensure_board() == {"work": "pinned", "home": "pinned"}
+
+
+def test_backfill_strips_mention_before_triage(outbox_bridge, monkeypatch):
+    import subprocess as sp
+
+    from v2.coding.feishu import lark as flark
+    b = outbox_bridge
+    b.state["fail"] = False
+    b.backfill()
+    items = [{"message_id": "om_at", "chat_type": "group",
+              "sender": {"id": "ou_me", "sender_type": "user"},
+              "body": {"content": json.dumps({"text": "@_user_1 状态"})}}]
+    monkeypatch.setattr(flark, "history",
+                        lambda *a, **k: sp.CompletedProcess([], 0, json.dumps({"items": items}), ""))
+    b.clock["t"] += 600
+    assert b.backfill() == 1                        # 群里带 @ 的命令不丢
+
+
+def test_backfill_keeps_watermark_when_history_fails(outbox_bridge, monkeypatch):
+    import subprocess as sp
+
+    from v2.coding.feishu import lark as flark
+    b = outbox_bridge
+    b.backfill()
+    mark = b.ledger.meta_get("backfill:work:oc_1")
+    b.clock["t"] += 600
+    monkeypatch.setattr(flark, "history",
+                        lambda *a, **k: sp.CompletedProcess([], 1, "", "token expired"))
+    assert b.backfill() == 0
+    assert b.ledger.meta_get("backfill:work:oc_1") == mark   # 读失败不动水位
+
+
+def test_backfill_watermark_stops_at_last_message_on_full_page(outbox_bridge, monkeypatch):
+    import subprocess as sp
+
+    from v2.coding.feishu import lark as flark
+    from v2.coding.feishu.bridge import _iso
+    b = outbox_bridge
+    b.cfg["backfill"]["limit"] = 2
+    b.backfill()
+    b.clock["t"] = 1600.0
+    items = [{"message_id": "om_a", "chat_type": "group", "create_time": "1500",
+              "sender": {"id": "ou_me", "sender_type": "user"},
+              "body": {"content": json.dumps({"text": "今天天气不错"})}},
+             {"message_id": "om_b", "chat_type": "group", "create_time": "1590",
+              "sender": {"id": "ou_me", "sender_type": "user"},
+              "body": {"content": json.dumps({"text": "今天天气也不错"})}}]
+    monkeypatch.setattr(flark, "history",
+                        lambda *a, **k: sp.CompletedProcess([], 0, json.dumps({"items": items}), ""))
+    b.backfill()
+    assert b.ledger.meta_get("backfill:work:oc_1") == _iso(1590)   # 没跳到 now，积压还能续
+
+
+def test_done_run_is_never_reminded(outbox_bridge, tmp_path):
+    b = outbox_bridge
+    b.state["fail"] = False
+    b.cfg["notify"].update({"debounce_s": 0, "gate_reminder_min": 20, "max_reminders": 3})
+    _state(tmp_path, "r-done", "done")
+    assert b.publish()["sent"] == 1
+    b.clock["t"] += 3600
+    assert b.publish()["enqueued"] == 0            # 完成卡不需要反复催
+
+
+def test_runner_boards_reports_only_failures(capsys):
+    from v2.coding.feishu import runner as frunner
+
+    class B:
+        def ensure_board(self):
+            return {"work": "send failed: boom", "home": "pinned"}
+
+    frunner._boards(B())
+    err = capsys.readouterr().err
+    assert "send failed" in err and "home" not in err

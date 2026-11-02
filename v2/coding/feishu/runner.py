@@ -27,6 +27,17 @@ def _report(stats: "dict[str, int]") -> "dict[str, int]":
     return stats
 
 
+def _boards(b: fbridge.Bridge) -> None:
+    try:
+        results = b.ensure_board()
+    except Exception as e:                  # noqa: BLE001
+        print(f"[feishu.warn] 看板出错：{type(e).__name__}: {e}", file=sys.stderr)
+        return
+    for name, state in results.items():
+        if state.startswith(("patch failed", "send failed", "sent but pin failed")):
+            print(f"[feishu.warn] 看板（{name}）：{state}", file=sys.stderr)
+
+
 def _acquire(root: Path) -> "tuple[Path | None, int]":
     """单实例：两个桥进程会各自 flush，同一行被发两次、attempts 每轮 +2。"""
     pid_path = root / ".coding" / "feishu" / "bridge.pid"
@@ -71,6 +82,7 @@ def _run(root: Path, cfg: "dict[str, Any]", once: bool) -> int:
         _report(b.publish())
         return 0
 
+    # 先起长连接再补读：反过来的话，补读那几十秒里用户发的消息既不在历史里也没人收。
     stop = threading.Event()
     threads = []
     for bot in cfg.get("bots") or []:
@@ -88,7 +100,17 @@ def _run(root: Path, cfg: "dict[str, Any]", once: bool) -> int:
             t.start()
             threads.append(t)
 
+    _boards(b)
+    try:
+        n = b.backfill()
+        if n:
+            print(f"[feishu] 补读了 {n} 条断线期间的消息", file=sys.stderr)
+    except Exception as e:                  # noqa: BLE001
+        print(f"[feishu.warn] 补读出错：{type(e).__name__}: {e}", file=sys.stderr)
+
     interval = max(5, int((cfg.get("notify") or {}).get("poll_s") or 15))
+    board_every = float((cfg.get("notify") or {}).get("board_min") or 0) * 60
+    last_board = b.now()
     try:
         while not stop.is_set():
             time.sleep(interval)
@@ -98,6 +120,9 @@ def _run(root: Path, cfg: "dict[str, Any]", once: bool) -> int:
             except Exception as e:          # noqa: BLE001 —— 常驻进程不能因一轮失败就死
                 print(f"[feishu.warn] 这一轮播报失败，下轮再试：{type(e).__name__}: {e}",
                       file=sys.stderr)
+            if board_every and b.now() - last_board >= board_every:
+                last_board = b.now()
+                _boards(b)
     except KeyboardInterrupt:
         stop.set()
     finally:

@@ -78,18 +78,36 @@ def transitions(previous: dict[str, str], rows: "list[dict[str, Any]]") -> "list
         fp = fingerprint(r)
         if previous.get(r["run_id"]) == fp:
             continue
-        phase = str(r.get("phase") or "")
-        if phase in {"done", "blocked"} or _gate_waiting(r):
-            out.append({"row": r, "fingerprint": fp, "kind": _kind(r)})
+        if should_notify(r):
+            out.append({"row": r, "fingerprint": fp, "kind": kind_of(r)})
     return out
 
 
-def _gate_waiting(row: dict[str, Any]) -> bool:
+def should_notify(row: dict[str, Any]) -> bool:
+    """只有这三种状态值得打扰人：完成、卡住、真的停在某个门点等人。"""
+    phase = str(row.get("phase") or "")
+    return phase in {"done", "blocked"} or bool(waiting_gate(row))
+
+
+# 内核建 run 时 g0/g1/g2 全是 pending；只有 phase 走到对应阶段才是「真的在等人」。
+GATE_PHASE = {"g0": "planning", "g1": "design", "g2": "closing"}
+
+
+def waiting_gate(row: dict[str, Any]) -> str:
+    """当前真正停在哪个门点；没有就返回空串。
+
+    不能只看「哪个门是 pending」——建 run 时三个门全是 pending，那样每个任务都会
+    被当成在等你拍板。
+    """
+    phase = str(row.get("phase") or "")
     gates = row.get("gates") or {}
-    return any(v == "pending" for v in gates.values() if isinstance(v, str))
+    for g, ph in GATE_PHASE.items():
+        if phase == ph and gates.get(g) == "pending":
+            return g
+    return ""
 
 
-def _kind(row: dict[str, Any]) -> str:
+def kind_of(row: dict[str, Any]) -> str:
     phase = str(row.get("phase") or "")
     if phase == "done":
         return "done"
@@ -98,15 +116,12 @@ def _kind(row: dict[str, Any]) -> str:
     return "gate"
 
 
-def render(kind: str, row: dict[str, Any], nonce: str = "") -> dict[str, Any]:
+def render(kind: str, row: dict[str, Any], nonce: str = "", reminder: bool = False) -> dict[str, Any]:
     rid = row.get("run_id", "")
     if kind == "done":
         return cards.done(rid, commit="", tasks=int(row.get("tasks_done") or 0))
     if kind == "blocked":
         return cards.blocked(rid, str(row.get("next_action") or ""))
-    gate = ""
-    for g, v in (row.get("gates") or {}).items():
-        if v == "pending":
-            gate = g
-            break
-    return cards.gate_request(rid, gate or "g2", str(row.get("next_action") or "到门点了，等你拍板。"), nonce)
+    gate = waiting_gate(row) or ""
+    return cards.gate_request(rid, gate or "g2", str(row.get("next_action") or "到门点了，等你拍板。"),
+                              nonce, reminder=reminder)

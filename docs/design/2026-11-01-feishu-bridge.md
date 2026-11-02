@@ -244,6 +244,10 @@ consumer 退出后按 1s/2s/5s/10s/30s 退避重启；`bridge.pid` 单实例。
 | 事件消费（长连接 + 退避重启） | `feishu/consumer.py` | ✅ |
 | 状态播报（指纹比对，完成/卡住/等拍板） | `feishu/notify.py` | ✅ |
 | 出站可靠投递（先落库、退避重试、死信、按机器人 profile 发） | `feishu/outbox.py` + `travel feishu outbox` | ✅ |
+| 播报防抖 + 门点提醒（久等不批再喊，上限可配） | `feishu/bridge.py` `_scan` | ✅ |
+| 卡片原地更新（拍板后把原卡改成结果） | `feishu/bridge.py` `_settle_card` + `lark.patch_card` | ✅ |
+| 置顶看板（发一次 → 置顶 → 定时原地刷新） | `feishu/bridge.py` `ensure_board` + `lark.pin` | ✅ |
+| 断线补读（水位 + 时间窗，只回放指令类消息） | `feishu/bridge.py` `backfill` | ✅ |
 | 桥编排（分诊执行、会话续接、预算、审计） | `feishu/bridge.py` | ✅ |
 | 唤醒（复用宿主适配器，支持 resume） | `feishu/wake.py` | ✅ |
 | 主循环 | `feishu/runner.py` + `travel feishu run` | ✅ |
@@ -251,12 +255,29 @@ consumer 退出后按 1s/2s/5s/10s/30s 退避重启；`bridge.pid` 单实例。
 
 还没做（照实写，不假装）：
 
-- **卡片原地更新**：每次状态变化发新卡（幂等键防重）；原地更新依赖 30 分钟 token 的实测
-- **看板常驻消息**：`travel feishu board` 能出卡片 JSON，还没实现「群里一条消息原地刷新」
-- **消息历史补读**：断线只记缺口，不补读
-- **多维表格看板**：未做
-- **`notify.debounce_s` / `gate_reminder_min`**：配置项在，逻辑还没接（现在是状态一变就发；
-  播报本身只对「完成/卡住/等拍板」出卡，抖动量有限）
+- **多维表格看板**：未做。置顶卡片已经给了「常驻一块板」；多维表格是另一套表结构与权限，
+  等真需要按字段筛选再看
+- **事件去重的崩溃窗口**：事件在副作用之前就记成「已处理」，进程恰在长 wake 中崩溃时这条
+  回复会丢（换来的是门点不会被重复批；选了不重复执行那一侧）
+- **原地改卡的字段实测**：`im messages patch` 的 `content` 封装按 schema 写（`{"content": "<json>"}`），
+  真机回执还没验过
+
+已实现的机制细节：
+
+- **防抖**：状态变化后要稳定 `notify.debounce_s`（默认 10 秒）才发卡，连续变化只发最后一张
+- **门点提醒**：同一门点挂着不动，每 `gate_reminder_min`（默认 20 分钟）再发一张
+  「还在等你拍板」，最多 `max_reminders`（默认 3）次；指纹一变计数归零。
+  **什么算「在等人」**：不是「哪个门是 pending」——建 run 时 g0/g1/g2 全是 pending。
+  只有 phase 走到该门的停靠点（g0→planning、g1→design、g2→closing）且该门仍 pending 才算；
+  否则每个在飞的任务都会被当成在等你拍板。同一 run+门可能有多张卡（原卡+提醒卡），
+  拍板时全部原地改成结果，并按 `gate:<run>:<gate>` 再挡一道重复提交
+- **置顶看板**：第一次发一条看板卡并 `im pins create`；之后 `notify.board_min`（默认 30 分钟）
+  用 `im messages patch` 原地刷新。卡片被删或超过 14 天就重发并重新置顶
+- **原地改卡**：发出的卡片带按钮时记下 `message_id`（ledger `cards` 表），点按钮后把原卡改成
+  「已拍板 / 没生效」，群里不留一张还能点的旧卡
+- **断线补读**：每个群记一个水位（ledger `meta`）。启动时按水位补读，但只取最近
+  `backfill.max_min`（默认 180 分钟）内、且「像指令」的消息（命令/想法/批拒），
+  旧闲聊和自己发的消息不回放；首次启动只记水位，不回灌全部历史
 
 出站投递的规则（已实现）：任何发送动作之前消息已在 sqlite `outbox` 表；失败按
 30s → 1m → 2m … 退避，封顶 15 分钟，共 8 次后进 `dead`；死信不删，`travel feishu outbox`

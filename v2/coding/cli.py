@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from . import adapters, dirty, scheduler, service, state as st, worktree
+from .feishu import bridge as fbridge
 from .feishu import cards as fcards, config as fcfg, lark as flark, notify as fnotify
 from .feishu import ledger as fledger, runner as frunner, triage as ftriage
 
@@ -957,6 +958,15 @@ def cmd_feishu(args: argparse.Namespace) -> None:
             led.close()
         return
 
+    if action == "backfill":
+        b = fbridge.Bridge(root, cfg)
+        try:
+            n = b.backfill()
+            print(json.dumps({"backfilled": n}, ensure_ascii=False, indent=2))
+        finally:
+            b.ledger.close()
+        return
+
     if action == "send-test":
         bot = fcfg.bot_for(cfg)
         chat = str(bot.get("chat_id") or "")
@@ -1238,7 +1248,8 @@ def build_parser() -> argparse.ArgumentParser:
     fs = sub.add_parser("feishu",
                         help="feishu bridge: status / doctor / triage / board / outbox / send-test / run")
     fs.add_argument("action", nargs="?", default="status",
-                    choices=["status", "doctor", "triage", "board", "outbox", "send-test", "run"])
+                    choices=["status", "doctor", "triage", "board", "outbox", "backfill",
+                             "send-test", "run"])
     fs.add_argument("text", nargs="*", default=[], help="text for triage / send-test")
     fs.add_argument("--once", action="store_true", help="run: do one notify tick and exit")
     fs.add_argument("--status", default="", help="outbox: only rows in this status (pending / sent / dead)")

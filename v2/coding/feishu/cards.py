@@ -44,9 +44,11 @@ def board(rows: "list[dict[str, Any]]", title: str = "任务看板") -> dict[str
     return card(title, "\n".join(lines) + more)
 
 
-def gate_request(run_id: str, gate: str, summary: str, nonce: str) -> dict[str, Any]:
+def gate_request(run_id: str, gate: str, summary: str, nonce: str,
+                 reminder: bool = False) -> dict[str, Any]:
+    title = f"还在等你拍板 · {gate.upper()}" if reminder else f"等你拍板 · {gate.upper()}"
     return card(
-        f"等你拍板 · {gate.upper()}",
+        title,
         f"**run** `{run_id}`\n\n{summary}",
         buttons=[
             _btn("批准", {"kind": "gate", "run_id": run_id, "gate": gate,

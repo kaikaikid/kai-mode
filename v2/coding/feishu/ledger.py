@@ -32,6 +32,13 @@ CREATE TABLE IF NOT EXISTS outbox (
   created_at REAL, sent_at REAL, error TEXT,
   next_attempt_at REAL DEFAULT 0
 );
+CREATE TABLE IF NOT EXISTS meta (
+  k TEXT PRIMARY KEY, v TEXT, updated_at REAL
+);
+CREATE TABLE IF NOT EXISTS cards (
+  nonce TEXT PRIMARY KEY, message_id TEXT, bot TEXT, chat_id TEXT,
+  run_id TEXT, gate TEXT, created_at REAL
+);
 """
 
 
@@ -190,4 +197,44 @@ class Ledger:
         """只清已经发成功的旧行；待发与死信一律留痕。"""
         cur = self._write("DELETE FROM outbox WHERE status='sent' AND COALESCE(sent_at, 0) < ?",
                           (float(before),))
+        return cur.rowcount
+
+    # ── 元数据：看板消息 id、补读水位等 ──────────────────────
+    def meta_get(self, key: str, default: str = "") -> str:
+        row = self.db.execute("SELECT v FROM meta WHERE k=?", (key,)).fetchone()
+        return str(row["v"]) if row and row["v"] is not None else default
+
+    def meta_set(self, key: str, value: str) -> None:
+        self._write(
+            "INSERT INTO meta(k, v, updated_at) VALUES(?,?,?)"
+            " ON CONFLICT(k) DO UPDATE SET v=excluded.v, updated_at=excluded.updated_at",
+            (key, str(value), self.clock()))
+
+    def meta_del(self, key: str) -> None:
+        self._write("DELETE FROM meta WHERE k=?", (key,))
+
+    # ── 已发卡片：nonce → message_id，拍板后原地改卡 ──────────
+    def remember_card(self, nonce: str, message_id: str, bot: str, chat_id: str,
+                      run_id: str = "", gate: str = "") -> None:
+        self._write(
+            "INSERT OR REPLACE INTO cards(nonce, message_id, bot, chat_id, run_id, gate, created_at)"
+            " VALUES(?,?,?,?,?,?,?)",
+            (nonce, message_id, bot, chat_id, run_id, gate, self.clock()))
+
+    def card_message(self, nonce: str) -> "dict[str, Any] | None":
+        row = self.db.execute("SELECT * FROM cards WHERE nonce=?", (nonce,)).fetchone()
+        return dict(row) if row else None
+
+    def cards_for(self, run_id: str, gate: str = "") -> "list[dict[str, Any]]":
+        """同一个 run + 门点的所有卡（原卡 + 各次提醒卡）：拍板后要全部改成已处理。"""
+        if gate:
+            rows = self.db.execute("SELECT * FROM cards WHERE run_id=? AND gate=?",
+                                   (run_id, gate)).fetchall()
+        else:
+            rows = self.db.execute("SELECT * FROM cards WHERE run_id=?", (run_id,)).fetchall()
+        return [dict(r) for r in rows]
+
+    def forget_cards_before(self, ts: float) -> int:
+        """卡片 14 天后就不能原地更新了，映射留着也没用。"""
+        cur = self._write("DELETE FROM cards WHERE COALESCE(created_at, 0) < ?", (float(ts),))
         return cur.rowcount
