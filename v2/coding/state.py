@@ -17,6 +17,24 @@ from . import SCHEMA_VERSION
 TERMINAL_PHASES = {"done", "cancelled", "failed"}
 ACTIVE_PHASES = {"planning", "design", "delegating", "reviewing", "closing"}
 
+# session 的执行模式：cli = travel spawn 起的宿主 CLI 子进程；native = 宿主自己的
+# 子代理（claim 占位，不起进程）。旧 state 没有该字段，一律按 cli 处理。
+SESSION_MODES = ("cli", "native")
+
+
+def session_mode(session: dict[str, Any] | None) -> str:
+    """读 session 的执行模式；缺字段或未知值按 cli（向后兼容旧 state）。"""
+    mode = (session or {}).get("mode")
+    return mode if mode in SESSION_MODES else "cli"
+
+
+def set_session_mode(session: dict[str, Any], mode: str) -> dict[str, Any]:
+    """写 session 的执行模式；只收 cli / native，state 里不留第三种值。"""
+    if mode not in SESSION_MODES:
+        raise ValueError(f"unknown session mode: {mode}")
+    session["mode"] = mode
+    return session
+
 
 def repo_root(start: Path | None = None) -> Path:
     p = (start or Path.cwd()).resolve()

@@ -231,6 +231,40 @@ def _report_path(run_id: str, tid: str) -> Path:
     return st.run_dir(run_id, _root()) / "sessions" / f"{tid}.report.json"
 
 
+def _card_report_path(run_id: str, sid: str) -> str:
+    """任务卡上的报告路径：仓库根相对路径，宿主子代理照着写。"""
+    root = _root()
+    p = st.run_dir(run_id, root) / "sessions" / sid / "report.json"
+    try:
+        return p.relative_to(root).as_posix()
+    except ValueError:
+        return p.as_posix()
+
+
+def _diff_base(s: dict[str, Any]) -> str:
+    """native 任务的 diff 基线：分支与 base 的 merge-base，取不到退回 base 分支名。"""
+    try:
+        mb = worktree._git("merge-base", s.get("base_branch") or "main",
+                           s.get("branch") or worktree.branch_name(s["run_id"]),
+                           cwd=_root(), check=False).stdout.strip()
+    except Exception:
+        mb = ""
+    return mb or s.get("base_branch") or "HEAD"
+
+
+def _claim_card(s: dict[str, Any], t: dict[str, Any], sess: dict[str, Any]) -> dict[str, Any]:
+    """宿主原生子代理的任务卡：状态里能确定的都放进来，不依赖进程句柄。"""
+    return {
+        "task_id": t["id"],
+        "brief": t.get("brief", ""),
+        "worktree": s.get("worktree") or str(_root()),
+        "touchset": list(t.get("touchset", [])),
+        "ac": list(t.get("ac", [])),
+        "report_path": _card_report_path(s["run_id"], sess["id"]),
+        "diff_base": sess.get("diff_base") or _diff_base(s),
+    }
+
+
 # ---------------------------------------------------------------------------
 # commands
 
@@ -509,6 +543,98 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         print(json.dumps({"session": sid, "adapter": adapter.name, "pid": handle.get("pid")}))
 
 
+def cmd_claim(args: argparse.Namespace) -> None:
+    """宿主原生子代理占位：校验后写 session（mode=native）并输出任务卡，不起进程。
+
+    幂等：同一 task 已经是 running 且有 native session 时，原样返回同一张卡，
+    不重复占槽、不新增 session。
+    """
+    root = _root()
+    with st.lock(root):
+        s = st.load(args.run_id, root)
+        if s.get("phase") in st.TERMINAL_PHASES:
+            _err(f"run is terminal ({s['phase']}); claim rejected")
+        if s.get("phase") == "queued":
+            _err("run is queued; wait for a free slot")
+        t = _task(s, args.task_id)
+
+        sid = t.get("session_id")
+        if t.get("status") == "running" and sid:
+            sess = next((x for x in s.get("sessions", []) if x.get("id") == sid), None)
+            if sess is None:
+                _err(f"task {t['id']} is running but session {sid} is missing from state")
+            mode = st.session_mode(sess)
+            if mode != "native":
+                _err(f"task {t['id']} is already running under a {mode} session ({sid}); "
+                     f"use `travel report {s['run_id']} {t['id']}`")
+            print(json.dumps(_claim_card(s, t, sess), ensure_ascii=False, indent=2))
+            return
+
+        if t.get("status") not in {"pending", "ready", "returned"}:
+            _err(f"task {t['id']} is {t.get('status')}")
+        if t.get("status") != "returned" and not scheduler.deps_done(
+                t, {x["id"]: x for x in s["tasks"]}):
+            _err("deps not done")
+        touchset = t.get("touchset", [])
+        if scheduler.touchsets_overlap(touchset, scheduler.inflight_touchsets(s)):
+            _err("touchset overlaps an in-flight task in this run")
+        for other, others in scheduler.other_runs_touchsets(s, root):
+            if scheduler.touchsets_overlap(touchset, others):
+                _err(f"touchset overlaps an in-flight task in run {other}")
+        ok, why = scheduler.can_spawn(s, t, root)
+        if not ok:
+            _err(f"cannot claim: {why}")
+
+        sid = _new_sid()
+        sess = {
+            "id": sid,
+            "task_id": t["id"],
+            "adapter": "native",
+            "pid": None,
+            "started_at": time.time(),
+            "status": "running",
+            # 幂等重放时复用同一基线，任务卡才能一模一样。
+            "diff_base": _diff_base(s),
+        }
+        st.set_session_mode(sess, "native")
+        s.setdefault("sessions", []).append(sess)
+        t["status"] = "running"
+        t["session_id"] = sid
+        s["phase"] = "delegating" if s["phase"] in {"planning", "design"} else s["phase"]
+        _session_dir(s["run_id"], sid).mkdir(parents=True, exist_ok=True)
+        _save(s)
+        print(json.dumps(_claim_card(s, t, sess), ensure_ascii=False, indent=2))
+
+
+def cmd_release(args: argparse.Namespace) -> None:
+    """释放 native 占位：task 回 pending，session 标 released，随后可再次 claim。
+
+    只收 native session；CLI 子进程的生命周期归 `travel report` / `travel stop`。
+    """
+    root = _root()
+    with st.lock(root):
+        s = st.load(args.run_id, root)
+        t = _task(s, args.task_id)
+        sid = t.get("session_id")
+        if not sid:
+            _err(f"task {t['id']} has no session")
+        sess = next((x for x in s.get("sessions", []) if x.get("id") == sid), None)
+        if sess is None:
+            _err(f"session {sid} is missing from state")
+        mode = st.session_mode(sess)
+        if mode != "native":
+            _err(f"release only supports native sessions; {sid} is {mode}")
+        if t.get("status") != "running":
+            _err(f"task {t['id']} is {t.get('status')}, not running")
+        sess["status"] = "released"
+        t["status"] = "pending"
+        t["session_id"] = None
+        _save(s)
+        print(json.dumps({"task_id": t["id"], "session": sid, "mode": mode,
+                          "task_status": t["status"], "session_status": sess["status"]},
+                         ensure_ascii=False, indent=2))
+
+
 def _build_brief(s: dict[str, Any], t: dict[str, Any]) -> str:
     return (
         f"You are a worker in a V2 run. The orchestrator owns the plan, design and final judgment; "
@@ -543,6 +669,9 @@ def cmd_report(args: argparse.Namespace) -> None:
         sess = next((x for x in s.get("sessions", []) if x["id"] == sid), None)
         if not sess:
             _err("session record missing")
+        if st.session_mode(sess) == "native":
+            _err(f"task {t['id']} is a native session; read "
+                 f"{_card_report_path(s['run_id'], sid)} directly instead of `travel report`")
         sdir = _session_dir(s["run_id"], sid)
         try:
             adapter = adapters.get(sess["adapter"])
@@ -819,6 +948,11 @@ def cmd_status(args: argparse.Namespace) -> None:
         gate = next((g for g in ("g0", "g1", "g2") if s.get("gates", {}).get(g) == "pending"), "-")
         print(f"{s['run_id']:10} {s.get('phase',''):11} {f'{done}/{total}' if total else '-':7} "
               f"{gate:6} {s.get('priority','normal'):7} {s.get('issue','')[:40]}")
+        # 每个 session 的执行模式（cli / native）单独一行：旧 state 无 mode 时按 cli 显示。
+        for sess in s.get("sessions", []):
+            role = f" role={sess['role']}" if sess.get("role") else ""
+            print(f"  session {sess.get('id','')} task={sess.get('task_id') or '-'} "
+                  f"mode={st.session_mode(sess)} status={sess.get('status','')}{role}")
 
 
 def _write_board(runs: list[dict[str, Any]], root: Path) -> None:
@@ -877,8 +1011,15 @@ def cmd_gc(args: argparse.Namespace) -> None:
 def cmd_doctor(args: argparse.Namespace) -> None:
     root = _root()
     problems = []
+    sessions: list[dict[str, Any]] = []
     for s in st.list_runs(root):
         rid = s["run_id"]
+        # 诊断面列出全部 session 的执行模式（旧 state 无 mode 时按 cli）。
+        for sess in s.get("sessions", []):
+            sessions.append({
+                "run_id": rid, "session": sess.get("id"), "task": sess.get("task_id"),
+                "mode": st.session_mode(sess), "status": sess.get("status"),
+            })
         if s.get("phase") in st.TERMINAL_PHASES:
             continue
         wt = Path(s.get("worktree", ""))
@@ -888,7 +1029,7 @@ def cmd_doctor(args: argparse.Namespace) -> None:
             r = worktree._git("status", "--porcelain", cwd=wt, check=False)
             if r.stdout.strip() and s.get("phase") == "closing":
                 problems.append(f"{rid}: uncommitted changes before closing")
-    print(json.dumps({"problems": problems}, ensure_ascii=False, indent=2))
+    print(json.dumps({"problems": problems, "sessions": sessions}, ensure_ascii=False, indent=2))
     if problems:
         raise SystemExit(2)
 
@@ -1189,6 +1330,16 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--timeout", type=int, default=1800)
     sp.add_argument("--retry", action="store_true")
     sp.set_defaults(func=cmd_spawn)
+
+    cl = sub.add_parser("claim", help="claim a task for a host-native subagent (no CLI spawn)")
+    cl.add_argument("run_id")
+    cl.add_argument("task_id")
+    cl.set_defaults(func=cmd_claim)
+
+    rl = sub.add_parser("release", help="release a native claim; task returns to pending")
+    rl.add_argument("run_id")
+    rl.add_argument("task_id")
+    rl.set_defaults(func=cmd_release)
 
     rp = sub.add_parser("report", help="collect a worker report")
     rp.add_argument("run_id")
