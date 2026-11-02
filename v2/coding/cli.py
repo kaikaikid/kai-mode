@@ -669,23 +669,22 @@ def cmd_report(args: argparse.Namespace) -> None:
         sess = next((x for x in s.get("sessions", []) if x["id"] == sid), None)
         if not sess:
             _err("session record missing")
-        if st.session_mode(sess) == "native":
-            _err(f"task {t['id']} is a native session; read "
-                 f"{_card_report_path(s['run_id'], sid)} directly instead of `travel report`")
+        is_native = st.session_mode(sess) == "native"
         sdir = _session_dir(s["run_id"], sid)
-        try:
-            adapter = adapters.get(sess["adapter"])
-        except Exception as e:
-            _err(f"cannot reopen adapter '{sess.get('adapter')}' recorded in state: {e}")
         pid = 0
-        pidf = sdir / "pid"
-        if pidf.exists():
+        if not is_native:
             try:
-                pid = int(pidf.read_text().strip())
-            except Exception:
-                pid = 0
+                adapter = adapters.get(sess["adapter"])
+            except Exception as e:
+                _err(f"cannot reopen adapter '{sess.get('adapter')}' recorded in state: {e}")
+            pidf = sdir / "pid"
+            if pidf.exists():
+                try:
+                    pid = int(pidf.read_text().strip())
+                except Exception:
+                    pid = 0
     # 等待子会话进程结束放在锁外：长任务不能占住整个仓库的写锁
-    if pid > 0:
+    if (not is_native) and pid > 0:
         deadline = time.time() + args.timeout
         while time.time() < deadline and st._pid_alive(pid):
             time.sleep(0.5)
@@ -703,8 +702,23 @@ def cmd_report(args: argparse.Namespace) -> None:
                 _save(s)
             _err(f"worker timed out after {args.timeout}s; process tree killed")
     # 进程可能已经结束，报告落盘即可
-    text = adapter.read({"dir": str(sdir)})
-    report = adapters.parse_report(text)
+    if is_native:
+        rp = Path(sdir) / "report.json"
+        if not rp.is_file():
+            report = {"result": "partial", "files_changed": [], "verification": [],
+                      "open_questions": [], "notes": "native report missing: " + str(rp)}
+        else:
+            try:
+                report = json.loads(rp.read_text(encoding="utf-8"))
+            except Exception as e:
+                report = {"result": "partial", "files_changed": [], "verification": [],
+                          "open_questions": [], "notes": "native report not parseable: " + str(e)}
+        if not isinstance(report, dict) or "result" not in report:
+            report = {"result": "partial", "files_changed": [], "verification": [],
+                      "open_questions": [], "notes": "native report missing 'result' field"}
+    else:
+        text = adapter.read({"dir": str(sdir)})
+        report = adapters.parse_report(text)
     report_path = _report_path(args.run_id, args.task_id)
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -771,6 +785,9 @@ def _build_review_brief(s: dict[str, Any], t: dict[str, Any]) -> str:
 
 def cmd_review(args: argparse.Namespace) -> None:
     """门卫子代理：独立上下文只读审查，产出 accept/return 裁决。"""
+    if getattr(args, "native", False):
+        cmd_review_native(args)
+        return
     root = _root()
     with st.lock(root):
         s = st.load(args.run_id, root)
@@ -845,6 +862,97 @@ def cmd_review(args: argparse.Namespace) -> None:
             advance(s, root)
         _save(s)
     print(json.dumps(t["review"], ensure_ascii=False, indent=2))
+
+
+def cmd_review_native(args: argparse.Namespace) -> dict:
+    """只输出 native 审查卡，不 spawn。返回 card dict。"""
+    root = _root()
+    with st.lock(root):
+        s = st.load(args.run_id, root)
+        if s.get("phase") in st.TERMINAL_PHASES:
+            _err(f"run is terminal ({s['phase']}); review rejected")
+        t = _task(s, args.task_id)
+        if t.get("status") != "review":
+            _err(f"task {t['id']} is {t.get('status')}, not review")
+        mb = worktree._git("merge-base", s.get("base_branch") or "main",
+                           s.get("branch") or worktree.branch_name(s["run_id"]),
+                           cwd=_root(), check=False).stdout.strip()
+        diff_base = mb or s.get("base_branch") or "HEAD"
+        changed = worktree.changed_files(s["run_id"], s["base_branch"], root)
+        sid = _new_sid()
+        sdir = _session_dir(s["run_id"], sid)
+        sdir.mkdir(parents=True, exist_ok=True)
+        report_path = _card_report_path(s["run_id"], sid)
+        card = {
+            "task_id": t["id"],
+            "worktree": s.get("worktree") or str(root),
+            "diff_base": diff_base,
+            "changed_files": changed,
+            "ac": list(t.get("ac", [])),
+            "touchset": list(t.get("touchset", [])),
+            "review_report_path": report_path,
+            "read_only": True,
+            "instructions": "Use a read-only subagent of this host. Do not modify files. "
+                            "End with one JSON object: {verdict:accept|return, defects:[], reason:""}",
+        }
+        print(json.dumps(card, ensure_ascii=False, indent=2))
+        return card
+
+
+def cmd_verdict(args: argparse.Namespace) -> None:
+    """把 native 审查裁决写回：accept -> accepted；return -> returned（3 次转 blocked）。"""
+    root = _root()
+    rp = Path(args.file)
+    if not rp.is_file():
+        _err(f"verdict file not found: {rp}")
+    try:
+        rep = json.loads(rp.read_text(encoding="utf-8"))
+    except Exception as e:
+        _err(f"verdict file not parseable: {e}")
+    if not isinstance(rep, dict):
+        _err("verdict file must be a JSON object")
+    verdict = rep.get("verdict")
+    if verdict not in {"accept", "return"}:
+        _err(f"invalid verdict: {verdict!r} (expected accept/return)")
+    defects = rep.get("defects", [])
+    reason = rep.get("reason", "") or rep.get("notes", "")
+
+    with st.lock(root):
+        s = st.load(args.run_id, root)
+        if s.get("phase") in st.TERMINAL_PHASES:
+            _err(f"run is terminal ({s['phase']}); verdict rejected")
+        t = _task(s, args.task_id)
+        if t.get("status") != "review":
+            _err(f"task {t['id']} is {t.get('status')}, not review")
+        sid = _new_sid()
+        t["review"] = {
+            "verdict": verdict,
+            "defects": defects,
+            "reason": reason,
+            "session": sid,
+        }
+        t["session_id"] = sid
+        s.setdefault("sessions", []).append({
+            "id": sid, "task_id": t["id"], "adapter": "native-review",
+            "pid": None, "started_at": time.time(), "status": "finished",
+            "role": "reviewer", "mode": "native",
+        })
+        if verdict == "accept":
+            t["status"] = "accepted"
+            s["resume"]["last_accepted"] = t["id"]
+            s["resume"]["next_action"] = "next"
+        else:
+            t["status"] = "returned"
+            t["attempts"] = int(t.get("attempts", 0)) + 1
+            t["defects"] = "; ".join(defects) if defects else reason
+            if t["attempts"] >= 3:
+                t["status"] = "blocked"
+            s["resume"]["next_action"] = f"rework {t['id']}"
+        advance(s, root)
+        _save(s)
+    print(json.dumps({"task_id": t["id"], "verdict": verdict, "task_status": t["status"],
+                      "attempts": t.get("attempts", 0), "phase": s["phase"]},
+                     ensure_ascii=False, indent=2))
 
 
 def cmd_accept(args: argparse.Namespace) -> None:
@@ -1353,7 +1461,14 @@ def build_parser() -> argparse.ArgumentParser:
     rv.add_argument("--adapter")
     rv.add_argument("--timeout", type=int, default=900)
     rv.add_argument("--apply", action="store_true", help="apply verdict to task status")
+    rv.add_argument("--native", action="store_true", help="native mode: only print a review card, no spawn")
     rv.set_defaults(func=cmd_review)
+
+    vd = sub.add_parser("verdict", help="write a native review verdict (accept/return)")
+    vd.add_argument("run_id")
+    vd.add_argument("task_id")
+    vd.add_argument("--file", required=True, help="path to review report JSON")
+    vd.set_defaults(func=cmd_verdict)
 
     ac = sub.add_parser("accept", help="accept a task")
     ac.add_argument("run_id")
