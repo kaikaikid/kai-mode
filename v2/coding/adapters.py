@@ -57,6 +57,15 @@ TIER_MODEL = {
     "fable": _env("MODEL_FABLE"),
 }
 
+# tier → effort（与宿主 3p 配置的思考强度分层一致）。
+TIER_EFFORT = {
+    "light": "low",
+    "medium": "medium",
+    "careful": "medium",
+    "heavy": "high",
+    "fable": "high",
+}
+
 # 工具面是机械保证，不是提示词约定：Bash 只开测试/构建/git 本地白名单——
 # `git -C <root> push` 这类换头命令天然不在白名单里，push/reset/clean 显式 deny。
 WORKER_BASH = ("Bash(git add:*),Bash(git commit:*),Bash(git diff:*),Bash(git status:*),"
@@ -67,7 +76,8 @@ WORKER_DENY = ("Bash(rm:*),Bash(rmdir:*),Bash(git push:*),Bash(git reset:*),"
                "Bash(npm publish:*),Bash(python -c:*),Bash(python3 -c:*)")
 
 
-def worker_cmd(read_only: bool = False, model: str = "", resume: str | None = None) -> list[str]:
+def worker_cmd(read_only: bool = False, model: str = "", resume: str | None = None,
+               tier: str = "medium") -> list[str]:
     """构造 worker/reviewer 的 claude -p 命令行。
 
     worker：Bash 白名单 + Edit/Write（cwd 即 worktree，显式 deny `.coding/**`）。
@@ -88,6 +98,10 @@ def worker_cmd(read_only: bool = False, model: str = "", resume: str | None = No
     ]
     if model:
         cmd += ["--model", model]
+    # thinking 强度按 tier 分层；宿主不认 --effort 时 CLI 会忽略（magpie 支持）。
+    effort = TIER_EFFORT.get(tier)
+    if effort:
+        cmd += ["--effort", effort]
     # 续接同一个宿主会话（对话模式）：上下文由宿主侧保存，我们只传 id。
     if resume:
         cmd += ["--resume", str(resume)]
@@ -136,7 +150,7 @@ class ClaudeCli(Adapter):
         # worker 只会收到 brief 的第一行（实测：只收到「You are a worker...」开场白）。
         brief_path = session_dir / "brief.txt"
         brief_path.write_text(brief, encoding="utf-8")
-        cmd = worker_cmd(read_only=read_only, model=TIER_MODEL.get(tier), resume=resume)
+        cmd = worker_cmd(read_only=read_only, model=TIER_MODEL.get(tier), resume=resume, tier=tier)
         # 从宿主 settings.json 读 env（magpie / API key / base URL 等），
         # 路径按优先级探测：env KAI_AGENT_DATA_ROOT → ~/.claude/settings.json → 项目 .claude/settings.json
         _env = {**os.environ, "TRAVEL_WORKER": "1"}
