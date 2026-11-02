@@ -53,3 +53,10 @@ codex exec -C <仓库根> -s read-only --json -o <回执文件> \
 - 付费前先取得用户/项目授权；未授权 ⇒ 记 `paid-not-authorized`，不降级偷偷跑。
 - 不建/删其他宿主的定时任务；不替舰桥施工。
 - 未实测的 flag 不许写进正本；版本与探针读数写进项目本机配置。
+
+## 原生子代理（/travel-only 用）
+
+- 起新上下文：Codex 没有 Claude 式的 agent 定义文件；用独立 `codex exec` 进程作子代理，每票另起一次。
+- 只读：`codex exec -s read-only`（沙箱只读）；起一次让它写临时文件，**必须被拒**，否则登记 `soft-permission-only`。
+- 报告落盘：进程 stdout 收报告，主会话把 JSON 写到任务卡的 `report_path` / `review_report_path`。
+- 没有原生子代理 ⇒ Codex 走原 `travel`（CLI 进程）更自然；`/travel-only` 仍可用但退化为独立进程。

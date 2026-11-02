@@ -33,14 +33,14 @@
 
 ## 2. 宿主落法对照（装机前必须按 §1 复核，宿主会改）
 
-| 宿主 | 插件清单 | 技能落点 | 命令 | 新上下文 | 定时口 |
+| 宿主 | 插件清单 | 技能落点 | 命令 | 新上下文 | 定时口 | 原生子代理（/travel-only） |
 |---|---|---|---|---|---|
-| Claude Code | `.claude-plugin/marketplace.json` | `.claude/skills/<名>/SKILL.md` 或中央库副本 | 无角色命令；`bridge` 为默认入口 | 原生子代理或独立进程 | 无内置；人工按需起 |
-| Qoder | `.qoder-plugin/plugin.json` | `.qoder/skills/<名>/SKILL.md`（项目）／`~/.qoder/skills/`（用户） | 自然语言或显式提示词指向 `bridge` | 原生 subagent 或新会话 | 可不用；人工按需起 |
-| Codex | 无 | 项目技能目录；`codex exec` 读 `SKILL.md` | 无；用 prompt 指向 `bridge` | 独立 `codex exec -s read-only` 进程 | 无 |
-| OpenCode | 无 | 项目技能目录（`registry.skills.project_skills_dir`） | 无；用 prompt | 独立 `opencode run` 进程 | 无 |
-| Copilot | 无 | `.github/agents/<名>.agent.md`（宿主自有） | 无 | 宿主 agent | 视版本 |
-| Cursor | 无 | `.cursor/agents/<名>.md`（宿主自有） | 无 | 宿主 agent | 视版本 |
+| Claude Code | `.claude-plugin/marketplace.json` | `.claude/skills/<名>/SKILL.md` 或中央库副本 | 无角色命令；`bridge` 为默认入口 | 原生子代理或独立进程 | 无内置；人工按需起 | 原生子代理（Agent/.claude/agents） |
+| Qoder | `.qoder-plugin/plugin.json` | `.qoder/skills/<名>/SKILL.md`（项目）／`~/.qoder/skills/`（用户） | 自然语言或显式提示词指向 `bridge` | 原生 subagent 或新会话 | 可不用；人工按需起 | 原生 subagent（.qoder/agents） |
+| Codex | 无 | 项目技能目录；`codex exec` 读 `SKILL.md` | 无；用 prompt 指向 `bridge` | 独立 `codex exec -s read-only` 进程 | 无 | 无原生；退化为独立进程 |
+| OpenCode | 无 | 项目技能目录（`registry.skills.project_skills_dir`） | 无；用 prompt | 独立 `opencode run` 进程 | 无 | 无原生；退化为独立进程 |
+| Copilot | 无 | `.github/agents/<名>.agent.md`（宿主自有） | 无 | 宿主 agent | 视版本 | 视版本 |
+| Cursor | 无 | `.cursor/agents/<名>.md`（宿主自有） | 无 | 宿主 agent | 视版本 | 视版本 |
 
 不在表里的宿主：按 §1 四步自测，然后在本表补一行。
 

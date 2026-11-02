@@ -51,3 +51,7 @@ opencode run --model <free-model> \
 - 不建/删其他宿主的定时任务。
 - 不替舰桥施工；只把舰桥技能跑起来。
 - 与按需子会话一样，目标在岗不重复起。
+
+## 原生子代理（/travel-only 用）
+
+- 起新上下文：没有 agent 定义文件这一层 ⇒ **原生子代理不适用**；`/travel-only` 不适用，走原 `travel`（CLI 进程）。
