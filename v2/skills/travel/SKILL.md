@@ -56,6 +56,12 @@ compatibility: Host-agnostic
   → 全部 accepted → G2：travel gate <run> g2 approve   # merge → 收尾门 → push → 关票
 ```
 
+## 双轨：CLI 与宿主原生
+
+- `travel`：拉起 CLI 进程（可无人值守、挂机、飞书自动唤醒）。
+- `/travel-only`：用当前宿主自己的子代理派活（主会话必须开着；无原生子代理的宿主不适用）。
+- 两套共享 `.coding/runs/`，session 记 `mode: cli | native`；看板与 `travel doctor` 能分清。
+
 ## 命令速查
 
 | 命令 | 作用 |
