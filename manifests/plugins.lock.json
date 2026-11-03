@@ -11,7 +11,7 @@
     },
     "core": {
       "version": "1.3.0",
-      "digest": "26092fbb92e011d33ddc38e6da3c897e59ee6e8785ca6074a1d79b59f58cf19c",
+      "digest": "7d093595b3387308fb499bc7626a517042ea4ad0a899b0e4f80c3775ad55fe8e",
       "skills": {
         "bridge": "0.1.0",
         "harness-audit": "0.2.0",
@@ -74,9 +74,10 @@
     },
     "v2": {
       "version": "0.4.0",
-      "digest": "6248083c5473c31383dda451a2a4a3606f5b1781310d515e544c0aeb19193f6c",
+      "digest": "76c867764134dcf122ec876af9106582c76a6336bfe4e7c71d59ece6c3c59a4b",
       "skills": {
-        "travel": "0.3.0"
+        "travel": "0.3.0",
+        "travel-only": "0.1.0"
       }
     }
   }

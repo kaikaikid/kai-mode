@@ -103,6 +103,7 @@ python scripts/init-project.py --repo <目标仓> --answers a.json   # 机器填
 | 6 | 开票归属守卫（宿主 PreToolUse 钩子） | 无 `--repo` 的 `gh issue create` 被拒；带 `--repo` 放行 |
 | 7 | 飞书桥（可选，用户点名才装） | 机器人已进群、配置被 gitignore、有界收发各验一条 |
 | 8 | 缺件登记与安装回执 | 缺件按三格登记，回执含宿主落点核对 |
+| 9 | 子代理模板（可选，用户点名才装） | 目标目录 7 个 `.md` 在位；新会话里同名内置被覆盖、分档生效 |
 
 ### 0. 缺口扫描（只读）
 
@@ -304,6 +305,28 @@ lark-cli im +chat-members-list --chat-id <id> --as bot --json   # 有配置时�
 - **宿主落点核对**：① `bridge` 与 `coding` 在宿主技能目录；② 新上下文口可用（子代理／独立进程／新会话至少一条），
   不可用就登记 `no-new-context`；③ 旧 V1 链接已摘或已列清单。
 - 不把状态写进本地台账：票状态只看 GitHub；run 状态只看 `.coding/runs/`。
+
+### 9. 子代理模板（可选，用户点名才装）
+
+> 模板正本：本技能 `agents/`——四自建（`implementer` / `reviewer` / `adjudicator` / `researcher`）
+> ＋ 三内置覆盖（`Explore` / `Plan` / `general-purpose`）。只写模型、权限、轮次上限；判据不住这里。
+> 宿主差异见 `adapters/claude.md`「内置子代理与同名覆盖」。
+
+```bash
+S=core/skills/set-kai-mode/scripts/install-agents.py
+python $S --project <项目仓> --dry-run   # 默认项目级：<项目仓>/.claude/agents/
+python $S --project <项目仓>
+python $S --host-root --dry-run          # 宿主级：$CLAUDE_CONFIG_DIR/agents/，未设则 ~/.claude/agents/
+python $S --host-root --force            # 同名不同内容：备份后覆盖
+```
+
+- **默认项目级**：`adapters/README.md` §8 规定落点必须项目级，避免和用户其它框架同名打架。
+  `--host-root` 是显式例外，装机回执必须写「宿主级安装（例外）」。
+- **同名覆盖只对项目级可靠**：宿主级同名项优先级低于项目级，也盖不掉内置（覆盖件要放项目目录）。
+- **宿主级只看一个根**：设了 `CLAUDE_CONFIG_DIR` 后，`~/.claude/agents/` 不再被读取——
+  装错根等于没装；先 `echo $CLAUDE_CONFIG_DIR` 再装。
+- **验收**：脚本回执里 7 个文件在位；**新开会话**（旧会话不重载）代理列表出现自建名；
+  起一个只读子代理让它写临时文件，必须被拒。
 
 ## 卸载 V1（下线腿）
 
