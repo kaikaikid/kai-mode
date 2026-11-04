@@ -44,7 +44,7 @@ metadata:
 3. **不静默覆盖**：同名不同内容、用户可能改过的文件，逐条问「保留／覆盖」，默认保留；覆盖前一定有备份。
 4. **项目数据一律不碰**：交接、ADR、术语表、项目本地技能骨架、票与 run 状态。升级只报「模板有新版」，改不改由项目自己定。
 5. **每步可退**：写盘前有备份、有旧 commit、有回执，退法写进回执。
-6. **没有读数不算升完**：漂移表、实例校验、存证、宿主回读，缺一项就按缺件三格登记（[判据](../principle-report-missing-parts/SKILL.md)）。
+6. **没有读数不算升完**：漂移表、实例校验、存证、宿主回读，缺一项就按缺件三格登记（[判据](../principles/SKILL.md)（§5 缺件如实登记））。
 
 ## 第 0 步 · 读现状（只读，不写盘）
 
@@ -251,6 +251,6 @@ python <源仓>/scripts/check-instance.py --repo <项目仓>
 |---|---|
 | 首次安装、换宿主、装默认入口、旧实例字段映射 | [`set-kai-mode`](../set-kai-mode/SKILL.md) |
 | 技能正本 → 宿主的机制与漂移表 | [`set-kai-mode`](../set-kai-mode/SKILL.md)「装技能到宿主」 |
-| 缺件怎么登记 | [`principle-report-missing-parts`](../principle-report-missing-parts/SKILL.md) |
+| 缺件怎么登记 | [`principles`](../principles/SKILL.md)（§5 缺件如实登记） |
 | 入口、路由与拍板 | [`kai-mode`](../kai-mode/SKILL.md) |
 | 本机环境事实（解释器、node、坑） | 本机 `agents.local.md`（不入库，每台一份） |

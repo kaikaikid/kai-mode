@@ -91,34 +91,6 @@
     "oneLine": "机长：带施工和审查，滚动跑完自己的日表。",
     "trigger": "/pilot；说「机长」"
   },
-  "principle-ask-one-question-at-a-time": {
-    "oneLine": "拷问原则：一次只问一个问题，每题带推荐答案。",
-    "trigger": "自动带入"
-  },
-  "principle-ceremony-collapses-with-scale": {
-    "oneLine": "规模原则：小活不配大流程，仪式随规模缩。",
-    "trigger": "自动带入"
-  },
-  "principle-measure-dont-ask": {
-    "oneLine": "实证原则：能跑一下量出来的，就别问人。",
-    "trigger": "自动带入"
-  },
-  "principle-one-semantics-one-home": {
-    "oneLine": "正本原则：一个规则只留一个家，别处只放指针。",
-    "trigger": "自动带入"
-  },
-  "principle-output-structure": {
-    "oneLine": "输出结构原则：先结论、去废话，按理解成本挑文字/图/页面/视频。",
-    "trigger": "自动带入"
-  },
-  "principle-report-missing-parts": {
-    "oneLine": "缺件原则：缺什么就如实登记，不猜、不装。",
-    "trigger": "自动带入"
-  },
-  "principle-visible-and-redline-only": {
-    "oneLine": "审批原则：只拿看得见的东西和红线问人。",
-    "trigger": "自动带入"
-  },
   "producer": {
     "oneLine": "企划：立项、排期、预算、指派负责人。",
     "trigger": "/producer；说「企划」"
@@ -146,5 +118,9 @@
   "upgrade-kai-mode": {
     "oneLine": "把已经装好的 kai-mode 升到新版：先出清单，再备份、回写、验收。",
     "trigger": "/upgrade-kai-mode；说「升级 kai-mode」"
+  },
+  "principles": {
+    "oneLine": "七条原则合集：一次一问、只问可见与红线、能测就别问、一个语义一个家、缺件登记、仪式随规模、输出挑载体。",
+    "trigger": "自动带入"
   }
 }

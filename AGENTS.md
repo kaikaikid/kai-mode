@@ -40,7 +40,7 @@ Sub-agents inherit the session's effort by default (currently max). To avoid was
 
 Rule: never omit `effort` and let it inherit max. Pass it explicitly per task type.
 
-Outputs follow the L1–L4 carrier ladder (text → diagram → single-file HTML → explainer video, cheapest first). Source of truth: `core/skills/principle-output-structure/SKILL.md`.
+Outputs follow the L1–L4 carrier ladder (text → diagram → single-file HTML → explainer video, cheapest first). Source of truth: `core/skills/principles/SKILL.md`（§7 输出）.
 
 ## Red lines (the only hard stops; everything else is a default)
 
@@ -74,7 +74,7 @@ skill runs bridge's method. Source of truth: `docs/adr/0028-bridge-entry-and-air
 | Run-level protocol (slots, fail/retry counts, receipt, shipping) | `v2/skills/travel/SKILL.md` | pointer |
 | Dispatch (when to delegate, context budget, report shape) | `v2/skills/travel/SKILL.md` | pointer |
 | Method (how to explore / review / plan / implement) | `methods/skills/kai-*/SKILL.md` | pointer |
-| Output structure (which carrier: L1 text / L2 diagram / L3 single-file HTML / L4 explainer video) | `core/skills/principle-output-structure/SKILL.md` | pointer |
+| Output structure (which carrier: L1 text / L2 diagram / L3 single-file HTML / L4 explainer video) | `core/skills/principles/SKILL.md`（§7 输出） | pointer |
 | Host differences (launcher per role, how a persona becomes a native agent file, permissions, model) | `adapters/README.md` + `adapters/<host>.md` | pointer |
 | Artifact packaging (dev records vs host payload vs project scaffold) | `manifests/package-layout.json` + `docs/package-layout.md` | pointer |
 | Agent global data layout (non-project data root, per-agent override, project boundary) | `docs/agent-data-layout.md` | pointer in adapters |

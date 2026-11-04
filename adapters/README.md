@@ -6,9 +6,8 @@
 > **③ 缺什么怎么登记**（三格，不猜）。
 > 人格文件已退役：框架不再定义 per-agent 人格；派活规则住 `v2/skills/travel/SKILL.md`。
 
-> **执行侧不在这里。** 本文管「怎么把技能装到宿主」；「怎么让宿主跑 worker」由宿主适配器
-> 负责，契约见 [`v2/skills/travel/host-adapter.md`](../v2/skills/travel/host-adapter.md)，
-> 现场用 `travel harness check` / `travel harness verify <名>` 自举与验收。
+> **执行侧只用宿主原生子代理。** V2 不拉 CLI 进程；宿主起不了子代理就不适用，按 §6 登记
+> `no-new-context`，不退化成「主会话自己写代码」或「另起 CLI」。
 
 ## 0. 三层分工
 
@@ -33,7 +32,7 @@
 
 ## 2. 宿主落法对照（装机前必须按 §1 复核，宿主会改）
 
-| 宿主 | 插件清单 | 技能落点 | 命令 | 新上下文 | 定时口 | 原生子代理（/travel-only） |
+| 宿主 | 插件清单 | 技能落点 | 命令 | 新上下文 | 定时口 | 原生子代理（V2 必需） |
 |---|---|---|---|---|---|
 | Claude Code | `.claude-plugin/marketplace.json` | `.claude/skills/<名>/SKILL.md` 或中央库副本 | 无角色命令；`bridge` 为默认入口 | 原生子代理或独立进程 | 无内置；人工按需起 | 原生子代理（Agent/.claude/agents） |
 | Qoder | `.qoder-plugin/plugin.json` | `.qoder/skills/<名>/SKILL.md`（项目）／`~/.qoder/skills/`（用户） | 自然语言或显式提示词指向 `bridge` | 原生 subagent 或新会话 | 可不用；人工按需起 | 原生 subagent（.qoder/agents） |

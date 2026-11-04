@@ -57,7 +57,7 @@ claude -p "读取并执行 <项目仓根>/.claude/skills/bridge/SKILL.md 全文�
 
 - **默认入口**：在项目 `CLAUDE.md` / `AGENTS.md` 末尾写一段「默认入口＝舰桥」；这是让用户「忘了触发也进舰桥」的机械落点。
 - 不装定时器：没有塔台轮巡，也没有 60 分钟唤醒。用户按需起会话。
-- 施工由 `travel warp`/`travel jump` 起独立进程/子会话；本会话不替子会话写代码。
+- 施工由 `travel warp`/`travel jump` 用宿主原生子代理执行；本会话不替子代理写代码。
 
 ## 开票归属钩子（PreToolUse）
 
@@ -130,7 +130,7 @@ claude -p "读取并执行 <项目仓根>/.claude/skills/bridge/SKILL.md 全文�
 - 不建/删其他宿主的定时任务；不替角色施工。
 - 版本、认证状态与探针读数写进项目本机配置，不回写插件清单与技能正文。
 
-## 原生子代理（/travel-only 用）
+## 原生子代理（V2 必需）
 
 - 起新上下文：Claude Code 原生子代理（`.claude/agents/<名>.md`）或 `Agent` 工具；派活时在 prompt 里写清任务卡全部字段。
 - 只读：`tools` 白名单只给 `Read/Grep/Glob`（或 `disallowedTools` 禁写）；起一个只读子代理让它写临时文件，**必须被拒**，被写入按 `soft-permission-only` 登记。

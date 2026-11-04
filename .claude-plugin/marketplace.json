@@ -8,7 +8,7 @@
       "name": "core",
       "displayName": "舰桥与安装",
       "source": "./core",
-      "description": "舰桥（唯一对话面与默认入口）、装机、升级、交接与七条原则。"
+      "description": "舰桥（唯一对话面与默认入口）、装机、升级、交接与原则合集。"
     },
     {
       "name": "board",
@@ -44,7 +44,7 @@
       "name": "v2",
       "displayName": "V2 执行内核",
       "source": "./v2",
-      "description": "一个 issue 一个 run：主会话规划与验收，物理子会话执行；舰桥用 /warp 曲速或 /jump 跃迁驱动。"
+      "description": "一个 issue 一个 run：主会话规划与验收，宿主原生子代理执行；舰桥用 /warp 曲速或 /jump 跃迁驱动。"
     }
   ]
 }

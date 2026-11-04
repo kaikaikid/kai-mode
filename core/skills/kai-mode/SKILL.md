@@ -32,7 +32,7 @@ metadata:
 
 1. **判断**：新想法 / 熟活 / 已有票。已有票先读票面，不重开。
 2. **拷问 ≤5 问**：只问大方向，每题给 2–3 个选项，推荐项排第一并写一句理由。
-   判据见 `../principle-ask-one-question-at-a-time/SKILL.md`。
+   判据见 `../principles/SKILL.md`（§1 一次一问）。
 3. **定稿**：
    - 清账：被推翻的旧决策、重复票、超 30 天没动的票——只列清单交用户，不自动关。
    - 术语与 ADR：影响长期结构的决定写成 ADR；方法用 `../../../methods/skills/kai-domain-modeling/SKILL.md`。
@@ -44,7 +44,7 @@ metadata:
 ## 审批边界
 
 - 只拿肉眼可见的表象（界面、文案、交互、观感）与红线问人；看不见的技术细节自决并记一行理由。
-  判据见 `../principle-visible-and-redline-only/SKILL.md`。
+  判据见 `../principles/SKILL.md`（§2 只问可见与红线）。
 - 红线（花钱、对外发布、不可逆、删未提交内容）先停，不靠规划绕过。
 
 ## 输出
@@ -57,9 +57,9 @@ metadata:
 
 | 要判什么 | 正本 |
 |---|---|
-| 一次一问与推荐默认 | `../principle-ask-one-question-at-a-time/SKILL.md` |
-| 只问可见与红线 | `../principle-visible-and-redline-only/SKILL.md` |
-| 仪式随规模塌缩 | `../principle-ceremony-collapses-with-scale/SKILL.md` |
+| 一次一问与推荐默认 | `../principles/SKILL.md`（§1 一次一问） |
+| 只问可见与红线 | `../principles/SKILL.md`（§2 只问可见与红线） |
+| 仪式随规模塌缩 | `../principles/SKILL.md`（§6 仪式随规模塌缩） |
 | 术语与 ADR | `../../../methods/skills/kai-domain-modeling/SKILL.md` |
 | 拆票 | `../../../methods/skills/kai-to-tickets/SKILL.md` |
 | 施工与发货 | `../../../v2/skills/travel/SKILL.md` |

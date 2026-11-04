@@ -161,7 +161,7 @@ def main() -> int:
                     trigger = "由舰桥触发 /warp 或 /jump"
                 elif skill == "studio":
                     trigger = "随六个创作口令自动带入"
-                elif skill.startswith("principle-"):
+                elif skill == "principles":
                     trigger = "自动带入"
                 else:
                     trigger = "—"

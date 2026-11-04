@@ -14,10 +14,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from . import adapters, dirty, scheduler, service, state as st, worktree
-from .feishu import bridge as fbridge
-from .feishu import cards as fcards, config as fcfg, lark as flark, notify as fnotify
-from .feishu import ledger as fledger, runner as frunner, triage as ftriage
+from . import dirty, scheduler, state as st, worktree
 
 
 # ---------------------------------------------------------------------------
@@ -27,14 +24,6 @@ from .feishu import ledger as fledger, runner as frunner, triage as ftriage
 def _err(msg: str) -> "NoReturn":
     print(f"travel: {msg}", file=sys.stderr)
     raise SystemExit(1)
-
-
-def _warn_weak_adapter(adapter: "adapters.Adapter") -> None:
-    """工具面没有硬拦的适配器只适合只读/建议，别拿它跑发货链路（契约 §3）。"""
-    cap = adapters.capabilities(adapter)
-    if cap.get("ok") and not cap.get("supportsTools"):
-        print(f"[travel:warn] adapter '{adapter.name}' declares supportsTools=false: "
-              f"worker tool surface is prompt-only, do not use it for shipping", file=sys.stderr)
 
 
 def _root() -> Path:
@@ -507,42 +496,6 @@ def cmd_next(args: argparse.Namespace) -> None:
     print(json.dumps(out, ensure_ascii=False, indent=2))
 
 
-def cmd_spawn(args: argparse.Namespace) -> None:
-    root = _root()
-    with st.lock(root):
-        s = st.load(args.run_id, root)
-        if s.get("phase") in st.TERMINAL_PHASES:
-            _err(f"run is terminal ({s['phase']}); spawn rejected")
-        if s.get("phase") == "queued":
-            _err("run is queued; wait for a free slot")
-        t = _task(s, args.task_id)
-        ok, why = scheduler.can_spawn(s, t, root)
-        if not ok:
-            _err(f"cannot spawn: {why}")
-        if t.get("status") not in {"pending", "returned", "ready"}:
-            _err(f"task {t['id']} is {t.get('status')}")
-        if t.get("status") != "returned" and not scheduler.deps_done(t, {x["id"]: x for x in s["tasks"]}):
-            _err("deps not done")
-
-        adapter = adapters.pick(args.adapter)
-        _warn_weak_adapter(adapter)
-        sid = _new_sid()
-        sdir = _session_dir(s["run_id"], sid)
-        brief = _build_brief(s, t)
-        cwd = Path(s["worktree"]) if s.get("worktree") else root
-        handle = adapter.spawn(brief, cwd, sdir, tier=t.get("tier", "medium"), timeout=args.timeout)
-        t["status"] = "running"
-        t["session_id"] = sid
-        t["attempts"] = int(t.get("attempts", 0)) + (1 if args.retry else 0)
-        s.setdefault("sessions", []).append({
-            "id": sid, "task_id": t["id"], "adapter": adapter.name,
-            "pid": handle.get("pid"), "started_at": time.time(), "status": "running",
-        })
-        s["phase"] = "delegating" if s["phase"] in {"planning", "design"} else s["phase"]
-        _save(s)
-        print(json.dumps({"session": sid, "adapter": adapter.name, "pid": handle.get("pid")}))
-
-
 def cmd_claim(args: argparse.Namespace) -> None:
     """宿主原生子代理占位：校验后写 session（mode=native）并输出任务卡，不起进程。
 
@@ -635,28 +588,8 @@ def cmd_release(args: argparse.Namespace) -> None:
                          ensure_ascii=False, indent=2))
 
 
-def _build_brief(s: dict[str, Any], t: dict[str, Any]) -> str:
-    return (
-        f"You are a worker in a V2 run. The orchestrator owns the plan, design and final judgment; "
-        f"you own exactly this task.\n\n"
-        f"TASK: {t['title']}\n\n{t.get('brief','')}\n\n"
-        f"ACCEPTANCE CRITERIA:\n" + "\n".join(f"- {a}" for a in t.get("ac", [])) + "\n\n"
-        f"RULES:\n"
-        f"- Do only this task. Do not widen scope, refactor neighbours, or invent UI.\n"
-        f"- Work only inside your own worktree. Never run control-plane commands (`coding ...`); "
-        f"only the orchestrator owns the run.\n"
-        f"- Never run destructive commands (rm -rf, drop, force push). They are denied.\n"
-        f"- Verify before reporting: build, test, or exercise the path; report the command and outcome.\n"
-        f"- Commit before reporting: `git add -- <files you changed> && git commit -m \"<task>: <title>\"`. "
-        f"Uncommitted work is blocked at shipping and will be treated as not delivered.\n"
-        f"- End your reply with ONE JSON object and nothing after it:\n"
-        f'{{"result":"done|partial|blocked","files_changed":["path — what"],'
-        f'"commit":"<HEAD sha after your commit; empty if nothing changed>",'
-        f'"verification":["cmd -> outcome"],"open_questions":["..."],"notes":"<=100 chars"}}\n'
-    )
-
-
 def cmd_report(args: argparse.Namespace) -> None:
+    """收宿主原生子代理写的报告（<session>/report.json），与 diff 对账后转 review。"""
     root = _root()
     with st.lock(root):
         s = st.load(args.run_id, root)
@@ -669,56 +602,20 @@ def cmd_report(args: argparse.Namespace) -> None:
         sess = next((x for x in s.get("sessions", []) if x["id"] == sid), None)
         if not sess:
             _err("session record missing")
-        is_native = st.session_mode(sess) == "native"
         sdir = _session_dir(s["run_id"], sid)
-        pid = 0
-        if not is_native:
-            try:
-                adapter = adapters.get(sess["adapter"])
-            except Exception as e:
-                _err(f"cannot reopen adapter '{sess.get('adapter')}' recorded in state: {e}")
-            pidf = sdir / "pid"
-            if pidf.exists():
-                try:
-                    pid = int(pidf.read_text().strip())
-                except Exception:
-                    pid = 0
-    # 等待子会话进程结束放在锁外：长任务不能占住整个仓库的写锁
-    if (not is_native) and pid > 0:
-        deadline = time.time() + args.timeout
-        while time.time() < deadline and st._pid_alive(pid):
-            time.sleep(0.5)
-        if st._pid_alive(pid):
-            # 超时：先杀进程树再按失败处理（重试/计次语义见 P1-8）
-            _kill_tree(pid)
-            with st.lock(root):
-                s = st.load(args.run_id, root)
-                t = _task(s, args.task_id)
-                t["status"] = "failed"
-                sess = next((x for x in s.get("sessions", []) if x["id"] == t.get("session_id")), None)
-                if sess:
-                    sess["status"] = "failed"
-                s["resume"]["next_action"] = f"worker {t['id']} timed out and was killed"
-                _save(s)
-            _err(f"worker timed out after {args.timeout}s; process tree killed")
-    # 进程可能已经结束，报告落盘即可
-    if is_native:
-        rp = Path(sdir) / "report.json"
-        if not rp.is_file():
-            report = {"result": "partial", "files_changed": [], "verification": [],
-                      "open_questions": [], "notes": "native report missing: " + str(rp)}
-        else:
-            try:
-                report = json.loads(rp.read_text(encoding="utf-8"))
-            except Exception as e:
-                report = {"result": "partial", "files_changed": [], "verification": [],
-                          "open_questions": [], "notes": "native report not parseable: " + str(e)}
-        if not isinstance(report, dict) or "result" not in report:
-            report = {"result": "partial", "files_changed": [], "verification": [],
-                      "open_questions": [], "notes": "native report missing 'result' field"}
+    rp = Path(sdir) / "report.json"
+    if not rp.is_file():
+        report = {"result": "partial", "files_changed": [], "verification": [],
+                  "open_questions": [], "notes": "native report missing: " + str(rp)}
     else:
-        text = adapter.read({"dir": str(sdir)})
-        report = adapters.parse_report(text)
+        try:
+            report = json.loads(rp.read_text(encoding="utf-8"))
+        except Exception as e:
+            report = {"result": "partial", "files_changed": [], "verification": [],
+                      "open_questions": [], "notes": "native report not parseable: " + str(e)}
+    if not isinstance(report, dict) or "result" not in report:
+        report = {"result": "partial", "files_changed": [], "verification": [],
+                  "open_questions": [], "notes": "native report missing 'result' field"}
     report_path = _report_path(args.run_id, args.task_id)
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -751,117 +648,9 @@ def cmd_report(args: argparse.Namespace) -> None:
     print(json.dumps(report, ensure_ascii=False, indent=2))
 
 
-def _build_review_brief(s: dict[str, Any], t: dict[str, Any]) -> str:
-    root = _root()
-    wt = s.get("worktree") or str(root)
-    mb = worktree._git("merge-base", s["base_branch"], worktree.branch_name(s["run_id"]),
-                       cwd=root, check=False).stdout.strip()
-    diff_cmd = f"git diff {mb}..HEAD" if mb else "git diff"
-    lines = [
-        "REVIEWER: you are an independent gatekeeper. You did not write this code.",
-        "Read the actual diff, do not trust any report. You must not modify files.",
-        "",
-        f"TASK: {t['title']}",
-        "",
-        t.get("brief", ""),
-        "",
-        "ACCEPTANCE CRITERIA:",
-        *[f"- {a}" for a in t.get("ac", [])],
-        "",
-        "DIFF COMMAND:",
-        f"  {diff_cmd}",
-        "",
-        "CHECK:",
-        "- every AC is actually met by the diff;",
-        "- no files changed outside the declared touchset;",
-        "- no destructive or unrelated changes.",
-        "",
-        "End your reply with ONE JSON object and nothing after it:",
-        '{"verdict":"accept|return","defects":["..."],"reason":"<=100 chars",'
-        '"result":"done","files_changed":[],"verification":[],"open_questions":[]}',
-    ]
-    return chr(10).join(lines) + chr(10)
-
-
 def cmd_review(args: argparse.Namespace) -> None:
-    """门卫子代理：独立上下文只读审查，产出 accept/return 裁决。"""
-    if getattr(args, "native", False):
-        cmd_review_native(args)
-        return
-    root = _root()
-    with st.lock(root):
-        s = st.load(args.run_id, root)
-        if s.get("phase") in st.TERMINAL_PHASES:
-            _err(f"run is terminal ({s['phase']}); review rejected")
-        t = _task(s, args.task_id)
-        if t.get("status") != "review":
-            _err(f"task {t['id']} is {t.get('status')}, not review")
-        adapter = adapters.pick(args.adapter)
-        _warn_weak_adapter(adapter)
-        sid = _new_sid()
-        sdir = _session_dir(s["run_id"], sid)
-        brief = _build_review_brief(s, t)
-        cwd = Path(s["worktree"]) if s.get("worktree") else root
-    # 评审子代理在锁外跑，避免一次审查占住整个仓库的写锁
-    handle = adapter.spawn(brief, cwd, sdir, tier="careful", timeout=args.timeout, read_only=True)
-    adapter.wait(handle, args.timeout)
-    text = adapter.read(handle)
-    rep = adapters.parse_report(text)
-    verdict = rep.get("verdict") or ("accept" if rep.get("result") == "done" else None)
-    if verdict not in {"accept", "return"}:
-        # 评审员结论不明确（报告解析失败/无 verdict）：这不是 worker 的错，
-        # 不烧重做轮次；转 blocked 叫醒人——门卫失灵按异常处理，不静默放行。
-        with st.lock(root):
-            s = st.load(args.run_id, root)
-            t = _task(s, args.task_id)
-            t["review"] = {
-                "verdict": "inconclusive",
-                "defects": [],
-                "reason": rep.get("reason", "") or rep.get("notes", "") or "reviewer report unparseable",
-                "session": sid,
-            }
-            t["session_id"] = sid
-            s.setdefault("sessions", []).append({
-                "id": sid, "task_id": t["id"], "adapter": adapter.name,
-                "pid": handle.get("pid"), "started_at": time.time(), "status": "finished",
-                "role": "reviewer",
-            })
-            if args.apply:
-                s["phase"] = "blocked"
-                s["resume"]["next_action"] = f"review inconclusive on {t['id']}: {t['review']['reason']}"
-            _save(s)
-        print(json.dumps(t["review"], ensure_ascii=False, indent=2))
-        return
-    with st.lock(root):
-        s = st.load(args.run_id, root)
-        t = _task(s, args.task_id)
-        t["review"] = {
-            "verdict": verdict,
-            "defects": rep.get("defects", []),
-            "reason": rep.get("reason", "") or rep.get("notes", ""),
-            "session": sid,
-        }
-        t["session_id"] = sid
-        s.setdefault("sessions", []).append({
-            "id": sid, "task_id": t["id"], "adapter": adapter.name,
-            "pid": handle.get("pid"), "started_at": time.time(), "status": "finished",
-            "role": "reviewer",
-        })
-        if args.apply:
-            if verdict == "accept":
-                t["status"] = "accepted"
-                s["resume"]["last_accepted"] = t["id"]
-                s["resume"]["next_action"] = "next"
-            else:
-                t["status"] = "returned"
-                t["attempts"] = int(t.get("attempts", 0)) + 1
-                t["defects"] = "; ".join(rep.get("defects", [])) or rep.get("reason", "")
-                if t["attempts"] >= 3:
-                    t["status"] = "blocked"
-                s["resume"]["next_action"] = f"rework {t['id']}"
-            advance(s, root)
-        _save(s)
-    print(json.dumps(t["review"], ensure_ascii=False, indent=2))
+    """门卫审查：只输出审查卡，由宿主只读子代理执行；裁决用 travel verdict 写回。"""
+    cmd_review_native(args)
 
 
 def cmd_review_native(args: argparse.Namespace) -> dict:
@@ -1142,138 +931,6 @@ def cmd_doctor(args: argparse.Namespace) -> None:
         raise SystemExit(2)
 
 
-def _feishu_ledger(root):
-    return fledger.Ledger(Path(root) / ".coding" / "feishu" / "ledger.sqlite3")
-
-
-def cmd_feishu(args: argparse.Namespace) -> None:
-    """飞书桥：状态 / 自检 / 分诊预览 / 出站队列 / 起桥。运行时实现见 v2/coding/feishu/。"""
-    root = _root()
-    action = getattr(args, "action", None) or "status"
-    cfg = fcfg.load(root)
-
-    if action == "status":
-        problems = fcfg.problems(cfg)
-        rows = fnotify.run_rows(root)
-        print(json.dumps({
-            "enabled": bool(cfg.get("enabled")),
-            "bots": [{"name": b.get("name"), "profile": b.get("profile"),
-                      "chat_id": b.get("chat_id")} for b in cfg.get("bots") or []],
-            "chat": cfg.get("chat"),
-            "problems": problems,
-            "runs": rows,
-            "config": str(fcfg.machine_path()),
-        }, ensure_ascii=False, indent=2))
-        return
-
-    if action == "doctor":
-        v = flark.version()
-        chats = flark.chats("")
-        led = _feishu_ledger(root)
-        try:
-            box = led.outbox_stats()
-        finally:
-            led.close()
-        print(json.dumps({
-            "lark_cli": (v.stdout or v.stderr or "").strip(),
-            "cli_ok": v.returncode == 0,
-            "chats_rc": chats.returncode,
-            "problems": fcfg.problems(cfg),
-            "outbox": box,
-            "config": str(fcfg.machine_path()),
-        }, ensure_ascii=False, indent=2))
-        return
-
-    if action == "triage":
-        text = " ".join(getattr(args, "text", []) or [])
-        print(json.dumps(ftriage.decide(text), ensure_ascii=False, indent=2))
-        return
-
-    if action == "board":
-        print(json.dumps(fcards.board(fnotify.run_rows(root)), ensure_ascii=False, indent=2))
-        return
-
-    if action == "outbox":
-        led = _feishu_ledger(root)
-        try:
-            revived = led.revive() if getattr(args, "retry", False) else 0
-            rows = led.outbox_rows(str(getattr(args, "status", "") or ""),
-                                   limit=int(getattr(args, "limit", None) or 20))
-            for r in rows:
-                r["payload"] = str(r.get("payload") or "")[:200]
-            print(json.dumps({"stats": led.outbox_stats(), "revived": revived, "rows": rows},
-                             ensure_ascii=False, indent=2))
-        finally:
-            led.close()
-        return
-
-    if action == "backfill":
-        b = fbridge.Bridge(root, cfg)
-        try:
-            n = b.backfill()
-            print(json.dumps({"backfilled": n}, ensure_ascii=False, indent=2))
-        finally:
-            b.ledger.close()
-        return
-
-    if action == "send-test":
-        bot = fcfg.bot_for(cfg)
-        chat = str(bot.get("chat_id") or "")
-        if not chat:
-            _err("no chat_id configured; set bots[0].chat_id in the feishu config")
-        r = flark.send_text(str(bot.get("profile") or ""), chat,
-                                  " ".join(getattr(args, "text", []) or []) or "kai-mode 自检")
-        print(json.dumps({"rc": r.returncode, "stderr": (r.stderr or "").strip()[:300]},
-                         ensure_ascii=False, indent=2))
-        if r.returncode != 0:
-            raise SystemExit(1)
-        return
-
-    if action == "run":
-        raise SystemExit(frunner.run(root, once=bool(getattr(args, "once", False))))
-
-    _err(f"unknown feishu action: {action}")
-
-
-def cmd_harness(args: argparse.Namespace) -> None:
-    """宿主适配器自举：check 看现状，verify 真跑用例，trust 登记放行。
-
-    契约见 v2/skills/travel/host-adapter.md。
-    """
-    root = _root()
-    action = getattr(args, "action", None) or "check"
-    if action in {"check", "list"}:
-        print(json.dumps(adapters.inventory(root), ensure_ascii=False, indent=2))
-        return
-    name = getattr(args, "name", None)
-    if not name:
-        _err(f"harness {action} needs an adapter name")
-    if action == "verify":
-        res = adapters.verify(name, root, timeout=getattr(args, "timeout", None))
-        print(json.dumps(res, ensure_ascii=False, indent=2))
-        if not res.get("ok"):
-            raise SystemExit(1)
-        print(f"travel: verified. Next: travel harness trust {name}", file=sys.stderr)
-        return
-    if action == "trust":
-        rec = adapters.trust(name, root)
-        print(json.dumps(rec, ensure_ascii=False, indent=2))
-        receipt = Path(rec["path"]).with_suffix(".verify.json")
-        ok = False
-        if receipt.is_file():
-            try:
-                v = json.loads(receipt.read_text(encoding="utf-8"))
-                ok = bool(v.get("ok")) and v.get("sha256") == rec["sha256"] and v.get("adapter") == name
-            except Exception:
-                ok = False
-        if not ok:
-            print(f"[travel:warn] {name} has no passing verify receipt for THIS file "
-                  f"(verified or unread receipt only); you are trusting an unverified adapter. "
-                  f"Read it first.", file=sys.stderr)
-        return
-    _err(f"unknown harness action: {action}")
-
-
 # ---------------------------------------------------------------------------
 # argparse
 
@@ -1314,72 +971,6 @@ def cmd_assimilate(args: argparse.Namespace) -> None:
         print(json.dumps({"ok": False, "reason": (r.stderr or r.stdout).strip()[:300]}, ensure_ascii=False))
         return
     print(json.dumps({"ok": True, "message": "assimilated " + branch}, ensure_ascii=False))
-
-
-def cmd_drive(args: argparse.Namespace) -> None:
-    """全自动驱动：脚本循环 spawn → report → review → accept，直到所有 run 到终态或 blocked。"""
-    root = _root()
-    for _step in range(args.max_steps):
-        promote_queued(root)
-        ids = [args.run] if args.run else [r["run_id"] for r in st.list_runs(root)]
-        runs = []
-        for rid in ids:
-            try:
-                r = st.load(rid, root)
-            except FileNotFoundError:
-                continue
-            if r.get("phase") not in st.TERMINAL_PHASES:
-                runs.append(r)
-        if not runs:
-            break
-        acted = False
-        for s in runs:
-            rid = s["run_id"]
-            if s.get("phase") in {"blocked", "queued"}:
-                continue
-            if s.get("autopilot") and not s.get("tasks"):
-                with st.lock(root):
-                    s2 = st.load(rid, root)
-                    s2["phase"] = "blocked"
-                    s2["resume"]["next_action"] = "no task graph; plan required"
-                    st.save(s2, root)
-                acted = True
-                continue
-            # 1) 收已经跑完的 worker 报告
-            for t in list(s.get("tasks", [])):
-                if t.get("status") == "running":
-                    cmd_report(argparse.Namespace(run_id=rid, task_id=t["id"], timeout=args.timeout))
-                    acted = True
-                    s = st.load(rid, root)
-            # 2) 门卫子代理审查
-            for t in list(s.get("tasks", [])):
-                if t.get("status") == "review":
-                    cmd_review(argparse.Namespace(run_id=rid, task_id=t["id"],
-                                                   adapter=args.review_adapter or args.adapter,
-                                                   timeout=args.review_timeout, apply=True))
-                    acted = True
-                    s = st.load(rid, root)
-            # 3) 派 ready 任务
-            for t in scheduler.ready_tasks(s, root):
-                ok, _why = scheduler.can_spawn(s, t, root)
-                if not ok:
-                    break
-                cmd_spawn(argparse.Namespace(run_id=rid, task_id=t["id"], adapter=args.adapter,
-                                             timeout=args.timeout, retry=False))
-                acted = True
-                s = st.load(rid, root)
-        if not acted:
-            break
-    summary = []
-    for r in st.list_runs(root):
-        summary.append({"run": r["run_id"], "phase": r.get("phase"),
-                        "issue": r.get("issue"), "ship": r.get("ship")})
-    print(json.dumps(summary, ensure_ascii=False, indent=2))
-
-
-def cmd_serve(args: argparse.Namespace) -> None:
-    """本地监工服务：只读 API + 受控 gate/stop/drive；默认只绑 127.0.0.1。"""
-    service.serve(args, _root())
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -1431,14 +1022,6 @@ def build_parser() -> argparse.ArgumentParser:
     n.add_argument("run_id", nargs="?")
     n.set_defaults(func=cmd_next)
 
-    sp = sub.add_parser("spawn", help="start a worker for a task")
-    sp.add_argument("run_id")
-    sp.add_argument("task_id")
-    sp.add_argument("--adapter")
-    sp.add_argument("--timeout", type=int, default=1800)
-    sp.add_argument("--retry", action="store_true")
-    sp.set_defaults(func=cmd_spawn)
-
     cl = sub.add_parser("claim", help="claim a task for a host-native subagent (no CLI spawn)")
     cl.add_argument("run_id")
     cl.add_argument("task_id")
@@ -1449,19 +1032,14 @@ def build_parser() -> argparse.ArgumentParser:
     rl.add_argument("task_id")
     rl.set_defaults(func=cmd_release)
 
-    rp = sub.add_parser("report", help="collect a worker report")
+    rp = sub.add_parser("report", help="collect a host-native subagent report")
     rp.add_argument("run_id")
     rp.add_argument("task_id")
-    rp.add_argument("--timeout", type=int, default=1800)
     rp.set_defaults(func=cmd_report)
 
-    rv = sub.add_parser("review", help="independent gatekeeper review (read-only subagent)")
+    rv = sub.add_parser("review", help="print a review card for a host-native read-only subagent")
     rv.add_argument("run_id")
     rv.add_argument("task_id")
-    rv.add_argument("--adapter")
-    rv.add_argument("--timeout", type=int, default=900)
-    rv.add_argument("--apply", action="store_true", help="apply verdict to task status")
-    rv.add_argument("--native", action="store_true", help="native mode: only print a review card, no spawn")
     rv.set_defaults(func=cmd_review)
 
     vd = sub.add_parser("verdict", help="write a native review verdict (accept/return)")
@@ -1505,24 +1083,6 @@ def build_parser() -> argparse.ArgumentParser:
     d = sub.add_parser("doctor", help="reconcile state with git")
     d.set_defaults(func=cmd_doctor)
 
-    hz = sub.add_parser("harness", help="host adapters: check / list / verify / trust")
-    hz.add_argument("action", nargs="?", default="check", choices=["check", "list", "verify", "trust"])
-    hz.add_argument("name", nargs="?", default=None, help="adapter name (for verify / trust)")
-    hz.add_argument("--timeout", type=int, default=None, help="per-probe timeout seconds (default 180)")
-    hz.set_defaults(func=cmd_harness)
-
-    fs = sub.add_parser("feishu",
-                        help="feishu bridge: status / doctor / triage / board / outbox / send-test / run")
-    fs.add_argument("action", nargs="?", default="status",
-                    choices=["status", "doctor", "triage", "board", "outbox", "backfill",
-                             "send-test", "run"])
-    fs.add_argument("text", nargs="*", default=[], help="text for triage / send-test")
-    fs.add_argument("--once", action="store_true", help="run: do one notify tick and exit")
-    fs.add_argument("--status", default="", help="outbox: only rows in this status (pending / sent / dead)")
-    fs.add_argument("--limit", type=int, default=20, help="outbox: max rows to show (default 20)")
-    fs.add_argument("--retry", action="store_true", help="outbox: revive dead letters and resend")
-    fs.set_defaults(func=cmd_feishu)
-
     wp = sub.add_parser("warp", help="autopilot run: warp mode (no ship)")
     wp.add_argument("--fleet", default=None, help="fleet id; slots are per-fleet")
     wp.add_argument("--ships", type=int, default=None, help="ship count 1-3 (default 2)")
@@ -1549,27 +1109,6 @@ def build_parser() -> argparse.ArgumentParser:
     asp.add_argument("--run", default=None, help="run id")
     asp.add_argument("--approve", action="store_true", help="user approved assimilation")
     asp.set_defaults(func=cmd_assimilate)
-
-    dr = sub.add_parser("drive", help="run the whole loop unattended")
-    dr.add_argument("--run")
-    dr.add_argument("--adapter")
-    dr.add_argument("--review-adapter")
-    dr.add_argument("--max-steps", type=int, default=500)
-    dr.add_argument("--timeout", type=int, default=1800)
-    dr.add_argument("--review-timeout", type=int, default=900)
-    dr.set_defaults(func=cmd_drive)
-
-    sv = sub.add_parser("serve", help="local supervisor service (read API + controlled actions)")
-    sv.add_argument("--host", default="127.0.0.1")
-    sv.add_argument("--port", type=int, default=8765)
-    sv.add_argument("--token", default=None, help="require X-Travel-Token on POST")
-    sv.add_argument("--board-dir", default=None, help="serve index.html/board.json from here")
-    sv.add_argument("--drive", action="store_true", help="run `travel drive` periodically")
-    sv.add_argument("--drive-interval", type=int, default=60)
-    sv.add_argument("--refresh-cmd", default=None, help="command to refresh the board")
-    sv.add_argument("--max-age", type=int, default=30, help="board age before refresh (minutes)")
-    sv.add_argument("--allow-remote", action="store_true")
-    sv.set_defaults(func=cmd_serve)
 
     return p
 

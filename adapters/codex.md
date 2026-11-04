@@ -1,6 +1,7 @@
 # Codex 适配器（付费档备胎）
 
-> 本文只讲**怎么在这个宿主上起舰桥与施工子会话**。人格文件已退役；新上下文用独立 `codex exec` 进程。
+> 本文只讲**怎么在这个宿主上起舰桥**。V2 施工不适用：Codex 没有宿主原生子代理，
+> 而 V2 已明确只调用宿主自己的子代理，不拉 `codex exec` 子进程。
 
 > 适用：Qoder 子会话不可用、opencode 不可用，或编排层明确要求 Codex。
 > **付费档**：必须显式授权（如 `KAI_WATCHDOG_ALLOW_PAID=1`）；没有授权不许起。
@@ -41,12 +42,12 @@ codex exec -C <仓库根> -s read-only --json -o <回执文件> \
   "按票面 AC 评审 <票号>；只输出 verdict 与逐条证据路径。"
 ```
 
-## 执行三职
+## 执行三职（V2 不适用）
 
-- **Researcher**：`codex exec -s read-only`，产出 `research-<票>.md`；不写实现。
-- **Worker**（＝施工子会话）：`codex exec -s workspace-write`；brief 自包含（任务、AC、允许/禁止修改、验证命令、回执格式）；run 工作树与分支；不 push、不合并。
-- **Gatekeeper**（＝门卫审查）：`codex exec -s read-only`，**另起一次调用**（新上下文）；只拿 AC/diff/证据，输出 accept/return ＋逐条证据；不得复用施工会话。
-- 缺 reviewer 或 `reviewer==implementer` ⇒ 不算独立验收。
+- V2 只用宿主原生子代理；Codex 当前没有这一层 ⇒ `travel claim/report/review/verdict` 派活链不适用。
+- 按缺件三格登记 `no-new-context`，如实告诉用户「这个宿主跑不了 V2」；不退化去拉 `codex exec`。
+- 舰桥本身仍可用：它只做对话、开票、发货，不依赖宿主子代理。
+- 若 Codex 未来提供原生子代理，再在这里补「怎么起、怎么锁只读、报告落哪」三条。
 
 ## 边界
 
@@ -54,9 +55,10 @@ codex exec -C <仓库根> -s read-only --json -o <回执文件> \
 - 不建/删其他宿主的定时任务；不替舰桥施工。
 - 未实测的 flag 不许写进正本；版本与探针读数写进项目本机配置。
 
-## 原生子代理（/travel-only 用）
+## 原生子代理（V2 必需）
 
-- 起新上下文：Codex 没有 Claude 式的 agent 定义文件；用独立 `codex exec` 进程作子代理，每票另起一次。
-- 只读：`codex exec -s read-only`（沙箱只读）；起一次让它写临时文件，**必须被拒**，否则登记 `soft-permission-only`。
-- 报告落盘：进程 stdout 收报告，主会话把 JSON 写到任务卡的 `report_path` / `review_report_path`。
-- 没有原生子代理 ⇒ Codex 走原 `travel`（CLI 进程）更自然；`/travel-only` 仍可用但退化为独立进程。
+- Codex **没有**宿主内建的原生子代理（当前实测）；V2 的 `travel claim` / `report` /
+  `review` / `verdict` 派活链因此不适用。
+- 不退化去拉 `codex exec` 子进程：用户已明确 V2 只调用宿主自己的子代理。
+- 起不了新上下文 ⇒ 按 §6 登记 `no-new-context`，如实告诉用户「这个宿主跑不了 V2」。
+- 若未来 Codex 提供原生子代理，再在本节补「怎么起、怎么锁只读、报告落哪」三条。

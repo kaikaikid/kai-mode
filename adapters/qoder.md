@@ -95,7 +95,7 @@ test -f .qoder-plugin/plugin.json && echo plugin-ok
 - 付费／额度未授权 ⇒ `paid-not-authorized`，不偷偷换模型。
 - 版本、认证状态与探针读数写进项目本机配置，不回写框架正文。
 
-## 原生子代理（/travel-only 用）
+## 原生子代理（V2 必需）
 
 - 起新上下文：Qoder 原生 subagent（`.qoder/agents/<名>.md`，frontmatter `name`/`description`）。
 - 只读：`tools` 白名单或 `disallowedTools`；起只读子代理让它写临时文件，**必须被拒**。

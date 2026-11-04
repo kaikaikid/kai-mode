@@ -169,15 +169,17 @@ def test_claim_rejects_terminal_run(tmp_path):
     assert read_state(root)["tasks"][0]["status"] == "pending"
 
 
-def test_claim_rejects_cli_session_for_same_task(tmp_path):
+def test_claim_is_idempotent_for_legacy_session(tmp_path):
     root = tmp_path / "repo"
     root.mkdir()
     write_state(root,
                 tasks=[task(status="running", session_id="s-cli")],
                 sessions=[{"id": "s-cli", "task_id": "t1", "adapter": "mock",
                            "pid": 0, "status": "running"}])
-    r = cli(root, "claim", "r-nat", "t1", expect=1)
-    assert "cli session" in r.stderr
+    # 旧 session 无 mode 字段 → 按 native 读，claim 幂等返回同一张卡
+    card = json.loads(cli(root, "claim", "r-nat", "t1").stdout)
+    assert card["task_id"] == "t1"
+    assert card["report_path"].endswith("s-cli/report.json")
     assert len(read_state(root)["sessions"]) == 1
 
 
@@ -233,19 +235,18 @@ def test_release_returns_task_to_pending_then_reclaim(tmp_path):
     assert st2["tasks"][0]["status"] == "running"
 
 
-def test_release_only_accepts_native_sessions(tmp_path):
+def test_release_treats_legacy_session_as_native(tmp_path):
     root = tmp_path / "repo"
     root.mkdir()
-    # 旧 state：session 没有 mode 字段 → 按 cli 处理
+    # 旧 state：session 没有 mode 字段 → 一律按 native 读（CLI 路径已下线）
     write_state(root,
                 tasks=[task(status="running", session_id="s-old")],
                 sessions=[{"id": "s-old", "task_id": "t1", "adapter": "mock",
                            "pid": 0, "status": "running"}])
-    r = cli(root, "release", "r-nat", "t1", expect=1)
-    assert "native sessions" in r.stderr
+    cli(root, "release", "r-nat", "t1")
     st = read_state(root)
-    assert st["tasks"][0]["status"] == "running"
-    assert st["sessions"][0]["status"] == "running"
+    assert st["tasks"][0]["status"] == "pending"
+    assert st["sessions"][0]["status"] == "released"
 
 
 def test_release_without_session_is_rejected(tmp_path):
@@ -260,7 +261,7 @@ def test_release_without_session_is_rejected(tmp_path):
 # status / doctor 的 mode
 
 
-def test_old_state_without_mode_reads_as_cli(tmp_path):
+def test_old_state_without_mode_reads_as_native(tmp_path):
     root = tmp_path / "repo"
     root.mkdir()
     write_state(root,
@@ -269,14 +270,14 @@ def test_old_state_without_mode_reads_as_cli(tmp_path):
                            "pid": 0, "status": "running"}])
 
     status = cli(root, "status").stdout
-    assert "mode=cli" in status
+    assert "mode=native" in status
     assert "s-old" in status
 
     doc = cli(root, "doctor").stdout
     data = json.loads(doc)
     assert data["problems"] == []
     assert data["sessions"] == [{"run_id": "r-nat", "session": "s-old", "task": "t1",
-                                 "mode": "cli", "status": "running"}]
+                                 "mode": "native", "status": "running"}]
 
 
 def test_status_and_doctor_show_native_mode(tmp_path):
@@ -307,8 +308,8 @@ def test_status_doctor_survive_mixed_old_and_new_sessions(tmp_path):
         json.dumps(st, ensure_ascii=False), encoding="utf-8")
 
     status = cli(root, "status").stdout
-    assert "mode=native" in status and "mode=cli" in status
+    assert "mode=native" in status
     data = json.loads(cli(root, "doctor").stdout)
     modes = {x["session"]: x["mode"] for x in data["sessions"]}
-    assert modes["s-legacy"] == "cli"
-    assert list(modes.values()).count("native") == 1
+    assert modes["s-legacy"] == "native"
+    assert list(modes.values()).count("native") == 2

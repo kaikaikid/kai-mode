@@ -11,20 +11,14 @@
     },
     "core": {
       "version": "1.3.0",
-      "digest": "7d093595b3387308fb499bc7626a517042ea4ad0a899b0e4f80c3775ad55fe8e",
+      "digest": "630778f666b36ad3a9eee593beb0ff6ee9fc920e7a729ce9d898186ae2d25992",
       "skills": {
         "bridge": "0.1.0",
         "harness-audit": "0.2.0",
         "kai-handoff": "0.3.5",
         "kai-mode": "4.0.0",
         "kai-mods": "0.1.0",
-        "principle-ask-one-question-at-a-time": "0.1.1",
-        "principle-ceremony-collapses-with-scale": "0.1.2",
-        "principle-measure-dont-ask": "0.1.1",
-        "principle-one-semantics-one-home": "0.1.3",
-        "principle-output-structure": "0.1.0",
-        "principle-report-missing-parts": "0.1.1",
-        "principle-visible-and-redline-only": "0.1.1",
+        "principles": "1.0.0",
         "set-kai-mode": "6.2.0",
         "upgrade-kai-mode": "0.2.0"
       }
@@ -74,10 +68,9 @@
     },
     "v2": {
       "version": "0.4.0",
-      "digest": "76c867764134dcf122ec876af9106582c76a6336bfe4e7c71d59ece6c3c59a4b",
+      "digest": "d721861dd112d674c2b25db3e935512b26cbea860284983824e8f1bafd6578f5",
       "skills": {
-        "travel": "0.3.0",
-        "travel-only": "0.1.0"
+        "travel": "0.4.0"
       }
     }
   }

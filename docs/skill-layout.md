@@ -95,7 +95,7 @@ updated: <YYYY-MM-DD>
 - 不写营销词（「强大」「一站式」「极大提升」）。
 - 正文禁入：项目专用路径、票号、job id、机器绝对路径、真实项目名之外的私密信息。
 - 一条判据只写一份，别处只留指针；判据细则唯一正本：
-  [`core/skills/principle-one-semantics-one-home/`](../core/skills/principle-one-semantics-one-home/SKILL.md)。
+  [`core/skills/principles/`](../core/skills/principles/SKILL.md)（§4 一个语义一个家）。
 
 ## 5. 插件清单字段
 

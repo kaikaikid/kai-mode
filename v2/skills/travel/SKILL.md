@@ -5,16 +5,15 @@ approved_by: human:kaikaikid
 approved: 2026-10-31
 sources: []
 description: >
-  V2 执行内核的唯一入口：一个 issue 一个 run（舰船），主会话规划与验收，物理子会话执行；
+  V2 执行内核的唯一入口：一个 issue 一个 run（舰船），主会话规划与验收，宿主自己的子代理执行；
   舰队（fleet）= 同一宿主拉起的 run 集合，舰船数 1–3（默认 2）、船员数（并发子代理）1–5（默认 5）按舰队独立计数；
   一次触发连续跑到门点才停。用 `travel` 控制平面推进（`coding` 兼容别名一版），不直接改 state.json。
-  与机场体系（V1）并存，不调用其角色。
-  触发：`/warp <任务>`、`/jump <任务>`（斜杠入口）；控制面命令 `travel <子命令>`（`coding` 兼容一版）；中文「用 V2 做」「开个 run」也认。
-  本地监工服务：`travel serve`（只读 API + 受控 gate/stop/drive，默认只绑 127.0.0.1，Windows 静默）。
-version: 0.3.0
-updated: 2026-11-01
+  只走宿主原生子代理，不拉 CLI 进程。触发：`/warp <任务>`、`/jump <任务>`（斜杠入口）；
+  控制面命令 `travel <子命令>`（`coding` 兼容一版）；中文「用 V2 做」「开个 run」也认。
+version: 0.4.0
+updated: 2026-11-04
 allowed-tools: Read Grep Bash
-compatibility: Host-agnostic
+compatibility: Host-agnostic; host must be able to spawn subagents
 ---
 
 # Travel —— V2 执行内核入口（星际穿越剧本）
@@ -25,19 +24,20 @@ compatibility: Host-agnostic
 
 ## 这是什么
 
-`/warp` `/jump`（或舰桥）是 V2 的交互入口。**你只跟主会话说话**；子会话是物理进程，
-不直接找你。一次激活管一个 run 的规划、派工、验收、发货全程。
+`/warp` `/jump`（或舰桥）是 V2 的交互入口。**你只跟主会话说话**；施工交给宿主自己的子代理，
+不拉起 CLI 进程，也不要求挂机。主会话开着，调度就在；关了就停了。
 
-与创作体系（`/producer` `/writer` `/artist`）和机场体系（`/pilot` `/tower` `/ace`）
-严格分开：V2 只做代码开发，不调用它们的角色，也不共用状态。
+与创作体系（`/producer` `/writer` `/artist`）严格分开：V2 只做代码开发，不调用它们的角色，也不共用状态。
 
 ## 铁律
 
 1. **能脚本就脚本**：状态推进、槽位、worktree、touchset、预算、续跑全走
    `travel` 命令；**绝不手改 `.coding/runs/*/state.json`**。
-2. **只在门点停**：手动挡在 G0/G1/G2 停；`/warp` 自动挡由门卫子代理自动批门，只在红线/异常时停。
-3. **验收读 diff**：子会话报告是 claim，不是事实；`travel review` 的门卫子代理读实际 diff 再裁决。
-4. **子会话不发货**：worker 与 reviewer 都不 push/merge；发货只由主会话在门点后执行。
+2. **只用宿主原生子代理**：`travel claim` 输出任务卡，主会话用本宿主的子代理执行；
+   `travel review` 输出审查卡，用只读子代理审查。不 spawn CLI 进程。
+3. **只在门点停**：手动挡在 G0/G1/G2 停；`/warp` 自动挡由门卫子代理自动批门，只在红线/异常时停。
+4. **验收读 diff**：子代理报告是 claim，不是事实；`travel report` 对账 diff，主会话读实际 diff 再裁决。
+5. **子会话不发货**：worker 与 reviewer 都不 push/merge；发货只由主会话在门点后执行。
 
 ## 流程
 
@@ -49,18 +49,40 @@ compatibility: Host-agnostic
   → （有 UI）G1：设计规格 → travel gate <run> g1 approve
   → 循环：
       travel next                 # 取 ready 任务
-      travel spawn <run> <task>   # 起 worker 子会话
-      travel report <run> <task>  # 收报告 + diff 对账
-      travel review <run> <task>  # 门卫子代理独立只读审查（新上下文）
-      读裁决 → travel accept 或 travel return --defects "..."
+      travel claim <run> <task>   # 原子占位，输出任务卡（不起进程）
+      用本宿主的可写子代理执行任务卡   # 报告写到卡上的 report_path
+      travel report <run> <task>  # 读文件 + diff 对账
+      travel review <run> <task>  # 输出审查卡
+      用本宿主的只读子代理审查        # 报告写到 review_report_path
+      travel verdict <run> <task> --file <path>
   → 全部 accepted → G2：travel gate <run> g2 approve   # merge → 收尾门 → push → 关票
 ```
 
-## 双轨：CLI 与宿主原生
+## 任务卡与审查卡
 
-- `travel`：拉起 CLI 进程（可无人值守、挂机、飞书自动唤醒）。
-- `/travel-only`：用当前宿主自己的子代理派活（主会话必须开着；无原生子代理的宿主不适用）。
-- 两套共享 `.coding/runs/`，session 记 `mode: cli | native`；看板与 `travel doctor` 能分清。
+`travel claim` 输出：`task_id`、`brief`、`worktree`、`touchset`、`ac`、`report_path`、`diff_base`。
+
+- 子代理必须在 `worktree` 里工作，只改 `touchset` 范围内的文件。
+- 完成后把报告写到 `report_path`（JSON，见下方报告契约）。
+
+`travel review` 输出：`task_id`、`worktree`、`diff_base`、`changed_files`、`ac`、`touchset`、
+`review_report_path`、`read_only`。
+
+- 必须用**只读**子代理；读实际 diff，对照 AC，输出 `{verdict: accept|return, defects:[], reason:""}`。
+- 然后 `travel verdict <run> <task> --file <path>` 写回。
+
+## 报告契约
+
+```json
+{"result": "done|partial|blocked",
+ "files_changed": ["path — 改了什么"],
+ "commit": "<HEAD sha，没有改动则为空>",
+ "verification": ["命令 -> 结果"],
+ "open_questions": ["..."],
+ "notes": "<=100 字"}
+```
+
+解析失败 = 视为 `partial`，主会话读 diff 自判。
 
 ## 命令速查
 
@@ -71,68 +93,20 @@ compatibility: Host-agnostic
 | `travel plan <run> --file tasks.json` | 写任务图 |
 | `travel gate <run> g0\|g1\|g2 approve\|reject\|skip` | 过门；reject 有回流 |
 | `travel next [run]` | 下一个可派任务（含 touchset / 槽位判断） |
-| `travel spawn <run> <task> [--adapter ...]` | 起子会话 |
-| `travel report <run> <task> [--timeout]` | 等 worker 结束，收报告，校验 files_changed ⊆ git diff |
-| `travel review <run> <task> [--apply] [--adapter]` | 门卫子代理独立只读审查，产出 accept/return |
+| `travel claim <run> <task>` | 原子占位，输出任务卡（不 spawn） |
+| `travel release <run> <task>` | 释放原生占位，任务回 pending |
+| `travel report <run> <task>` | 读子代理报告，校验 files_changed ⊆ git diff |
+| `travel review <run> <task>` | 输出审查卡（只读子代理执行） |
+| `travel verdict <run> <task> --file <path>` | 写回审查裁决（accept/return） |
 | `travel accept\|return\|reopen <run> <task>` | 验收 / 打回 / 撤销 |
 | `travel resume <run>` | 从 state.json 续跑 |
 | `travel status [--html]` | 看板（在做 / 在等 / 已完成） |
+| `travel dirty [--json]` / `park` / `unpark` | 主树脏件分类与可逆收起 |
+| `travel stop <run>` / `travel gc [--all]` | 停 run / 清已收尾资源 |
 | `travel doctor` | 状态与 git 对账 |
-| `travel gc [--all]` | 清理已收尾 worktree 与分支 |
-| `travel stop <run>` | 停 run，保留状态 |
-| `travel warp <issue> [--ships 1-3] [--tasks f.json]` | 曲速全自动：自动批门 + 施工，**不发货**（停在 closing） |
-| `travel jump <issue> [--ships 1-3]` | 跃迁全自动：加急 + 自动发货，唯一有发货权的全自动入口 |
+| `travel warp <issue> [--ships 1-3] [--tasks f.json]` | 曲速：自动批门 + 施工，**不发货**（停在 closing） |
+| `travel jump <issue> [--ships 1-3]` | 跃迁：加急 + 自动发货，唯一有发货权的全自动入口 |
 | `travel assimilate <branch> --approve` | 吞并外部分支（必须显式 `--approve`） |
-| `travel drive [--run r] [--adapter a] [--review-adapter b]` | 脚本无人值守跑完整条流水线 |
-| `travel serve [--port 8765] [--board-dir …] [--token …] [--drive]` | 本地监工服务：只读 API + 受控 gate/stop/drive；默认只绑 127.0.0.1，Windows 静默 |
-| `travel harness [check\|list\|verify <名>\|trust <名>]` | 宿主适配器：看现状 / 清单 / 真跑用例验收 / 登记信任（换宿主时自举用） |
-| `travel feishu [status\|doctor\|triage <文本>\|board\|outbox [--status s] [--retry]\|backfill\|send-test\|run]` | 飞书桥：配置现状 / 自检 / 分诊预览（不产生副作用）/ 看板 JSON / 出站队列（死信可复活）/ 补读断线消息 / 发测试消息 / 起桥 |
-
-## 本地监工服务
-
-`travel serve` 起一个只用标准库的本地 HTTP 服务：
-
-- `GET /api/health`、`/api/runs`、`/api/runs/<id>`、`/board.json`；
-- `POST /api/runs/<id>/gate`、`/api/runs/<id>/stop`、`/api/drive`；
-- 写端点走 `travel` 命令，不直接改 `state.json`；
-- 默认只绑 `127.0.0.1`；要防本机其他进程可加 `--token`；
-- **Windows 不许弹黑窗**：子进程用 `CREATE_NO_WINDOW`，后台用 `pythonw` / 计划任务
-  （`wscript //B` + `.vbs`），不用 `start /min python`。
-
-## 宿主自举（换宿主时）
-
-worker 是**物理子进程**，由「宿主适配器」启动。内建三个：`claude-cli`（参考实现）、
-`mock`（测试）、`generic`（stdin/stdout 兜底，需 `TRAVEL_GENERIC_CMD`）。
-
-换到一个还没有适配器的宿主时，**由当前 AI 自己写**，内核不用为新宿主打补丁：
-
-| 步 | 命令 | 判据 |
-|---|---|---|
-| 1 | `travel harness check` | 看当前会选谁、适配器目录在哪 |
-| 2 | 按契约写 `<项目根>/.coding/adapters/<宿主>.py` | 实现 probe/spawn/wait/read/kill，能力如实申报 |
-| 3 | `travel harness verify <宿主>` | 用例全过：能写、能报、能读（只给目录）、只读时工作目录零改动 |
-| 4 | `travel harness trust <宿主>` | 登记文件 sha256；**没登记的文件不会被 import** |
-| 5 | `.coding/config.json` 写 `{"adapter": "<宿主>"}` | `check` 里的 selected 变成它 |
-
-契约正本：[host-adapter.md](host-adapter.md)（本技能目录）。申报 `supportsTools=false` 的适配器，
-`travel spawn` 会打警告——那种适配器只适合只读审查，不要拿来跑发货链路。
-显式点名（`--adapter`／`TRAVEL_ADAPTER`／配置）的适配器起不来会直接报错，不会偷偷换回别的宿主。
-
-## 飞书桥
-
-`travel feishu run` 起一个常驻桥：飞书消息 → 分诊（确定性动作脚本直做；需要判断的醒一次 AI）→
-回话；run 状态变化自动发卡；卡片按钮走 `travel serve` 的受控端点，**不直写 state.json**。
-
-- 配置：`<数据根>/kai-mode/feishu.json`（机器级）；项目级 `.coding/feishu.json` 可选覆盖
-- 默认全拒：`allow.users` / `allow.chats` 空 = 谁都不认
-- 对话模式默认开：同一条飞书会话续同一个宿主会话；空闲 45 分钟 / 20 轮 / 6 万 token 任一触发即换新
-- 出站可靠投递：消息先落 sqlite 队列再发；发失败按 30s→1m→2m… 退避，封顶 15 分钟、共 8 次，
-  用尽进死信（不静默丢）；`travel feishu outbox` 查看，`--retry` 复活重发。幂等键随行，重试不刷屏
-- 播报：状态稳定 10 秒才发卡；停在门点（phase 到 planning/design/closing 且该门 pending）不动时
-  每 20 分钟再喊一次（最多 3 次）；拍板后同一门点的所有卡原地改成结果
-- 常驻看板：群里一条卡片消息，置顶并每 30 分钟原地刷新（`notify.board_min`）
-- 断线补读：启动时按水位补最近 3 小时内的指令类消息，旧闲聊不回放
-- 自助排查：`travel feishu status`、`travel feishu triage <一句话>`、`travel feishu outbox`
 
 ## 任务图
 
@@ -151,8 +125,8 @@ worker 是**物理子进程**，由「宿主适配器」启动。内建三个：
 
 | 现象 | 动作 |
 |---|---|
-| 子会话超时/崩溃 | `travel spawn --retry` 重试一次；再失败转 blocked |
-| 报告解析失败 | 读 diff 自判，不重试 |
+| 子代理超时/崩溃 | 主会话重派该任务一次；再失败转 blocked |
+| 报告缺失/解析失败 | 视为 partial，读 diff 自判，不重试 |
 | 报告与 diff 不符 | 视为 partial，必须读 diff |
 | 连续 return 3 轮 | 转 blocked，叫醒人 |
 | merge 冲突 | 脚本自动 rebase 一次；仍冲突 → blocked |
@@ -160,7 +134,7 @@ worker 是**物理子进程**，由「宿主适配器」启动。内建三个：
 
 ## 曲速模式（/warp）
 
-`/warp <任务> [--tasks tasks.json]` = 全自动挡：施工全程 AI 自推，门卫代理批 G0/G1/G2，只在红线/异常时停。
+`/warp <任务> [--tasks tasks.json]` = 全自动挡：施工全程主会话自推，门卫代理批 G0/G1/G2，只在红线/异常时停。
 - `--tasks` 可在开 run 时直接写任务图；并发满时 run 排队，槽位空出后自动提升（`promote_queued`）。
 - 舰队节制：舰船数（run）1–3（`--ships`，warp/jump 默认 2、`run` 默认 1）、船员数（并发子代理）1–5（`--crew`，默认 5），按舰队独立计数；
   不同舰桥 / agent 框架互不抢占，touchset 冲突检测仍全局。
@@ -172,8 +146,6 @@ worker 是**物理子进程**，由「宿主适配器」启动。内建三个：
 - push 目标默认 `dev`；仓里没有 dev（如本仓已并入 main）则用当前分支。
 - issue 引用自动识别：任务文本里的 `#123` 或 GitHub issue URL 会自动关票；识别不到则跳过，不阻塞发货。
 - 吞并他人成果：`travel assimilate <branch> --approve`，必须用户同意后才执行。
-- `travel drive` 是零干预驱动：脚本循环 spawn → report → review → accept，槽位空出自动提升排队 run，直到全部终态或 blocked。
-- `travel drive --review-adapter mock` 可让审查走更便宜的适配器（生产默认与 worker 相同）。
 
 ## 跃迁触发（/jump）
 
@@ -187,6 +159,6 @@ worker 是**物理子进程**，由「宿主适配器」启动。内建三个：
 
 ## 与其他体系
 
-- V1 机场体系：并存，命令与状态都不共享。装 V2 不动 V1。
 - 创作体系：V2 只管代码；作品交付走 `/producer` 等。
-- 看板：`travel status` / `travel status --html`；不接 V1 航班信息。
+- 看板：`travel status` / `travel status --html`。
+- 宿主必须能起子代理；起不了就如实报缺件，不退化成「自己写代码」。

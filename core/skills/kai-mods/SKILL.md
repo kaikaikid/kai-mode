@@ -35,13 +35,13 @@ dependencies:
 
 ### A. 登记（inventory）
 
-列出宿主已装插件，与 `v2/mods/`、`scripts/mod-zh.py` 等个人补丁对账，登记到 `<项目根>/.mods/registry.md`。
+列出宿主已装插件，与 `<项目根>/.mods/patches/` 里的个人补丁对账，登记到 `<项目根>/.mods/registry.md`。
 
 ```
 /kai-mods inventory
 ```
 
-做：`claude plugin list --json` → 对账 `v2/mods/` 与 `scripts/mod-*` → 写 `<项目根>/.mods/registry.md`。
+做：`claude plugin list --json` → 对账 `.mods/patches/` 里登记过的补丁 → 写 `<项目根>/.mods/registry.md`。
 
 ### B. 更新（update）
 
@@ -51,7 +51,7 @@ dependencies:
 /kai-mods update <plugin-id>
 ```
 
-做：`claude plugin update` → 重跑 `v2/mods/apply.py` 或对应 `scripts/mod-*.py` → 记录版本变化。
+做：`claude plugin update` → 重跑 `.mods/patches/` 里登记的重放命令 → 记录版本变化。
 
 ### C. 调整（patch）
 
@@ -77,7 +77,7 @@ dependencies:
 
 - `set-kai-mode`：装机/升级框架；`/kai-mods` 不重复它。
 - `upgrade-kai-mode`：框架版本漂移；`/kai-mods` 管插件版本漂移。
-- `v2/mods/apply.py`：V2 面板补丁；`/kai-mods update` 会调它。
+- `.mods/patches/`：每次个人向调整的重放命令与回滚命令；`/kai-mods update` 会按记录重放。
 
 ## 铁律
 
