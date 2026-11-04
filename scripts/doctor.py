@@ -588,7 +588,7 @@ def chk_version_readme(root, ms):
 
 
 def chk_skill_tests(root, ms):
-    """12 --with-tests：跑各技能自带测试 + 仓级 `scripts/tests`、`v2/tests`。
+    """12 --with-tests：跑各技能自带测试 + 仓级 `scripts/tests`、`engine/tests`。
     有 pytest 用 pytest；技能测试在没有 pytest 时退化到标准库 unittest；
     仓级测试是 doctor 自己的回归网，pytest 不可用即如实报红，不静默跳过。"""
     skills_dir = os.path.join(root, "skills")
@@ -610,7 +610,7 @@ def chk_skill_tests(root, ms):
             if os.path.isdir(d) and d not in seen:
                 seen.add(d)
                 targets.append((name, d))
-    repo_tests_dirs = [os.path.join(root, "scripts", "tests"), os.path.join(root, "v2", "tests")]
+    repo_tests_dirs = [os.path.join(root, "scripts", "tests"), os.path.join(root, "engine", "tests")]
     repo_tests_dirs = [d for d in repo_tests_dirs if os.path.isdir(d)]
     has_repo_tests = bool(repo_tests_dirs)
     if not targets and not has_repo_tests:
@@ -658,7 +658,7 @@ def chk_install_sync(root, ms):
         return "fail", "magpie-sync 读不出来"
     lib = ms.find_library()
     if not lib or not os.path.isdir(lib):
-        return "skip", f"中央库定位不到（{getattr(ms, 'LIBRARY_ENV', 'KAI_MAGPIE_LIBRARY')} 未设，~/*/skills/kai-mode 没有指向库的链接）"
+        return "skip", f"中央库定位不到（{getattr(ms, 'LIBRARY_ENV', 'KAI_MAGPIE_LIBRARY')} 未设，~/*/skills/staff 没有指向库的链接）"
     fix = (f"python core/skills/set-kai-mode/scripts/magpie-sync.py apply --root {root} --library {lib}")
     try:
         plan = ms.install_plan(root)

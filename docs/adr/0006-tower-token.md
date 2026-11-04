@@ -41,7 +41,7 @@ accepted —— 2026-10-23 kaikaikid 口径定稿。**判据来源：kaikaikid 2
 - **与 0003 D5**：不冲突——D5 说塔台独占 push（规则层单点），本令牌把独占钉到进程层；令牌是 D5 独占权的物理执行，不改变归属。
 - **与 0003「清退令牌」**：0003 清退的是旧机场机器的**在岗令牌**（两层归属相反、不可复现的在岗判定与租约机制）与「运行态 json 作为恢复态」（D6 断点三件套口径）。本令牌是**单轮互斥锁**：语义（防双实例）、生命周期（单轮、心跳过期即让）、用途（不进断点三件套、不当恢复态）都不同，不复活旧机制；判据来源晚于 0003，冲突处以本文为准。
 - **与 0004**：路径从实例 `paths.state_dir` 读（D2 字段表），缺件按 D4 三格报；阈值推导用 `tower_cron.interval_min`——技能正文不写第二份默认路径（「一个语义一个家」）。
-- 执行面分布：抢/续/退位清单住[塔台技能](../../skills/tower/SKILL.md)「0. 抢令牌」；唤醒禁令住[机长](../../skills/pilot/SKILL.md)/[副机长](../../skills/copilot/SKILL.md)围栏＋[loop-protocol](../../loops/loop-protocol.md) §十二；唤醒人名单住 [kai-mode 技能](../../skills/kai-mode/SKILL.md)；定时器侧一句话住 [set-kai-mode](../../skills/set-kai-mode/SKILL.md)「3.」。
+- 执行面分布：抢/续/退位清单住[塔台技能](../../skills/tower/SKILL.md)「0. 抢令牌」；唤醒禁令住[机长](../../skills/pilot/SKILL.md)/[副机长](../../skills/copilot/SKILL.md)围栏＋[loop-protocol](../../loops/loop-protocol.md) §十二；唤醒人名单住 [kai-mode 技能](../../skills/staff/SKILL.md)；定时器侧一句话住 [set-kai-mode](../../skills/set-staff/SKILL.md)「3.」。
 
 ## 验证（判据级）
 

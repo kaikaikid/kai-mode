@@ -13,8 +13,8 @@ description: >
   升源仓、回写技能、迁移配置实例、校准默认入口/钩子，最后逐项验收并留回滚与升级回执。
   只升漂移项，本地改过的逐条问，项目数据一律不碰。
   触发：`/upgrade-kai-mode`、升级 kai-mode、已装的 kai-mode 怎么更新、技能同步到新版、装的是旧版。
-version: 0.2.0
-updated: 2026-10-31
+version: 0.2.1
+updated: 2026-11-05
 allowed-tools: Bash(*) Read Write Edit
 compatibility: Requires python3, git
 metadata:
@@ -53,7 +53,7 @@ metadata:
 | 根 | 从哪来 |
 |---|---|
 | 源仓根 | 装机回执的 `root`（不是当前 cwd） |
-| 库根 | 沿宿主 `kai-mode` 条目反查；读不出用 `KAI_MAGPIE_LIBRARY` 指到 `.../library/skills` |
+| 库根 | 沿宿主 `bridge` 条目反查；读不出用 `KAI_MAGPIE_LIBRARY` 指到 `.../library/skills` |
 | 项目仓根 | `git rev-parse --show-toplevel` |
 
 ```bash
@@ -252,5 +252,5 @@ python <源仓>/scripts/check-instance.py --repo <项目仓>
 | 首次安装、换宿主、装默认入口、旧实例字段映射 | [`set-kai-mode`](../set-kai-mode/SKILL.md) |
 | 技能正本 → 宿主的机制与漂移表 | [`set-kai-mode`](../set-kai-mode/SKILL.md)「装技能到宿主」 |
 | 缺件怎么登记 | [`principles`](../principles/SKILL.md)（§5 缺件如实登记） |
-| 入口、路由与拍板 | [`kai-mode`](../kai-mode/SKILL.md) |
+| 入口、路由与拍板 | [`staff`](../staff/SKILL.md) |
 | 本机环境事实（解释器、node、坑） | 本机 `agents.local.md`（不入库，每台一份） |

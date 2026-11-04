@@ -7,7 +7,7 @@
 
 ## Context
 
-- **执行侧只有一个宿主实现**：`v2/coding/adapters.py` 里 `REGISTRY` 写死三个类
+- **执行侧只有一个宿主实现**：`engine/coding/adapters.py` 里 `REGISTRY` 写死三个类
   （`claude-cli` / `mock` / `generic`）。接入新宿主＝改框架仓、加一个类、发一个版本。
 - **装机侧其实已经自适应**：`adapters/README.md` 规定「四步探测，不在表里的宿主按 §1 自测，
   然后在本表补一行」——新宿主的 AI 进来自己探、自己补文档。**装**不用改仓，**跑**要改仓。
@@ -20,7 +20,7 @@
 
 ### D1 契约住技能，与适配器代码分家
 
-契约正本：`v2/skills/travel/host-adapter.md`。它随技能分发（技能目录整体进安装面），
+契约正本：`engine/skills/fleet/host-adapter.md`。它随技能分发（技能目录整体进安装面），
 不另设 `docs/` 副本——一个语义只有一个家。契约写清接口（`probe/spawn/wait/read/kill`）、
 能力申报、报告 envelope、验收判据与安全边界。
 

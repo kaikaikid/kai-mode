@@ -15,8 +15,8 @@
 - **DeepSeek 的 service/Panel 不能直接缝合**：`dsh-superagent` 是 DSH bundle，绑定
   Cordis 插件、TypeScript/pnpm、React SPA、SQLite、`tmux`/`fcntl`；搬到 kai-mode 等于
   把整个 DSH 搬进来，且 Windows 不兼容。能借的是信息架构，不是代码。
-- **V2 控制面已经具备被服务化的条件**：`state.json` 原子写（`v2/coding/state.py` `_atomic_write`）、
-  跨进程文件锁（`lock()`）、worker 以 pid/heartbeat 落盘（`v2/coding/adapters.py`）、
+- **V2 控制面已经具备被服务化的条件**：`state.json` 原子写（`engine/coding/state.py` `_atomic_write`）、
+  跨进程文件锁（`lock()`）、worker 以 pid/heartbeat 落盘（`engine/coding/adapters.py`）、
   `travel drive` 已是无人值守循环。缺的只是展示层。
 
 ## Decision
@@ -61,7 +61,7 @@ AI 面再收到 `ai_coding_runs`（默认 8）与 `ai_coding_needs`（默认 5�
 - 只在需要事件驱动接活、无人值守长跑或"点按钮"执行 gate/drive/stop 时才做。
 ### D4 轻服务按需：不搬 DSH
 
-- 形态：`v2/coding/service.py` + `travel serve`，只用 Python 标准库
+- 形态：`engine/coding/service.py` + `travel serve`，只用 Python 标准库
   （`http.server` + `threading` + `subprocess`）；绑 `127.0.0.1`，默认端口 `8765`；
   单实例 pid 锁（`O_CREAT|O_EXCL`）；写端点一律调用 `travel` 命令，不直接改 `state.json`。
 - **写端点默认要求 `--token`**：没有 token 服务拒绝启动（写端点能触发 merge/drive，

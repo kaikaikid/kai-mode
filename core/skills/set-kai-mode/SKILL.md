@@ -6,7 +6,7 @@ approved: 2026-10-21
 sources:
   - resource: "../bridge/SKILL.md"
     note: "对外唯一入口；本技能负责把它装到宿主并设为默认"
-  - resource: "../../../v2/skills/travel/SKILL.md"
+  - resource: "../../../engine/skills/fleet/SKILL.md"
     note: "施工与发货内核；装舰桥时一并装它"
   - resource: "scripts/magpie-sync.py"
     note: "技能正本 → 中央库 → 各家宿主链接的回写口"
@@ -14,16 +14,16 @@ sources:
     note: "卸载 V1 的机械腿：探测、退役、复核、回执都住脚本"
 description: >
   kai-mode 的初始化安装入口（不是日常施工）：先看缺什么、列出推荐清单跟用户确认，再只装缺的。
-  覆盖：装舰桥与 V2 内核、把舰桥设为默认入口、worktree 环境自检、项目配置实例生成/校验/迁移、
+  覆盖：装舰桥与舰队内核、把舰桥设为默认入口、worktree 环境自检、项目配置实例生成/校验/迁移、
   开票归属守卫、缺件如实登记。触发：新 agent 接手装配、换宿主、修技能落点、迁旧配置实例、
   问「这套东西都住在哪」。不做日常施工。
-version: 6.2.0
-updated: 2026-10-31
+version: 6.2.1
+updated: 2026-11-05
 allowed-tools: Bash(*) Read Write Edit
 compatibility: Requires python3, git
 ---
 
-# Set Kai Mode —— 安装舰桥与 V2 内核
+# Set Kai Mode —— 安装舰桥与舰队内核
 
 > `/bridge` 是**用**这套框架的入口；`/set-kai-mode` 是**装**这套框架的入口。
 > 本技能只做安装与配置，**不做日常施工**：不写产品代码、不开 run、不发货、不关票。
@@ -46,11 +46,11 @@ compatibility: Requires python3, git
 | 层 | 组件 | 干什么 |
 |---|---|---|
 | 入口 | `bridge` | 用户唯一对话面；判断、开票、开 run、清场、发货、回报 |
-| 规划 | `kai-mode` | 需求大、方向未定时由舰桥调用；出规划表与拆票草案 |
-| 执行 | `v2`（`coding` 命令） | 一个 issue 一个 run；主会话规划验收，宿主原生子代理施工 |
-| 方法 | `methods/kai-*` | TDD、审查、诊断、拆票、术语、写文档、安全专项 |
+| 规划 | `staff` | 需求大、方向未定时由舰桥调用；出规划表与拆票草案 |
+| 执行 | `engine`（`travel` 命令） | 一个 issue 一个 run；主会话规划验收，宿主原生子代理施工 |
+| 方法 | 宿主中央库原版 | TDD、审查、诊断、拆票、术语、写文档、安全专项；按名调用，不随装 |
 | 记录 | GitHub Issue ＋ `.coding/runs/` | 票面与 run 状态；不看日表 |
-| 展示 | `coding status --html` | 进度看板（可选） |
+| 展示 | `travel status --html` | 进度看板（可选） |
 
 ## 装到别的项目：先问清楚（十问）
 
@@ -93,7 +93,7 @@ python scripts/init-project.py --repo <目标仓> --answers a.json   # 机器填
 |---|---|---|
 | 0 | **缺口扫描（只读）** | 出一张缺口清单：每项标「已就位/跳过」或「需处理（原因）」 |
 | 1 | 注入方法论与技能（仓库内正本） | 技能文件在位；清单以 `.claude-plugin/marketplace.json` 现场派生为准 |
-| 2 | 装技能到宿主（`bridge` ＋ `kai-mode` ＋ `v2/coding` ＋ 方法库） | 宿主技能列表里能看见，内容与正本同哈希 |
+| 2 | 装技能到宿主（`bridge` ＋ `staff` ＋ `fleet` ＋ `pk`） | 宿主技能列表里能看见，内容与正本同哈希 |
 | 3 | **把舰桥设为默认入口** | 项目 `CLAUDE.md` / `AGENTS.md` 有默认入口段；无斜杠命令时按舰桥执行 |
 | 4 | worktree 环境自检（解释器 / node / 依赖三项） | 三项都有明确读数 |
 | 5 | doctor | 项目仓门禁全绿或如实点红 |
@@ -111,7 +111,7 @@ python scripts/init-project.py --repo <目标仓> --answers a.json   # 机器填
 | 4 环境三项 | `test -x` 解释器/node、`test -d node_modules` | 三项都有明确读数 | 任一项缺（报绝对路径） |
 | 5 门禁 | 项目仓门禁脚本 | 全绿或只基线告警 | 有红（列出哪道门） |
 | 6 配置实例 | 读 `<root>/.ai/kai-mode.project.json` 的 `schema` | schema 5 且无 V1 键 | 无实例 → 生成；schema ≤4 → 迁移 |
-| 7 宿主技能与命令 | 列宿主技能目录 | `bridge`/`coding` 等方法技能能读到 | 缺落点 → 补，软约束登记 |
+| 7 宿主技能与命令 | 列宿主技能目录 | `bridge`/`travel` 等技能与命令能读到 | 缺落点 → 补，软约束登记 |
 | 8 同名技能冲突 | `magpie-sync.py check --json` 看 `conflicts[]` | 无冲突 | 有冲突 → 逐条问用户去留，不静默覆盖 |
 | 9 开票归属守卫 | 读宿主 `settings.json` 的 `hooks.PreToolUse` | 钩子已挂且自测 ok | 未挂 → 列进推荐清单 |
 | 10 旧 V1 残留 | `python <本技能目录>/scripts/uninstall-v1.py [--repo <项目仓>]`（只读探测） | 七个 V1 技能全为「—」，无待人工项 | 有命中 → 走「卸载 V1」腿，用户点头后 `--apply` |
@@ -123,11 +123,11 @@ python scripts/init-project.py --repo <目标仓> --answers a.json   # 机器填
 
 - 正本全部住在仓库里（中立层），任何宿主一进仓库即生效：
   - 入口：`core/skills/bridge/SKILL.md`
-  - 规划方法：`core/skills/kai-mode/SKILL.md`
-  - V2 执行内核：`v2/skills/travel/SKILL.md`（命令 `v2/bin/coding`；安装见 `v2/README.md`）
-  - 方法库：`methods/skills/kai-*`
+  - 规划方法：`core/skills/staff/SKILL.md`
+  - 舰队执行内核：`engine/skills/fleet/SKILL.md`（命令 `engine/bin/travel`；安装见 `engine/README.md`）
+  - 方法：不随装，按名用宿主中央库原版（`tdd`、`code-review`、`diagnosing-bugs`、`domain-modeling`、`to-tickets`、`writing-for-agents`）
   - 想法池：`intake/skills/kai-boom-idea-log/SKILL.md`
-  - 看板（可选）：`board/skills/flight-info/SKILL.md`；V2 进度优先用 `coding status --html`
+  - 看板（可选）：`board/skills/flight-info/SKILL.md`；舰队进度优先用 `travel status --html`
 - 项目仓落点从配置实例读：`registry.skills.project_skills_dir`；
   剧本登记行收进 `registry.playbooks[]`。新增剧本只加登记行，不在入口里复制判据。
 
@@ -179,7 +179,7 @@ python $S apply --profile core             # 正本 → 库 → 各家链接；�
 - 只写项目级，不写全局；不同项目可以有不同的默认入口。
 - 宿主支持 `UserPromptSubmit` 钩子时，可另装一条只读提示钩子，把上面这句作为附加上下文；
   钩子只提示、不改用户输入。宿主没有钩子口 ⇒ 只靠指令文件，登记为软约束。
-- 验收：新开一个会话，直接说「现在到哪了」，不再打任何斜杠命令，应能读到 `coding status` 并按舰桥回报。
+- 验收：新开一个会话，直接说「现在到哪了」，不再打任何斜杠命令，应能读到 `travel status` 并按舰桥回报。
 
 ### 4. worktree 环境自检（三项，缺一报错不静默）
 
@@ -226,7 +226,7 @@ python scripts/framework-gate.py --selftest
 
 - 缺件登记判据见 `../principles/SKILL.md`（§5 缺件如实登记）；本步管交接。
 - 装完交一张「安装回执」：装了哪几件技能、默认入口落在哪个文件、三项环境读数、doctor 结果、缺件清单、宿主落点核对。
-- **宿主落点核对**：① `bridge` 与 `coding` 在宿主技能目录；② 新上下文口可用（子代理／独立进程／新会话至少一条），
+- **宿主落点核对**：① `bridge` 与 `travel` 在宿主技能目录；② 新上下文口可用（子代理／独立进程／新会话至少一条），
   不可用就登记 `no-new-context`；③ 旧 V1 链接已摘或已列清单。
 - 不把状态写进本地台账：票状态只看 GitHub；run 状态只看 `.coding/runs/`。
 
@@ -294,7 +294,7 @@ schema 5 删掉了 V1 的日表、车道、塔台定时器与三键门禁；保�
 | `registry` | `playbooks[]`、`adrs.dir`、`rules.dir`、`skills.project_skills_dir` | 入口与安装器 |
 | `paths` | `handoff_dir`、`ideas_dir`、`audit_dir`、`module_cards`、`dashboard`、`state_dir` | 接交、想法池、看板、运行态 |
 | `runtime` | `backend_python`、`node`、`deps.check_dir_rel` | worktree 自检 |
-| `gates` | `finish_cmd` | V2 发货收尾门 |
+| `gates` | `finish_cmd` | 舰队发货收尾门 |
 | `issue` | `platform`、`repo`、`boom_summary_ticket` | 开票、关票、想法池 |
 
 **已删除（schema 4 → 5）**：`ship_mode`、`paths.day_tables_dir`、`paths.day_table_pattern`、`paths.lanes`、
@@ -322,9 +322,9 @@ schema 5 删掉了 V1 的日表、车道、塔台定时器与三键门禁；保�
 | 你要的 | 去哪 |
 |---|---|
 | 用户入口、清场、发货 | `../bridge/SKILL.md` |
-| 规划与拷问方法 | `../kai-mode/SKILL.md` |
-| 施工与发货命令 | `../../../v2/skills/travel/SKILL.md` |
-| 方法库 | `../../../methods/skills/` |
+| 参谋部（规划与拷问方法） | `../staff/SKILL.md` |
+| 施工与发货命令 | `../../../engine/skills/fleet/SKILL.md` |
+| 方法库 | 宿主中央库原版（按名调用，本仓不存副本） |
 | 想法池 | `../../../intake/skills/kai-boom-idea-log/SKILL.md` |
 | 看板（可选） | `../../../board/skills/flight-info/SKILL.md` |
 | 改了技能正本怎么让各家吃到 | 本技能「2. 装技能到宿主」 |

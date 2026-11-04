@@ -421,14 +421,14 @@ def test_retire_registry_entries_only_removes_named(tmp_path):
 
 def test_retire_legacy_moves_dir_and_unlinks(tmp_path):
     lib = str(tmp_path / "data" / "library" / "skills")
-    for name in ("kai-mode", "塔台", "tower"):
+    for name in (ms.ANCHOR, "kai-mode", "塔台", "tower"):
         os.makedirs(os.path.join(lib, name))
         with open(os.path.join(lib, name, "SKILL.md"), "w", encoding="utf-8") as f:
             f.write(f"# {name}\n")
     home = str(tmp_path / "home")
     face = os.path.join(home, ".fake", "skills")
     os.makedirs(face)
-    os.symlink(os.path.join(lib, "kai-mode"), os.path.join(face, "kai-mode"),
+    os.symlink(os.path.join(lib, ms.ANCHOR), os.path.join(face, ms.ANCHOR),
                target_is_directory=True)
     os.symlink(os.path.join(lib, "塔台"), os.path.join(face, "塔台"), target_is_directory=True)
     moved, unlinked, skipped = ms.retire_legacy(lib, home=home)

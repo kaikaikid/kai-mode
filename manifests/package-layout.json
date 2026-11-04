@@ -20,7 +20,6 @@
     "handoff/",
     "scripts/",
     "adapters/",
-    "methods/",
     "manifests/",
     "studio/"
   ],

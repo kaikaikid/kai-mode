@@ -506,7 +506,7 @@ interface Capabilities {
 ## 十一、与 V1 机场体系的关系
 
 - **V1 不动**：机场体系留在 `main` / `dev`，不删不改。
-- **V2 独立分支、独立目录**（拟 `v2/`），与 `airport/` 并列。
+- **V2 独立分支、独立目录**（拟 `engine/`），与 `airport/` 并列。
 - **共享契约**：AC 写法、发货权分离、续跑指针格式。
 - **不共享**：角色调度、日表、定时器、看板。
 - 两套文档不互指为正本，只在必要处留指针。
@@ -580,7 +580,7 @@ r-9c1d   加导出 CSV          queued       -      -     3m
 r-4e8b   重构 auth 模块       blocked      2/5    G0    1h
 ```
 
-`coding status --html` 生成单文件 `v2/board.html`：
+`coding status --html` 生成单文件 `engine/board.html`：
 
 - 三列：**在做 / 在等 / 已完成**；
 - 列映射：在做 = `planning/design/delegating/reviewing/closing`；
@@ -608,7 +608,7 @@ r-4e8b   重构 auth 模块       blocked      2/5    G0    1h
 2. 预算单位用 token、调用次数还是墙钟？（建议 token 为主，墙钟兜底）
 3. 多 run 时是否需要常驻总控？（已定：不需要常驻。脚本 `coding next` 负责槽位与资源分配，总控只在人工排查时按需拉起）
 4. 跨宿主的工具名与 tier 如何映射到具体模型？（建议先只做 claude-cli + generic，tier 映射表随 adapter 走，其余按需）
-5. V2 目录落 `v2/` 还是 `core/v2/`？（建议顶层 `v2/`，表明是新体系）
+5. V2 目录落 `engine/` 还是 `core/engine/`？（建议顶层 `engine/`，表明是新体系）
 6. 激活命令：2026-10-30 定为 `/coding`；2026-11-01 用户改为 `/warp`（曲速）与 `/jump`（跃迁），控制面二进制 `travel`。
 7. 控制平面脚本用什么写？（建议 Python 3 标准库，零第三方依赖，跨宿主都能跑）
 

@@ -2,9 +2,9 @@
 
 Framework repo, independent of any project repo. Run `python scripts/doctor.py` before and after
 every change — the 总结 line prints the check count; red means `rc=1`.  
-`methods/` holds forked generic-method skills (`kai-*`, upstream absorbed by hand — see
-ADR-0026); `scripts/tests/` runs under `doctor.py --with-tests` (needs pytest) and is part of
-that gate.
+`engine/skills/` holds the execution kernel (`fleet`) and our own method skill (`pk`); generic
+methods are used by upstream name from the host library, never copied here (see `docs/method-pointers.md`);
+`scripts/tests/` runs under `doctor.py --with-tests` (needs pytest) and is part of that gate.
 
 ## Writing docs: run the script, don't hand-write
 
@@ -71,9 +71,9 @@ skill runs bridge's method. Source of truth: `docs/adr/0028-bridge-entry-and-air
 | Kind | Only home | Elsewhere |
 |---|---|---|
 | Non-negotiable constraints (red lines) | this file | pointer |
-| Run-level protocol (slots, fail/retry counts, receipt, shipping) | `v2/skills/travel/SKILL.md` | pointer |
-| Dispatch (when to delegate, context budget, report shape) | `v2/skills/travel/SKILL.md` | pointer |
-| Method (how to explore / review / plan / implement) | `methods/skills/kai-*/SKILL.md` | pointer |
+| Run-level protocol (slots, fail/retry counts, receipt, shipping) | `engine/skills/fleet/SKILL.md` | pointer |
+| Dispatch (when to delegate, context budget, report shape) | `engine/skills/fleet/SKILL.md` | pointer |
+| Method (how to explore / review / plan / implement) | 宿主中央库上游原版（按名调用；索引见 `docs/method-pointers.md`） | pointer |
 | Output structure (which carrier: L1 text / L2 diagram / L3 single-file HTML / L4 explainer video) | `core/skills/principles/SKILL.md`（§7 输出） | pointer |
 | Host differences (launcher per role, how a persona becomes a native agent file, permissions, model) | `adapters/README.md` + `adapters/<host>.md` | pointer |
 | Artifact packaging (dev records vs host payload vs project scaffold) | `manifests/package-layout.json` + `docs/package-layout.md` | pointer |
@@ -93,12 +93,12 @@ mechanically. To write about a retired mechanism on purpose, mark that line `can
 | Topic | Source of truth |
 |---|---|
 | Skill layout & frontmatter contract | `docs/skill-layout.md` |
-| Writing a SKILL / AGENTS doc | skill `kai-writing-for-agents`（fork 自上游；溯源见 `docs/skill-sources/workflow-skills.md`） |
-| Sub-session dispatch contract (depth, context budget, report shape) | `v2/skills/travel/SKILL.md` |
+| Writing a SKILL / AGENTS doc | skill `writing-for-agents`（宿主中央库上游原版） |
+| Sub-session dispatch contract (depth, context budget, report shape) | `engine/skills/fleet/SKILL.md` |
 | Handoff docs & cross-agent board | `handoff/README.md` · `handoff/60-board/README.md` |
 | External skills kept as reference material | `docs/skill-sources/README.md` |
 | Architecture decisions | `docs/adr/` |
-| Run lifecycle (one issue, one run) | `v2/skills/travel/SKILL.md` |
+| Run lifecycle (one issue, one run) | `engine/skills/fleet/SKILL.md` |
 
 ## Issue tracker
 

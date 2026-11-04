@@ -27,7 +27,7 @@
 
 ### D2 `/coding` 降为内核控制面，`/jump` 由舰桥触发
 
-- `v2/skills/coding/SKILL.md` 不再是用户入口；`coding` 命令只做状态推进、派工、验收、发货。
+- `engine/skills/coding/SKILL.md` 不再是用户入口；`coding` 命令只做状态推进、派工、验收、发货。
 - 用户说「开工 / 做吧 / 继续」或打 `/jump` 时，舰桥执行 `coding jump <任务>`；
   加急用 `coding PRI-jump`。自动批 G0/G1/G2，只在红线、异常、可见 UI 取舍时停。
 
@@ -43,7 +43,7 @@
 ### D4 机场体系下线
 
 - 删除 `airport/` 插件（commands、六岗位技能、loop 协议、塔台脚本、日表/车道/令牌/定时器）。
-- `pk` 不属于机场角色，迁到 `methods/skills/pk`。
+- `pk` 不属于机场角色，迁到 `engine/skills/methods/pk`。
 - 配置实例升 **schema 5**，删除：`ship_mode`、`paths.day_tables_dir`、`paths.day_table_pattern`、
   `paths.lanes`、`tower_cron`、`issue.verdict_marker`、`registry.skills.loop_dir`、
   `gates.captain_preflight`、`gates.scope_check`、`gates.close_gate`；新增 `gates.finish_cmd`。
@@ -56,6 +56,6 @@
 - **好**：用户只有一个对话面；发货不再需要理解票与排班；脏文件有机械、可逆的处置；
   V1/V2 抢出口的问题消失；配置面少 10 个键。
 - **代价**：V1 的成熟判据（判词形状、机器门、热修门槛、merge-tree 预演、自动推送三条件）随插件删除；
-  已把仍适用的部分写进 `bridge` 与 `v2/skills/coding`，其余留在 git 历史与 ADR。
+  已把仍适用的部分写进 `bridge` 与 `engine/skills/coding`，其余留在 git 历史与 ADR。
 - **迁移**：已装 V1 的宿主按 `set-kai-mode` 第 2 步 `--retire` 清单处理；项目配置实例按 schema 5 迁移腿逐键 diff。
 - **不做**：不恢复日表/车道/塔台定时器；不保留 V1 命令别名（用户只需要舰桥）。

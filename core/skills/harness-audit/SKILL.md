@@ -8,8 +8,8 @@ description: >
   语义审计：盘技能、插件、ADR、协议的质量、重叠与过期引用，出 Keep/Improve/Update/Retire/Merge 判词。
   不做 doctor 硬门（语义判断必须由模型做）；不修代码、不改票面。
   触发：发版前、月度体检、发现同一判据有两个家、或 doctor 全绿但怀疑正本已漂。
-version: 0.2.0
-updated: 2026-10-27
+version: 0.2.1
+updated: 2026-11-05
 allowed-tools: Read Grep Bash Write
 compatibility: Requires python3
 metadata:
@@ -75,7 +75,7 @@ Quick Scan 只看上次审计后 mtime 变过的件；Full Stocktake 审全部�
 | skills/foo/SKILL.md | Improve | 第 N 行仍写已删路径 | 改指 ... |
 ```
 
-审计结果不进 doctor、不自动改文件；由塔台/地勤决定开票或就地修。
+审计结果不进 doctor、不自动改文件；由舰桥决定开票或就地修。
 
 ## 首次自证（硬）
 

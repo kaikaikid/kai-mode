@@ -17,7 +17,7 @@ accepted（2026-10-28 核对：F1–F4 已落地，余项按批推进）—— 2
 | F1 | 塔台令牌是**纯正文约定、零实现件**，并发互斥靠 agent 自觉 | `skills/tower/SKILL.md` 内「令牌」16 处；全仓 `*.py`/`*.ps1` 里 `tower-token` 命中 **0**；项目侧日报每轮手写「收工删令牌释放」＝agent 自己建删 JSON；项目侧历史出现过并行塔台 |
 | F2 | **没有校验既有实例的口**；验收脚本住在 agent 数据根（scratch，没人跑） | doctor 的 `config-instance` 项只实跑 `init-project` 生成**临时**实例对账；`scripts/` 下无 `check-instance`；项目实例无任何机器校验 |
 | F3 | 模板的**框架缺省被当项目事实**写进用户实例（0014 D1 的漏网） | 项目实例三值盘上不存在：`registry.skills.loop_dir`、`runtime.backend_python.fallback.rel`、`runtime.node.rel`（`runtimes/` 整目录 MISSING）；`registry.rules.dir` 命中属巧合，同样没被问答过 |
-| F4 | 框架**没有字节尺**，反膨胀原则只活在正文 | doctor 仅有 ≤500 **行**的闸，且只覆盖 `SKILL.md` 与 `agents/*.md`；`loops/loop-protocol.md`（15,634B）、`adapters/*.md`、`AGENTS.md`、`docs/*.md` 无任何体量闸；最大件 `set-kai-mode/SKILL.md` 31,707B／378 行＝用掉 76% 行预算 |
+| F4 | 框架**没有字节尺**，反膨胀原则只活在正文 | doctor 仅有 ≤500 **行**的闸，且只覆盖 `SKILL.md` 与 `agents/*.md`；`loops/loop-protocol.md`（15,634B）、`adapters/*.md`、`AGENTS.md`、`docs/*.md` 无任何体量闸；最大件 `set-staff/SKILL.md` 31,707B／378 行＝用掉 76% 行预算 |
 | F5 | **数值型判据多处复述**，`canon-dup` 自认不管 | 安装面 48 份里：红线 20 个文件、`verdict=pass` 6、日表 5–10 行 4、在飞名额 3、独占 push 3、不写产品代码 4、令牌 2；`docs/canon.json` 自注「四岗位技能对协议数值的复述**暂未纳入** forbidden」 |
 | F6 | 交接槽位无条件铺（0.22.1 已修），**同族风险仍在日表面** | `paths.day_table_pattern`／`lanes` 是框架常量写死，无人校验盘上真有当天匹配文件 |
 | F7 | `sources[].resource` 的「只许随装件」规矩**无机械检查** | `docs/skill-layout.md` §「sources 只许指随技能安装的件」；doctor 里 `resource` 零命中 ⇒ 写了死指针也全绿 |

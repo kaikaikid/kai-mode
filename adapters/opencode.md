@@ -1,7 +1,7 @@
 # opencode 适配器（免费档备胎）
 
-> 本文只讲**怎么在这个宿主上起舰桥**。V2 施工不适用：opencode 没有宿主原生子代理，
-> 而 V2 已明确只调用宿主自己的子代理，不拉 `opencode run` 子进程。
+> 本文只讲**怎么在这个宿主上起舰桥**。舰队施工不适用：opencode 没有宿主原生子代理，
+> 而 框架已明确只调用宿主自己的子代理，不拉 `opencode run` 子进程。
 
 > 适用：宿主没有会话创建口 / 定时口，或需要非 Qoder 执行体直接跑舰桥。
 > 不依赖宿主定时口；舰桥按需起会话。
@@ -39,10 +39,10 @@ opencode run --model <free-model> \
 - 技能落点读项目配置实例 `registry.skills.project_skills_dir`（框架仓正本＝本仓 `<plugin>/skills/`），路径不写死。
 - 失败写 `launch-failed`；不重试到死，交人工。
 
-## 执行三职（V2 不适用）
+## 执行三职（舰队不适用）
 
-- V2 只用宿主原生子代理；opencode 当前没有这一层 ⇒ `travel claim/report/review/verdict` 派活链不适用。
-- 按缺件三格登记 `no-new-context`，如实告诉用户「这个宿主跑不了 V2」；不退化去拉 `opencode run`。
+- 框架只用宿主原生子代理；opencode 当前没有这一层 ⇒ `travel claim/report/review/verdict` 派活链不适用。
+- 按缺件三格登记 `no-new-context`，如实告诉用户「这个宿主跑不了舰队执行内核」；不退化去拉 `opencode run`。
 - 舰桥本身仍可用：它只做对话、开票、发货，不依赖宿主子代理。
 - 若 opencode 未来提供原生子代理，再在这里补「怎么起、怎么锁只读、报告落哪」三条。
 
@@ -53,7 +53,7 @@ opencode run --model <free-model> \
 - 不替舰桥施工；只把舰桥技能跑起来。
 - 与按需子会话一样，目标在岗不重复起。
 
-## 原生子代理（V2 必需）
+## 原生子代理（舰队必需）
 
-- 没有 agent 定义文件这一层 ⇒ **原生子代理不适用**；V2 不适用，按 §6 登记 `no-new-context`。
-- 不退化去拉 `opencode run` 子进程：用户已明确 V2 只调用宿主自己的子代理。
+- 没有 agent 定义文件这一层 ⇒ **原生子代理不适用**；舰队不适用，按 §6 登记 `no-new-context`。
+- 不退化去拉 `opencode run` 子进程：用户已明确框架只调用宿主自己的子代理。

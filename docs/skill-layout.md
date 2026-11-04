@@ -9,9 +9,10 @@
 - 只放**跨项目通用**件：拿到别的仓能直接用的剧本、技能、协议、schema、适配器、模板。
 - 项目专用件（ADR、票、日报、门禁脚本、项目专用路径）**不进本仓**，它们住在项目仓。
 - **剧本＝插件，角色＝命令，步骤＝技能**：一个剧本一个插件目录；命令只负责加载；技能写成可执行步骤。
-- **通用方法 fork 进 `methods/`**（ADR-0026）：TDD、代码审查、诊断法这类通用方法以 `kai-` 前缀 fork 到
-  `methods/skills/kai-*`，登记为插件技能、随安装走、**允许微调**；改动记 `docs/skill-sources/sources.json`
-  的 `deltas`，上游更新按 30 天对账人工吸纳。`kai-` 前缀保证与用户自装的同名上游件不互相覆盖。
+- **通用方法不 fork**：TDD、代码审查、诊断法这类通用方法直接用宿主中央库的上游原版
+  （`tdd`、`code-review`、`diagnosing-bugs`…），本仓不存副本、不记 `deltas`、不做 30 天对账；
+  只保留「何时用哪个方法 + 本仓特有约束」的指针，见 [`method-pointers.md`](method-pointers.md)。
+  本仓自己原创的方法件（如 `pk`）按插件技能随装。
 
 ## 2. 目录契约
 
@@ -166,5 +167,5 @@ python scripts/doctor.py --with-tests   # 一条命令验全仓
 ## 10. 人格层已退役
 
 旧的 `agents/` 人格层（七个人格文件 ＋ `dispatch.md`）已按 ADR-0021 退役。
-派活规则与裁决形状住 [`v2/skills/travel/SKILL.md`](../v2/skills/travel/SKILL.md)。
+派活规则与裁决形状住 [`engine/skills/fleet/SKILL.md`](../engine/skills/fleet/SKILL.md)。
 审查独立性由「另一段新上下文」保证；宿主上怎么起新上下文见 [`adapters/`](../adapters/README.md)。

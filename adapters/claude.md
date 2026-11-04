@@ -130,7 +130,7 @@ claude -p "读取并执行 <项目仓根>/.claude/skills/bridge/SKILL.md 全文�
 - 不建/删其他宿主的定时任务；不替角色施工。
 - 版本、认证状态与探针读数写进项目本机配置，不回写插件清单与技能正文。
 
-## 原生子代理（V2 必需）
+## 原生子代理（舰队必需）
 
 - 起新上下文：Claude Code 原生子代理（`.claude/agents/<名>.md`）或 `Agent` 工具；派活时在 prompt 里写清任务卡全部字段。
 - 只读：`tools` 白名单只给 `Read/Grep/Glob`（或 `disallowedTools` 禁写）；起一个只读子代理让它写临时文件，**必须被拒**，被写入按 `soft-permission-only` 登记。

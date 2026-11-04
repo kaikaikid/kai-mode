@@ -40,8 +40,7 @@ SELF_COMMAND_SKILLS = {
 
 GROUP_BY_PLUGIN = {
     "core": "舰桥与安装",
-    "v2": "执行内核",
-    "methods": "方法库",
+    "engine": "舰队执行内核",
     "studio": "文娱集团",
     "intake": "支持能力",
     "ops": "支持能力",
@@ -157,7 +156,7 @@ def main() -> int:
             if not command and skill == "harness-audit":
                 command = "手动技能"
             if not trigger:
-                if skill == "travel":
+                if skill == "fleet":
                     trigger = "由舰桥触发 /warp 或 /jump"
                 elif skill == "studio":
                     trigger = "随六个创作口令自动带入"

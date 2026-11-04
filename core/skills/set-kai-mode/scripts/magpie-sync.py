@@ -19,7 +19,7 @@
 
 三面判据（全部现算，不靠印象）：
   · 内容面 正本目录逐文件 SHA-256 == 库副本逐文件（缺件/多件都算漂移）
-  · 落点面 凡已把 anchor（`kai-mode`）链到本库的宿主家目录，必须同样有该条且解引用回库
+  · 落点面 凡已把 anchor（`bridge`）链到本库的宿主家目录，必须同样有该条且解引用回库
   · 注册面 `library.json` 的 `skills[]` 有条目，且每个铺了 anchor 的 `applied[*].skills` 含该名；
     条目另带 `source`（`kind`／`repo`／`path`）——Magpie 资源库页按它分组，缺了就落「本机」（只报 warn 不判红）
 
@@ -45,7 +45,7 @@ try:  # Windows 控制台下中文输出
 except Exception:
     pass
 
-ANCHOR = "kai-mode"  # 库位与落点面都沿这条既有条目反查，不写死机器路径
+ANCHOR = "bridge"  # 库位与落点面都沿这条既有条目反查（舰桥是永久入口）；不写死机器路径
 LIBRARY_ENV = "KAI_MAGPIE_LIBRARY"
 # 项目技能落点缺省（registry.skills 的模板缺省值）：只在项目配置实例
 # 不在／没写 registry.skills 时回落用；实例给了就以实例为准（一个语义一个家）。
@@ -1299,7 +1299,7 @@ def selftest() -> int:
         fallback = install_plan(root)
         if len(fallback) != len(FAMILIES):
             fails.append(f"无 registry.json 的根应回落内置 {len(FAMILIES)} 条，读到 {len(fallback)}")
-        # 有 skills/kai-mode/SKILL.md 的仓，正本根必须读得出（不再报「正本根读不出」）
+        # 有 skills/staff/SKILL.md 的仓，正本根必须读得出（不再报「正本根读不出」）
         fw_script = os.path.join(fw_root, "skills", "set-kai-mode", "scripts")
         os.makedirs(fw_script, exist_ok=True)
         picked_fw = resolve_root(script_dir=fw_script)
@@ -1316,7 +1316,7 @@ def selftest() -> int:
         fake_lib = os.path.join(fake_lib_root, "skills")
         fake_script = os.path.join(fake_lib, "set-kai-mode", "scripts")
         os.makedirs(fake_script, exist_ok=True)
-        # 像项目仓的 cwd：它也有 .ai/skills/project-skills/kai-mode/SKILL.md
+        # 像项目仓的 cwd：它也有 .ai/skills/project-skills/staff/SKILL.md
         fake_proj = os.path.join(tmp, "fakeproj")
         os.makedirs(os.path.join(fake_proj, ".ai", "skills", "project-skills", ANCHOR), exist_ok=True)
         with open(os.path.join(fake_proj, ".ai", "skills", "project-skills", ANCHOR, "SKILL.md"),

@@ -8,7 +8,7 @@ window.KAI_SKILLS = [
     "oneLine": "舰桥：用户唯一的对话面与最高权限角色，取代旧的 /coding 入口成为默认入口。",
     "trigger": "/bridge、/舰桥、/warp <任务>、/jump <任务>（曲速-N-任务、跃迁-N-任务 简写也认）；",
     "command": "/bridge",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   {
     "group": "舰桥与安装",
@@ -18,7 +18,7 @@ window.KAI_SKILLS = [
     "oneLine": "给技能和文档做体检，找重叠、过期和该退役的东西。",
     "trigger": "说「体检」；手动安装",
     "command": "手动技能",
-    "version": "0.2.0"
+    "version": "0.2.1"
   },
   {
     "group": "舰桥与安装",
@@ -28,27 +28,7 @@ window.KAI_SKILLS = [
     "oneLine": "把当前会话压成一份交接文档，下一棒能接着跑。",
     "trigger": "/handoff；说「写交接」",
     "command": "/handoff",
-    "version": "0.3.5"
-  },
-  {
-    "group": "舰桥与安装",
-    "plugin": "舰桥与安装",
-    "pluginId": "core",
-    "skill": "kai-mode",
-    "oneLine": "总入口：把一句话需求拆成票，再交给对应角色。",
-    "trigger": "/kai-mode；说「开工」",
-    "command": "/kai-mode",
-    "version": "4.0.0"
-  },
-  {
-    "group": "舰桥与安装",
-    "plugin": "舰桥与安装",
-    "pluginId": "core",
-    "skill": "kai-mods",
-    "oneLine": "CC 专属：登记、更新、管理已装插件/mod，记录个人向调整（如 UI 文字、补丁）。",
-    "trigger": "用户明确说「登记插件」「更新 mod」「管理 mods」「调整 UI 文字」「个人向补丁」，",
-    "command": "",
-    "version": "0.1.0"
+    "version": "0.3.6"
   },
   {
     "group": "舰桥与安装",
@@ -68,7 +48,17 @@ window.KAI_SKILLS = [
     "oneLine": "安装与体检：先看缺什么，只装缺的。",
     "trigger": "/set-kai-mode；说「装一下」",
     "command": "/set-kai-mode",
-    "version": "6.2.0"
+    "version": "6.2.1"
+  },
+  {
+    "group": "舰桥与安装",
+    "plugin": "舰桥与安装",
+    "pluginId": "core",
+    "skill": "staff",
+    "oneLine": "总入口：把一句话需求拆成票，再交给对应角色。",
+    "trigger": "由舰桥调用；说「先规划」「想清楚再做」",
+    "command": "/staff",
+    "version": "4.1.0"
   },
   {
     "group": "舰桥与安装",
@@ -78,7 +68,7 @@ window.KAI_SKILLS = [
     "oneLine": "把已经装好的 kai-mode 升到新版：先出清单，再备份、回写、验收。",
     "trigger": "/upgrade-kai-mode；说「升级 kai-mode」",
     "command": "/upgrade-kai-mode",
-    "version": "0.2.0"
+    "version": "0.2.1"
   },
   {
     "group": "支持能力",
@@ -191,103 +181,23 @@ window.KAI_SKILLS = [
     "version": "1.2.0"
   },
   {
-    "group": "方法库",
-    "plugin": "方法库",
-    "pluginId": "methods",
-    "skill": "kai-code-review",
-    "oneLine": "代码审查：Spec / Standards 双轴出判词。",
-    "trigger": "审查环节默认方法",
+    "group": "舰队执行内核",
+    "plugin": "执行内核",
+    "pluginId": "engine",
+    "skill": "fleet",
+    "oneLine": "舰队执行内核（由舰桥调度）：一个 issue 一个 run（舰船），主会话规划与验收，宿主自己的子代理执行；",
+    "trigger": "由舰桥触发 /warp 或 /jump",
     "command": "",
-    "version": "0.1.0"
+    "version": "0.5.0"
   },
   {
-    "group": "方法库",
-    "plugin": "方法库",
-    "pluginId": "methods",
-    "skill": "kai-diagnosing-bugs",
-    "oneLine": "难 bug 与性能回归的诊断循环。",
-    "trigger": "连续失败或原因不明时用",
-    "command": "",
-    "version": "0.1.0"
-  },
-  {
-    "group": "方法库",
-    "plugin": "方法库",
-    "pluginId": "methods",
-    "skill": "kai-domain-modeling",
-    "oneLine": "术语、ADR 与领域模型。",
-    "trigger": "定稿第 2 步用",
-    "command": "",
-    "version": "0.1.0"
-  },
-  {
-    "group": "方法库",
-    "plugin": "方法库",
-    "pluginId": "methods",
-    "skill": "kai-security-audit",
-    "oneLine": "安全审计；只在明确要求时用。",
-    "trigger": "明确要求安全审计时用",
-    "command": "",
-    "version": "0.1.0"
-  },
-  {
-    "group": "方法库",
-    "plugin": "方法库",
-    "pluginId": "methods",
-    "skill": "kai-skills",
-    "oneLine": "kai 技能库的运维总入口。",
-    "trigger": "用户说「技能中文化」「新技能了」「技能更新了」「重建技能副本」「中文名不对」",
-    "command": "",
-    "version": "0.1.0"
-  },
-  {
-    "group": "方法库",
-    "plugin": "方法库",
-    "pluginId": "methods",
-    "skill": "kai-tdd",
-    "oneLine": "测试驱动：先写失败的测试，再写让它通过。",
-    "trigger": "施工环节默认方法",
-    "command": "",
-    "version": "0.1.0"
-  },
-  {
-    "group": "方法库",
-    "plugin": "方法库",
-    "pluginId": "methods",
-    "skill": "kai-to-tickets",
-    "oneLine": "把方案拆成可执行的票。",
-    "trigger": "定稿第 3 步用",
-    "command": "",
-    "version": "0.1.0"
-  },
-  {
-    "group": "方法库",
-    "plugin": "方法库",
-    "pluginId": "methods",
-    "skill": "kai-writing-for-agents",
-    "oneLine": "写给 agent 看的技能 / AGENTS 文档。",
-    "trigger": "写或改技能／AGENTS 文档时用",
-    "command": "",
-    "version": "0.1.0"
-  },
-  {
-    "group": "方法库",
-    "plugin": "方法库",
-    "pluginId": "methods",
+    "group": "舰队执行内核",
+    "plugin": "执行内核",
+    "pluginId": "engine",
     "skill": "pk",
     "oneLine": "通用对比分析 PK：对项目/图像/文章等多对象做维度化对比，输出图表与结论。",
     "trigger": "/pk、/PK、/对比，或用户说「PK」「对比」「比一比」「PK 一下」",
     "command": "",
-    "version": "0.1.0"
-  },
-  {
-    "group": "执行内核",
-    "plugin": "V2 执行内核",
-    "pluginId": "v2",
-    "skill": "travel",
-    "oneLine": "V2 执行内核的唯一入口：一个 issue 一个 run（舰船），主会话规划与验收，宿主自己的子代理执行；",
-    "trigger": "/warp <任务>、/jump <任务>（斜杠入口）；",
-    "command": "",
-    "version": "0.4.0"
+    "version": "0.1.1"
   }
 ];

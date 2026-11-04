@@ -7,25 +7,23 @@
       "description": "最小闭环：舰桥入口/安装/执行内核。",
       "skills": [
         "bridge",
-        "kai-mode",
+        "staff",
         "set-kai-mode",
         "upgrade-kai-mode",
         "kai-handoff",
-        "travel",
-        "kai-mods",
+        "fleet",
         "principles"
       ]
     },
     "full": {
-      "description": "core ＋ 原则合集 ＋ BOOM 想法池 ＋ 事故与运维剧本 ＋ 文娱集团六岗位 ＋ 方法库。",
+      "description": "core ＋ 原则合集 ＋ BOOM 想法池 ＋ 事故与运维剧本 ＋ 文娱集团六岗位 ＋ 舰队执行内核 ＋ 对比分析。",
       "skills": [
         "bridge",
-        "kai-mode",
+        "staff",
         "set-kai-mode",
         "upgrade-kai-mode",
         "kai-handoff",
-        "travel",
-        "kai-mods",
+        "fleet",
         "kai-boom-idea-log",
         "flight-info",
         "incident-response",
@@ -37,16 +35,8 @@
         "director",
         "final-review",
         "marketing",
-        "kai-tdd",
-        "kai-code-review",
-        "kai-diagnosing-bugs",
-        "kai-domain-modeling",
-        "kai-to-tickets",
-        "kai-writing-for-agents",
-        "kai-security-audit",
-        "pk",
-        "kai-skills",
-        "principles"
+        "principles",
+        "pk"
       ]
     }
   }

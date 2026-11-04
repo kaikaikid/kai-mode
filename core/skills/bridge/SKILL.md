@@ -4,7 +4,7 @@ status: active
 approved_by: human:kaikaikid
 approved: 2026-10-31
 sources:
-  - resource: "../../../v2/skills/travel/SKILL.md"
+  - resource: "../../../engine/skills/fleet/SKILL.md"
     note: "施工与发货的内核命令；舰桥只做对话与决策，状态推进走它"
   - resource: "../../../intake/skills/kai-boom-idea-log/SKILL.md"
     note: "还没成形、不能开工的想法落这里"
@@ -13,8 +13,8 @@ description: >
   听懂一句话 → 判断是热修还是开票开舰队 → 清场（分类并安全处置脏文件）→ 施工（可触发 /warp 曲速、/jump 跃迁）→ 发货（合并、push、关票）→ 用白话回报。
   不写产品代码、不替用户做产品取舍；红线先问。触发：`/bridge`、`/舰桥`、`/warp <任务>`、`/jump <任务>`（`曲速-N-任务`、`跃迁-N-任务` 简写也认）；
   中文「开工」「发货」「清理脏文件」也认；用户没显式点名其它技能时默认进入舰桥。
-version: 0.1.0
-updated: 2026-10-31
+version: 0.4.0
+updated: 2026-11-05
 allowed-tools: Read Grep Bash
 compatibility: Requires git, gh CLI, python3
 metadata:
@@ -51,18 +51,25 @@ metadata:
 
 | 情况 | 走法 |
 |---|---|
-| 小修：≤2 个文件、无可见 UI、无迁移、一句话能验收 | 免票热修：直接改、跑验证、回报；不 push 就不算发货 |
-| 要做成一件有验收标准的事 | 开票 → 开舰队 → 施工 → 发货 |
-| 只是想法、方向还没定 | 记想法，不起工；问一句「先记下来，还是现在就做？」 |
+| 小修：≤2 个文件、无可见 UI、无迁移、一句话能验收 | 免票热修：按 `principles`「仪式随规模塌缩」不配脚手架；派一个可写子代理改完、跑验证、回报；不 push 就不算发货 |
+| 需求大 / 方向未定 / 跨模块 / 动数据或权限 | 调 `staff`（参谋部）：拷问 → 定稿 → 拆票草案 → 规划表；用户拍一次板后交回舰桥开票 |
+| 要做成一件有验收标准的事 | 开票 → 开舰队（`fleet`）→ 施工 → 发货 |
+| 只是想法、方向还没定 | 走 `kai-boom-idea-log`：全文落盘，不起工；问一句「先记下来，还是现在就做？」 |
+| 出事故 / 线上挂了 / 要复盘 | 走 `incident-response`：先分级止损，再记时间线，最后出复盘与后续票 |
+| 要固化一段可重复的运维步骤 | 走 `runbook` |
+| 创作交付：写稿 / 画图 / 剪辑 / 成片 / 宣发 | 走 studio：`producer` 立项 → `lead-writer` `lead-artist` `director` → `final-review`；宣发 `marketing` |
 | 已有票 / 已有舰队 | `travel status` 找到它，从断点续跑 |
 | 单纯问问题 | 直接答，不动仓库 |
+
+判断「要不要问、问什么、怎么写判据、缺件怎么报、用什么载体回报」时按
+`../principles/SKILL.md` 的七条判据，舰桥不复述判据正文。
 
 **开票六件套**（缺一件不开工）：目标一句话、AC 逐条可机检、允许修改、禁止修改、验证命令、依赖与红线。
 票开在项目仓，命令必须显式带 `--repo <owner/name>`，不靠当前目录推断。
 
 ### 3. 清场（发货前必须做）
 
-主树有已跟踪脏件时 V2 拒绝发货。先分类，再处置：
+主树有已跟踪脏件时舰队内核拒绝发货。先分类，再处置：
 
 ```bash
 travel dirty --json
@@ -73,7 +80,7 @@ travel dirty --json
 | **记录件** | `.coding/`、`.ai/`、`handoff/`、日志、DB、缓存、构建产物 | 不碰、不提交、不阻塞 |
 | **任务自身在制** | 用户说「接着改这个」，脏件就是本次要做的东西 | `travel adopt <issue>` 接管为 baseline |
 | **无关产品改动** | 已跟踪、不属于本次任务 | `travel park -m "为什么收起"`；只收产品件，留 stash 回执 |
-| **未跟踪用户数据** | `??` 开头 | 不碰；V2 发货不拦未跟踪件 |
+| **未跟踪用户数据** | `??` 开头 | 不碰；舰队发货不拦未跟踪件 |
 | **拿不准** | 分不清归属 | 问一次：保留为任务基础 / 先收起 / 不动；推荐第一项 |
 
 **绝对禁止**：`git checkout --`、`git restore`、`git clean`、`git stash drop`、强推、删分支。
@@ -82,16 +89,18 @@ travel dirty --json
 
 ### 4. 施工
 
-用户说「开工 / 做吧 / 继续 / 用 V2 做」时：
+用户说「开工 / 做吧 / 继续 / 用舰队做」时，按 `fleet` 的流程与报告契约执行；
+舰桥只发命令、读回执、拍门点，不自己写代码：
 
 ```bash
-travel warp "<任务或票号>" [--ships 1-3]   # 曲速：自动批门 + 施工 + 审查；不发货，停在 closing
-travel jump "<任务或票号>" [--ships 1-3]   # 跃迁：加急 + 自动发货，唯一有发货权的全自动入口
+travel jump "<任务或票号>" [--ships 1-3]          # 跃迁：默认无人值守跑到底并发货
+travel warp "<任务或票号>" [--ships 1-3]          # 曲速：默认无人值守，跑完停在 closing 等你发货
 ```
 
 - 任务文本里有 `#123` 或 issue URL，发货时自动关票；没有票也能跑，只是不关票。
 - 有明确任务图时加 `--tasks tasks.json`；没有就由主会话现场拆。
-- 一次触发跑到门点才停；只有红线、异常、或可见 UI 取舍才回来找用户。
+- 默认就在内核里自己走完：claim → 派子会话 → report → 审查 → verdict → 发货（jump）。舰桥说一次即可；`--no-auto` 才退回逐条手动。
+- 无人值守需要宿主命令：在项目 `.coding/config.json` 写 `worker_cmd` / `reviewer_cmd`（如宿主 headless 一次性会话），或设同名环境变量 `TRAVEL_WORKER_CMD` / `TRAVEL_REVIEWER_CMD`。不配则按缺件登记，退回手动逐条推。
 - 进度看 `travel status`；断点续跑用 `travel resume <run>`。
 
 **舰队 / 舰船 / 船员**（用户只说大白话，词义在这里）：
@@ -146,8 +155,9 @@ push 目标默认 `dev`；推成功以远端回读为准。
 
 | 命令 | 作用 |
 |---|---|
-| `travel warp <任务> [--ships 1-3]` | 曲速：开工到 closing（不发货） |
-| `travel jump <任务> [--ships 1-3]` | 跃迁：加急 + 自动发货 |
+| `travel warp <任务> [--ships 1-3] [--no-auto]` | 曲速：开工到 closing（不发货） |
+| `travel jump <任务> [--ships 1-3] [--no-auto]` | 跃迁：加急 + 自动发货 |
+| `travel auto <run>` | 无人值守循环：自己跑完 claim→report→审查→verdict，不等人敲命令 |
 | `travel status [--html]` | 现在有哪些 run、到哪一步 |
 | `travel resume <run>` | 从断点续跑 |
 | `travel dirty [--json]` | 主树脏件分类 |
@@ -179,7 +189,7 @@ push 目标默认 `dev`；推成功以远端回读为准。
 - 合并、push、关票（发货链内）。
 - 分类并收起脏文件（`travel park`），前提是可逆且留回执。
 - 在 `/warp` `/jump` 里自动批 G0/G1/G2。
-- 读所有 Issue、分支、run 状态、日表（若有）。
+- 读所有 Issue、分支、run 状态。
 
 **不可以**
 
@@ -201,6 +211,10 @@ push 目标默认 `dev`；推成功以远端回读为准。
 
 ## 正本
 
-- 施工与发货内核：`../../../v2/skills/travel/SKILL.md`
+- 施工与发货内核：`../../../engine/skills/fleet/SKILL.md`
 - 想法分流：`../../../intake/skills/kai-boom-idea-log/SKILL.md`
-- 施工方法（TDD、审查、诊断）：`../../../methods/skills/` 下对应技能
+- 事故与运维：`../../../ops/skills/incident-response/SKILL.md`、`../../../ops/skills/runbook/SKILL.md`
+- 创作交付：`../../../studio/skills/studio/SKILL.md`（经由 `producer`／`lead-writer`／`lead-artist`／`director`／`final-review`／`marketing`）
+- 施工方法：直接按名用宿主中央库的上游原版——`tdd`（先红后绿）、`code-review`（双轴审 diff）、
+  `diagnosing-bugs`（连续失败找根因）、`domain-modeling`（术语/ADR）、`to-tickets`（拆票）、
+  `writing-for-agents`（写技能/AGENTS）；本仓不复述正文，也不用 `kai-` 副本。

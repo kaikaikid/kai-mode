@@ -11,16 +11,23 @@
     },
     "core": {
       "version": "1.3.0",
-      "digest": "630778f666b36ad3a9eee593beb0ff6ee9fc920e7a729ce9d898186ae2d25992",
+      "digest": "0083e9866162325a77c339cf80a9b2fb324e1668683dc81582f3d52819f39dee",
       "skills": {
-        "bridge": "0.1.0",
-        "harness-audit": "0.2.0",
-        "kai-handoff": "0.3.5",
-        "kai-mode": "4.0.0",
-        "kai-mods": "0.1.0",
+        "bridge": "0.4.0",
+        "harness-audit": "0.2.1",
+        "kai-handoff": "0.3.6",
         "principles": "1.0.0",
-        "set-kai-mode": "6.2.0",
-        "upgrade-kai-mode": "0.2.0"
+        "set-kai-mode": "6.2.1",
+        "staff": "4.1.0",
+        "upgrade-kai-mode": "0.2.1"
+      }
+    },
+    "engine": {
+      "version": "0.4.0",
+      "digest": "9ed69a0d7f4a27720c60427887420a76df215b62461768a717cd4550377f8925",
+      "skills": {
+        "fleet": "0.7.0",
+        "pk": "0.1.1"
       }
     },
     "intake": {
@@ -28,21 +35,6 @@
       "digest": "3b59e3839e9da310a964226682b04c6bf99417b82bdf59973a9eb6470fc1f85b",
       "skills": {
         "kai-boom-idea-log": "0.1.4"
-      }
-    },
-    "methods": {
-      "version": "0.1.0",
-      "digest": "b0d764f4c60e8ad5743e3956f1a875841d541e0db6fe4f32e3705df28f6025fc",
-      "skills": {
-        "kai-code-review": "0.1.0",
-        "kai-diagnosing-bugs": "0.1.0",
-        "kai-domain-modeling": "0.1.0",
-        "kai-security-audit": "0.1.0",
-        "kai-skills": "0.1.0",
-        "kai-tdd": "0.1.0",
-        "kai-to-tickets": "0.1.0",
-        "kai-writing-for-agents": "0.1.0",
-        "pk": "0.1.0"
       }
     },
     "ops": {
@@ -64,13 +56,6 @@
         "marketing": "1.0.0",
         "producer": "1.0.0",
         "studio": "1.2.0"
-      }
-    },
-    "v2": {
-      "version": "0.4.0",
-      "digest": "d721861dd112d674c2b25db3e935512b26cbea860284983824e8f1bafd6578f5",
-      "skills": {
-        "travel": "0.4.0"
       }
     }
   }

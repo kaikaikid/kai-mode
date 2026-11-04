@@ -22,9 +22,9 @@ accepted —— 2026-10-23 开哥拍板，三项开放裁定随拍入档：①�
 
 | 段 | 字段 | 装什么 | 替代哪些硬路径（命中文件） | 相对 schema 2 |
 |---|---|---|---|---|
-| `registry` ① | `playbooks[]`（登记行数组：`name`／`trigger`／`route`／`notes`） | 剧本登记面（原 router.md 的登记行全量收编，**router.md 退役**） | `.ai/router.md`（skills/kai-mode ×3、set-kai-mode ×2） | **新增** |
+| `registry` ① | `playbooks[]`（登记行数组：`name`／`trigger`／`route`／`notes`） | 剧本登记面（原 router.md 的登记行全量收编，**router.md 退役**） | `.ai/router.md`（skills/staff ×3、set-kai-mode ×2） | **新增** |
 | `registry` | `skills.project_skills_dir`／`loop_dir` | 项目技能落点布局 | `.ai/skills/{project-skills/,loop}`（set-kai-mode） | **新增** |
-| `registry` | `adrs.dir`／`rules.dir` | 项目判据落点 | `docs/artifacts/adrs`（skills/kai-mode、templates/skill）；`.ai/rules/`（loop-protocol） | **新增** |
+| `registry` | `adrs.dir`／`rules.dir` | 项目判据落点 | `docs/artifacts/adrs`（skills/staff、templates/skill）；`.ai/rules/`（loop-protocol） | **新增** |
 | `paths` ② | `day_tables_dir`／`day_table_pattern`／`lanes` | 日表落点与命名 | `.ai/tasks/`（loop-protocol、四角色、kai-mode、set-kai-mode、模板本体） | **改写**（原 `day_tables`） |
 | `paths` | `handoff_dir`／`ideas_dir`／`audit_dir`／`module_cards`／`dashboard`／`state_dir` | 记录面落点 | `handoff/`、`ideas/`、`.ai/scope/audit`、`docs/_module-cards/`、`docs/_dashboard.md`（地勤/塔台/loop-protocol） | 扩展 |
 | `host` | `adapter` | 宿主选择器（qoder／codex／opencode／claude／copilot／cursor） | 只决定读哪份 `adapters/<宿主>.md`；宿主字段名与模型值仍住 adapters/（D6） | **新增** |

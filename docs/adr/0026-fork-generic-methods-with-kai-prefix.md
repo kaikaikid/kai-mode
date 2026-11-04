@@ -12,8 +12,8 @@ accepted —— 2026-10-29（用户拍板：7 个通用方法技能统一加 `ka
 
 ## Decision
 
-- **D1 迁入新插件 `methods/`**：7 个技能从 `vendor/skills/` 迁到 `methods/skills/kai-<上游名>/`，目录名＝技能名＝frontmatter `name`；frontmatter 改本仓八字段。首次迁移**零内容改动**——正文保持上游原文，只换 frontmatter、挪伴生文件位置。
-- **D2 上游溯源继续住 `docs/skill-sources/`**：`sources.json` 状态 `vendored` → `adopted`，`specialized_as` 指向 `methods/skills/kai-*`，本仓改动记进 `deltas`；30 天对账节奏不变，吸纳＝人工 diff 后改正文并更新 deltas。
+- **D1 迁入新插件 `methods/`**：7 个技能从 `vendor/skills/` 迁到 `engine/skills/methods/kai-<上游名>/`，目录名＝技能名＝frontmatter `name`；frontmatter 改本仓八字段。首次迁移**零内容改动**——正文保持上游原文，只换 frontmatter、挪伴生文件位置。
+- **D2 上游溯源继续住 `docs/skill-sources/`**：`sources.json` 状态 `vendored` → `adopted`，`specialized_as` 指向 `engine/skills/methods/kai-*`，本仓改动记进 `deltas`；30 天对账节奏不变，吸纳＝人工 diff 后改正文并更新 deltas。
 - **D3 退役 vendor 机制**：删 `vendor/`、`scripts/vendor-sync.py` 与 doctor 的 `vendor-sync` 项（29 → 28）；上游指纹由 `sources.json` 承接，安装面内容摘要由 `manifests/plugins.lock.json` 承接。
 - **D4 装机档位**：7 个 `kai-*` 只进 `full`，`core` 保持最小闭环。宿主里 `kai-*` 与用户自装的同名上游件并存——名字不同即不互相覆盖，这正是加前缀的目的。
 - **D5 上游 `agents/openai.yaml` 不随 fork 携带**：本仓宿主适配住 `adapters/`，不散在技能目录；`security-audit` 的 MIT `LICENSE` 随件保留。

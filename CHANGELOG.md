@@ -2,12 +2,36 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.38.0 — 2026-11-05
+
+- **精简收口**：6 个插件 / 20 个技能。砍 `kai-mods`、飞书桥、`harness-audit` 自动安装面；
+  七个 `principle-*` 合并为 `principles`；`board`（看板）与 `studio`（创作）保留为可选插件。
+- **改名**：`v2/` → `engine/`；`travel` 技能 → `fleet`（舰队）；`kai-mode` 技能 → `staff`（参谋部，
+  只作舰桥内部规划方法，不再是入口）。控制面命令仍为 `travel`（`coding` 兼容别名一版）。
+- **执行内核只走宿主原生子代理**：删除 CLI `spawn` / `drive` / `serve` / `harness` / `feishu` 路径与
+  `adapters/` 的拉起进程说明；`travel claim` 出任务卡、主会话派本宿主子代理、`travel report` 与 diff 对账、
+  只读子代理审查、`travel verdict` 写回。新增 `engine/tests/test_purity.py`（内核不认宿主、不发请求、不引第三方）。
+- **通用方法不再 fork**：删除 `engine/skills/methods/` 下 8 个上游副本与 `methods/` 插件；TDD、审查、诊断、术语、
+  拆票、写作一律按名用宿主中央库原版；本仓只保留自有件 `pk`，以及 [`docs/method-pointers.md`](docs/method-pointers.md)
+  的「何时用哪个方法 + 本仓特有约束」。`docs/skill-sources/` 的 `deltas` / 30 天对账退役。
+- **默认自循环（无人值守）**：`travel jump` / `travel warp` 不再逐条敲命令，内核按
+  claim → 派子会话 → report → 审查 → verdict 自己走完；jump 跑到底并发货，warp 跑完停在 closing。
+  `--no-auto` 才退回手动逐条推；新增 `travel auto <run>` 单独驱动已有 run。
+  宿主命令从 `TRAVEL_WORKER_CMD` / `TRAVEL_REVIEWER_CMD` 读（argv 列表调用，不拼 shell），
+  不设则如实报缺件、退回手动推。任务卡的报告路径改为绝对路径（子代理在 worktree 里，相对路径会写错地方）。
+- **无人值守自动接上**：新增 `travel auto <run>`，一条命令跑完 claim → 宿主一次性子会话 →
+  report → 只读审查 → verdict，直到终态；`travel jump/warp` 默认进入该循环，`--no-auto` 退回手动。
+  宿主命令从 `TRAVEL_WORKER_CMD` / `TRAVEL_REVIEWER_CMD` 读，内核不内置厂商适配器，未配置如实报缺件；
+  连续失败 2 次自动转 blocked，不死循环。任务卡的报告路径改为绝对路径（子代理在 worktree 里工作）。
+- **闭环自洽**：`/warp` `/jump` 触发词只归舰桥；fleet 不再抢用户口令；舰桥判断表补 `staff` 路由；
+  安装档位 `core` / `full` 与市场清单、锁文件、README 口径对齐；doctor 改为扫 `engine/tests`。
+
 ## 0.37.0 — 2026-10-31
 
 - **机场体系下线（ADR-0028）**：删除 `airport/` 插件（六岗位、loop 协议、日表、车道、塔台令牌/定时器、
-  待发货队列）；`pk` 迁 `methods/skills/pk`；`canon.json` 清退机场判据键；doctor 扫描面同步。
+  待发货队列）；`pk` 迁 `engine/skills/methods/pk`；`canon.json` 清退机场判据键；doctor 扫描面同步。
 - **舰桥成为唯一入口（ADR-0028）**：新增 `core/skills/bridge`（口令 `/bridge`／`/舰桥`，默认入口）；
-  `kai-mode` 降为规划与拷问方法；`/coding` 降为内核控制面，`/jump`、`/PRI-jump` 由舰桥触发；
+  `kai-mode` 降为参谋部（规划与拷问方法）；`/coding` 降为内核控制面，`/jump`、`/PRI-jump` 由舰桥触发；
   `set-kai-mode` 6.0 重写：装舰桥＋内核、写默认入口段、不再装定时器；配置实例升 schema 5
   （删 `ship_mode`/`day_tables*`/`lanes`/`tower_cron`/`verdict_marker`/`loop_dir`/三键门禁，增 `gates.finish_cmd`）。
 - **set-kai-mode 6.1 加「卸载 V1」腿**：新增 `scripts/uninstall-v1.py`（探测/退役/复核/回执一条腿，
@@ -267,7 +291,7 @@
   （正文自己声明要跑窄读与 preflight，旧白名单只有 git——到会硬拦的宿主上就是一步步弹审批）、
   `loop`／`tower`／`kai-handoff` 补 `Bash(python:*)`、`kai-boom-idea-log` 补 `Bash(git:*)`。测例 +3（红／绿／通配与串接）。
 - 项数不再手抄：`AGENTS.md` 与 `docs/package-layout.md` 的「27 项」改成看 doctor 汇总行（手写数会随门漂移）。
-- **新上下文审查判 `fail`（3/6）后补修**（同一张票 #6）：① 人格**计数**在三处写死成旧数（`skills/kai-mode`、
+- **新上下文审查判 `fail`（3/6）后补修**（同一张票 #6）：① 人格**计数**在三处写死成旧数（`skills/staff`、
   `README.md`、`set-kai-mode` 第 11 问），一律改指针，`agents-contract` 加一条计数守卫（`× 7`、prose
   「一个人格从不排班」不误炸，测例 +1）；② 三条新语义（停点闭集／跃迁开窗判据／裁决四件形状）登记进
   `docs/canon.json`——`loops/` 与 `agents/` 是 repo_only、装到宿主读不到，所以技能留一份可执行副本是**声明过**的，
@@ -424,7 +448,7 @@
   问答答案型落点（日表／交接／想法／state_dir）保留原值、只提示按需生成。
 - **F4 反膨胀有了尺**：doctor 新增第 27 项 `payload-budget`——按层卡字节（`AGENTS.md` ≤12KB／协议正本 ≤40KB／
   适配说明 ≤16KB／安装面 `SKILL.md` ≤40KB／技能内其它 md ≤64KB，与项目仓体量上限同尺），**绿也打印每层最大件与余量**。
-  当前：`set-kai-mode/SKILL.md` 31.0KB 最紧（77%），合计 151KB。
+  当前：`set-staff/SKILL.md` 31.0KB 最紧（77%），合计 151KB。
 - 迁移验收改调 `check-instance`（set-kai-mode 4.8.1→4.9.0），不再让人手工对账键集。
 
 ## 0.22.1 — 2026-10-25
@@ -647,8 +671,8 @@
   `scripts/agent-emit.py`（`--host` 生成、`--check` 报漂移）。人格不再写工具名与模型 slug，六家六种权限写法由投影表吸收。
 - **doctor 加两项门禁（16 → 18）**：`agents-contract`（顶层键白名单／name==文件名／metadata 枚举／四小节／零外链／
   README 表两向一致／handoff `persona` 有家）、`canon-dup`（退役词黑名单 ＋ 判据键唯一家，`docs/canon.json` 为正本）。
-- **清退平行正本**：`skills/kai-mode/playbooks/` 七件按归位表逐节归位后删除（判据进 `loops/loop-protocol.md` §七、
-  派发策略进 `agents/dispatch.md`、审批红线进 `AGENTS.md`），`skills/kai-mode/SKILL.md` 的「七件剧本」改为「正本地图」一张表。
+- **清退平行正本**：`skills/staff/playbooks/` 七件按归位表逐节归位后删除（判据进 `loops/loop-protocol.md` §七、
+  派发策略进 `agents/dispatch.md`、审批红线进 `AGENTS.md`），`skills/staff/SKILL.md` 的「七件剧本」改为「正本地图」一张表。
 - **根因治理**：`AGENTS.md` 增「一类判据一个家」归属表与 Red lines 表；退役词（租约／班次／按铃／Coordinator／合同哈希／
   五角色／Group-A）在 adapters、tower、set-kai-mode 里清零。
 - **修两处断句**：`agents/kai-*.md` 与 `loops/loop-protocol.md` 里批量替换留下的 `> ），…` 残句全仓清零。

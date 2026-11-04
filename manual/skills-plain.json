@@ -35,41 +35,13 @@
     "oneLine": "记想法：全文收进想法池，不开票。",
     "trigger": "说「记个想法」；/idea"
   },
-  "kai-code-review": {
-    "oneLine": "代码审查：Spec / Standards 双轴出判词。",
-    "trigger": "审查环节默认方法"
-  },
-  "kai-diagnosing-bugs": {
-    "oneLine": "难 bug 与性能回归的诊断循环。",
-    "trigger": "连续失败或原因不明时用"
-  },
-  "kai-domain-modeling": {
-    "oneLine": "术语、ADR 与领域模型。",
-    "trigger": "定稿第 2 步用"
-  },
   "kai-handoff": {
     "oneLine": "把当前会话压成一份交接文档，下一棒能接着跑。",
     "trigger": "/handoff；说「写交接」"
   },
-  "kai-mode": {
+  "staff": {
     "oneLine": "总入口：把一句话需求拆成票，再交给对应角色。",
-    "trigger": "/kai-mode；说「开工」"
-  },
-  "kai-security-audit": {
-    "oneLine": "安全审计；只在明确要求时用。",
-    "trigger": "明确要求安全审计时用"
-  },
-  "kai-tdd": {
-    "oneLine": "测试驱动：先写失败的测试，再写让它通过。",
-    "trigger": "施工环节默认方法"
-  },
-  "kai-to-tickets": {
-    "oneLine": "把方案拆成可执行的票。",
-    "trigger": "定稿第 3 步用"
-  },
-  "kai-writing-for-agents": {
-    "oneLine": "写给 agent 看的技能 / AGENTS 文档。",
-    "trigger": "写或改技能／AGENTS 文档时用"
+    "trigger": "由舰桥调用；说「先规划」「想清楚再做」"
   },
   "lead-artist": {
     "oneLine": "主美：风格板、角色、版面、成稿。",

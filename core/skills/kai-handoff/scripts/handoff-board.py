@@ -279,7 +279,7 @@ def main() -> int:
     p.add_argument("--title", required=True)
     p.add_argument("--ticket", default="-", help='票号，如 "#12"；没开票就留 -')
     p.add_argument("--type", default="task", choices=TYPES)
-    p.add_argument("--role", default="-", help="角色（岗位）：地勤/塔台/机长/副机长")
+    p.add_argument("--role", default="-", help="角色（岗位）：舰桥/参谋部/船员")
     p.add_argument("--persona", default="-", help="人格（委派能力）：worker 等")
     p.set_defaults(fn=cmd_new)
 
