@@ -2,6 +2,13 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.38.1 — 2026-11-05
+
+- **默认档位收敛（ADR-0032）**：拆 task 只允许「能并行 / 能独立发货 / 风险隔离」；touchset 重叠且串行依赖时合并成一个 task、多 AC。规划表标并行宽度。
+- **轻车道放宽**：bridge 小修门槛从「≤2 文件」改为「单模块、无 UI、无迁移/权限/数据变更、一句话可验收」；单模块且需留验收记录走免 staff、免 G0、1 船 1 task。
+- **舰队默认 1 船**：`run` / `warp` / `jump` 与 `adopt` 的 `ship_limit`、scheduler 旧状态兜底统一为 1；三处 `--ships` 帮助同步；`--tasks` 仍只规划第一艘，README 明写。
+- 同步 `core`/`engine` 插件与技能版本；新增 `engine/tests/test_default_lane.py` 回归默认档位。
+
 ## 0.38.0 — 2026-11-05
 
 - **精简收口**：6 个插件 / 20 个技能。砍 `kai-mods`、飞书桥、`harness-audit` 自动安装面；

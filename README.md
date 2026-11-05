@@ -1,6 +1,6 @@
 # kai-mode —— 舰桥入口的舰队执行框架
 
-> **状态：0.38.0（2026-11-05 精简收口：6 个插件 / 20 个技能；`v2/` → `engine/`，`travel` → `fleet`，
+> **状态：0.38.1（2026-11-05 默认档位收敛：任务合并规则、轻车道放宽、舰队默认 1 船；6 个插件 / 20 个技能；`v2/` → `engine/`，`travel` → `fleet`，
 > `kai-mode` → `staff`；执行内核只走宿主原生子代理；通用方法不再 fork，按名用宿主中央库原版；
 > 详见 [`CHANGELOG.md`](CHANGELOG.md) 与 [`docs/method-pointers.md`](docs/method-pointers.md)）。**
 >

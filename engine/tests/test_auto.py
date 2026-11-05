@@ -26,13 +26,15 @@ def test_no_worker_cmd_reports_missing(monkeypatch, tmp_path):
     monkeypatch.setenv("TRAVEL_REVIEWER_CMD", "")
     card = {"task_id": "t1", "report_path": str(tmp_path / "r.json")}
     out = auto._spawn_worker(card, "")
-    assert "no worker command" in out["_error"]
+    assert out.get("_needs_subagent") is True
+    assert "card" in out
 
 
 def test_no_reviewer_cmd_reports_missing(tmp_path):
     card = {"task_id": "t1", "review_report_path": str(tmp_path / "r.json")}
     out = auto._spawn_reviewer(card, "")
-    assert "no reviewer command" in out["_error"]
+    assert out.get("_needs_subagent") is True
+    assert "card" in out
 
 
 def test_worker_cmd_not_found_reports_missing(tmp_path):

@@ -115,8 +115,8 @@ def load(run_id: str, root: Path | None = None, verify: bool = True) -> dict[str
     if verify and state.get("integrity") is not None and state["integrity"] != _state_digest(state):
         raise RuntimeError(
             f"state.json integrity check failed for {run_id}: state was modified outside "
-            f"`travel` commands. Inspect {p} manually; `travel status` still lists it, "
-            f"`travel stop` still works."
+            f"`fleet` commands. Inspect {p} manually; `fleet status` still lists it, "
+            f"`fleet stop` still works."
         )
     migrate(state)
     return state
@@ -126,7 +126,7 @@ def migrate(state: dict[str, Any]) -> dict[str, Any]:
     v = int(state.get("schema_version", 0))
     if v > SCHEMA_VERSION:
         raise RuntimeError(
-            f"state schema {v} is newer than this travel ({SCHEMA_VERSION}); upgrade travel first"
+            f"state schema {v} is newer than this travel ({SCHEMA_VERSION}); upgrade fleet first"
         )
     # v0/v1 -> v2: add fleet fields
     if "fleet_id" not in state:
@@ -228,7 +228,7 @@ def sweep(root: Path | None = None) -> list[str]:
             if hb.exists() and now - hb.stat().st_mtime > 3600:
                 hb.unlink(missing_ok=True)
         if run.get("phase") in TERMINAL_PHASES and now - _mtime(state_path(rid, root)) > 24 * 3600:
-            done.append(f"{rid}: terminal run older than 24h (use travel gc)")
+            done.append(f"{rid}: terminal run older than 24h (use fleet gc)")
     return done
 
 

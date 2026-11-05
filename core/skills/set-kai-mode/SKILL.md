@@ -50,7 +50,7 @@ compatibility: Requires python3, git
 | 执行 | `engine`（`travel` 命令） | 一个 issue 一个 run；主会话规划验收，宿主原生子代理施工 |
 | 方法 | 宿主中央库原版 | TDD、审查、诊断、拆票、术语、写文档、安全专项；按名调用，不随装 |
 | 记录 | GitHub Issue ＋ `.coding/runs/` | 票面与 run 状态；不看日表 |
-| 展示 | `travel status --html` | 进度看板（可选） |
+| 展示 | `fleet status --html` | 进度看板（可选） |
 
 ## 装到别的项目：先问清楚（十问）
 
@@ -127,7 +127,7 @@ python scripts/init-project.py --repo <目标仓> --answers a.json   # 机器填
   - 舰队执行内核：`engine/skills/fleet/SKILL.md`（命令 `engine/bin/travel`；安装见 `engine/README.md`）
   - 方法：不随装，按名用宿主中央库原版（`tdd`、`code-review`、`diagnosing-bugs`、`domain-modeling`、`to-tickets`、`writing-for-agents`）
   - 想法池：`intake/skills/kai-boom-idea-log/SKILL.md`
-  - 看板（可选）：`board/skills/flight-info/SKILL.md`；舰队进度优先用 `travel status --html`
+  - 看板（可选）：`board/skills/flight-info/SKILL.md`；舰队进度优先用 `fleet status --html`
 - 项目仓落点从配置实例读：`registry.skills.project_skills_dir`；
   剧本登记行收进 `registry.playbooks[]`。新增剧本只加登记行，不在入口里复制判据。
 
@@ -179,7 +179,7 @@ python $S apply --profile core             # 正本 → 库 → 各家链接；�
 - 只写项目级，不写全局；不同项目可以有不同的默认入口。
 - 宿主支持 `UserPromptSubmit` 钩子时，可另装一条只读提示钩子，把上面这句作为附加上下文；
   钩子只提示、不改用户输入。宿主没有钩子口 ⇒ 只靠指令文件，登记为软约束。
-- 验收：新开一个会话，直接说「现在到哪了」，不再打任何斜杠命令，应能读到 `travel status` 并按舰桥回报。
+- 验收：新开一个会话，直接说「现在到哪了」，不再打任何斜杠命令，应能读到 `fleet status` 并按舰桥回报。
 
 ### 4. worktree 环境自检（三项，缺一报错不静默）
 

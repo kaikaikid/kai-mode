@@ -13,7 +13,7 @@ description: >
   听懂一句话 → 判断是热修还是开票开舰队 → 清场（分类并安全处置脏文件）→ 施工（可触发 /warp 曲速、/jump 跃迁）→ 发货（合并、push、关票）→ 用白话回报。
   不写产品代码、不替用户做产品取舍；红线先问。触发：`/bridge`、`/舰桥`、`/warp <任务>`、`/jump <任务>`（`曲速-N-任务`、`跃迁-N-任务` 简写也认）；
   中文「开工」「发货」「清理脏文件」也认；用户没显式点名其它技能时默认进入舰桥。
-version: 0.4.0
+version: 0.5.0
 updated: 2026-11-05
 allowed-tools: Read Grep Bash
 compatibility: Requires git, gh CLI, python3
@@ -37,7 +37,7 @@ metadata:
 ## 默认模式（用户忘了触发时）
 
 - 用户没点名任何技能、没打斜杠命令，**就按本技能执行**。开场不必宣告身份。
-- 开场先静默看三样，不汇报：`travel status`、`git status --short`、当前分支。
+- 开场先静默看三样，不汇报：`fleet status`、`git status --short`、当前分支。
 - 用户说「开工 / 做吧 / 继续 / 发货 / 清理脏文件 / 现在到哪了」，都按本技能处理。
 
 ## 一次对话怎么走
@@ -51,14 +51,14 @@ metadata:
 
 | 情况 | 走法 |
 |---|---|
-| 小修：≤2 个文件、无可见 UI、无迁移、一句话能验收 | 免票热修：按 `principles`「仪式随规模塌缩」不配脚手架；派一个可写子代理改完、跑验证、回报；不 push 就不算发货 |
+| 小修/单模块：单模块、无可见 UI、无迁移/权限/数据变更、一句话能验收 | 免票热修：按 `principles`「仪式随规模塌缩」不配脚手架；派一个可写子代理改完、跑验证、回报；不 push 就不算发货 |
 | 需求大 / 方向未定 / 跨模块 / 动数据或权限 | 调 `staff`（参谋部）：拷问 → 定稿 → 拆票草案 → 规划表；用户拍一次板后交回舰桥开票 |
 | 要做成一件有验收标准的事 | 开票 → 开舰队（`fleet`）→ 施工 → 发货 |
 | 只是想法、方向还没定 | 走 `kai-boom-idea-log`：全文落盘，不起工；问一句「先记下来，还是现在就做？」 |
 | 出事故 / 线上挂了 / 要复盘 | 走 `incident-response`：先分级止损，再记时间线，最后出复盘与后续票 |
 | 要固化一段可重复的运维步骤 | 走 `runbook` |
 | 创作交付：写稿 / 画图 / 剪辑 / 成片 / 宣发 | 走 studio：`producer` 立项 → `lead-writer` `lead-artist` `director` → `final-review`；宣发 `marketing` |
-| 已有票 / 已有舰队 | `travel status` 找到它，从断点续跑 |
+| 已有票 / 已有舰队 | `fleet status` 找到它，从断点续跑 |
 | 单纯问问题 | 直接答，不动仓库 |
 
 判断「要不要问、问什么、怎么写判据、缺件怎么报、用什么载体回报」时按
@@ -67,25 +67,29 @@ metadata:
 **开票六件套**（缺一件不开工）：目标一句话、AC 逐条可机检、允许修改、禁止修改、验证命令、依赖与红线。
 票开在项目仓，命令必须显式带 `--repo <owner/name>`，不靠当前目录推断。
 
+**轻车道与合并**：单模块、需求清楚、要留验收记录 → 免 staff、免 G0；
+开票后舰队默认 1 船、任务图默认 1 个 task（多 AC），一次审查后发货。
+拆 task 只允许「能并行 / 能独立发货 / 风险隔离」；touchset 重叠且串行依赖时合并成一个 task。
+
 ### 3. 清场（发货前必须做）
 
 主树有已跟踪脏件时舰队内核拒绝发货。先分类，再处置：
 
 ```bash
-travel dirty --json
+fleet dirty --json
 ```
 
 | 类别 | 判据 | 动作 |
 |---|---|---|
 | **记录件** | `.coding/`、`.ai/`、`handoff/`、日志、DB、缓存、构建产物 | 不碰、不提交、不阻塞 |
-| **任务自身在制** | 用户说「接着改这个」，脏件就是本次要做的东西 | `travel adopt <issue>` 接管为 baseline |
-| **无关产品改动** | 已跟踪、不属于本次任务 | `travel park -m "为什么收起"`；只收产品件，留 stash 回执 |
+| **任务自身在制** | 用户说「接着改这个」，脏件就是本次要做的东西 | `fleet adopt <issue>` 接管为 baseline |
+| **无关产品改动** | 已跟踪、不属于本次任务 | `fleet park -m "为什么收起"`；只收产品件，留 stash 回执 |
 | **未跟踪用户数据** | `??` 开头 | 不碰；舰队发货不拦未跟踪件 |
 | **拿不准** | 分不清归属 | 问一次：保留为任务基础 / 先收起 / 不动；推荐第一项 |
 
 **绝对禁止**：`git checkout --`、`git restore`、`git clean`、`git stash drop`、强推、删分支。
 每次处置留一行回执：路径、stash ref、`git stash apply <ref>` 恢复命令。
-放回用 `travel unpark <ref>` 或 `travel unpark --list` 先看。
+放回用 `fleet unpark <ref>` 或 `fleet unpark --list` 先看。
 
 ### 4. 施工
 
@@ -93,27 +97,27 @@ travel dirty --json
 舰桥只发命令、读回执、拍门点，不自己写代码：
 
 ```bash
-travel jump "<任务或票号>" [--ships 1-3]          # 跃迁：默认无人值守跑到底并发货
-travel warp "<任务或票号>" [--ships 1-3]          # 曲速：默认无人值守，跑完停在 closing 等你发货
+fleet jump "<任务或票号>" [--ships 1-3]          # 跃迁：默认 1 船、无人值守跑到底并发货
+fleet warp "<任务或票号>" [--ships 1-3]          # 曲速：默认 1 船、无人值守，跑完停在 closing 等你发货
 ```
 
 - 任务文本里有 `#123` 或 issue URL，发货时自动关票；没有票也能跑，只是不关票。
 - 有明确任务图时加 `--tasks tasks.json`；没有就由主会话现场拆。
 - 默认就在内核里自己走完：claim → 派子会话 → report → 审查 → verdict → 发货（jump）。舰桥说一次即可；`--no-auto` 才退回逐条手动。
 - 无人值守需要宿主命令：在项目 `.coding/config.json` 写 `worker_cmd` / `reviewer_cmd`（如宿主 headless 一次性会话），或设同名环境变量 `TRAVEL_WORKER_CMD` / `TRAVEL_REVIEWER_CMD`。不配则按缺件登记，退回手动逐条推。
-- 进度看 `travel status`；断点续跑用 `travel resume <run>`。
+- 进度看 `fleet status`；断点续跑用 `fleet resume <run>`。
 
 **舰队 / 舰船 / 船员**（用户只说大白话，词义在这里）：
 
 | 词 | 含义 | 节制 |
 |---|---|---|
 | 舰队 (fleet) | 一个舰桥一次拉起的任务集合；ID 带宿主前缀 | 数量由用户控制（开几个舰桥就几个舰队） |
-| 舰船 (ship) | 一个 run = 一个独立 worktree + 分支 | 每舰队 1–3，默认 2（`--ships N` 一次拉起 N 艘） |
+| 舰船 (ship) | 一个 run = 一个独立 worktree + 分支 | 每舰队 1–3，默认 1（`--ships N` 一次拉起 N 艘；只有用户明确要多船或确有独立工作流才 2–3） |
 | 船员 (crew) | 真正在跑的子代理（子会话） | 每舰队 1–5，默认 5，跨舰船共享（`--crew`） |
 
 - 用户说「曲速 2 船」「跃迁 1 船」「晚上用 3 船」→ 舰桥翻译成 `--ships N`，不问第二遍。
 - 混搭（曲速 2 + 跃迁 1）→ 三条命令传同一个 `--fleet <ID>`，舰队总数仍受 `--ships` 上限约束。
-- 用户说「把 X 的成果合并过来」→ 先复述并征得同意，再 `travel assimilate <branch> --approve`；未获同意不执行。
+- 用户说「把 X 的成果合并过来」→ 先复述并征得同意，再 `fleet assimilate <branch> --approve`；未获同意不执行。
 - 槽位按舰队独立计：别的舰桥 / agent 框架在跑，不影响本舰队的槽位。
 
 ### 5. 盯到停
@@ -128,12 +132,12 @@ travel warp "<任务或票号>" [--ships 1-3]          # 曲速：默认无人�
 
 ### 6. 发货
 
-发货权在舰桥：普通 `travel warp` 停在 closing（无发货权），由舰桥执行发货链：
+发货权在舰桥：普通 `fleet warp` 停在 closing（无发货权），由舰桥执行发货链：
 merge → 收尾门 → push → 关票。只有 `jump` 自动发货。
 手动挡需要单独发货时：
 
 ```bash
-travel gate <run> g2 approve
+fleet gate <run> g2 approve
 ```
 
 发货失败不硬撑：产出保留、舰队转 blocked、告诉用户卡在哪、下一步谁来做。
@@ -155,16 +159,16 @@ push 目标默认 `dev`；推成功以远端回读为准。
 
 | 命令 | 作用 |
 |---|---|
-| `travel warp <任务> [--ships 1-3] [--no-auto]` | 曲速：开工到 closing（不发货） |
-| `travel jump <任务> [--ships 1-3] [--no-auto]` | 跃迁：加急 + 自动发货 |
-| `travel auto <run>` | 无人值守循环：自己跑完 claim→report→审查→verdict，不等人敲命令 |
-| `travel status [--html]` | 现在有哪些 run、到哪一步 |
-| `travel resume <run>` | 从断点续跑 |
-| `travel dirty [--json]` | 主树脏件分类 |
-| `travel park [-m 理由]` | 收起无关产品改动（可逆） |
-| `travel unpark [ref] [--list]` | 放回收起的改动 |
-| `travel gc [--all]` | 清理已收尾的 worktree 与分支 |
-| `travel doctor` | 状态与 git 对账 |
+| `fleet warp <任务> [--ships 1-3] [--no-auto]` | 曲速：开工到 closing（不发货） |
+| `fleet jump <任务> [--ships 1-3] [--no-auto]` | 跃迁：加急 + 自动发货 |
+| `fleet auto <run>` | 无人值守循环：自己跑完 claim→report→审查→verdict，不等人敲命令 |
+| `fleet status [--html]` | 现在有哪些 run、到哪一步 |
+| `fleet resume <run>` | 从断点续跑 |
+| `fleet dirty [--json]` | 主树脏件分类 |
+| `fleet park [-m 理由]` | 收起无关产品改动（可逆） |
+| `fleet unpark [ref] [--list]` | 放回收起的改动 |
+| `fleet gc [--all]` | 清理已收尾的 worktree 与分支 |
+| `fleet doctor` | 状态与 git 对账 |
 | `gh issue create --repo <owner/name> ...` | 开票（必须显式带 `--repo`） |
 
 ## 失败与停止
@@ -187,7 +191,7 @@ push 目标默认 `dev`；推成功以远端回读为准。
 - 开票、改票、挂里程碑、打标签、关票。
 - 开 run、拆任务图、派子会话、验收、打回、重跑。
 - 合并、push、关票（发货链内）。
-- 分类并收起脏文件（`travel park`），前提是可逆且留回执。
+- 分类并收起脏文件（`fleet park`），前提是可逆且留回执。
 - 在 `/warp` `/jump` 里自动批 G0/G1/G2。
 - 读所有 Issue、分支、run 状态。
 

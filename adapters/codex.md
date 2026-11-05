@@ -44,7 +44,7 @@ codex exec -C <仓库根> -s read-only --json -o <回执文件> \
 
 ## 执行三职（舰队不适用）
 
-- 框架只用宿主原生子代理；Codex 当前没有这一层 ⇒ `travel claim/report/review/verdict` 派活链不适用。
+- 框架只用宿主原生子代理；Codex 当前没有这一层 ⇒ `fleet claim/report/review/verdict` 派活链不适用。
 - 按缺件三格登记 `no-new-context`，如实告诉用户「这个宿主跑不了舰队执行内核」；不退化去拉 `codex exec`。
 - 舰桥本身仍可用：它只做对话、开票、发货，不依赖宿主子代理。
 - 若 Codex 未来提供原生子代理，再在这里补「怎么起、怎么锁只读、报告落哪」三条。
@@ -57,7 +57,7 @@ codex exec -C <仓库根> -s read-only --json -o <回执文件> \
 
 ## 原生子代理（舰队必需）
 
-- Codex **没有**宿主内建的原生子代理（当前实测）；舰队内核的 `travel claim` / `report` /
+- Codex **没有**宿主内建的原生子代理（当前实测）；舰队内核的 `fleet claim` / `report` /
   `review` / `verdict` 派活链因此不适用。
 - 不退化去拉 `codex exec` 子进程：用户已明确框架只调用宿主自己的子代理。
 - 起不了新上下文 ⇒ 按 §6 登记 `no-new-context`，如实告诉用户「这个宿主跑不了舰队执行内核」。

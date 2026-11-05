@@ -96,7 +96,7 @@ def _fleet_id(run: dict[str, Any]) -> str:
 
 
 def slot_usage(root: Path | None = None, fleet_id: str | None = None) -> dict[str, int]:
-    # ship_limit 从该舰队的 run 里取（默认 2）
+    # ship_limit 从该舰队的 run 里取（默认 1）
     # 槽位上限按舰队（fleet）独立计：不同舰桥/agent 框架互不抢占槽位，
     # 但 touchset 冲突检测仍全局生效（文件冲突与舰队无关）。
     if fleet_id is None:
@@ -119,9 +119,9 @@ def slot_usage(root: Path | None = None, fleet_id: str | None = None) -> dict[st
 
 
 def can_start(run: dict[str, Any], root: Path | None = None) -> tuple[bool, str]:
-    # 舰船数：同一舰队（fleet_id）在飞 run 数达到 ship_limit（1–3，默认 2）就排队。
-    # 曲速 / 跃迁共用同一配额，可混搭（warp-2 + jump-1）。
-    ship_limit = max(1, min(FLEET_MAX_SHIPS, int(run.get("ship_limit") or 2)))
+    # 舰船数：同一舰队（fleet_id）在飞 run 数达到 ship_limit（1–3，默认 1）就排队。
+    # 曲速 / 跃迁共用同一配额；用户显式要 2–3 船时才混搭（如 warp-2 + jump-1）。
+    ship_limit = max(1, min(FLEET_MAX_SHIPS, int(run.get("ship_limit") or 1)))
     u = slot_usage(root, fleet_id=run.get("fleet_id"))
     if u["normal"] + u["urgent"] >= ship_limit:
         return False, "fleet ship limit reached"

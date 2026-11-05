@@ -8,7 +8,7 @@ window.KAI_SKILLS = [
     "oneLine": "舰桥：用户唯一的对话面与最高权限角色，取代旧的 /coding 入口成为默认入口。",
     "trigger": "/bridge、/舰桥、/warp <任务>、/jump <任务>（曲速-N-任务、跃迁-N-任务 简写也认）；",
     "command": "/bridge",
-    "version": "0.2.0"
+    "version": "0.5.0"
   },
   {
     "group": "舰桥与安装",
@@ -58,7 +58,7 @@ window.KAI_SKILLS = [
     "oneLine": "总入口：把一句话需求拆成票，再交给对应角色。",
     "trigger": "由舰桥调用；说「先规划」「想清楚再做」",
     "command": "/staff",
-    "version": "4.1.0"
+    "version": "4.2.0"
   },
   {
     "group": "舰桥与安装",
@@ -188,7 +188,7 @@ window.KAI_SKILLS = [
     "oneLine": "舰队执行内核（由舰桥调度）：一个 issue 一个 run（舰船），主会话规划与验收，宿主自己的子代理执行；",
     "trigger": "由舰桥触发 /warp 或 /jump",
     "command": "",
-    "version": "0.5.0"
+    "version": "0.8.0"
   },
   {
     "group": "舰队执行内核",

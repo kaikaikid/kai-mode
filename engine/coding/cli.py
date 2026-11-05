@@ -1,6 +1,6 @@
-"""travel 命令行：控制平面入口。
+"""fleet 命令行：控制平面入口。
 
-用法见 `travel --help`。所有状态变更都经过这里，AI 不直接改 state.json。
+用法见 `fleet --help`（`travel`/`coding` 兼容别名）。所有状态变更都经过这里，AI 不直接改 state.json。
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ from . import auto, dirty, scheduler, state as st, worktree
 
 
 def _err(msg: str) -> "NoReturn":
-    print(f"travel: {msg}", file=sys.stderr)
+    print(f"fleet: {msg}", file=sys.stderr)
     raise SystemExit(1)
 
 
@@ -316,7 +316,7 @@ def cmd_warp(args: argparse.Namespace) -> None:
     args.max_tokens = getattr(args, "max_tokens", 200000)
     args.depends = getattr(args, "depends", [])
     if getattr(args, "ships", None) is None:
-        args.ships = 2
+        args.ships = 1
     before = {r["run_id"] for r in st.list_runs(_root())}
     rid = cmd_run(args)
     ids = [r["run_id"] for r in st.list_runs(_root()) if r["run_id"] not in before]
@@ -356,7 +356,7 @@ def cmd_adopt(args: argparse.Namespace) -> None:
             "phase": "planning",
             "priority": "normal",
             "fleet_id": st.new_fleet_id(),
-            "ship_limit": 2,
+            "ship_limit": 1,
             "crew_limit": 5,
             "created_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
             "base_branch": worktree.base_branch(root),
@@ -522,7 +522,7 @@ def cmd_claim(args: argparse.Namespace) -> None:
             mode = st.session_mode(sess)
             if mode != "native":
                 _err(f"task {t['id']} is already running under a {mode} session ({sid}); "
-                     f"use `travel report {s['run_id']} {t['id']}`")
+                     f"use `fleet report {s['run_id']} {t['id']}`")
             print(json.dumps(_claim_card(s, t, sess), ensure_ascii=False, indent=2))
             return
 
@@ -565,7 +565,7 @@ def cmd_claim(args: argparse.Namespace) -> None:
 def cmd_release(args: argparse.Namespace) -> None:
     """释放 native 占位：task 回 pending，session 标 released，随后可再次 claim。
 
-    只收 native session；CLI 子进程的生命周期归 `travel report` / `travel stop`。
+    只收 native session；CLI 子进程的生命周期归 `fleet report` / `fleet stop`。
     """
     root = _root()
     with st.lock(root):
@@ -606,7 +606,13 @@ def cmd_report(args: argparse.Namespace) -> None:
         if not sess:
             _err("session record missing")
         sdir = _session_dir(s["run_id"], sid)
+    # report_path 由 claim 卡给出（绝对路径），优先用它；state 里 sessions 也可能有 session_dir
     rp = Path(sdir) / "report.json"
+    if not rp.is_file():
+        # 兜底：claim 卡的 report_path
+        t_rp = t.get("report_path")
+        if t_rp:
+            rp = Path(t_rp)
     if not rp.is_file():
         report = {"result": "partial", "files_changed": [], "verification": [],
                   "open_questions": [], "notes": "native report missing: " + str(rp)}
@@ -652,7 +658,7 @@ def cmd_report(args: argparse.Namespace) -> None:
 
 
 def cmd_review(args: argparse.Namespace) -> None:
-    """门卫审查：只输出审查卡，由宿主只读子代理执行；裁决用 travel verdict 写回。"""
+    """门卫审查：只输出审查卡，由宿主只读子代理执行；裁决用 fleet verdict 写回。"""
     cmd_review_native(args)
 
 
@@ -977,12 +983,12 @@ def cmd_assimilate(args: argparse.Namespace) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="travel", description="fleet execution kernel control plane")
+    p = argparse.ArgumentParser(prog="fleet", description="fleet execution kernel control plane")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     r = sub.add_parser("run", help="create a run")
     r.add_argument("--fleet", default=None, help="fleet id; slots are per-fleet")
-    r.add_argument("--ships", type=int, default=None, help="ship count 1-3 (default 2)")
+    r.add_argument("--ships", type=int, default=None, help="ship count 1-3 (default 1)")
     r.add_argument("--crew", type=int, default=None, help="crew cap 1-5 (default 5)")
     r.add_argument("issue")
     r.add_argument("--urgent", action="store_true")
@@ -1088,7 +1094,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     wp = sub.add_parser("warp", help="autopilot run: warp mode (no ship)")
     wp.add_argument("--fleet", default=None, help="fleet id; slots are per-fleet")
-    wp.add_argument("--ships", type=int, default=None, help="ship count 1-3 (default 2)")
+    wp.add_argument("--ships", type=int, default=None, help="ship count 1-3 (default 1)")
     wp.add_argument("--crew", type=int, default=None, help="crew cap 1-5 (default 5)")
     wp.add_argument("issue")
     wp.add_argument("--urgent", action="store_true")
@@ -1101,7 +1107,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     jp = sub.add_parser("jump", help="urgent autopilot run (ships)")
     jp.add_argument("--fleet", default=None, help="fleet id; slots are per-fleet")
-    jp.add_argument("--ships", type=int, default=None, help="ship count 1-3 (default 2)")
+    jp.add_argument("--ships", type=int, default=None, help="ship count 1-3 (default 1)")
     jp.add_argument("--crew", type=int, default=None, help="crew cap 1-5 (default 5)")
     jp.add_argument("issue")
     jp.add_argument("--base")

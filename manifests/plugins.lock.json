@@ -10,23 +10,23 @@
       }
     },
     "core": {
-      "version": "1.3.0",
-      "digest": "0083e9866162325a77c339cf80a9b2fb324e1668683dc81582f3d52819f39dee",
+      "version": "1.3.1",
+      "digest": "2425f5eba1b9a724ae5f58a12a55f7e6467cbd789ec7e0e941fd773e3a24d87e",
       "skills": {
-        "bridge": "0.4.0",
+        "bridge": "0.5.0",
         "harness-audit": "0.2.1",
         "kai-handoff": "0.3.6",
         "principles": "1.0.0",
         "set-kai-mode": "6.2.1",
-        "staff": "4.1.0",
+        "staff": "4.2.0",
         "upgrade-kai-mode": "0.2.1"
       }
     },
     "engine": {
-      "version": "0.4.0",
-      "digest": "9ed69a0d7f4a27720c60427887420a76df215b62461768a717cd4550377f8925",
+      "version": "0.5.0",
+      "digest": "cbbd6abf9e51179477bac2f88285381d4d2ade2127dee09c4bfe657287266694",
       "skills": {
-        "fleet": "0.7.0",
+        "fleet": "0.8.0",
         "pk": "0.1.1"
       }
     },

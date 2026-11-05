@@ -41,7 +41,7 @@ opencode run --model <free-model> \
 
 ## 执行三职（舰队不适用）
 
-- 框架只用宿主原生子代理；opencode 当前没有这一层 ⇒ `travel claim/report/review/verdict` 派活链不适用。
+- 框架只用宿主原生子代理；opencode 当前没有这一层 ⇒ `fleet claim/report/review/verdict` 派活链不适用。
 - 按缺件三格登记 `no-new-context`，如实告诉用户「这个宿主跑不了舰队执行内核」；不退化去拉 `opencode run`。
 - 舰桥本身仍可用：它只做对话、开票、发货，不依赖宿主子代理。
 - 若 opencode 未来提供原生子代理，再在这里补「怎么起、怎么锁只读、报告落哪」三条。

@@ -1,6 +1,6 @@
 # 舰队执行内核 · 星际穿越剧本
 
-> 无人值守：`travel jump "<任务>" --tasks f.json` 一条命令跑完
+> 无人值守：`fleet jump "<任务>" --tasks f.json` 一条命令跑完
 > claim → 宿主子会话 → report → 审查 → verdict → 发货。宿主命令从
 > `.coding/config.json` 的 `worker_cmd` / `reviewer_cmd`（或同名环境变量）读（如 `claude -p {brief} ...`），不配则如实报缺件。
 
@@ -27,26 +27,26 @@ export PATH="$PWD/engine/bin:$PATH"
 
 | 命令 | 作用 |
 |---|---|
-| `travel run <issue> [--fleet id] [--ships 1-3] [--crew 1-5] [--urgent] [--base main]` | 开一个 run（舰队） |
-| `travel adopt <issue>` | 晚激活：接管当前未提交改动 |
-| `travel plan <run> --file tasks.json` | 写任务图 |
-| `travel gate <run> g0\|g1\|g2 approve\|reject\|skip` | 过门 |
-| `travel next [run]` | 看下一个可派任务 |
-| `travel claim <run> <task>` | 原子占位，输出任务卡（不起进程） |
-| `travel release <run> <task>` | 释放原生占位，任务回 pending |
-| `travel report <run> <task>` | 读子代理报告并对账 diff |
-| `travel review <run> <task>` | 输出审查卡（只读子代理执行） |
-| `travel verdict <run> <task> --file <path>` | 写回审查裁决（accept/return） |
-| `travel accept\|return\|reopen <run> <task>` | 验收 |
-| `travel resume <run>` | 从 state.json 续跑 |
-| `travel warp <issue> [--ships 1-3] [--tasks f.json]` | 曲速全自动：自动批门 + 施工，**不发货**（停在 closing） |
-| `travel jump <issue> [--ships 1-3]` | 跃迁全自动：加急 + 自动发货，唯一有发货权的全自动入口 |
-| `travel status [--html]` | 看板 |
-| `travel dirty [--json]` / `park` / `unpark` | 主树脏件分类与可逆收起 |
-| `travel doctor` | 状态与 git 对账 |
-| `travel gc [--all]` | 清理已收尾资源 |
-| `travel stop <run>` | 停一个 run |
-| `travel assimilate <branch> --approve` | 吞并外部分支（需显式批准） |
+| `fleet run <issue> [--fleet id] [--ships 1-3] [--crew 1-5] [--urgent] [--base main]` | 开一个 run（舰队） |
+| `fleet adopt <issue>` | 晚激活：接管当前未提交改动 |
+| `fleet plan <run> --file tasks.json` | 写任务图 |
+| `fleet gate <run> g0\|g1\|g2 approve\|reject\|skip` | 过门 |
+| `fleet next [run]` | 看下一个可派任务 |
+| `fleet claim <run> <task>` | 原子占位，输出任务卡（不起进程） |
+| `fleet release <run> <task>` | 释放原生占位，任务回 pending |
+| `fleet report <run> <task>` | 读子代理报告并对账 diff |
+| `fleet review <run> <task>` | 输出审查卡（只读子代理执行） |
+| `fleet verdict <run> <task> --file <path>` | 写回审查裁决（accept/return） |
+| `fleet accept\|return\|reopen <run> <task>` | 验收 |
+| `fleet resume <run>` | 从 state.json 续跑 |
+| `fleet warp <issue> [--ships 1-3] [--tasks f.json]` | 曲速全自动：自动批门 + 施工，**不发货**（停在 closing） |
+| `fleet jump <issue> [--ships 1-3]` | 跃迁全自动：加急 + 自动发货，唯一有发货权的全自动入口 |
+| `fleet status [--html]` | 看板 |
+| `fleet dirty [--json]` / `park` / `unpark` | 主树脏件分类与可逆收起 |
+| `fleet doctor` | 状态与 git 对账 |
+| `fleet gc [--all]` | 清理已收尾资源 |
+| `fleet stop <run>` | 停一个 run |
+| `fleet assimilate <branch> --approve` | 吞并外部分支（需显式批准） |
 
 ## 任务图格式
 
@@ -59,14 +59,14 @@ export PATH="$PWD/engine/bin:$PATH"
 
 ## 状态
 
-全部在 `.coding/runs/<run-id>/state.json`，脚本原子写。中断后 `travel resume` 从
+全部在 `.coding/runs/<run-id>/state.json`，脚本原子写。中断后 `fleet resume` 从
 `resume.last_accepted` / `next_action` 接着跑。
 
 ## 曲速模式（warp）
 
-`travel warp <issue> [--tasks f.json]`：
+`fleet warp <issue> [--tasks f.json]`：
 
-- 自动批 G0/G1/G2，门卫子代理（`travel review`）独立只读审查；
+- 自动批 G0/G1/G2，门卫子代理（`fleet review`）独立只读审查；
 - 发货 = 切到 base（默认 `dev`，仓里没有 dev 就用当前分支）→ merge → 收尾门 → push → 关票，全脚本化；
 - 收尾门在 `.coding/config.json` 配 `{"finish_cmd": "..."}`，留空则跳过；
 - issue 文本里的 `#123` 或 GitHub issue URL 会自动关票，识别不到则跳过；
@@ -86,11 +86,11 @@ export PATH="$PWD/engine/bin:$PATH"
 
 | 层级 | 默认 | 范围 | 参数 |
 |---|---|---|---|
-| 舰船数（每次拉起的 run 数） | 2（`run` 命令为 1） | 1–3 | `--ships` |
+| 舰船数（每次拉起的 run 数） | 1（run/warp/jump 一致） | 1–3 | `--ships` |
 | 船员数（子代理并发，跨舰船共享） | 5 | 1–5 | `--crew` |
 
-槽位按舰队独立计数：不同舰桥 / agent 框架互不抢占；touchset 冲突检测仍全局生效。
-`--ships N` 会一次创建 N 艘舰船（各自 worktree + 分支），共享同一个 `fleet_id`；
+槽位按舰队独立计数：不同舰桥 / agent 框架互不抢占；默认 1 船，只有用户明确要多船或确有互不重叠的独立工作流才 `--ships 2-3`。
+`--ships N` 会一次创建 N 艘舰船（各自 worktree + 分支），共享同一个 `fleet_id`；`--tasks` 只规划第一艘，其余各自规划。
 混搭曲速/跃迁时用 `--fleet <同一ID>` 把它们并入同一舰队（总数受 `--ships` 限制）。
 用户大白话（「曲速 2 船」「晚上用 3 船」）由舰桥解析成 `--ships`。
 

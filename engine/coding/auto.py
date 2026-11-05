@@ -76,10 +76,9 @@ def _spawn_worker(card: dict, host_cmd: str) -> dict:
     """拉起一次性子会话执行任务卡，读它写的 report.json。宿主命令不支持就报缺件。"""
     program = host_cmd.split()[0] if host_cmd.strip() else ""
     if not program:
-        return {"_error": "no worker command: set TRAVEL_WORKER_CMD or pass --worker-cmd; "
-                          "or run manually via travel claim → subagent → report"}
+        return {"_needs_subagent": True, "card": card}
     if not shutil.which(program):
-        return {"_error": f"host command not found: {program}; set TRAVEL_WORKER_CMD"}
+        return {"_error": f"host command not found: {program}; fix TRAVEL_WORKER_CMD or remove it"}
     prompt = (
         "你是舰队施工子代理。只改 touchset 范围内的文件，完成后把报告写到 report_path。\n"
         "报告契约：{\"result\":\"done|partial|blocked\",\"files_changed\":[\"path — 改了什么\"],"
@@ -106,9 +105,9 @@ def _spawn_worker(card: dict, host_cmd: str) -> dict:
 def _spawn_reviewer(card: dict, host_cmd: str) -> dict:
     program = host_cmd.split()[0] if host_cmd.strip() else ""
     if not program:
-        return {"_error": "no reviewer command: set TRAVEL_REVIEWER_CMD or pass --reviewer-cmd"}
+        return {"_needs_subagent": True, "card": card}
     if not shutil.which(program):
-        return {"_error": f"host command not found: {program}; set TRAVEL_REVIEWER_CMD"}
+        return {"_error": f"host command not found: {program}; fix TRAVEL_REVIEWER_CMD or remove it"}
     prompt = (
         "你是舰队门卫审查子代理，只读。读 worktree 里 diff_base..HEAD 的实际 diff，"
         "逐条对 AC，不改任何文件。把裁决写到 review_report_path："
@@ -148,19 +147,6 @@ def drive(run_id: str, worker_cmd: str = DEFAULT_WORKER, reviewer_cmd: str = DEF
     worker_cmd = (worker_cmd or "").strip() or _config_cmd("worker_cmd")
     reviewer_cmd = (reviewer_cmd or "").strip() or _config_cmd("reviewer_cmd")
 
-    # 没配宿主命令就不碰状态：否则会先把任务 claim 掉再报错，白白把任务标 blocked。
-    missing = []
-    if not worker_cmd.strip():
-        missing.append("TRAVEL_WORKER_CMD (worker)")
-    if not reviewer_cmd.strip():
-        missing.append("TRAVEL_REVIEWER_CMD (reviewer)")
-    if missing:
-        out = {"run_id": run_id, "phase": "unchanged", "next_action": "configure host command",
-               "log": ["missing: " + "; ".join(missing) +
-                       " — set it or drive manually via claim/report/review/verdict"]}
-        print(json.dumps(out, ensure_ascii=False, indent=2))
-        return out
-
     log = []
     checked = False
     for _ in range(max_rounds):
@@ -181,13 +167,7 @@ def drive(run_id: str, worker_cmd: str = DEFAULT_WORKER, reviewer_cmd: str = DEF
         # 否则会连失败两次、把任务打成 blocked。
         if not checked:
             checked = True
-            for label, cmd in (("worker", worker_cmd), ("reviewer", reviewer_cmd)):
-                prog = cmd.split()[0] if cmd.strip() else ""
-                if not shutil.which(prog):
-                    log.append(f"{label} command not found: {prog}")
-                    print(json.dumps({"run_id": run_id, "phase": phase, "skipped": True,
-                                      "log": log}, ensure_ascii=False, indent=2))
-                    return {"run_id": run_id, "phase": phase, "skipped": True, "log": log}
+            # 未配命令时跳过可执行性检查：此时走 AI 原生子代理，不 spawn。
 
         # 取 ready 任务
         tasks = _run_cmd(["next", run_id])
@@ -237,6 +217,13 @@ def drive(run_id: str, worker_cmd: str = DEFAULT_WORKER, reviewer_cmd: str = DEF
 
             log.append(f"worker on {tid}")
             rep = _spawn_worker(card, worker_cmd)
+            if rep.get("_needs_subagent"):
+                log.append(f"subagent needed on {tid}: run a writable host-native subagent on the card above, "
+                           f"then fleet report {run_id} {tid}")
+                result = {"run_id": run_id, "phase": "delegating", "next_action": f"subagent {tid}",
+                          "pending_card": card, "log": log}
+                print(json.dumps(result, ensure_ascii=False, indent=2))
+                return result
             if "_error" in rep:
                 _fail(f"worker error on {tid}: {rep['_error']}")
                 _run_cmd(["release", run_id, tid])
@@ -251,6 +238,13 @@ def drive(run_id: str, worker_cmd: str = DEFAULT_WORKER, reviewer_cmd: str = DEF
                 log.append(f"review card failed for {tid}: {rcard}")
                 continue
             verdict = _spawn_reviewer(rcard, reviewer_cmd)
+            if verdict.get("_needs_subagent"):
+                log.append(f"subagent needed on {tid}: run a read-only host-native subagent on the review card above, "
+                           f"then fleet verdict {run_id} {tid} --file <path>")
+                result = {"run_id": run_id, "phase": "review", "next_action": f"reviewer {tid}",
+                          "pending_card": rcard, "log": log}
+                print(json.dumps(result, ensure_ascii=False, indent=2))
+                return result
             if "_error" in verdict:
                 _fail(f"reviewer error on {tid}: {verdict['_error']}")
                 continue
