@@ -11,9 +11,9 @@
   python scripts/init-project.py --repo <目标仓> --answers a.json   # 机器填（CI/批处理）
   python scripts/init-project.py --repo <目标仓> --dry-run     # 只打印结果不写盘
 
-十问（顺序固定，缺一不可）：
+十一问（顺序固定，缺一不可）：
   1 项目名 2 票源 3 仓库 slug 4 日表目录 5 交接目录 6 想法目录
-  7 ADR 目录 8 宿主 9 收工门禁脚本 10 想法池汇总票号
+  7 ADR 目录 8 宿主 9 收工门禁脚本 10 想法池汇总票号 11 推送边界
 """
 
 from __future__ import annotations

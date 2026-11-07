@@ -52,9 +52,9 @@ compatibility: Requires python3, git
 | 记录 | GitHub Issue ＋ `.coding/runs/` | 票面与 run 状态；不看日表 |
 | 展示 | `fleet status --html` | 进度看板（可选） |
 
-## 装到别的项目：先问清楚（十问）
+## 装到别的项目：先问清楚（十一问）
 
-装进一个新项目不是拷文件，是**把项目差异问清楚**。一条命令跑完十问：
+装进一个新项目不是拷文件，是**把项目差异问清楚**。一条命令跑完十一问：
 
 ```bash
 python scripts/init-project.py --repo <目标仓>            # 逐题问，每题带默认，回车即默认
@@ -65,7 +65,7 @@ python scripts/init-project.py --repo <目标仓> --answers a.json   # 机器填
 > 本命令在 **kai-mode 框架仓根**执行；技能装到项目仓后，用 `<框架仓根>/scripts/init-project.py`，
 > **不是**项目仓的 `scripts/`。维护者的门禁脚本同理只住框架仓。
 
-**十问（顺序固定，缺一不装）**：
+**十一问（顺序固定，缺一不装）**：
 
 | # | 问什么 | 默认 | 落到哪 |
 |---|---|---|---|
@@ -79,6 +79,7 @@ python scripts/init-project.py --repo <目标仓> --answers a.json   # 机器填
 | 8 | 宿主 | 回车＝本机当前宿主（不设默认偏置） | `host.adapter` |
 | 9 | 收尾门命令（本项目没有就留空＝null） | 空 | `gates.finish_cmd` |
 | 10 | 想法池汇总票号 | 空 | `issue.boom_summary_ticket` |
+| 11 | 推送边界 | 工作区留本地；发布/项目仓才推送且由用户推 | `.ai/push-policy.md` |
 
 **脚本顺手铺两个组件**：`handoff/` 八槽 ＋ 规范与模板；`docs/adr/` ＋ `GLOSSARY.md` 骨架。
 已存在的一律**不覆盖**。缺件（如票源选 github 但没 slug）脚本直接拒绝，不生成半成品实例。
