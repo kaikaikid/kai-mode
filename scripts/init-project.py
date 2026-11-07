@@ -116,7 +116,9 @@ def build_answers(repo: str, a, yes: bool) -> dict:
         "host": ask("8/10 宿主（qoder / codex / opencode / claude / copilot / cursor）— 回车＝本机当前宿主，不确定就填你实际在用的那一个", "", yes),
         "finish_gate": ask("9/10 收尾门命令（本项目没有就回车留 null，别抄别仓的门名）",
                            "", yes),
-        "boom_summary_ticket": ask("10/10 想法池汇总票号（可留空）", "", yes),
+        "boom_summary_ticket": ask("10/11 想法池汇总票号（可留空）", "", yes),
+        "push_policy": ask("11/11 推送边界（默认：工作区留本地；发布/项目仓才推送，且由用户推）",
+                           "workspace-local", yes),
     }
 
 
@@ -243,6 +245,21 @@ def project_has_own_handoff(base: str) -> bool:
         return False
 
 
+def gen_push_policy(repo: str, ans: dict, layout: dict) -> list:
+    """铺「推送边界」规则：默认只写一份；用户另行说明时按那句话改，不覆盖现值。"""
+    spec = layout["project_scaffold"].get("push_policy") or {}
+    src_rel, dst_rel = spec.get("from"), spec.get("to")
+    if not src_rel or not dst_rel:
+        return []
+    src = os.path.join(ROOT, *src_rel.split("/"))
+    dst = os.path.join(repo, *dst_rel.split("/"))
+    if os.path.exists(dst):
+        return []
+    os.makedirs(os.path.dirname(dst), exist_ok=True)
+    shutil.copy2(src, dst)
+    return [dst_rel]
+
+
 def gen_handoff(repo: str, ans: dict, layout: dict) -> list:
     """铺交接组件：按清单的八槽 + 规范 + 模板；只复制列名件，历史记录一概不碰。"""
     import datetime as _dt
@@ -324,7 +341,16 @@ def main() -> int:
         return 2
 
     ans = normalize_answers(build_answers(repo, a, a.yes))
-    scaffold_sources = [cfg_src_rel, spec["glossary"]["from"], *spec["handoff"]["files"]]
+    if str(ans.get("push_policy") or "").strip() not in ("workspace-local", ""):
+        print("推送边界只认两档：workspace-local（默认，工作区留本地）或另行说明；本次未写明，先按缺件处理")
+        return 2
+    policy_spec = spec.get("push_policy") or {}
+    scaffold_sources = [
+        cfg_src_rel,
+        spec["glossary"]["from"],
+        policy_spec.get("from") or "",
+        *spec["handoff"]["files"],
+    ]
     missing_src = [rel for rel in scaffold_sources
                    if not os.path.isfile(os.path.join(ROOT, *rel.split("/")))]
     if missing_src:
@@ -379,6 +405,10 @@ def main() -> int:
             print(f"  paths.{k} = {v}")
     print(f"  registry.adrs.dir = {(cfg.get('registry') or {}).get('adrs', {}).get('dir')}")
     print(f"  gates.finish_cmd = {cfg.get('gates', {}).get('finish_cmd')}")
+    pp = policy_spec.get("to")
+    if pp:
+        exists = os.path.isfile(os.path.join(repo, *pp.split("/")))
+        print(f"  push_policy = {pp}（{'已有，不覆盖' if exists else '已铺骨架'}）")
 
     if a.dry_run:
         print("\n（dry-run，未写盘）")
@@ -386,7 +416,11 @@ def main() -> int:
 
     os.makedirs(os.path.dirname(out), exist_ok=True)
     write_atomic(out, json.dumps(cfg, ensure_ascii=False, indent=2) + "\n")
-    files = gen_handoff(repo, ans, layout) + gen_docs(repo, ans, layout)
+    files = (
+        gen_push_policy(repo, ans, layout)
+        + gen_handoff(repo, ans, layout)
+        + gen_docs(repo, ans, layout)
+    )
 
     print(f"\n已写 {os.path.relpath(out, repo)}（{len(files)} 个组件文件）")
     print("\n== 下一棒 ==")

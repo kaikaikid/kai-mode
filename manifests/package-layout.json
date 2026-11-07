@@ -47,6 +47,10 @@
       "from": "templates/GLOSSARY.md",
       "to": "GLOSSARY.md"
     },
+    "push_policy": {
+      "from": "templates/push-policy.md",
+      "to": ".ai/push-policy.md"
+    },
     "handoff": {
       "slots": [
         "00-inbox",

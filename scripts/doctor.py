@@ -889,6 +889,10 @@ def chk_package_layout(root: str, ms):
     spec = data.get("project_scaffold") if isinstance(data.get("project_scaffold"), dict) else {}
     if not spec:
         problems.append("缺 project_scaffold")
+    else:
+        pp = spec.get("push_policy")
+        if not (isinstance(pp, dict) and pp.get("from") and pp.get("to")):
+            problems.append("缺 project_scaffold.push_policy（初始化必铺推送边界）")
     # 安装面实量：payload 不得含被排除的开发件（防安装器与清单脱钩）
     reg, reg_err = registry(root, ms) if ms is not None else (None, "magpie-sync 读不出来")
     if reg is None:
@@ -914,9 +918,10 @@ def chk_package_layout(root: str, ms):
     # 骨架源与落点
     cfg = spec.get("config") if isinstance(spec.get("config"), dict) else {}
     gloss = spec.get("glossary") if isinstance(spec.get("glossary"), dict) else {}
+    ppol = spec.get("push_policy") if isinstance(spec.get("push_policy"), dict) else {}
     hand = spec.get("handoff") if isinstance(spec.get("handoff"), dict) else {}
     sources = []
-    for label, item in (("config", cfg), ("glossary", gloss)):
+    for label, item in (("config", cfg), ("glossary", gloss), ("push_policy", ppol)):
         frm, to = item.get("from"), item.get("to")
         if not isinstance(frm, str) or not frm or not _safe_rel(to):
             problems.append(f"project_scaffold.{label} 的 from/to 不合法")
@@ -969,7 +974,7 @@ def chk_package_layout(root: str, ms):
             "handoff_dir": "handoff", "ideas_dir": "ideas",
             "adr_dir": spec["adr_dir"], "rules_dir": ".ai/rules", "host": "qoder",
             "finish_gate": "scripts/finish.py",
-            "boom_summary_ticket": "", "agent_models": None,
+            "boom_summary_ticket": "", "agent_models": None, "push_policy": "workspace-local",
         }
         apath = os.path.join(tmp, "answers.json")
         with open(apath, "w", encoding="utf-8") as f:
@@ -1002,7 +1007,7 @@ def chk_package_layout(root: str, ms):
         if leaked:
             return "fail", "骨架夹带本仓 ADR 文件名（开发记录混入）：" + "；".join(leaked[:4])
         month = dt.date.today().strftime("%Y-%m")
-        expected = {cfg["to"], gloss["to"], f"{spec['adr_dir']}/{placeholder}"}
+        expected = {cfg["to"], gloss["to"], ppol["to"], f"{spec['adr_dir']}/{placeholder}"}
         expected |= set(hand_files.values())
         for slot in slots:
             subs = board_children if slot == board_slot else [month]
@@ -1088,7 +1093,7 @@ def chk_config_instance(root: str, ms):
             "project": "doctor-probe", "ticket_source": "github", "repo_slug": "probe/proj",
             "handoff_dir": "handoff", "ideas_dir": "ideas",
             "adr_dir": "docs/adr", "rules_dir": ".ai/rules", "host": "qoder", "finish_gate": "",
-            "boom_summary_ticket": "", "agent_models": None,
+            "boom_summary_ticket": "", "agent_models": None, "push_policy": "workspace-local",
         }
         ans_file = os.path.join(tmp, "answers.json")
         with open(ans_file, "w", encoding="utf-8") as f:
