@@ -62,7 +62,7 @@ handoff/<槽>/<YYYY-MM>/YYYY-MM-DD-<票号|slug>-<类型>.md
 
 ## 4. 路径纪律
 
-- 一律**相对仓根**（`core/skills/guild/SKILL.md`）；**禁写 `D:\` `C:\`** 机器绝对路径
+- 一律**相对仓根**（`core/skills/gold/SKILL.md`）；**禁写 `D:\` `C:\`** 机器绝对路径
 - 只放 `.md`；仓根 `.md` 只放项目级说明（如 `README`/`AGENTS`/`CHANGELOG`/`GLOSSARY`），业务正文别散落
 
 ## 5. 寿命

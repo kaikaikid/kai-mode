@@ -53,7 +53,7 @@ metadata:
 | 根 | 从哪来 |
 |---|---|
 | 源仓根 | 装机回执的 `root`（不是当前 cwd） |
-| 库根 | 沿宿主 `guild` 条目反查；读不出用 `KAI_MAGPIE_LIBRARY` 指到 `.../library/skills` |
+| 库根 | 沿宿主 `gold` 条目反查；读不出用 `KAI_MAGPIE_LIBRARY` 指到 `.../library/skills` |
 | 项目仓根 | `git rev-parse --show-toplevel` |
 
 ```bash

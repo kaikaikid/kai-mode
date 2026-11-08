@@ -4,7 +4,7 @@ status: active
 approved_by: human:kaikaikid
 approved: 2026-10-21
 sources:
-  - resource: "../guild/SKILL.md"
+  - resource: "../gold/SKILL.md"
     note: "对外唯一入口；本技能负责把它装到宿主并设为默认"
   - resource: "../../../engine/skills/fleet/SKILL.md"
     note: "施工与发货内核；装主 AI 人格时一并装它"
@@ -25,7 +25,7 @@ compatibility: Requires python3, git
 
 # Set Kai Mode —— 安装酒馆冒险团与执行内核
 
-> `/guild` 是**用**这套框架的入口；`/set-kai-mode` 是**装**这套框架的入口。
+> `/gold` 是**用**这套框架的入口；`/set-kai-mode` 是**装**这套框架的入口。
 > 本技能只做安装与配置，**不做日常施工**：不写产品代码、不开 run、不发货、不关票。
 > 本文件只回答三件事：**东西在哪、怎么装、装完跑什么自证**；细节查 `references/`。
 
@@ -45,7 +45,7 @@ compatibility: Requires python3, git
 
 | 层 | 组件 | 干什么 |
 |---|---|---|
-| 入口 | `guild`（康娜的方法正文） | 主 AI 人格唯一对话面；判断、开票、开 run 清场、发货、回报 |
+| 入口 | `gold`（康娜的方法正文） | 主 AI 人格唯一对话面；判断、开票、开 run 清场、发货、回报 |
 | 规划 | `staff` | 需求大、方向未定时由康娜调用；出规划表与拆票草案 |
 | 执行 | `engine`（`fleet` 命令） | 一张票一个 run；主会话规划验收，宿主原生子代理施工 |
 | 方法 | 宿主中央库原版 | TDD、审查、诊断、拆票、术语、写文档；按名调用，不随装 |
@@ -81,7 +81,7 @@ python scripts/init-project.py --repo <目标仓> --answers a.json   # 机器填
 |---|---|---|
 | 0 | **缺口扫描（只读）** | 出一张缺口清单：每项标「已就位／跳过」或「需处理（原因）」 |
 | 1 | 注入方法论与技能（仓库内正本） | 技能文件在位；清单以 `.claude-plugin/marketplace.json` 现场派生为准 |
-| 2 | 装技能到宿主（`guild` ＋ `staff` ＋ `fleet` ＋ `pk`） | 宿主技能列表里能看见，内容与正本同哈希 |
+| 2 | 装技能到宿主（`gold` ＋ `staff` ＋ `fleet` ＋ `pk`） | 宿主技能列表里能看见，内容与正本同哈希 |
 | 3 | **把康娜设为默认入口** | 项目或全局级有默认入口段；无斜杠命令时按康娜执行；项目级优先 |
 | 4 | worktree 环境自检（解释器／node／依赖） | 三项都有明确读数 |
 | 5 | doctor | 门禁全绿或如实点红 |
@@ -99,7 +99,7 @@ python scripts/init-project.py --repo <目标仓> --answers a.json   # 机器填
 
 正本全部住在仓库里（中立层），任何宿主一进仓库即生效：
 
-- 入口 `core/skills/guild/SKILL.md`；规划 `core/skills/staff/SKILL.md`
+- 入口 `core/skills/gold/SKILL.md`；规划 `core/skills/staff/SKILL.md`
 - 执行内核 `engine/skills/fleet/SKILL.md`（命令 `engine/bin/fleet`，安装见 `engine/README.md`）
 - 想法池 `intake/skills/kai-boom-idea-log/SKILL.md`；看板（可选）`board/skills/flight-info/SKILL.md`
 - 方法不随装，按名用宿主中央库原版
@@ -150,7 +150,7 @@ python $S apply --profile core                # 正本 → 库 → 各家链接�
 
 缺件判据见 `../principles/SKILL.md`（§5）；本步管交接。
 装完交一张「安装回执」：装了哪几件技能、默认入口落在哪个文件、三项环境读数、doctor 结果、缺件清单、宿主落点核对。
-**宿主落点核对**：① `guild` 与 `fleet` 在宿主技能目录；② 新上下文口可用（子代理／独立进程／新会话至少一条），
+**宿主落点核对**：① `gold` 与 `fleet` 在宿主技能目录；② 新上下文口可用（子代理／独立进程／新会话至少一条），
 不可用就登记 `no-new-context`；③ 旧 V1 链接已摘或已列清单。
 不把状态写进本地台账：票状态只看 Issue；run 状态只看 `.coding/runs/`。
 
@@ -189,7 +189,7 @@ schema 5 删掉了 V1 的任务表、工作树槽位、定时器与三键门禁�
 
 | 你要的 | 去哪 |
 |---|---|
-| 用户入口、清场、发货 | `../guild/SKILL.md` |
+| 用户入口、清场、发货 | `../gold/SKILL.md` |
 | 参谋部（规划与拷问方法） | `../staff/SKILL.md` |
 | 施工与发货命令 | `../../../engine/skills/fleet/SKILL.md` |
 | 方法库 | 宿主中央库原版（按名调用，本仓不存副本） |

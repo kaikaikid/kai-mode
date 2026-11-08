@@ -137,7 +137,7 @@ def _stamp() -> str:
 
 
 def park(root: Path | None = None, message: str = "", include_records: bool = False) -> dict:
-    """Stash selected dirty paths under a guild-named stash; write a receipt.
+    """Stash selected dirty paths under a gold-named stash; write a receipt.
 
     Default target is product changes only.  Untracked files are left alone --
     they do not block shipping.  Never drops a stash.
@@ -153,7 +153,7 @@ def park(root: Path | None = None, message: str = "", include_records: bool = Fa
 
     paths = [e["path"] for e in targets]
     why = (message or "park unrelated changes").strip()
-    msg = f"guild: {why}"
+    msg = f"gold: {why}"
     r = _git("stash", "push", "-m", msg, "--", *paths, cwd=root, check=False)
     if r.returncode != 0:
         return {"ok": False, "error": (r.stderr or r.stdout).strip()[:800]}

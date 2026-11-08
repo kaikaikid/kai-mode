@@ -19,7 +19,7 @@
 
   <!-- 康娜 -->
   <rect x="430" y="184" width="420" height="88" rx="10" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"/>
-  <text x="640" y="212" font-size="16" font-weight="bold" text-anchor="middle" fill="#312e81">康娜 · guild（主 AI 人格）</text>
+  <text x="640" y="212" font-size="16" font-weight="bold" text-anchor="middle" fill="#312e81">康娜 · gold（主 AI 人格）</text>
   <text x="640" y="234" font-size="12" text-anchor="middle" fill="#3730a3">唯一对话面 · 权限最高 · 不写产品代码 · 不做产品取舍</text>
   <text x="640" y="254" font-size="12" text-anchor="middle" fill="#3730a3">接任务 → 开团 → 开刷 → 交任务 → 验收 → 任务结束 → 写日志</text>
   <line x1="640" y1="272" x2="640" y2="296" stroke="#475569" stroke-width="1.5" marker-end="url(#kms-ar)"/>

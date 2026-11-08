@@ -4,8 +4,8 @@ status: active
 approved_by: human:kaikaikid
 approved: 2026-11-09
 sources:
-  - resource: "../../../core/skills/guild/SKILL.md"
-    note: "子代理纪律（默认零、先报数量）的正本在 guild，本技能不复述"
+  - resource: "../../../core/skills/gold/SKILL.md"
+    note: "子代理纪律（默认零、先报数量）的正本在 gold，本技能不复述"
 description: >
   手动唤醒一个专业角色子代理的方法论入口（酒馆名「召集」）。
   不自动派发、不写代码、不开票；只决定「派谁、给什么上下文、上限几个」，
@@ -22,7 +22,7 @@ compatibility: 需宿主能起新上下文；起不了按 adapters 缺件登记�
 # 召集（summon）—— 手动唤醒一个角色
 
 > 这是方法论，不是适配器：本技能不直接派进程，只把「派谁、给什么、上限几个」定清楚，
-> 然后交给宿主已配好的唤醒方式。纪律正本在 `guild/SKILL.md`「子代理纪律」，本文件不复述。
+> 然后交给宿主已配好的唤醒方式。纪律正本在 `gold/SKILL.md`「子代理纪律」，本文件不复述。
 
 ## 什么时候用
 
@@ -59,7 +59,7 @@ compatibility: 需宿主能起新上下文；起不了按 adapters 缺件登记�
 目标一句话 · 范围（含/不含）· AC 可机检 · 权限（只读/可写范围）· 交付格式与路径 · 预算（迭代/超时）。
 审查类强制新上下文、只读、不继承执行者完整历史。
 
-## 纪律（摘自 guild，详见 guild/SKILL.md）
+## 纪律（摘自 gold，详见 gold/SKILL.md）
 
 默认 0；派之前报「几个、为什么、上限几」；机械/单一活 ≤1，标准施工 ≤3；深度固定 1 层（子代理不派子代理）。
 

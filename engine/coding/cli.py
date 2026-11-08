@@ -206,7 +206,7 @@ def advance(s: dict[str, Any], root: "Path | None" = None) -> None:
                 s["phase"] = "blocked"
                 s["resume"]["next_action"] = f"ship failed: {msg}"
         else:
-            s["resume"]["next_action"] = "construction done; no ship right — ship via guild or `fleet gate <run> g2 approve`"
+            s["resume"]["next_action"] = "construction done; no ship right — ship via gold or `fleet gate <run> g2 approve`"
 
 
 def _task(s: dict[str, Any], tid: str) -> dict[str, Any]:

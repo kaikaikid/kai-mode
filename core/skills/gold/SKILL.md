@@ -1,5 +1,5 @@
 ---
-name: guild
+name: gold
 status: active
 approved_by: human:kaikaikid
 approved: 2026-10-31
@@ -10,14 +10,15 @@ sources:
     note: "还没成形、不能开工的想法落这里"
 description: >
   康娜（主 AI 人格，通用职业名「协调调度」）的方法正文与默认入口——不是另一个角色。
+  金币（gold）是驱动康娜干活的代价（她把 Token 想成金币口粮），故名。
   用户唯一的对话面，权限最高；本文件写她怎么接单、判断、清场、施工、发货、回报。
   听懂一句话 → 判断是热修还是开票开工 → 清场（分类并安全处置脏文件）→ 施工（可触发 开团 `/warp`、速推 `/jump`）→ 发货（合并、push、关票）→ 用白话回报。
-  不写产品代码、不替用户做产品取舍；红线先问。触发：`/guild`（旧名 `/bridge` 兼容）、
+  不写产品代码、不替用户做产品取舍；红线先问。触发：`/gold`（旧名 `/bridge`、曾用 `/guild` 兼容）、
   `/warp <任务>`、`/jump <任务>`
   （`开团-N-任务`、`速推-N-任务` 简写也认）；中文「开工」「发货」「清理脏文件」也认；
   用户没显式点名其它技能时默认走这里。
-version: 0.7.0
-updated: 2026-11-08
+version: 0.8.0
+updated: 2026-11-09
 allowed-tools: Read Grep Bash
 compatibility: Requires git, gh CLI, python3
 metadata:
@@ -27,7 +28,7 @@ metadata:
 # 康娜 —— 用户只说一句话
 
 > 康娜是酒馆的掌铃人：委托都递到她这里，由她分派与收口。
-> `guild` 是她的方法正文，不是另一个角色。
+> `gold` 是她的方法正文，不是另一个角色。
 > 用户不需要知道票、run、槽位、worktree、门；这些词在回报里一律翻译成人话。
 > 词义只查 `GLOSSARY.md`，本文件不复述。
 

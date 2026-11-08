@@ -72,7 +72,7 @@
   <g font-size="11">
     <rect x="640" y="136" width="600" height="64" rx="8" fill="#eef2ff" stroke="#4f46e5" stroke-width="1.4"/>
     <text x="656" y="158" font-size="13" font-weight="bold" fill="#312e81">core 酒馆冒险团与安装 · 7</text>
-    <text x="656" y="180" fill="#3730a3">guild · staff · set-kai-mode · upgrade-kai-mode · kai-handoff · harness-audit · principles</text>
+    <text x="656" y="180" fill="#3730a3">gold · staff · set-kai-mode · upgrade-kai-mode · kai-handoff · harness-audit · principles</text>
 
     <rect x="640" y="208" width="600" height="64" rx="8" fill="#ecfdf5" stroke="#047857" stroke-width="1.4"/>
     <text x="656" y="230" font-size="13" font-weight="bold" fill="#065f46">engine 执行内核 · 2</text>

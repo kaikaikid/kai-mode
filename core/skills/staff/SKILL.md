@@ -66,4 +66,4 @@ metadata:
 | 术语与 ADR | 中央库原版 `domain-modeling` |
 | 拆票 | 中央库原版 `to-tickets` |
 | 施工与发货 | `../../../engine/skills/fleet/SKILL.md` |
-| 统一入口 | `../guild/SKILL.md` |
+| 统一入口 | `../gold/SKILL.md` |
