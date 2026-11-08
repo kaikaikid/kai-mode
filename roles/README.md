@@ -41,7 +41,7 @@ effort: high
   宿主无关三样（工作树隔离／范围校验／发货单点）永远生效，宿主工具白名单是加分项。
 - `model_tier` 是宿主中立档位（`fast` / `standard` / `strong` / `inherit`），
   由投影表翻成宿主认的值；`effort` 用通用档位词，宿主不认就不写该字段。
-- `canon_version` 改动必须升版；渲染产物头部记版本与指纹，巡检据此判漂移。
+- `canon_version` 改动必须升版；产物头部的指纹记版本与 hash，用来对账，不用来判断过期。
 
 ## 正本正文（四块，标题逐字固定）
 
@@ -71,45 +71,42 @@ effort: high
 **子代理看不到自己的类型名**，所以 `identity` 里必须逐字写出「你是谁、什么职业」，
 不能只靠 `name` 字段（实测读数见 `adapters/qoder.md`「原生子代理」节）。
 
-## 渲染与巡检
+## 只有一个组装点，两种落地
+
+正文一律由 `render_prompt` 现拼：皮肤两块 ＋ 正本四块逐字 ＋ 一行指纹注释。
+没有第二套拼装，所以两条路不可能漂。
+
+| 落地 | 怎么用 | 正本改了 |
+|---|---|---|
+| **现读** | `render-roles.py prompt --role X --skin S`（或 `--pack` 一次八份） | **不用动任何文件**，下次调用就是新的 |
+| **定义文件** | `render-roles.py render --host H --dest <目录>` | 重跑一次 `render` 覆盖 |
 
 ```bash
-python scripts/render-roles.py --host qoder --skin generic --dest <项目>/ .qoder/agents
-python scripts/render-roles.py --host qoder --skin generic --dest <目标目录> --check
+python scripts/render-roles.py prompt --role reviewer --skin guild
+python scripts/render-roles.py render --host qoder --skin generic --dest <项目>/.qoder/agents
 ```
 
-- 渲染＝按宿主投影表生成定义文件：frontmatter 翻成宿主认的字段与值，正文内联，
-  头部插一行指纹注释（`role_id` / `canon_version` / `canon_sha256` / `skin` / `skin_version` / `skin_sha256`）。
-- `--check` ＝**重新渲染再逐字节比对**。手改派生物任何一处都报红，并打印差异在哪一行。
-- 派生物是产物，**不进框架仓**（框架仓不保存宿主产物）；装机时生成到项目里。
-- 没有 agent 定义文件这一层的宿主（Codex / OpenCode），渲染成**提示词文件**，
-  由内核的宿主命令腿带入；投影表里 `agent_file: false` 标出。
+- `render` ＝ 同一份现拼结果前面加宿主 frontmatter（字段与值按 `adapters/role-hosts.json` 翻译）。
+- **没有 stale 巡检**（2026-11-08 用户令）：派生物只是缓存。装／升级一律重渲染覆盖，
+  覆盖前备份到 `<目录>/.backups/<时间戳>/`；不做「哪份过期了」的比对，因为事实只有
+  `roles/` 与现读两处，判过期等于给缓存发一个它不配的身份。
+- 手改派生物不需要检测：下次 `render` 就覆盖回正本结果，有测例钉住。
+- 派生物**不进框架仓**；没有 agent 定义文件层的宿主（`agent_file: false`）渲染成提示词文件，
+  由内核的宿主命令腿带入。
+- 为什么不能用指针：宿主定义文件的正文**就是**系统提示，会话启动一次性读入，没有动态 include。
+  只放指针等于角色开局没人格，得靠自己读一次才拿得到；工具白名单没有读工具就永远拿不到，
+  且读进来的是对话内容、会进压缩（见 ADR-0033 D4）。
 
 ## 通用接入（换宿主、换框架都吃这一套）
 
 可搬走的核心只有三件：`roles/canon/` ＋ `roles/skins/` ＋ `scripts/render-roles.py`。
 
 - **有 agent 定义文件的宿主**：渲染成定义文件，装项目级。
-- **没有定义文件层的宿主**：渲染成提示词文件（正文一样），由它自己的调用方式带入。
+- **没有定义文件层的宿主**：用 `prompt --pack` 现拼，交给它自己的调用方式。
 - **只读**不靠宿主的工具白名单（实测多数不执行），靠三条宿主无关的门：
   ① 只读角色在树上改动一律被内核拒收；② 独立工作区／只读副本；③ 范围校验 ＋ 发货单点。
 - **换名字**只换皮肤，职责四块逐字不动；换宿主只换 `adapters/role-hosts.json` 的投影值。
 - 角色名与职业必须写进正文（子代理看不到自己的类型名），`identity` 块里逐字写。
-
-## 两条消费路径，同步成本不一样
-
-| 路径 | 怎么用 | 正本改了要不要重渲染 |
-|---|---|---|
-| **现读**（推荐给能自己拼提示词的调用方） | `render-roles.py prompt --role X --skin S` 或 `--pack`；每次现组装 | **不用**，下次调用就是新的 |
-| **打包**（宿主定义文件） | `render-roles.py render --host H` 生成文件，宿主自己加载 | **要**，跑一次 `check` 就知道哪些 stale，再 `render` |
-
-为什么要分成两条：宿主 agent 定义文件的正文是**会话启动时一次性读进系统提示**的，
-没有动态 include 机制；想让它跟正本就只能推。而「指针」那条路不可行（见 ADR-0033 D4：
-正文＝系统提示，只放指针等于角色开局没人格，靠它自己读一次才拿得到，工具白名单没有读工具
-就永远拿不到，且读进来的是对话内容、会进压缩）。
-
-所以**需要同步的只有「打包」这条路**，而且是一命令的事：`check` 报位置 → `render` 覆盖。
-现读那条路不存在同步问题。能用现读就别用打包。
 
 ## 记忆
 

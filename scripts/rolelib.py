@@ -185,50 +185,51 @@ def fingerprint(meta: dict, canon_sha: str, skin: str, skin_version: str,
             f"skin_sha256={skin_sha} -->")
 
 
-def render_one(host_cfg: dict, canon: dict, skin_meta: dict, entry: dict,
-               skin_name: str) -> str:
-    """渲染一份派生物。正文＝皮肤两块 ＋ 正本四块逐字。"""
+def role_frontmatter(host_cfg: dict, canon: dict, entry: dict) -> str:
+    """只生成宿主 frontmatter；正文一律由 render_prompt 现拼——两条路同一个组装点。
+
+    没有定义文件层的宿主返回空串，正文单独当提示词文件用。
+    """
     meta = canon["meta"]
     body = canon["body"].lstrip("\n")
     name = entry["name"]
     access = meta["access_need"]
     lines: list[str] = []
 
-    if host_cfg.get("agent_file"):
-        fields = host_cfg.get("fields") or {}
-        fm: list[str] = ["---"]
-        if "name" in fields:
-            fm.append(f"{fields['name']}: {yaml_scalar(name)}")
-        if "description" in fields:
-            fm.append(f"{fields['description']}: {yaml_scalar(description_for(name, body))}")
-        tools_key = "readonly_tools" if access == "read_only" else "writable_tools"
-        tools = host_cfg.get(tools_key) or []
-        if "tools" in fields and tools:
-            fm.append(f"{fields['tools']}: {yaml_list(tools, host_cfg.get('tools_style', 'array'))}")
-        dis_key = "readonly_disallowed" if access == "read_only" else "writable_disallowed"
-        dis = host_cfg.get(dis_key) or []
-        if "disallowed_tools" in fields and dis:
-            fm.append(f"{fields['disallowed_tools']}: {yaml_list(dis, host_cfg.get('tools_style', 'array'))}")
-        if "model" in fields:
-            tiers = host_cfg.get("model_tiers") or {}
-            model = tiers.get(meta["model_tier"], "inherit")
-            # 宿主没确证认 inherit 就不写该字段，让它用自己的默认（不发明值）。
-            if model != "inherit" or host_cfg.get("model_inherit"):
-                fm.append(f"{fields['model']}: {yaml_scalar(model)}")
-        if "effort" in fields:
-            emap = host_cfg.get("effort_map") or {}
-            eff = emap.get(meta["effort"], meta["effort"])
-            if eff in (host_cfg.get("effort_values") or []):
-                fm.append(f"{fields['effort']}: {eff}")
-        turns = (host_cfg.get("max_turns") or {}).get(access)
-        if "max_turns" in fields and turns:
-            fm.append(f"{fields['max_turns']}: {turns}")
-        for key, val in ((host_cfg.get("extra_by_access") or {}).get(access) or {}).items():
-            fm.append(f"{key}: {json.dumps(val, ensure_ascii=False)}")
-        fm.append("---")
-        lines.extend(fm)
-
-    lines.append(render_body(canon, skin_meta, entry, skin_name).rstrip("\n"))
+    if not host_cfg.get("agent_file"):
+        return ""
+    fields = host_cfg.get("fields") or {}
+    fm: list[str] = ["---"]
+    if "name" in fields:
+        fm.append(f"{fields['name']}: {yaml_scalar(name)}")
+    if "description" in fields:
+        fm.append(f"{fields['description']}: {yaml_scalar(description_for(name, body))}")
+    tools_key = "readonly_tools" if access == "read_only" else "writable_tools"
+    tools = host_cfg.get(tools_key) or []
+    if "tools" in fields and tools:
+        fm.append(f"{fields['tools']}: {yaml_list(tools, host_cfg.get('tools_style', 'array'))}")
+    dis_key = "readonly_disallowed" if access == "read_only" else "writable_disallowed"
+    dis = host_cfg.get(dis_key) or []
+    if "disallowed_tools" in fields and dis:
+        fm.append(f"{fields['disallowed_tools']}: {yaml_list(dis, host_cfg.get('tools_style', 'array'))}")
+    if "model" in fields:
+        tiers = host_cfg.get("model_tiers") or {}
+        model = tiers.get(meta["model_tier"], "inherit")
+        # 宿主没确证认 inherit 就不写该字段，让它用自己的默认（不发明值）。
+        if model != "inherit" or host_cfg.get("model_inherit"):
+            fm.append(f"{fields['model']}: {yaml_scalar(model)}")
+    if "effort" in fields:
+        emap = host_cfg.get("effort_map") or {}
+        eff = emap.get(meta["effort"], meta["effort"])
+        if eff in (host_cfg.get("effort_values") or []):
+            fm.append(f"{fields['effort']}: {eff}")
+    turns = (host_cfg.get("max_turns") or {}).get(access)
+    if "max_turns" in fields and turns:
+        fm.append(f"{fields['max_turns']}: {turns}")
+    for key, val in ((host_cfg.get("extra_by_access") or {}).get(access) or {}).items():
+        fm.append(f"{key}: {json.dumps(val, ensure_ascii=False)}")
+    fm.append("---")
+    lines.extend(fm)
     return "\n".join(lines) + "\n"
 
 
@@ -276,7 +277,10 @@ def render_pack(root: Path, skin: str) -> str:
 
 
 def render_all(root: Path, host: str, skin: str) -> dict[str, str]:
-    """返回 {文件名: 文本}。文件名用 role_id，不用皮肤名（换皮肤不改文件名，便于巡检）。"""
+    """返回 {文件名: 文本}。正文一律走 render_prompt——打包与现读同一个组装点。
+
+    文件名用 role_id，不用皮肤名（换皮肤不改文件名）。
+    """
     hosts = load_hosts(root)
     if host not in (hosts.get("hosts") or {}):
         raise RoleError(f"投影表里没有宿主 {host!r}")
@@ -284,14 +288,15 @@ def render_all(root: Path, host: str, skin: str) -> dict[str, str]:
     canon = load_canon(root)
     sk = load_skin(root, skin)
     entries = sk.get("roles") or {}
+    suffix = cfg.get("suffix", ".md")
     out: dict[str, str] = {}
     for rid in ROLE_IDS:
         if rid not in canon:
             raise RoleError(f"缺正本：roles/canon/{rid}.md")
         if rid not in entries:
             raise RoleError(f"皮肤 {skin} 缺角色 {rid}")
-        suffix = cfg.get("suffix", ".md")
-        out[f"{rid}{suffix}"] = render_one(cfg, canon[rid], sk, entries[rid], skin)
+        out[f"{rid}{suffix}"] = role_frontmatter(cfg, canon[rid], entries[rid]) + \
+            render_prompt(root, rid, skin)
     return out
 
 
@@ -400,30 +405,3 @@ def host_programs(root: Path) -> dict[str, list[str]]:
         progs = [p.strip().lower() for p in str(cfg.get("own_cli_aliases") or "").split(",") if p.strip()]
         out[host] = sorted({cli.lower(), *progs})
     return out
-
-
-def check_dest(root: Path, host: str, skin: str, dest: Path) -> list[str]:
-    """巡检派生物：重新渲染再逐字节比对。任何手改都报红，并指出第一处差异行。"""
-    want = render_all(root, host, skin)
-    dest = Path(dest)
-    bad: list[str] = []
-    if not dest.is_dir():
-        return [f"目标目录不在：{dest}"]
-    for fname, text in sorted(want.items()):
-        p = dest / fname
-        if not p.is_file():
-            bad.append(f"缺派生物：{fname}")
-            continue
-        got = p.read_bytes()
-        exp = text.encode("utf-8")
-        if got == exp:
-            continue
-        gl = got.decode("utf-8", errors="replace").splitlines()
-        el = exp.decode("utf-8").splitlines()
-        where = next((i for i in range(max(len(gl), len(el)))
-                      if (gl[i] if i < len(gl) else None) != (el[i] if i < len(el) else None)), 0)
-        bad.append(f"{fname} 与正本渲染结果不符（手改或正本已升版）：第一处差异在第 {where + 1} 行")
-    extra = sorted({p.name for p in dest.iterdir() if p.is_file()} - set(want))
-    if extra:
-        bad.append(f"目标目录里有多余文件（不是本次渲染产物）：{', '.join(extra)}")
-    return bad

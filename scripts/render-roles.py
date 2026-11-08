@@ -1,18 +1,24 @@
 #!/usr/bin/env python3
-"""角色正本 → 宿主定义文件：渲染与指纹巡检。
+"""角色正本 → 宿主提示词与定义文件：同一个组装点，两种落地。
 
 裁决：docs/adr/0033-guild-role-layer.md D4/D6/D8。目录契约：roles/README.md。
 宿主字段投影：adapters/role-hosts.json。判据实现住 scripts/rolelib.py（doctor 的
 role-canon 门共用同一份，不写第二套）。
 
+**只有一个组装点**：正文一律由 `render_prompt` 现拼。
+- `prompt` 把现拼结果直接打出来，正本改了下次就是新的，零同步。
+- `render` 在同一份现拼结果前面加宿主 frontmatter，写成定义文件；装/升级一律重渲染覆盖。
+不再有 stale 巡检（2026-11-08 用户令）：派生物只是缓存，事实住 `roles/`。
+
 用法：
   python scripts/render-roles.py validate
-  python scripts/render-roles.py render --host qoder --skin generic --dest <目标目录> [--dry-run]
-  python scripts/render-roles.py check  --host qoder --skin generic --dest <目标目录>
+  python scripts/render-roles.py prompt   --role reviewer --skin guild [--json]
+  python scripts/render-roles.py prompt   --skin guild --pack
+  python scripts/render-roles.py render   --host qoder --skin generic --dest <目标目录> [--dry-run]
+  python scripts/render-roles.py emit-table --project <项目根>
 
-render 只新增或覆盖它自己渲染的那八个文件，不动目标目录里别的东西；覆盖前备份到
-<目标目录>/.backups/<时间戳>/。check 重新渲染再逐字节比对，手改派生物即 rc=1。
-派生物是宿主产物，不进框架仓。
+render 只新增或覆盖它自己渲染的那几个文件，不动目标目录里别的东西；覆盖前备份到
+<目标目录>/.backups/<时间戳>/。派生物是宿主产物，不进框架仓。
 """
 
 from __future__ import annotations
@@ -93,42 +99,21 @@ def cmd_render(args: argparse.Namespace) -> int:
     else:
         print(f"宿主 {args.host}｜皮肤 {args.skin}｜落点 {dest}")
         print(f"选择键={receipt['select_key']}｜定义文件层={receipt['agent_file']}｜只读靠={receipt['readonly_via']}")
-        for key, label in (("new", "新增"), ("overwrite", "备份后覆盖"), ("same", "已一致")):
+        for key, label in (("new", "新增"), ("overwrite", "备份后覆盖"), ("same", "内容相同（照写）")):
             print(f"{label}（{len(plan[key])}）：{', '.join(plan[key]) or '—'}")
         if backup:
             print(f"备份：{backup}")
         if args.dry_run:
             print("dry-run：未写盘")
-        print("装完必须自证：起只读角色真去写一次，必须被拒；起可写角色做一次最小可回滚写，必须通过。")
+        print("一律重渲染覆盖，不做 stale 判断：派生物只是缓存，事实住 roles/ 与 prompt 现读。")
+        print("装完自证（口径见 ADR-0033）：只读角色即使在宿主上写了，改动也会被内核判 returned；"
+              "起可写角色做一次最小可回滚写，必须通过。")
         if cfg.get("readonly_hard") != "yes":
             print(f"⚠ 只读不是硬机制（readonly_hard={cfg.get('readonly_hard')}）："
                   f"审查腿只读要靠宿主无关三样兜——工作树隔离／范围校验／发货单点，"
                   f"并登记 soft-permission-only。别把这份文件当只读保证。")
         print(f"证据状态：{cfg.get('verified', '')}")
     return 0
-
-
-def cmd_check(args: argparse.Namespace) -> int:
-    root = Path(args.root).resolve() if args.root else repo_root()
-    bad = rolelib.validate(root)
-    if bad:
-        print("正本不合契约，巡检无从比对：", file=sys.stderr)
-        for b in bad:
-            print(f"  - {b}", file=sys.stderr)
-        return 2
-    drift = rolelib.check_dest(root, args.host, args.skin, Path(args.dest).resolve())
-    if args.json:
-        print(json.dumps({"host": args.host, "skin": args.skin, "dest": args.dest,
-                          "ok": not drift, "drift": drift}, ensure_ascii=False, indent=2))
-    elif drift:
-        print(f"派生物漂移（{len(drift)} 处）：")
-        for d in drift:
-            print(f"  - {d}")
-        print("修法：重跑 render 覆盖回正本渲染结果；正本升版也要重跑 render，不要手改派生物。")
-    else:
-        n = len(rolelib.render_all(root, args.host, args.skin))
-        print(f"派生物与正本逐字节一致：{n} 份（宿主 {args.host}｜皮肤 {args.skin}）")
-    return 1 if drift else 0
 
 
 def cmd_emit_table(args: argparse.Namespace) -> int:
@@ -170,7 +155,7 @@ def cmd_prompt(args: argparse.Namespace) -> int:
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description="角色正本渲染与指纹巡检")
+    p = argparse.ArgumentParser(description="角色正本：现拼与渲染")
     p.add_argument("--root", help="框架仓根（默认脚本所在仓）")
     p.add_argument("--json", action="store_true", help="机器可读回执")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -181,15 +166,13 @@ def main() -> int:
     pp.add_argument("--skin", required=True, choices=rolelib.SKINS)
     pp.add_argument("--role", choices=rolelib.ROLE_IDS)
     pp.add_argument("--pack", action="store_true", help="八个角色拼成一份")
-    for name, help_ in (("render", "渲染到目标目录"), ("check", "巡检目标目录的派生物")):
-        sp = sub.add_parser(name, help=help_)
-        sp.add_argument("--host", required=True, choices=rolelib.HOSTS)
-        sp.add_argument("--skin", required=True, choices=rolelib.SKINS)
-        sp.add_argument("--dest", required=True, help="目标目录（项目里的宿主落点）")
-        if name == "render":
-            sp.add_argument("--dry-run", action="store_true", help="只报告将做什么，不写盘")
+    sp = sub.add_parser("render", help="渲染到目标目录（一律覆盖，不做 stale 判断）")
+    sp.add_argument("--host", required=True, choices=rolelib.HOSTS)
+    sp.add_argument("--skin", required=True, choices=rolelib.SKINS)
+    sp.add_argument("--dest", required=True, help="目标目录（项目里的宿主落点）")
+    sp.add_argument("--dry-run", action="store_true", help="只报告将做什么，不写盘")
     args = p.parse_args()
-    return {"validate": cmd_validate, "render": cmd_render, "check": cmd_check,
+    return {"validate": cmd_validate, "render": cmd_render,
             "emit-table": cmd_emit_table, "prompt": cmd_prompt}[args.cmd](args)
 
 

@@ -1,4 +1,4 @@
-"""角色正本／皮肤／渲染／指纹巡检的测例（Issue #7 AC-02、AC-08）。
+"""角色正本／皮肤／渲染／现读的测例（Issue #7 AC-02、AC-08）。
 
 判据实现住 scripts/rolelib.py，CLI 住 scripts/render-roles.py，doctor 的 role-canon 门共用同一份。
 变异一律在 tmp_path 的副本上做，绝不改真仓、绝不用 git checkout 还原。
@@ -90,66 +90,60 @@ def test_ac08_canon_byte_identical_across_skins_all_hosts():
 
 
 def test_ac08_filenames_stable_across_skins():
-    """文件名用 role_id，换皮肤不改名，巡检才找得到同一份。"""
+    """文件名用 role_id，换皮肤不改名，重渲染才对得上同一份。"""
     for host in rl.HOSTS:
         assert set(rl.render_all(REPO, host, "generic")) == set(rl.render_all(REPO, host, "guild"))
 
 
-# ── AC-02：渲染 → 巡检 → 手改报红 ────────────────────────────────────────────
+# ── AC-02（口径 2026-11-08 修订）：同一组装点，重渲染即自愈 ──────────────────
 @pytest.mark.parametrize("host", rl.HOSTS)
 @pytest.mark.parametrize("skin", rl.SKINS)
-def test_ac02_render_then_check_green(host, skin, tmp_path):
-    files = rl.render_all(REPO, host, skin)
-    assert len(files) == 8
-    for name, text in files.items():
+def test_ac02_render_is_idempotent(host, skin, tmp_path):
+    """渲染两遍结果一样：派生物没有「旧版」这个概念，重渲染就是全部。"""
+    first = rl.render_all(REPO, host, skin)
+    assert len(first) == 8
+    for name, text in first.items():
         (tmp_path / name).write_bytes(text.encode("utf-8"))
-    assert rl.check_dest(REPO, host, skin, tmp_path) == []
+    second = rl.render_all(REPO, host, skin)
+    assert first == second
+    for name, text in second.items():
+        assert (tmp_path / name).read_bytes() == text.encode("utf-8")
 
 
-def test_ac02_hand_edit_is_red_and_points_at_line(tmp_path):
+def test_ac02_render_body_comes_from_prompt(tmp_path):
+    """同一个组装点：渲染文件的正文逐字节等于 prompt 现读结果，没有第二套拼装。"""
+    for host in rl.HOSTS:
+        files = rl.render_all(REPO, host, "guild")
+        for rid in rl.ROLE_IDS:
+            fname = next(n for n in files if n.startswith(rid))
+            assert _body_of(files[fname]) == rl.render_prompt(REPO, rid, "guild"), f"{host}/{rid}"
+
+
+def test_ac02_hand_edit_is_healed_by_rerender(tmp_path):
+    """去掉 stale 巡检后，保护靠「一律重渲染」：手改一笔，下次 render 覆盖回正本结果。"""
     host, skin = "qoder", "guild"
     files = rl.render_all(REPO, host, skin)
     for name, text in files.items():
         (tmp_path / name).write_bytes(text.encode("utf-8"))
     p = tmp_path / "reviewer.md"
-    lines = p.read_text(encoding="utf-8").splitlines()
-    target = next(i for i, l in enumerate(lines) if "只判不修" in l)
-    lines[target] = lines[target] + "（手改一笔）"
-    p.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    bad = rl.check_dest(REPO, host, skin, tmp_path)
-    assert len(bad) == 1
-    assert "reviewer.md" in bad[0]
-    assert f"第 {target + 1} 行" in bad[0], bad[0]
-
-
-def test_ac02_missing_derivative_is_red(tmp_path):
-    files = rl.render_all(REPO, "claude", "generic")
-    for name, text in list(files.items())[:-1]:
+    p.write_text(p.read_text(encoding="utf-8") + "\n手改一笔。\n", encoding="utf-8")
+    assert p.read_text(encoding="utf-8").endswith("手改一笔。\n")
+    for name, text in rl.render_all(REPO, host, skin).items():
         (tmp_path / name).write_bytes(text.encode("utf-8"))
-    bad = rl.check_dest(REPO, "claude", "generic", tmp_path)
-    assert any("缺派生物" in b for b in bad)
+    assert p.read_bytes() == files["reviewer.md"].encode("utf-8"), "重渲染没把手改覆盖掉"
 
 
-def test_ac02_extra_file_is_red(tmp_path):
-    for name, text in rl.render_all(REPO, "cursor", "generic").items():
-        (tmp_path / name).write_bytes(text.encode("utf-8"))
-    (tmp_path / "someone-elses.md").write_text("x", encoding="utf-8")
-    bad = rl.check_dest(REPO, "cursor", "generic", tmp_path)
-    assert any("多余文件" in b for b in bad)
-
-
-def test_ac02_canon_version_bump_makes_old_derivative_red(repo_copy):
-    """正本升版后，旧派生物必须报红——否则指纹是装饰。"""
-    dest = repo_copy / "out"
-    dest.mkdir()
-    for name, text in rl.render_all(repo_copy, "qoder", "generic").items():
-        (dest / name).write_bytes(text.encode("utf-8"))
-    assert rl.check_dest(repo_copy, "qoder", "generic", dest) == []
+def test_ac02_canon_bump_changes_fingerprint_immediately(repo_copy):
+    """正本升版：现读与渲染结果同时变，指纹跟着变——不需要任何巡检来告知。"""
+    before = rl.render_prompt(repo_copy, "reviewer", "generic")
+    assert "canon_version=1.0.0" in before
     p = repo_copy / "roles" / "canon" / "reviewer.md"
-    p.write_text(p.read_text(encoding="utf-8").replace("canon_version: 1.0.0", "canon_version: 1.1.0"),
-                 encoding="utf-8")
-    bad = rl.check_dest(repo_copy, "qoder", "generic", dest)
-    assert len(bad) == 1 and "reviewer.md" in bad[0], bad
+    p.write_text(p.read_text(encoding="utf-8").replace(
+        "canon_version: 1.0.0", "canon_version: 1.1.0"), encoding="utf-8")
+    after = rl.render_prompt(repo_copy, "reviewer", "generic")
+    assert "canon_version=1.1.0" in after and after != before
+    rendered = rl.render_all(repo_copy, "qoder", "generic")["reviewer.md"]
+    assert _body_of(rendered) == after, "渲染路径没跟着正本走"
 
 
 def test_fingerprint_is_recomputable():
@@ -240,19 +234,13 @@ def test_prompt_equals_body_of_rendered_file():
                 assert _body_of(files[fname]) == rl.render_prompt(REPO, rid, skin), f"{host}/{rid}"
 
 
-def test_prompt_tracks_canon_without_rerender(repo_copy):
-    """改正本后：现读路径立刻变；已渲染的文件被 check 判 stale。这就是同步成本的边界。"""
-    dest = repo_copy / "out"
-    dest.mkdir()
-    for n, t in rl.render_all(repo_copy, "qoder", "generic").items():
-        (dest / n).write_bytes(t.encode("utf-8"))
-    assert rl.check_dest(repo_copy, "qoder", "generic", dest) == []
+def test_prompt_tracks_canon_without_any_file(repo_copy):
+    """现读路径不依赖任何落地文件：改正本，下一次 prompt 就是新的。"""
     before = rl.render_prompt(repo_copy, "reviewer", "generic")
     p = repo_copy / "roles" / "canon" / "reviewer.md"
     p.write_text(p.read_text(encoding="utf-8").replace(
         "canon_version: 1.0.0", "canon_version: 1.1.0"), encoding="utf-8")
-    assert rl.render_prompt(repo_copy, "reviewer", "generic") != before, "现读路径必须立刻反映正本变化"
-    assert rl.check_dest(repo_copy, "qoder", "generic", dest), "打包路径必须报 stale"
+    assert rl.render_prompt(repo_copy, "reviewer", "generic") != before
 
 
 def test_pack_contains_all_eight_roles():
