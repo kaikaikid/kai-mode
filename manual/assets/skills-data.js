@@ -4,46 +4,6 @@ window.KAI_SKILLS = [
     "group": "酒馆冒险团与安装",
     "plugin": "酒馆冒险团与安装",
     "pluginId": "core",
-    "skill": "architect",
-    "oneLine": "直接唤醒 瑞兹（architect）子代理的薄入口（角色名即命令，省去前缀）。",
-    "trigger": "/architect、/瑞兹；如 /reviewer、/崔希丝",
-    "command": "/architect",
-    "version": "0.1.0"
-  },
-  {
-    "group": "酒馆冒险团与安装",
-    "plugin": "酒馆冒险团与安装",
-    "pluginId": "core",
-    "skill": "archivist",
-    "oneLine": "直接唤醒 克罗米（archivist）子代理的薄入口（角色名即命令，省去前缀）。",
-    "trigger": "/archivist、/克罗米；如 /reviewer、/崔希丝",
-    "command": "/archivist",
-    "version": "0.1.0"
-  },
-  {
-    "group": "酒馆冒险团与安装",
-    "plugin": "酒馆冒险团与安装",
-    "pluginId": "core",
-    "skill": "designer",
-    "oneLine": "直接唤醒 泰兰德（designer）子代理的薄入口（角色名即命令，省去前缀）。",
-    "trigger": "/designer、/泰兰德；如 /reviewer、/崔希丝",
-    "command": "/designer",
-    "version": "0.1.0"
-  },
-  {
-    "group": "酒馆冒险团与安装",
-    "plugin": "酒馆冒险团与安装",
-    "pluginId": "core",
-    "skill": "engineer",
-    "oneLine": "直接唤醒 布莱恩（engineer）子代理的薄入口（角色名即命令，省去前缀）。",
-    "trigger": "/engineer、/布莱恩；如 /reviewer、/崔希丝",
-    "command": "/engineer",
-    "version": "0.1.0"
-  },
-  {
-    "group": "酒馆冒险团与安装",
-    "plugin": "酒馆冒险团与安装",
-    "pluginId": "core",
     "skill": "gold",
     "oneLine": "康娜的方法正文与默认入口：接单、判断、清场、施工、发货、回报。",
     "trigger": "默认入口；/gold（旧名 /bridge 兼容）；说「开工」「发货」「清理脏文件」",
@@ -84,26 +44,6 @@ window.KAI_SKILLS = [
     "group": "酒馆冒险团与安装",
     "plugin": "酒馆冒险团与安装",
     "pluginId": "core",
-    "skill": "researcher",
-    "oneLine": "直接唤醒 崔希丝（researcher）子代理的薄入口（角色名即命令，省去前缀）。",
-    "trigger": "/researcher、/崔希丝；如 /reviewer、/崔希丝",
-    "command": "/researcher",
-    "version": "0.1.0"
-  },
-  {
-    "group": "酒馆冒险团与安装",
-    "plugin": "酒馆冒险团与安装",
-    "pluginId": "core",
-    "skill": "reviewer",
-    "oneLine": "直接唤醒 提里奥（reviewer）子代理的薄入口（角色名即命令，省去前缀）。",
-    "trigger": "/reviewer、/提里奥；如 /reviewer、/崔希丝",
-    "command": "/reviewer",
-    "version": "0.1.0"
-  },
-  {
-    "group": "酒馆冒险团与安装",
-    "plugin": "酒馆冒险团与安装",
-    "pluginId": "core",
     "skill": "set-kai-mode",
     "oneLine": "安装与体检：先看缺什么，只装缺的。",
     "trigger": "/set-kai-mode；说「装一下」",
@@ -134,11 +74,71 @@ window.KAI_SKILLS = [
     "group": "酒馆冒险团与安装",
     "plugin": "酒馆冒险团与安装",
     "pluginId": "core",
-    "skill": "writer",
-    "oneLine": "直接唤醒 周卓（writer）子代理的薄入口（角色名即命令，省去前缀）。",
-    "trigger": "/writer、/周卓；如 /reviewer、/崔希丝",
-    "command": "/writer",
-    "version": "0.1.0"
+    "skill": "卓尔游侠",
+    "oneLine": "唤醒 崔希丝（卓尔游侠 · researcher）子代理的薄入口。",
+    "trigger": "/卓尔游侠（命令）；自然语言「叫崔希丝」「叫卓尔游侠」也认；researcher 是工程标识（subagent_type）",
+    "command": "/卓尔游侠",
+    "version": "0.3.0"
+  },
+  {
+    "group": "酒馆冒险团与安装",
+    "plugin": "酒馆冒险团与安装",
+    "pluginId": "core",
+    "skill": "圣骑士",
+    "oneLine": "唤醒 提里奥·弗丁（圣骑士 · reviewer）子代理的薄入口。",
+    "trigger": "/圣骑士（命令）；自然语言「叫提里奥·弗丁」「叫圣骑士」也认；reviewer 是工程标识（subagent_type）",
+    "command": "/圣骑士",
+    "version": "0.3.0"
+  },
+  {
+    "group": "酒馆冒险团与安装",
+    "plugin": "酒馆冒险团与安装",
+    "pluginId": "core",
+    "skill": "德鲁伊",
+    "oneLine": "唤醒 泰兰德·语风（德鲁伊 · designer）子代理的薄入口。",
+    "trigger": "/德鲁伊（命令）；自然语言「叫泰兰德·语风」「叫德鲁伊」也认；designer 是工程标识（subagent_type）",
+    "command": "/德鲁伊",
+    "version": "0.3.0"
+  },
+  {
+    "group": "酒馆冒险团与安装",
+    "plugin": "酒馆冒险团与安装",
+    "pluginId": "core",
+    "skill": "游学者",
+    "oneLine": "唤醒 游学者{{PASSWORD_0ce908ba}}（游学者 · writer）子代理的薄入口。",
+    "trigger": "/游学者（命令）；自然语言「叫游学者{{PASSWORD_0ce908ba}}」「叫游学者」也认；writer 是工程标识（subagent_type）",
+    "command": "/游学者",
+    "version": "0.3.0"
+  },
+  {
+    "group": "酒馆冒险团与安装",
+    "plugin": "酒馆冒险团与安装",
+    "pluginId": "core",
+    "skill": "矮人工匠",
+    "oneLine": "唤醒 布莱恩·铜须（矮人工匠 · engineer）子代理的薄入口。",
+    "trigger": "/矮人工匠（命令）；自然语言「叫布莱恩·铜须」「叫矮人工匠」也认；engineer 是工程标识（subagent_type）",
+    "command": "/矮人工匠",
+    "version": "0.3.0"
+  },
+  {
+    "group": "酒馆冒险团与安装",
+    "plugin": "酒馆冒险团与安装",
+    "pluginId": "core",
+    "skill": "符文法师",
+    "oneLine": "唤醒 瑞兹（符文法师 · architect）子代理的薄入口。",
+    "trigger": "/符文法师（命令）；自然语言「叫瑞兹」「叫符文法师」也认；architect 是工程标识（subagent_type）",
+    "command": "/符文法师",
+    "version": "0.3.0"
+  },
+  {
+    "group": "酒馆冒险团与安装",
+    "plugin": "酒馆冒险团与安装",
+    "pluginId": "core",
+    "skill": "青铜龙",
+    "oneLine": "唤醒 克罗米（青铜龙 · archivist）子代理的薄入口。",
+    "trigger": "/青铜龙（命令）；自然语言「叫克罗米」「叫青铜龙」也认；archivist 是工程标识（subagent_type）",
+    "command": "/青铜龙",
+    "version": "0.3.0"
   },
   {
     "group": "看板",

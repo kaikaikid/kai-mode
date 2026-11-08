@@ -11,22 +11,22 @@
     },
     "core": {
       "version": "1.4.0",
-      "digest": "6b5c4877473b2a4619fc0efeacca5c01eb4526347517f9279b9bbef16a5c41e6",
+      "digest": "4dc8ddbbdc3436e097f394a80d77992023725a53d1aa51fe55b08e2e7494fa79",
       "skills": {
-        "architect": "0.1.0",
-        "archivist": "0.1.0",
-        "designer": "0.1.0",
-        "engineer": "0.1.0",
         "gold": "0.8.0",
         "harness-audit": "0.2.1",
         "kai-handoff": "0.3.6",
         "principles": "1.0.0",
-        "researcher": "0.1.0",
-        "reviewer": "0.1.0",
         "set-kai-mode": "7.0.0",
         "staff": "4.2.0",
         "upgrade-kai-mode": "0.2.1",
-        "writer": "0.1.0"
+        "卓尔游侠": "0.3.0",
+        "圣骑士": "0.3.0",
+        "德鲁伊": "0.3.0",
+        "游学者": "0.3.0",
+        "矮人工匠": "0.3.0",
+        "符文法师": "0.3.0",
+        "青铜龙": "0.3.0"
       }
     },
     "engine": {

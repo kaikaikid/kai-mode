@@ -1,5 +1,5 @@
 ---
-name: researcher
+name: 符文法师
 status: active
 approved_by: human:kaikaikid
 approved: 2026-11-09
@@ -7,25 +7,25 @@ sources:
   - resource: "../../../core/skills/gold/SKILL.md"
     note: "子代理纪律（默认零、先报数量）的正本在 gold"
 description: >
-  直接唤醒 崔希丝（researcher）子代理的薄入口（角色名即命令，省去前缀）。
-  外部调查、资料与证据搜集。不自动派发；定好任务包后按宿主已配的方式起。
-  触发：`/researcher`、`/崔希丝`；如 `/reviewer`、`/崔希丝`。
-version: 0.1.0
+  唤醒 瑞兹（符文法师 · architect）子代理的薄入口。中文默认：`/符文法师`（本技能名，命令面上可用）；
+  「瑞兹」与「architect」作自然语言唤醒词也认。
+  架构、取舍、根因分析。不自动派发；定好任务包后按宿主已配的方式起。
+  触发：`/符文法师`（命令）；自然语言「叫瑞兹」「叫符文法师」也认；`architect` 是工程标识（subagent_type）。
+version: 0.3.0
 updated: 2026-11-09
 allowed-tools: Read Grep
 ---
 
-# 崔希丝（researcher）—— 直接唤醒
+# 符文法师（瑞兹）—— 直接唤醒
 
 > 角色身份、职责与边界住角色正本（装机时由 `set-kai-mode` 渲染成宿主 agent 文件）；本技能只管唤醒与任务包。
 > 纪律正本在 `gold/SKILL.md`「子代理纪律」，本文件不复述。
 
 ## 唤醒
 
-用宿主已配的方式起一个 `researcher` 子代理：有原生子代理的宿主用 `subagent_type=researcher`（或 agent 文件名）；
-无原生子代理、本身是命令行 agent 工具的宿主，走本宿主自己的 CLI 进程，带角色提示词与 `只读` 档位。
-具体命令样例住 `adapters/<宿主>.md` 与装机回执；本技能不复述。
-禁止跨宿主借兵。
+用宿主已配的方式起一个 `architect` 子代理：有原生子代理的宿主用 `subagent_type=architect`（或 agent 文件名）；
+无原生子代理、本身是命令行 agent 工具的宿主，走本宿主自己的 CLI 进程，带角色提示词与 `只读（分析）` 档位。
+具体命令样例住 `adapters/<宿主>.md` 与装机回执；本技能不复述。禁止跨宿主借兵。
 
 ## 任务包（缺一项不派）
 
