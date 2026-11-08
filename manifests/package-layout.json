@@ -52,6 +52,10 @@
       "from": "templates/push-policy.md",
       "to": ".ai/push-policy.md"
     },
+    "dual_repo": {
+      "from": "templates/dual-repo.md",
+      "to": ".ai/dual-repo.md"
+    },
     "handoff": {
       "slots": [
         "00-inbox",

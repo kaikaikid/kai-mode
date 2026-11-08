@@ -442,6 +442,7 @@ def add_layout(root, *, handoff_files=None, exclude_dirs=None, config_from=None)
     (root / "templates" / "kai-mode.project.json").write_text("{}\n", encoding="utf-8")
     (root / "templates" / "GLOSSARY.md").write_text("# GLOSSARY\n", encoding="utf-8")
     (root / "templates" / "push-policy.md").write_text("# 推送政策\n", encoding="utf-8")
+    (root / "templates" / "dual-repo.md").write_text("# 双仓库开发规范\n\nQ1：{{Q1}}\n", encoding="utf-8")
     files = handoff_files if handoff_files is not None else {"handoff/README.md": "handoff/README.md"}
     layout = {
         "schema": "kai-mode-package-layout/1",
@@ -458,6 +459,7 @@ def add_layout(root, *, handoff_files=None, exclude_dirs=None, config_from=None)
             },
             "glossary": {"from": "templates/GLOSSARY.md", "to": "GLOSSARY.md"},
             "push_policy": {"from": "templates/push-policy.md", "to": ".ai/push-policy.md"},
+            "dual_repo": {"from": "templates/dual-repo.md", "to": ".ai/dual-repo.md"},
             "handoff": {
                 "slots": ["00-inbox", "60-board"],
                 "monthly_slots": ["00-inbox"],

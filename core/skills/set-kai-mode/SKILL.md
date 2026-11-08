@@ -81,8 +81,22 @@ python scripts/init-project.py --repo <目标仓> --answers a.json   # 机器填
 | 10 | 想法池汇总票号 | 空 | `issue.boom_summary_ticket` |
 | 11 | 推送边界 | 工作区留本地；发布/项目仓才推送且由用户推 | `.ai/push-policy.md` |
 
-**脚本顺手铺两个组件**：`handoff/` 八槽 ＋ 规范与模板；`docs/adr/` ＋ `GLOSSARY.md` 骨架。
-已存在的一律**不覆盖**。缺件（如票源选 github 但没 slug）脚本直接拒绝，不生成半成品实例。
+**双仓库五题（紧随其后，顺序固定）**：答完十一问继续问这五题。
+**回车一律落「待定」**——用户没拍板的不许替选默认值；下表的「推荐」只写在提问提示里，
+不作默认值用。答案渲染成项目侧的 `<项目>/.ai/dual-repo.md`（已存在则不覆盖）。
+
+| # | 问什么 | 推荐（仅提示） | 落到哪 |
+|---|---|---|---|
+| Q1 | 双仓还是单仓 | 双仓（纯内部工具可单仓） | `release.topology` |
+| Q2 | 发布库公开还是私有 | 私有（私有期） | `release.visibility` |
+| Q3 | 开发仓推送权 | 只有用户推 | `release.dev_push` |
+| Q4 | 发布库 issue 入口 | 私有期关闭 | `release.issues` |
+| Q5 | 发布历史 | 不可变 tag | `release.history` |
+| — | 发布库 slug（owner/name，没有就回车） | 无 | `release.repo` |
+
+**脚本顺手铺两个组件**：`handoff/` 八槽 ＋ 规范与模板；`docs/adr/` ＋ `GLOSSARY.md` 骨架；
+再加两份边界件 `push-policy` 与 `dual-repo`。已存在的一律**不覆盖**。
+缺件（如票源选 github 但没 slug）脚本直接拒绝，不生成半成品实例。
 
 ## 一步配置（装完即可用）
 

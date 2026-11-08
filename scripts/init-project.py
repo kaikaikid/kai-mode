@@ -71,6 +71,9 @@ def guess_slug(repo: str) -> str:
     return m.group(1) if m else ""
 
 
+TBD = "待定"  # 用户未拍板的双仓参数：一律落这个，不许替用户选默认值
+
+
 def ask(q: str, default: str, yes: bool) -> str:
     if yes:
         return default
@@ -119,6 +122,18 @@ def build_answers(repo: str, a, yes: bool) -> dict:
         "boom_summary_ticket": ask("10/11 想法池汇总票号（可留空）", "", yes),
         "push_policy": ask("11/11 推送边界（默认：工作区留本地；发布/项目仓才推送，且由用户推）",
                            "workspace-local", yes),
+        # 双仓库开发规范的五题。规范明写「用户没拍板的一律记待定，不许替用户选默认值」，
+        # 所以回车一律落「待定」，推荐值只写在提示里给用户参考。
+        "q1_topology": ask("Q1/5 双仓还是单仓（推荐双仓；纯内部工具可单仓）回车＝待定",
+                           TBD, yes),
+        "q2_visibility": ask("Q2/5 发布库公开还是私有（public / private）回车＝待定", TBD, yes),
+        "q3_dev_push": ask("Q3/5 开发仓推送权（user-only / ai-allowed；推荐 user-only）回车＝待定",
+                           TBD, yes),
+        "q4_release_issues": ask("Q4/5 发布库 issue 入口（closed / redirect；私有期推荐 closed）回车＝待定",
+                                 TBD, yes),
+        "q5_release_history": ask("Q5/5 发布历史（immutable-tags / rewritable；对外推荐不可变 tag）回车＝待定",
+                                  TBD, yes),
+        "release_repo": ask("发布库 slug（owner/name；没有就回车留待定）", TBD, yes),
     }
 
 
@@ -228,7 +243,57 @@ def apply(cfg: dict, ans: dict) -> dict:
     issue["boom_summary_ticket"] = ticket or None
     if ans.get("host"):
         cfg.setdefault("host", {})["adapter"] = ans["host"]
+    # release 段以模板为准：模板没这一段就不凭空造（ADR-0014：不发明值）。
+    rel_cfg = cfg.get("release")
+    if isinstance(rel_cfg, dict):
+        for key, value in release_values(ans).items():
+            rel_cfg[key] = value
     return cfg
+
+
+TBD = "待定"  # 用户未拍板的双仓参数：一律落这个，不许替用户选默认值
+
+# 双仓库开发规范的五题：把用户原话归一到规范取值；认不出的一律待定，不猜。
+RELEASE_ENUMS = {
+    "topology": {"dual": "dual", "双仓": "dual", "single": "single", "单仓": "single"},
+    "visibility": {"public": "public", "公开": "public", "private": "private", "私有": "private"},
+    "dev_push": {"user-only": "user-only", "只有用户推": "user-only",
+                 "ai-allowed": "ai-allowed", "ai 可推": "ai-allowed", "ai可推": "ai-allowed"},
+    "issues": {"closed": "closed", "关闭": "closed", "redirect": "redirect", "重定向": "redirect"},
+    "history": {"immutable-tags": "immutable-tags", "不可变": "immutable-tags",
+                "immutable": "immutable-tags", "rewritable": "rewritable",
+                "可重推": "rewritable", "允许清空重推": "rewritable"},
+}
+RELEASE_LABELS = {
+    "dual": "双仓（dual）", "single": "单仓（single）",
+    "public": "公开（public）", "private": "私有（private）",
+    "user-only": "只有用户推（user-only）", "ai-allowed": "AI 可推（ai-allowed）",
+    "closed": "关闭（closed）", "redirect": "开着但重定向回开发仓（redirect）",
+    "immutable-tags": "不可变 tag（immutable-tags）", "rewritable": "允许清空重推（rewritable）",
+}
+RELEASE_KEYS = ("topology", "visibility", "dev_push", "issues", "history")
+
+
+def _pick_enum(field: str, value) -> str:
+    raw = str(value or "").strip()
+    if not raw or raw == TBD:
+        return TBD
+    table = RELEASE_ENUMS[field]
+    return table.get(raw, table.get(raw.lower(), TBD))
+
+
+def release_values(ans: dict) -> dict:
+    """五题归一化结果（canonical 值或 TBD）。单一入口，apply 与渲染都读它。"""
+    got = {
+        "topology": _pick_enum("topology", ans.get("q1_topology")),
+        "visibility": _pick_enum("visibility", ans.get("q2_visibility")),
+        "dev_push": _pick_enum("dev_push", ans.get("q3_dev_push")),
+        "issues": _pick_enum("issues", ans.get("q4_release_issues")),
+        "history": _pick_enum("history", ans.get("q5_release_history")),
+    }
+    slug = str(ans.get("release_repo") or "").strip()
+    got["repo"] = slug if (slug and slug != TBD) else TBD
+    return got
 
 
 def project_has_own_handoff(base: str) -> bool:
@@ -257,6 +322,39 @@ def gen_push_policy(repo: str, ans: dict, layout: dict) -> list:
         return []
     os.makedirs(os.path.dirname(dst), exist_ok=True)
     shutil.copy2(src, dst)
+    return [dst_rel]
+
+
+def gen_dual_repo(repo: str, ans: dict, layout: dict) -> list:
+    """铺「双仓库开发规范」：把 QA 五题结论渲染进模板，落 .ai/dual-repo.md。
+
+    与 push-policy 一样「已有不覆盖」——用户改过的结论不许被重跑抹掉。
+    """
+    spec = layout["project_scaffold"].get("dual_repo") or {}
+    src_rel, dst_rel = spec.get("from"), spec.get("to")
+    if not src_rel or not dst_rel:
+        return []
+    src = os.path.join(ROOT, *src_rel.split("/"))
+    dst = os.path.join(repo, *dst_rel.split("/"))
+    if os.path.exists(dst):
+        return []
+    with open(src, encoding="utf-8") as f:
+        text = f.read()
+    vals = release_values(ans)
+    dev = str(ans.get("repo_slug") or "").strip() or TBD
+    mapping = {
+        "{{Q1}}": RELEASE_LABELS.get(vals["topology"], vals["topology"]),
+        "{{Q2}}": RELEASE_LABELS.get(vals["visibility"], vals["visibility"]),
+        "{{Q3}}": RELEASE_LABELS.get(vals["dev_push"], vals["dev_push"]),
+        "{{Q4}}": RELEASE_LABELS.get(vals["issues"], vals["issues"]),
+        "{{Q5}}": RELEASE_LABELS.get(vals["history"], vals["history"]),
+        "{{DEV_REPO}}": dev,
+        "{{RELEASE_REPO}}": vals["repo"],
+    }
+    for token, value in mapping.items():
+        text = text.replace(token, value)
+    os.makedirs(os.path.dirname(dst), exist_ok=True)
+    write_atomic(dst, text)
     return [dst_rel]
 
 
@@ -345,10 +443,12 @@ def main() -> int:
         print("推送边界只认两档：workspace-local（默认，工作区留本地）或另行说明；本次未写明，先按缺件处理")
         return 2
     policy_spec = spec.get("push_policy") or {}
+    dual_spec = spec.get("dual_repo") or {}
     scaffold_sources = [
         cfg_src_rel,
         spec["glossary"]["from"],
         policy_spec.get("from") or "",
+        dual_spec.get("from") or "",
         *spec["handoff"]["files"],
     ]
     missing_src = [rel for rel in scaffold_sources
@@ -418,6 +518,7 @@ def main() -> int:
     write_atomic(out, json.dumps(cfg, ensure_ascii=False, indent=2) + "\n")
     files = (
         gen_push_policy(repo, ans, layout)
+        + gen_dual_repo(repo, ans, layout)
         + gen_handoff(repo, ans, layout)
         + gen_docs(repo, ans, layout)
     )

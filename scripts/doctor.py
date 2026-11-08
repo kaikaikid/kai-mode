@@ -893,6 +893,9 @@ def chk_package_layout(root: str, ms):
         pp = spec.get("push_policy")
         if not (isinstance(pp, dict) and pp.get("from") and pp.get("to")):
             problems.append("缺 project_scaffold.push_policy（初始化必铺推送边界）")
+        dr = spec.get("dual_repo")
+        if not (isinstance(dr, dict) and dr.get("from") and dr.get("to")):
+            problems.append("缺 project_scaffold.dual_repo（初始化必铺双仓库开发规范）")
     # 安装面实量：payload 不得含被排除的开发件（防安装器与清单脱钩）
     reg, reg_err = registry(root, ms) if ms is not None else (None, "magpie-sync 读不出来")
     if reg is None:
@@ -919,9 +922,11 @@ def chk_package_layout(root: str, ms):
     cfg = spec.get("config") if isinstance(spec.get("config"), dict) else {}
     gloss = spec.get("glossary") if isinstance(spec.get("glossary"), dict) else {}
     ppol = spec.get("push_policy") if isinstance(spec.get("push_policy"), dict) else {}
+    drep = spec.get("dual_repo") if isinstance(spec.get("dual_repo"), dict) else {}
     hand = spec.get("handoff") if isinstance(spec.get("handoff"), dict) else {}
     sources = []
-    for label, item in (("config", cfg), ("glossary", gloss), ("push_policy", ppol)):
+    for label, item in (("config", cfg), ("glossary", gloss),
+                        ("push_policy", ppol), ("dual_repo", drep)):
         frm, to = item.get("from"), item.get("to")
         if not isinstance(frm, str) or not frm or not _safe_rel(to):
             problems.append(f"project_scaffold.{label} 的 from/to 不合法")
@@ -1008,6 +1013,8 @@ def chk_package_layout(root: str, ms):
             return "fail", "骨架夹带本仓 ADR 文件名（开发记录混入）：" + "；".join(leaked[:4])
         month = dt.date.today().strftime("%Y-%m")
         expected = {cfg["to"], gloss["to"], ppol["to"], f"{spec['adr_dir']}/{placeholder}"}
+        if drep.get("to"):
+            expected.add(drep["to"])
         expected |= set(hand_files.values())
         for slot in slots:
             subs = board_children if slot == board_slot else [month]

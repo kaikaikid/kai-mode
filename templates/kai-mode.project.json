@@ -63,5 +63,14 @@
     "platform": "github",
     "repo": "<owner/name>",
     "boom_summary_ticket": null
+  },
+  "release": {
+    "_note": "⑥发布形态（双仓库开发规范）：新项目开工 QA 的五个答案原文。取值 dual|single、public|private、user-only|ai-allowed、closed|redirect、immutable-tags|rewritable；null＝待定（用户未拍板，AI 不得自行填默认值）。消费方：scripts/init-project.py 的 gen_dual_repo 渲染 .ai/dual-repo.md；缺件处置写在该文件 §5。",
+    "topology": null,
+    "repo": null,
+    "visibility": null,
+    "dev_push": null,
+    "issues": null,
+    "history": null
   }
 }

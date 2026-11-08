@@ -84,6 +84,7 @@ skill runs bridge's method. Source of truth: `docs/adr/0033-guild-role-layer.md`
 | Project config instance: default-value policy | `docs/adr/0014-config-instance-no-invented-values.md` + `templates/kai-mode.project.json` | pointer |
 | Role wake permissions (who may wake whom) | `docs/adr/0010-role-wake-fence.md` | pointer in role skills |
 | Role layer (primary agent, role template vs instance, memory writer, own-host-only dispatch) | `docs/adr/0033-guild-role-layer.md` | pointer; per-sentence conflict ledger in `docs/design/2026-11-08-guild-role-layer-conflicts.md` |
+| Dual-repo policy (dev vs release repo, export chain, immutable tags) | `templates/dual-repo.md` | pointer; QA answers land in each project's `<项目>/.ai/dual-repo.md` |
 | Runtime mechanics (retry, timeout, circuit breaker, budget, TTL) | **not in docs** — belongs to the host runtime | — |
 | Project instance values (thresholds, paths, ticket ids) | project config instance | template only |
 
