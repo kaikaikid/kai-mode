@@ -1690,6 +1690,23 @@ def _load_rolelib(root: str):
     return mod
 
 
+def chk_persona(root: str, ms):
+    """人格层契约：八份 persona；原初内核只读、ego 只放引用、记忆只走 archivist。"""
+    from pathlib import Path as _P
+    pdir = os.path.join(root, "roles", "persona")
+    if not os.path.isdir(pdir):
+        return "skip", "没有 roles/persona/（人格层未接入）"
+    sys.path.insert(0, os.path.join(root, "scripts"))
+    try:
+        import persona as _p
+    except Exception as e:
+        return "fail", f"scripts/persona.py 不可导入：{e}"
+    errs = _p.validate(_P(root))
+    if errs:
+        return "fail", "人格层不合契约： " + "；".join(errs[:6])
+    return "ok", f"{len(_p.ROLE_IDS)} 份人格层：原初内核只读、ego 只放引用、记忆走 archivist（外部存储）"
+
+
 def chk_role_canon(root: str, ms):
     """角色正本契约：八份正本 × 两套皮肤 × 六家宿主；换皮肤只换 identity/personality。"""
     from pathlib import Path as _P
@@ -2084,6 +2101,7 @@ CHECKS = (
     ("decoupling-gate", "解耦门（项目硬路径零残留）", chk_decoupling),
     ("host-neutral", "宿主专有 token 不进正本", chk_host_neutral),
     ("role-canon", "角色正本契约（八角色 × 双皮 × 六宿主）", chk_role_canon),
+    ("persona-layer", "人格层契约（原初内核只读 / ego 只放引用 / 记忆走 archivist）", chk_persona),
     ("handoff-slots", "交接文档分类（槽位/命名/归位）", chk_handoff),
     ("skill-spec", "技能格式对齐 Agent Skills 1.2", chk_skill_spec),
     ("command-surface", "技能声明的命令在自己工具面里", chk_command_surface),

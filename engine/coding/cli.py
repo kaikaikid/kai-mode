@@ -704,14 +704,16 @@ def cmd_review_native(args: argparse.Namespace) -> dict:
             "review_report_path": report_path,
             "read_only": True,
             "instructions": "Use a read-only subagent of this host. Do not modify files. "
-                            "End with one JSON object: {verdict:accept|return, defects:[], reason:""}",
+                            "End with one JSON object: {verdict:accept|return|defer, defects:[], deferred_items:[], reason:""}",
         }
         print(json.dumps(card, ensure_ascii=False, indent=2))
         return card
 
 
 def cmd_verdict(args: argparse.Namespace) -> None:
-    """把 native 审查裁决写回：accept -> accepted；return -> returned（3 次转 blocked）。"""
+    """把 native 审查裁决写回：accept -> accepted；return -> returned（3 次转 blocked）；defer -> 记入团长队列。
+    验收放给AI：accept即过；defer只把"要团长拍板的事"挂起、不阻塞施工。
+    """
     root = _root()
     rp = Path(args.file)
     if not rp.is_file():
@@ -723,10 +725,14 @@ def cmd_verdict(args: argparse.Namespace) -> None:
     if not isinstance(rep, dict):
         _err("verdict file must be a JSON object")
     verdict = rep.get("verdict")
-    if verdict not in {"accept", "return"}:
-        _err(f"invalid verdict: {verdict!r} (expected accept/return)")
+    if verdict not in {"accept", "return", "defer"}:
+        _err(f"invalid verdict: {verdict!r} (expected accept/return/defer)")
     defects = rep.get("defects", [])
     reason = rep.get("reason", "") or rep.get("notes", "")
+    # defer 专用：要团长拍板的事项列表
+    deferred_items = rep.get("deferred_items", [])  # [{id, question, reason, role, priority}]
+    if verdict == "defer" and not deferred_items:
+        _err("verdict=defer 必须带 deferred_items（要团长拍板的具体事项）")
 
     with st.lock(root):
         s = st.load(args.run_id, root)
@@ -754,9 +760,26 @@ def cmd_verdict(args: argparse.Namespace) -> None:
             t["status"] = "accepted"
             s["resume"]["last_accepted"] = t["id"]
             s["resume"]["next_action"] = "next"
+        elif verdict == "defer":
+            # 验收放给AI：技术验收已过，只把"要团长拍板的事"挂起；task 标 accepted，事项进团长队列
+            t["status"] = "accepted"
+            s["resume"]["last_accepted"] = t["id"]
+            s["resume"]["next_action"] = "next"
+            q = s.setdefault("owner_deferred", [])
+            for item in deferred_items:
+                q.append({
+                    "id": item.get("id") or f"DEFER-{t['id']}-{len(q)+1}",
+                    "task_id": t["id"],
+                    "question": item.get("question", ""),
+                    "reason": item.get("reason", ""),
+                    "role": item.get("role", "reviewer"),
+                    "priority": item.get("priority", "normal"),
+                    "recorded_at": time.time(),
+                    "status": "pending",
+                })
         else:
             t["status"] = "returned"
-            t["attempts"] = int(t.get("attempts", 0)) + 1
+            t["attempts"] = int(t.get("attempts", 0) or 0) + 1
             t["defects"] = "; ".join(defects) if defects else reason
             if t["attempts"] >= 3:
                 t["status"] = "blocked"
@@ -1066,7 +1089,7 @@ def build_parser() -> argparse.ArgumentParser:
     rv.add_argument("task_id")
     rv.set_defaults(func=cmd_review)
 
-    vd = sub.add_parser("verdict", help="write a native review verdict (accept/return)")
+    vd = sub.add_parser("verdict", help="write a native review verdict (accept/return/defer)")
     vd.add_argument("run_id")
     vd.add_argument("task_id")
     vd.add_argument("--file", required=True, help="path to review report JSON")

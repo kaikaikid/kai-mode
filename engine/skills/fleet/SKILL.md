@@ -87,7 +87,14 @@ compatibility: Host-agnostic; host must be able to spawn subagents
 `fleet review` 输出：`task_id`、`worktree`、`diff_base`、`changed_files`、`ac`、`touchset`、
 `review_report_path`、`read_only`。
 
-- 必须用**只读**子代理；读实际 diff，对照 AC，输出 `{verdict: accept|return, defects:[], reason:""}`。
+- 必须用**只读**子代理；读实际 diff，对照 AC，输出
+  `{verdict: accept|return|defer, defects:[], deferred_items:[], reason:""}`。
+- 三态含义：
+  - `accept`：验收过，task 进 accepted，依赖放行。
+  - `return`：返工（attempts+1，3 次转 blocked）。
+  - `defer`：**验收放给AI**——技术验收已过，但有要团长拍板的事（`deferred_items` 必填：
+    每条含 `question`/`reason`/`priority`），记入团长队列，task 进 accepted 不阻塞施工；
+    等团长唤醒时统一处理。
 - 然后 `fleet verdict <run> <task> --file <path>` 写回。
 
 ## 报告契约
@@ -144,6 +151,13 @@ touchset 重叠且串行依赖时，默认合成一个 task、多 AC；不要按
 | 发货失败（收尾门红／push 被拒） | run 转 blocked，产出保留 |
 
 同一种失败只允许一次重试；第二次说明不是偶发，转 blocked 并带上「哪一步、什么错、下一步建议」。
+
+## 团长队列（defer 的落点）
+
+`verdict=defer` 的事项写进 `.coding/runs/<run>/state.json` 的 `owner_deferred[]`。
+队列只进不出：康娜不开工时不轮询；团长唤醒时（用户上线/新会话/「看看团长队列」）统一处理。
+队列条目：`{id, task_id, question, reason, role, priority, recorded_at, status: pending|resolved|dismissed}`。
+发货前若队列里还有 `pending`，康娜在收尾报告里如实列出，不阻塞发货。
 
 ## 与其他体系
 

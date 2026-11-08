@@ -11,7 +11,7 @@
     },
     "core": {
       "version": "1.4.0",
-      "digest": "4dc8ddbbdc3436e097f394a80d77992023725a53d1aa51fe55b08e2e7494fa79",
+      "digest": "93e798f9eb3f5ebacef3e11d5de0eaf4454eaa15e2c612190fc2da595e12511c",
       "skills": {
         "gold": "0.8.0",
         "harness-audit": "0.2.1",
@@ -31,7 +31,7 @@
     },
     "engine": {
       "version": "0.6.0",
-      "digest": "a6c4038149941a1a70586f71366302f72a6b5e0e2d41dc30d9849c36e6ba20f5",
+      "digest": "c7355a6654f701e5adeca046afce7cd9dd39e0a456f7d720ed7c599cade81df3",
       "skills": {
         "fleet": "0.9.0",
         "pk": "0.1.1"
