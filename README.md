@@ -74,7 +74,7 @@ core/       舰桥入口、规划方法、安装/升级、交接、方法原则
 engine/     执行内核：travel 命令、任务图、worktree、状态机，以及自有方法件 pk
 intake/     想法池
 ops/        事故与运维
-studio/     文娱集团
+studio/     武器集
 board/      看板（flight-info，可选；舰队进度优先用 travel status --html）
 <插件>/.claude-plugin/plugin.json  Claude Code 插件清单
 <插件>/.qoder-plugin/plugin.json   Qoder 插件清单

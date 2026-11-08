@@ -2,17 +2,17 @@
 window.KAI_SKILLS = [
   {
     "group": "舰桥与安装",
-    "plugin": "舰桥与安装",
+    "plugin": "酒馆冒险团与安装",
     "pluginId": "core",
     "skill": "bridge",
-    "oneLine": "舰桥：用户唯一的对话面与最高权限角色，取代旧的 /coding 入口成为默认入口。",
+    "oneLine": "康娜（主 AI 人格，通用职业名「协调调度」）的方法正文与默认入口——不是另一个角色。",
     "trigger": "/bridge、/舰桥、/warp <任务>、/jump <任务>（曲速-N-任务、跃迁-N-任务 简写也认）；",
     "command": "/bridge",
     "version": "0.5.0"
   },
   {
     "group": "舰桥与安装",
-    "plugin": "舰桥与安装",
+    "plugin": "酒馆冒险团与安装",
     "pluginId": "core",
     "skill": "harness-audit",
     "oneLine": "给技能和文档做体检，找重叠、过期和该退役的东西。",
@@ -22,7 +22,7 @@ window.KAI_SKILLS = [
   },
   {
     "group": "舰桥与安装",
-    "plugin": "舰桥与安装",
+    "plugin": "酒馆冒险团与安装",
     "pluginId": "core",
     "skill": "kai-handoff",
     "oneLine": "把当前会话压成一份交接文档，下一棒能接着跑。",
@@ -32,7 +32,7 @@ window.KAI_SKILLS = [
   },
   {
     "group": "舰桥与安装",
-    "plugin": "舰桥与安装",
+    "plugin": "酒馆冒险团与安装",
     "pluginId": "core",
     "skill": "principles",
     "oneLine": "七条原则合集：一次一问、只问可见与红线、能测就别问、一个语义一个家、缺件登记、仪式随规模、输出挑载体。",
@@ -42,17 +42,17 @@ window.KAI_SKILLS = [
   },
   {
     "group": "舰桥与安装",
-    "plugin": "舰桥与安装",
+    "plugin": "酒馆冒险团与安装",
     "pluginId": "core",
     "skill": "set-kai-mode",
     "oneLine": "安装与体检：先看缺什么，只装缺的。",
     "trigger": "/set-kai-mode；说「装一下」",
     "command": "/set-kai-mode",
-    "version": "6.2.1"
+    "version": "6.3.0"
   },
   {
     "group": "舰桥与安装",
-    "plugin": "舰桥与安装",
+    "plugin": "酒馆冒险团与安装",
     "pluginId": "core",
     "skill": "staff",
     "oneLine": "总入口：把一句话需求拆成票，再交给对应角色。",
@@ -62,7 +62,7 @@ window.KAI_SKILLS = [
   },
   {
     "group": "舰桥与安装",
-    "plugin": "舰桥与安装",
+    "plugin": "酒馆冒险团与安装",
     "pluginId": "core",
     "skill": "upgrade-kai-mode",
     "oneLine": "把已经装好的 kai-mode 升到新版：先出清单，再备份、回写、验收。",
@@ -111,81 +111,71 @@ window.KAI_SKILLS = [
     "version": "0.1.0"
   },
   {
-    "group": "文娱集团",
-    "plugin": "文娱集团",
+    "group": "武器集",
+    "plugin": "武器集",
     "pluginId": "studio",
     "skill": "director",
     "oneLine": "导演：分镜、剪辑、配音，管成片节奏。",
     "trigger": "/director；说「导演」",
     "command": "/director",
-    "version": "1.0.0"
+    "version": "2.0.0"
   },
   {
-    "group": "文娱集团",
-    "plugin": "文娱集团",
+    "group": "武器集",
+    "plugin": "武器集",
     "pluginId": "studio",
     "skill": "final-review",
     "oneLine": "终审：独立验收，只判不修，出 pass/fail。",
     "trigger": "/review；说「终审」",
     "command": "/final-review",
-    "version": "1.0.0"
+    "version": "2.0.0"
   },
   {
-    "group": "文娱集团",
-    "plugin": "文娱集团",
+    "group": "武器集",
+    "plugin": "武器集",
     "pluginId": "studio",
     "skill": "lead-artist",
     "oneLine": "主美：风格板、角色、版面、成稿。",
     "trigger": "/artist；说「主美」",
     "command": "/lead-artist",
-    "version": "1.0.0"
+    "version": "2.0.0"
   },
   {
-    "group": "文娱集团",
-    "plugin": "文娱集团",
+    "group": "武器集",
+    "plugin": "武器集",
     "pluginId": "studio",
     "skill": "lead-writer",
     "oneLine": "主笔：故事、剧本、台词、文案。",
     "trigger": "/writer；说「主笔」",
     "command": "/lead-writer",
-    "version": "1.0.0"
+    "version": "2.0.0"
   },
   {
-    "group": "文娱集团",
-    "plugin": "文娱集团",
+    "group": "武器集",
+    "plugin": "武器集",
     "pluginId": "studio",
     "skill": "marketing",
     "oneLine": "宣发：物料、渠道、投放与数据回收。",
     "trigger": "/marketing；说「宣发」",
     "command": "/marketing",
-    "version": "1.0.0"
+    "version": "2.0.0"
   },
   {
-    "group": "文娱集团",
-    "plugin": "文娱集团",
+    "group": "武器集",
+    "plugin": "武器集",
     "pluginId": "studio",
     "skill": "producer",
     "oneLine": "企划：立项、排期、预算、指派负责人。",
     "trigger": "/producer；说「企划」",
     "command": "/producer",
-    "version": "1.0.0"
-  },
-  {
-    "group": "文娱集团",
-    "plugin": "文娱集团",
-    "pluginId": "studio",
-    "skill": "studio",
-    "oneLine": "文娱集团的共享规则：六道门、记录面、接口卡。",
-    "trigger": "随六个创作口令自动带入",
-    "command": "",
-    "version": "1.2.0"
+    "version": "2.0.0"
   },
   {
     "group": "舰队执行内核",
     "plugin": "执行内核",
     "pluginId": "engine",
     "skill": "fleet",
-    "oneLine": "舰队执行内核（由舰桥调度）：一个 issue 一个 run（舰船），主会话规划与验收，宿主自己的子代理执行；",
+    "oneLine": "舰队执行内核（由康娜调度）：一个 issue 一个 run（舰船），主会话规划与验收，宿主自己的子代理执行；",
     "trigger": "由舰桥触发 /warp 或 /jump",
     "command": "",
     "version": "0.8.0"

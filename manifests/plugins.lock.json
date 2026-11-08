@@ -11,7 +11,7 @@
     },
     "core": {
       "version": "1.3.1",
-      "digest": "dd900c0864662eb0d97131b169a3886f12ca2dddc71e1eeda12c9664e33357d1",
+      "digest": "3e507625aab770c84f48011bbff4fe4cc7e95afcf27814d6cedfda816a10f890",
       "skills": {
         "bridge": "0.5.0",
         "harness-audit": "0.2.1",
@@ -47,15 +47,14 @@
     },
     "studio": {
       "version": "1.0.0",
-      "digest": "ee4d994b50eecc6f7ccffff536a301358bb4c8873398adfb0f2bfa1971c236dd",
+      "digest": "833dd259b762bf5302f4442fc99fdd36b66a80758e489d29e5b787a1fb139355",
       "skills": {
-        "director": "1.0.0",
-        "final-review": "1.0.0",
-        "lead-artist": "1.0.0",
-        "lead-writer": "1.0.0",
-        "marketing": "1.0.0",
-        "producer": "1.0.0",
-        "studio": "1.2.0"
+        "director": "2.0.0",
+        "final-review": "2.0.0",
+        "lead-artist": "2.0.0",
+        "lead-writer": "2.0.0",
+        "marketing": "2.0.0",
+        "producer": "2.0.0"
       }
     }
   }

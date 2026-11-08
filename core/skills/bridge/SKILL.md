@@ -60,7 +60,7 @@ metadata:
 | 只是想法、方向还没定 | 走 `kai-boom-idea-log`：全文落盘，不起工；问一句「先记下来，还是现在就做？」 |
 | 出事故 / 线上挂了 / 要复盘 | 走 `incident-response`：先分级止损，再记时间线，最后出复盘与后续票 |
 | 要固化一段可重复的运维步骤 | 走 `runbook` |
-| 创作交付：写稿 / 画图 / 剪辑 / 成片 / 宣发 | 走 studio：`producer` 立项 → `lead-writer` `lead-artist` `director` → `final-review`；宣发 `marketing` |
+| 创作交付：写稿 / 画图 / 剪辑 / 成片 / 宣发 | 从武器集按角色取：`producer` 立项 → `lead-writer`／`lead-artist`／`director` → `final-review` 终审；`marketing` 投放 |
 | 已有票 / 已有舰队 | `fleet status` 找到它，从断点续跑 |
 | 单纯问问题 | 直接答，不动仓库 |
 
@@ -221,7 +221,7 @@ push 目标默认 `dev`；推成功以远端回读为准。
 - 施工与发货内核：`../../../engine/skills/fleet/SKILL.md`
 - 想法分流：`../../../intake/skills/kai-boom-idea-log/SKILL.md`
 - 事故与运维：`../../../ops/skills/incident-response/SKILL.md`、`../../../ops/skills/runbook/SKILL.md`
-- 创作交付：`../../../studio/skills/studio/SKILL.md`（经由 `producer`／`lead-writer`／`lead-artist`／`director`／`final-review`／`marketing`）
+- 创作交付：武器集六把（`producer`／`lead-writer`／`lead-artist`／`director`／`final-review`／`marketing`），按角色认领
 - 施工方法：直接按名用宿主中央库的上游原版——`tdd`（先红后绿）、`code-review`（双轴审 diff）、
   `diagnosing-bugs`（连续失败找根因）、`domain-modeling`（术语/ADR）、`to-tickets`（拆票）、
   `writing-for-agents`（写技能/AGENTS）；本仓不复述正文，也不用 `kai-` 副本。

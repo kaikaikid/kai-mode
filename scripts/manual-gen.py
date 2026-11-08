@@ -41,7 +41,7 @@ SELF_COMMAND_SKILLS = {
 GROUP_BY_PLUGIN = {
     "core": "舰桥与安装",
     "engine": "舰队执行内核",
-    "studio": "文娱集团",
+    "studio": "武器集",
     "intake": "支持能力",
     "ops": "支持能力",
     "board": "支持能力",

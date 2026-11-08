@@ -16,7 +16,7 @@
       ]
     },
     "full": {
-      "description": "core ＋ 原则合集 ＋ BOOM 想法池 ＋ 事故与运维剧本 ＋ 文娱集团六岗位 ＋ 舰队执行内核 ＋ 对比分析。",
+      "description": "core ＋ 原则合集 ＋ BOOM 想法池 ＋ 事故与运维 ＋ 武器集六把 ＋ 看板 ＋ 对比分析。",
       "skills": [
         "bridge",
         "staff",
@@ -28,7 +28,6 @@
         "flight-info",
         "incident-response",
         "runbook",
-        "studio",
         "producer",
         "lead-writer",
         "lead-artist",
