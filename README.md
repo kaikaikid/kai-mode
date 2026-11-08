@@ -1,6 +1,6 @@
 # kai-mode —— 酒馆冒险团与执行内核
 
-> **状态：0.40.0（2026-11-09 口径与人格层：入口技能 `bridge`→`gold`（金币＝驱动康娜的代价）；新增 7 个酒馆职业名唤醒入口（`/卓尔游侠`…`/圣骑士`，共 26 技能）；七步委托口径入 GLOSSARY；验收三元化 accept/return/defer＋团长队列（验收放给AI，团长事项延后统一处理）；新增人格层 `roles/persona/`（原初内核/本我·自我·超我＋记忆接口，为记忆系统预留）；详见 [`CHANGELOG.md`](CHANGELOG.md)）。**
+> **状态：0.40.1（2026-11-09 口径与人格层：入口技能 `bridge`→`gold`（金币＝驱动康娜的代价）；新增 7 个酒馆职业名唤醒入口（`/卓尔游侠`…`/圣骑士`，共 26 技能）；七步委托口径入 GLOSSARY；验收三元化 accept/return/defer＋团长队列（验收放给AI，团长事项延后统一处理）；新增人格层 `roles/persona/`（原初内核/本我·自我·超我＋记忆接口，为记忆系统预留）；详见 [`CHANGELOG.md`](CHANGELOG.md)）。**
 > `kai-mode` → `staff`；角色实例的入口必须属于当前宿主（优先原生子代理，宿主本身就是命令行工具时可用它自己的进程）；通用方法不再 fork，按名用宿主中央库原版；
 > 详见 [`CHANGELOG.md`](CHANGELOG.md) 与 [`docs/method-pointers.md`](docs/method-pointers.md)）。**
 >

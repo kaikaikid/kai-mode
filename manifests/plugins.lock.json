@@ -11,7 +11,7 @@
     },
     "core": {
       "version": "1.4.0",
-      "digest": "93e798f9eb3f5ebacef3e11d5de0eaf4454eaa15e2c612190fc2da595e12511c",
+      "digest": "3246d6c062f7faaf46fb2d47a57d29563c69494cdf14c2308e13d707e0ae68cc",
       "skills": {
         "gold": "0.8.0",
         "harness-audit": "0.2.1",

@@ -47,6 +47,8 @@ except Exception:
 
 ANCHOR = "gold"  # 库位与落点面都沿这条既有条目反查（康娜的方法是永久入口）；不写死机器路径
 LIBRARY_ENV = "KAI_MAGPIE_LIBRARY"
+# 无符号链接的宿主（Windows 复制安装）靠这个指针文件反查中央库；apply 成功时写入 ~。
+LIBRARY_POINTER = ".kai-mode-library"
 # 项目技能落点缺省（registry.skills 的模板缺省值）：只在项目配置实例
 # 不在／没写 registry.skills 时回落用；实例给了就以实例为准（一个语义一个家）。
 PROJECT_CONFIG = os.path.join(".ai", "kai-mode.project.json")
@@ -920,6 +922,14 @@ def find_library(home: str | None = None) -> str | None:
     env = os.environ.get(LIBRARY_ENV)
     if env:
         return os.path.abspath(os.path.expanduser(env))
+    ptr = os.path.join(home, LIBRARY_POINTER)
+    if os.path.isfile(ptr):
+        try:
+            cand = open(ptr, encoding="utf-8").read().strip()
+        except OSError:
+            cand = ""
+        if cand and os.path.isdir(cand) and os.path.isfile(os.path.join(cand, ANCHOR, "SKILL.md")):
+            return os.path.abspath(cand)
     for entry in sorted(os.listdir(home)):
         link = os.path.join(home, entry, "skills", ANCHOR)
         if os.path.isdir(link) and os.path.islink(link):
@@ -1244,6 +1254,13 @@ def apply(root: str, library: str, dry: bool, home: str | None = None,
             print("回写后复量仍有漂移（无备份可还原）")
         return 1
     print("回写后复量：三面全绿")
+    # 无符号链接的宿主（Windows 复制安装）写指针，供 doctor/find_library 反查；
+    # 文件在 ~ 下、不属仓库，写失败不判红。
+    try:
+        with open(os.path.join(os.path.expanduser(home or "~"), LIBRARY_POINTER), "w", encoding="utf-8") as f:
+            f.write(os.path.abspath(library) + "\n")
+    except OSError:
+        pass
     if retire_names_list:
         try:
             removed = retire_registry_entries(library, retire_names_list)

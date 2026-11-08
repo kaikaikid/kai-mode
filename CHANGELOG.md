@@ -2,6 +2,13 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.40.1 — 2026-11-09
+
+- **中央库反查补指针**：Windows 复制安装的宿主没有符号链接，`find_library` 以前定位不到中央库、
+  `install-sync` 只能跳过。`apply` 成功时在 `~` 写 `.kai-mode-library` 指针，`find_library`
+  依次认「环境变量 → 指针文件 → 符号链接」，doctor 的 install-sync 恢复自动校验（本机已绿）。
+- kai-vass 项目实例补齐 `release.*` 六键（全部 `null`＝待定，未替用户填默认值），`check-instance` 转全绿。
+
 ## 0.40.0 — 2026-11-09
 
 - **入口技能改名 `bridge`→`gold`**：金币是驱动康娜干活的代价（她把 Token 想成金币口粮）。
