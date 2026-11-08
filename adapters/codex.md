@@ -60,6 +60,16 @@ codex exec -C <仓库根> -s read-only --json -o <回执文件> \
 - 不建/删其他宿主的定时任务；不替舰桥施工。
 - 未实测的 flag 不许写进正本；版本与探针读数写进项目本机配置。
 
+## 初始化一个项目（一条命令）
+
+```bash
+python <框架仓>/scripts/render-roles.py bootstrap --project <项目根> --host codex --skin guild
+```
+
+落点三处：`.ai/roles/`（七个可派发 ＋ `_primary`）、`.coding/host-programs.json`、
+`<项目>/.ai/BOOTSTRAP.md`（给本项目里任何一个 AI 看的说明卡）。装完让那个 AI 先读说明卡；
+说明卡里会写清本宿主的派法（拼提示词 ＋ `worker_cmd`/`reviewer_cmd` ＋ `-s read-only` 档位）。
+
 ## 原生子代理（没有这一层，走宿主命令腿）
 
 - Codex **没有**宿主内建的原生子代理（当前实测）。这不是缺件终局：按 ADR-0033 D3，

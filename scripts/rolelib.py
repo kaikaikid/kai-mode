@@ -426,6 +426,92 @@ def validate(root: Path) -> list[str]:
     return bad
 
 
+def render_bootstrap(root: Path, host: str, skin: str) -> str:
+    """给「别的 AI」看的初始化卡片：它开局带谁、能调谁、怎么派、不许做什么。
+
+    纯 markdown，不依赖任何宿主专有机制——换哪家 AI 都能照着做。
+    """
+    hosts = load_hosts(root)
+    cfg = (hosts.get("hosts") or {}).get(host)
+    if not cfg:
+        raise RoleError(f"投影表里没有宿主 {host!r}")
+    canon = load_canon(root)
+    sk = load_skin(root, skin)
+    entries = sk.get("roles") or {}
+    prim = entries.get(PRIMARY_ID) or {}
+    dest = cfg.get("dest_dir") or "?"
+    suffix = cfg.get("suffix", ".md")
+    lines = [
+        f"# 这套东西怎么用（宿主 {host}｜皮肤 {skin}）",
+        "",
+        "> 本文件由 `scripts/render-roles.py bootstrap` 生成，别手改；正本改了就重跑。",
+        "",
+        "## 0. 你开局带哪份人格",
+        "",
+        f"主 AI 人格是 **{prim.get('name', '')}**（`{PRIMARY_ID}`）：`{dest}/_primary{suffix}`。",
+        "会话启动时把那一份整段读入（当 system prompt 或开场指令）。默认对话面就是它，",
+        "**它自己不是可派发的角色**；按名派它等于「派自己」，会绕成一圈。",
+        "",
+        "## 1. 你能调出谁",
+        "",
+        "| role_id | 名字 | 管什么 | 读写 | 文件 |",
+        "|---|---|---|---|---|",
+    ]
+    for rid in DISPATCHABLE_IDS:
+        e = entries.get(rid) or {}
+        need = canon[rid]["meta"].get("access_need", "")
+        desc = description_for(e.get("name", ""), canon[rid]["body"])
+        desc = desc.split("：", 1)[1] if "：" in desc else desc
+        lines.append(f"| {rid} | {e.get('name', '')} | {desc} | "
+                     f"{'只读' if need == 'read_only' else '可写'} | `{dest}/{rid}{suffix}` |")
+    lines += ["", "## 2. 派活怎么派（本宿主）", ""]
+    if cfg.get("agent_file"):
+        lines.append(f"- 把上表七个文件放到 `{dest}/`，宿主会把它们当可派发的定义"
+                     f"（选择键：{cfg.get('select_key')}）。")
+    else:
+        lines += [
+            f"- 本宿主**没有 agent 定义文件层**：把 `{dest}/<role_id>{suffix}` 整段拼进派发提示词即可，",
+            "  格式与定义文件的正文完全一样（同一个组装点）。",
+        ]
+    if cfg.get("kernel_cmd_keys"):
+        keys = " / ".join(f"`{k}`" for k in cfg["kernel_cmd_keys"])
+        cli = cfg.get("own_cli") or "（本宿主自己的 CLI）"
+        lines.append(f"- 无人值守：在 `<项目>/.coding/config.json` 里配 {keys}，"
+                     f"值用**本宿主自己的**入口 `{cli}`。")
+    if cfg.get("readonly_flag"):
+        lines.append(f"- 只读档位：`{cfg['readonly_flag']}`。")
+    lines += [
+        "",
+        "## 3. 不许做的事（跟宿主无关，换哪家都生效）",
+        "",
+        "1. **只读角色的改动一律不收**：树上改了东西，报告入口直接判 returned。"
+        "别指望宿主工具白名单——实测多数不执行。",
+        "2. **不跨宿主借兵**：角色实例的入口必须属于当前宿主；别在 A 里拉 B 的 CLI。",
+        "3. **发货单点**：只有主会话能合并／推送／关票，角色实例一律不发货。",
+        "4. **记忆只有一个写者**：长期记忆由 `archivist` 读写改，别的角色只能提候选。",
+        "5. 角色名与职业必须写进正文：子代理看不到自己的类型名，`identity` 块里逐字写。",
+        "",
+        "## 4. 项目侧另两份边界件",
+        "",
+        "- `.ai/dual-repo.md`：双仓库开发规范（五题结论，标「待定」的不许自行填默认值）。",
+        "- `.ai/push-policy.md`：推送边界（默认工作区留本地，远端推送由用户执行）。",
+        "",
+        "## 5. 指纹",
+        "",
+        "| role_id | canon_version | canon_sha256（前 12） | 皮肤条目 sha256（前 12） |",
+        "|---|---|---|---|",
+    ]
+    for rid in ROLE_IDS:
+        meta = canon[rid]["meta"]
+        lines.append(f"| {rid} | {meta.get('canon_version', '')} | "
+                     f"{canon[rid]['sha256'][:12]} | {entry_sha256(entries.get(rid) or {})[:12]} |")
+    lines += ["",
+              f"皮肤：`{skin}` v{sk.get('skin_version', '')}。"
+              "对不上指纹＝有人手改过派生物或正本升了版，重跑 bootstrap 覆盖回正本。",
+              ""]
+    return "\n".join(lines)
+
+
 def host_programs(root: Path) -> dict[str, list[str]]:
     """从投影表导出「宿主 → 本宿主自己的 CLI 程序名」，供装机写进 .coding/host-programs.json。
 

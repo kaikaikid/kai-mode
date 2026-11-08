@@ -57,6 +57,15 @@ opencode run --model <free-model> \
 - 不替舰桥施工；只把舰桥技能跑起来。
 - 与按需子会话一样，目标在岗不重复起。
 
+## 初始化一个项目（一条命令）
+
+```bash
+python <框架仓>/scripts/render-roles.py bootstrap --project <项目根> --host opencode --skin guild
+```
+
+落点三处：`.ai/roles/`（七个可派发 ＋ `_primary`）、`.coding/host-programs.json`、
+`<项目>/.ai/BOOTSTRAP.md`（给本项目里任何一个 AI 看的说明卡）。装完让那个 AI 先读说明卡。
+
 ## 原生子代理（没有这一层，走宿主命令腿）
 
 - 没有 agent 定义文件这一层 ⇒ 宿主定义文件面登记 `no-agent-surface`；但**角色不缺件**：

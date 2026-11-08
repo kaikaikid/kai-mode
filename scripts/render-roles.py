@@ -159,6 +159,86 @@ def cmd_prompt(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_bootstrap(args: argparse.Namespace) -> int:
+    """给一个项目（或一台别的 AI）做初始化：角色文件 ＋ 宿主映射表 ＋ 一张说明卡。
+
+    落点：角色文件进该宿主的 dest_dir；宿主映射进 <项目>/.coding/host-programs.json；
+    说明卡放 <项目>/.ai/BOOTSTRAP.md（**不放**宿主的 agent 目录——那种目录会被宿主扫成
+    「代理定义」，一张说明卡混进去就多一个空壳代理；也不放角色目录，免得被当角色数）。
+    """
+    root = Path(args.root).resolve() if args.root else repo_root()
+    bad = rolelib.validate(root)
+    if bad:
+        print("正本不合契约，拒绝初始化：", file=sys.stderr)
+        for b in bad:
+            print(f"  - {b}", file=sys.stderr)
+        return 2
+    project = Path(args.project).resolve()
+    cfg = rolelib.load_hosts(root)["hosts"][args.host]
+    dest = project / str(cfg.get("dest_dir") or ".ai/roles")
+    files = rolelib.render_all(root, args.host, args.skin, with_primary=True)
+
+    def put(path: Path, text: str) -> str:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        existed = path.exists()
+        if existed and path.read_bytes() == text.encode("utf-8"):
+            return "same"
+        if existed:
+            stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+            bdir = path.parent / ".backups" / stamp
+            bdir.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(path, bdir / path.name)
+            path.write_bytes(text.encode("utf-8"))
+            return "overwrite"
+        path.write_bytes(text.encode("utf-8"))
+        return "new"
+
+    if not args.dry_run:
+        dest.mkdir(parents=True, exist_ok=True)
+    plan: dict[str, list[str]] = {"new": [], "overwrite": [], "same": []}
+    for name, text in sorted(files.items()):
+        if args.dry_run:
+            p = dest / name
+            plan["same" if p.is_file() and p.read_bytes() == text.encode("utf-8")
+                 else ("overwrite" if p.is_file() else "new")].append(name)
+        else:
+            plan[put(dest / name, text)].append(name)
+
+    table = rolelib.host_programs(root)
+    tpath = project / ".coding" / "host-programs.json"
+    ttext = json.dumps(table, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    if not args.dry_run:
+        tpath.parent.mkdir(parents=True, exist_ok=True)
+        tpath.write_text(ttext, encoding="utf-8")
+
+    card_path = project / ".ai" / "BOOTSTRAP.md"
+    card = rolelib.render_bootstrap(root, args.host, args.skin)
+    if not args.dry_run:
+        card_path.parent.mkdir(parents=True, exist_ok=True)
+        card_path.write_text(card, encoding="utf-8")
+
+    receipt = {
+        "project": str(project), "host": args.host, "skin": args.skin,
+        "roles_dir": str(dest), "role_files": sorted(files),
+        "host_table": str(tpath), "bootstrap_card": str(card_path),
+        "dry_run": args.dry_run, **plan,
+    }
+    if args.json:
+        print(json.dumps(receipt, ensure_ascii=False, indent=2))
+    else:
+        print(f"初始化完成：宿主 {args.host}｜皮肤 {args.skin}｜项目 {project}")
+        print(f"角色文件（{len(files)} 份，含 _primary）：{dest}")
+        for key, label in (("new", "新增"), ("overwrite", "备份后覆盖"), ("same", "内容相同")):
+            print(f"  {label}（{len(plan[key])}）：{', '.join(plan[key]) or '—'}")
+        print(f"宿主映射表：{tpath}")
+        print(f"说明卡：{card_path}  ← 给这个项目里任何一个 AI 读，它就知道开局带谁、能调谁")
+        if args.dry_run:
+            print("dry-run：未写盘")
+        print("下一步：把说明卡的内容落进该项目的 AGENTS.md / 开局指令，"
+              "或直接让那个 AI 读 .ai/roles/BOOTSTRAP.md。")
+    return 0
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description="角色正本：现拼与渲染")
     p.add_argument("--root", help="框架仓根（默认脚本所在仓）")
@@ -167,6 +247,11 @@ def main() -> int:
     sub.add_parser("validate", help="只校正本/皮肤/投影表契约，不写盘")
     et = sub.add_parser("emit-table", help="导出 .coding/host-programs.json（跨宿主拦截用）")
     et.add_argument("--project", required=True, help="项目仓根，写 <项目>/.coding/host-programs.json")
+    bs = sub.add_parser("bootstrap", help="给一个项目做初始化：角色文件＋宿主映射＋说明卡")
+    bs.add_argument("--project", required=True, help="目标项目根")
+    bs.add_argument("--host", required=True, choices=rolelib.HOSTS)
+    bs.add_argument("--skin", required=True, choices=rolelib.SKINS)
+    bs.add_argument("--dry-run", action="store_true", help="只报告将做什么，不写盘")
     pp = sub.add_parser("prompt", help="现读组装角色提示词（零同步，不写盘）")
     pp.add_argument("--skin", required=True, choices=rolelib.SKINS)
     pp.add_argument("--role", choices=rolelib.ROLE_IDS)
@@ -182,8 +267,8 @@ def main() -> int:
     sp.add_argument("--with-primary", action="store_true",
                     help="多出一个 _primary 文件（会话级主 AI 人格，不是可派发子代理）")
     args = p.parse_args()
-    return {"validate": cmd_validate, "render": cmd_render,
-            "emit-table": cmd_emit_table, "prompt": cmd_prompt}[args.cmd](args)
+    return {"validate": cmd_validate, "render": cmd_render, "emit-table": cmd_emit_table,
+            "prompt": cmd_prompt, "bootstrap": cmd_bootstrap}[args.cmd](args)
 
 
 if __name__ == "__main__":

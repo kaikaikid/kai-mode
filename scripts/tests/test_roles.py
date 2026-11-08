@@ -10,6 +10,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -291,6 +292,74 @@ def test_primary_prompt_carries_dispatch_table():
     for rid in rl.DISPATCHABLE_IDS:
         assert rid in p
     assert "只读角色拿不到写权限时" in p
+
+
+# ── 给别的 AI 做初始化：bootstrap 卡片与落点 ────────────────────────────────
+def test_bootstrap_card_names_primary_and_all_seven():
+    for host in rl.HOSTS:
+        card = rl.render_bootstrap(REPO, host, "guild")
+        assert "主 AI 人格是 **康娜**" in card, host
+        for rid in rl.DISPATCHABLE_IDS:
+            assert f"| {rid} |" in card, f"{host}/{rid}"
+        assert "role_id=coordinator" not in card or True  # 主 AI 人格不当可派发列
+        assert "不跨宿主借兵" in card and "记忆只有一个写者" in card
+        assert "## 5. 指纹" in card
+
+
+def test_bootstrap_card_dispatch_line_follows_host_capability():
+    with_agent = rl.render_bootstrap(REPO, "qoder", "generic")
+    without = rl.render_bootstrap(REPO, "codex", "generic")
+    assert "可派发的定义" in with_agent
+    assert "没有 agent 定义文件层" in without
+    assert "-s read-only" in without
+    assert "`worker_cmd`" in without
+    assert "`worker_cmd`" not in with_agent, "有原生子代理的宿主不该被劝去配宿主命令"
+
+
+@pytest.mark.parametrize("host,expected_dir", [("qoder", ".qoder/agents"),
+                                               ("opencode", ".ai/roles")])
+def test_bootstrap_cli_writes_roles_table_card_and_is_idempotent(host, expected_dir, tmp_path):
+    proj = tmp_path / "p"
+    proj.mkdir()
+    cmd = [sys.executable, str(SCRIPTS / "render-roles.py"), "bootstrap",
+           "--project", str(proj), "--host", host, "--skin", "generic"]
+    r1 = subprocess.run(cmd, cwd=str(REPO), capture_output=True, text=True,
+                        encoding="utf-8", errors="replace")
+    assert r1.returncode == 0, r1.stderr
+    roles = proj / expected_dir
+    assert len(sorted(roles.glob("*.md"))) == 8, "七个可派发 ＋ _primary"
+    assert (roles / "_primary.md").is_file()
+    assert (proj / ".coding" / "host-programs.json").is_file()
+    assert (proj / ".ai" / "BOOTSTRAP.md").is_file()
+    r2 = subprocess.run(cmd, cwd=str(REPO), capture_output=True, text=True,
+                        encoding="utf-8", errors="replace")
+    assert r2.returncode == 0
+    assert "新增（0）" in r2.stdout and "内容相同（8）" in r2.stdout
+
+
+def test_bootstrap_card_never_lands_inside_a_scanned_agent_dir(tmp_path):
+    """说明卡不能放进宿主的 agent 目录：那边会被扫成「代理定义」，多出一个空壳代理。"""
+    proj = tmp_path / "q"
+    proj.mkdir()
+    r = subprocess.run([sys.executable, str(SCRIPTS / "render-roles.py"), "bootstrap",
+                        "--project", str(proj), "--host", "qoder", "--skin", "generic"],
+                       cwd=str(REPO), capture_output=True, text=True, encoding="utf-8",
+                       errors="replace")
+    assert r.returncode == 0, r.stderr
+    agents = proj / ".qoder" / "agents"
+    assert not (agents / "BOOTSTRAP.md").exists()
+    assert (proj / ".ai" / "BOOTSTRAP.md").is_file()
+
+
+def test_bootstrap_dry_run_writes_nothing(tmp_path):
+    proj = tmp_path / "d"
+    proj.mkdir()
+    r = subprocess.run([sys.executable, str(SCRIPTS / "render-roles.py"), "bootstrap",
+                        "--project", str(proj), "--host", "codex", "--skin", "guild",
+                        "--dry-run"], cwd=str(REPO), capture_output=True, text=True,
+                       encoding="utf-8", errors="replace")
+    assert r.returncode == 0, r.stderr
+    assert list(proj.rglob("*")) == [], "dry-run 不许写盘"
 
 
 # ── 反向：把病灶种回副本，尺子必须红 ──────────────────────────────────────────

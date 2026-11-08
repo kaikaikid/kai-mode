@@ -114,8 +114,26 @@ python scripts/render-roles.py render --host qoder --skin generic --dest <项目
 
 可搬走的核心只有三件：`roles/canon/` ＋ `roles/skins/` ＋ `scripts/render-roles.py`。
 
+**给一个项目（或一台别的 AI）做初始化，一条命令：**
+
+```bash
+python scripts/render-roles.py bootstrap --project <项目根> --host <宿主> --skin <皮肤>
+```
+
+它做三件事，都写进那个项目里：
+
+| 落点 | 是什么 |
+|---|---|
+| `<宿主落点>/`（如 `.qoder/agents/`、`.ai/roles/`） | 七个可派发角色 ＋ `_primary`（会话级主 AI 人格） |
+| `<项目>/.coding/host-programs.json` | 宿主→程序名映射，内核据此拦跨宿主借兵 |
+| `<项目>/.ai/BOOTSTRAP.md` | **给那个 AI 看的说明卡**：开局带谁、能调谁、怎么派、不许做什么 |
+
+说明卡故意不放宿主的 agent 目录（会被扫成「代理定义」，多出空壳代理），也不放角色目录
+（会被当角色数）。让那个 AI 先读这张卡，它就知道这套东西怎么用——不依赖任何宿主专有机制。
+
 - **有 agent 定义文件的宿主**：渲染成定义文件，装项目级。
-- **没有定义文件层的宿主**：用 `prompt --pack` 现拼，交给它自己的调用方式。
+- **没有定义文件层的宿主**（Codex / OpenCode）：`bootstrap` 出的文件就是提示词，
+  整段拼进派发提示词即可，格式与定义文件正文完全一样（同一个组装点）。
 - **只读**不靠宿主的工具白名单（实测多数不执行），靠三条宿主无关的门：
   ① 只读角色在树上改动一律被内核拒收；② 独立工作区／只读副本；③ 范围校验 ＋ 发货单点。
 - **换名字**只换皮肤，职责四块逐字不动；换宿主只换 `adapters/role-hosts.json` 的投影值。
