@@ -29,9 +29,9 @@ claude --help             # 现场核对 plugin / agents / settings 相关 flag
 
 | 装什么 | 源 | 放哪 | 叫什么 |
 |---|---|---|---|
-| 插件清单 | `.claude-plugin/marketplace.json` ＋ `<plugin>/.claude-plugin/plugin.json` | 仓库根；作为本地 marketplace 交给宿主（`/plugin marketplace add <本仓路径>`，先按本机版本核对） | 插件名 `core`／`v2`／`methods`／`board`／`intake`／`ops`／`studio` |
+| 插件清单 | `.claude-plugin/marketplace.json` ＋ `<plugin>/.claude-plugin/plugin.json` | 仓库根；作为本地 marketplace 交给宿主（`/plugin marketplace add <本仓路径>`，先按本机版本核对） | 插件名 `core`／`board`／`intake`／`ops`／`studio`／`engine` |
 | 技能 | `<plugin>/skills/<名>/SKILL.md` ＋ `scripts/`、`templates/`、`references/` | 项目 `.claude/skills/<名>/`；或中央库 `<...>/magpie/data/library/skills/<名>/`，宿主目录指向它 | 技能名；插件安装后按插件命名空间寻址 |
-| 默认入口 | 项目 `CLAUDE.md` / `AGENTS.md` 一段 ＋ `core/skills/bridge/SKILL.md` | 项目根 | `/bridge`、`/舰桥`；未点名其它技能时默认 |
+| 默认入口 | 项目 `CLAUDE.md` / `AGENTS.md` 一段 ＋ `core/skills/bridge/SKILL.md` | 项目根 | `/bridge`；未点名其它技能时默认 |
 | 子代理 | 宿主原生 `.claude/agents/<名>.md`（可选，宿主自有格式） | 项目 `.claude/agents/` | 宿主 agent 名 |
 
 - **不装全局**：`.claude/agents/` 与 `.claude/skills/` 只在项目级装，避免和用户其它框架的同名项打架。
@@ -41,7 +41,7 @@ claude --help             # 现场核对 plugin / agents / settings 相关 flag
 
 ## 起康娜（默认入口）
 
-> 康娜（主代理）是唯一对话面，`bridge` 是它的方法正文；不再有地勤/塔台/机长等岗位会话，也不装任何唤醒定时器。
+> 康娜（主代理）是唯一对话面，`bridge` 是它的方法正文；不再有按岗位分的常驻会话，也不装任何唤醒定时器。
 > 专业角色按需实例化为子代理，不长期常驻、不互相唤醒（ADR-0033 D2；唤醒围栏 ADR-0010 不变）。
 
 ```bash
@@ -58,7 +58,7 @@ claude -p "读取并执行 <项目仓根>/.claude/skills/bridge/SKILL.md 全文�
 ```
 
 - **默认入口**：在项目 `CLAUDE.md` / `AGENTS.md` 末尾写一段「默认入口＝康娜」；这是让用户「忘了触发也进康娜」的机械落点。
-- 不装定时器：没有塔台轮巡，也没有 60 分钟唤醒。用户按需起会话。
+- 不装定时器：没有定时轮巡，也没有 60 分钟唤醒。用户按需起会话。
 - 施工由 `fleet warp`/`fleet jump` 用宿主原生子代理执行；本会话不替子代理写代码。
 
 ## 开票归属钩子（PreToolUse）
@@ -113,7 +113,7 @@ claude -p "读取并执行 <项目仓根>/.claude/skills/bridge/SKILL.md 全文�
 ## 新上下文与执行三职
 
 - **Researcher**：只读工具集，产出 `research-<票>.md`；不写实现。
-- **Implementer**：独立车道工作树与票分支；必带派工卡（票号/AC/允许禁止修改/验证命令/环境口径）；
+- **Implementer**：独立工作树槽位与票分支；必带派工卡（票号/AC/允许禁止修改/验证命令/环境口径）；
   不 push、不合并。
 - **Reviewer**：另起新会话或原生子代理，只拿 AC/diff/证据，输出 `verdict=pass|fail` ＋逐条证据；
   不得复用施工会话。缺 reviewer 或 `reviewer==implementer` ⇒ 不算独立验收。
@@ -132,7 +132,7 @@ claude -p "读取并执行 <项目仓根>/.claude/skills/bridge/SKILL.md 全文�
 - 不建/删其他宿主的定时任务；不替角色施工。
 - 版本、认证状态与探针读数写进项目本机配置，不回写插件清单与技能正文。
 
-## 原生子代理（舰队必需）
+## 原生子代理（执行内核必需）
 
 - 起新上下文：Claude Code 原生子代理（`.claude/agents/<名>.md`）或 `Agent` 工具；派活时在 prompt 里写清任务卡全部字段。
 - 只读：`tools` 白名单只给 `Read/Grep/Glob`（或 `disallowedTools` 禁写）；起一个只读子代理让它写临时文件，**必须被拒**，被写入按 `soft-permission-only` 登记。

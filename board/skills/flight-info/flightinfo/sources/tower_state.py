@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
-"""源：塔台待发货队列 ＋ 塔台令牌（运行态，本地文件，零网络）。
+"""源：待发货队列 ＋ 运行令牌（运行态，本地文件，零网络）。
 
 两个源都读**框架自有命名空间**（项目配置 `paths.state_dir`）：
-- `ship-queue`    → `<state_dir>/ship-queue.json`，正本写者是塔台（ship-queue.py sync）；
-- `tower-token`   → `<state_dir>/tower-token.json`，正本写者是塔台（tower-token.py）。
+- `ship-queue`    → `<state_dir>/ship-queue.json`
+- `tower-token`   → `<state_dir>/tower-token.json`
 
-它们都不产生航班记录：票面事实仍以 Issue 为准，这两个源只出「运行态读数」，
-由渲染层挂在板子上（待发货队列区块、状态条塔台灯）。读不到 ⇒ 降级点名，不猜。
+**历史件（原写者「塔台」已随 V1 删除）**：本源只为读老项目留下的遗留文件，现在恒返回 absent／skipped。  # canon:allow-retired
+文件名是历史契约（`ship-queue.json`／`tower-token.json`），保留不改。
+
+它们都不产生任务卡记录：票面事实仍以 Issue 为准，这两个源只出「运行态读数」，
+由渲染层挂在板子上（待发货队列区块、状态条令牌灯）。读不到 ⇒ 降级点名，不猜。
 """
 from __future__ import annotations
 
@@ -45,7 +48,7 @@ def collect(cfg: dict, ctx: dict) -> dict:
         return {"flights": [], "schedules": [], "queue": {"pending": 0, "hotfix": 0,
                                                           "invalid": 0, "rows": []},
                 "status": "absent",
-                "detail": "尚无 ship-queue.json（塔台还没跑过 sync）"}
+                "detail": "尚无 ship-queue.json（康娜还没跑过 sync）"}
     data = _read_json(path) or {}
     pending = data.get("pending") if isinstance(data.get("pending"), dict) else {}
     rows = []
@@ -59,11 +62,11 @@ def collect(cfg: dict, ctx: dict) -> dict:
             "queue": {"pending": len(rows), "hotfix": 0, "invalid": 0,
                       "cursor": data.get("cursor_updated_at") or "", "rows": rows},
             "status": "ok",
-            "detail": f"待发货 {len(rows)} 张（队列由塔台写，改后下一轮才刷新）"}
+            "detail": f"待发货 {len(rows)} 张（队列由康娜写，改后下一轮才刷新）"}
 
 
 def collect_token(cfg: dict, ctx: dict) -> dict:
-    """塔台令牌：持牌人、心跳年龄。只出一行读数，不产生改判。"""
+    """运行令牌：持牌人、心跳年龄。只出一行读数，不产生改判。"""
     base = _state_dir(ctx)
     if not base:
         return {"flights": [], "schedules": [], "tower": None, "status": "skipped",
@@ -80,7 +83,7 @@ def collect_token(cfg: dict, ctx: dict) -> dict:
         return {"flights": [], "schedules": [],
                 "tower": {"state": "free", "holder": "", "age_min": None,
                           "limit_min": interval + 5},
-                "status": "ok", "detail": "无令牌（谁先 acquire 谁是塔台）"}
+                "status": "ok", "detail": "无令牌（谁先 acquire 谁持牌）"}
     raw = token.get("heartbeat_at")
     try:
         age = (datetime.now(timezone.utc)

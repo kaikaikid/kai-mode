@@ -12,7 +12,7 @@
 | 审查：双轴出判词 | `code-review` | 同文件「任务卡与审查卡」 |
 | 连续失败／原因不明 | `diagnosing-bugs` | 同文件「失败处理」 |
 | 定稿：术语与 ADR | `domain-modeling` | `core/skills/staff/SKILL.md` 定稿段 |
-| 定稿：拆票草案 | `to-tickets` | `core/skills/staff/SKILL.md` 定稿段 ＋ 舰桥开票六件套 |
+| 定稿：拆票草案 | `to-tickets` | `core/skills/staff/SKILL.md` 定稿段 ＋ 康娜开票六件套 |
 | 写 SKILL／AGENTS 文档 | `writing-for-agents` | `docs/skill-layout.md` |
 | 安全专项 | `security-review`（中央库缺件时登记） | 只读审查与报告契约 |
 

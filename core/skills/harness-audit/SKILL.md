@@ -75,7 +75,7 @@ Quick Scan 只看上次审计后 mtime 变过的件；Full Stocktake 审全部�
 | skills/foo/SKILL.md | Improve | 第 N 行仍写已删路径 | 改指 ... |
 ```
 
-审计结果不进 doctor、不自动改文件；由舰桥决定开票或就地修。
+审计结果不进 doctor、不自动改文件；由康娜决定开票或就地修。
 
 ## 首次自证（硬）
 

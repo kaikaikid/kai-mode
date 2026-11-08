@@ -3,9 +3,9 @@ slot: 50-comms
 type: msg
 ticket: "-"
 date: <YYYY-MM-DD>
-owner_role: <发件岗位>
+owner_role: <发件角色：八个 role_id 之一>
 to_role: <收件角色>
-persona: <发件人格>
+persona: <发件用的角色模板 id>
 ---
 
 # <一句话：这件事是什么>

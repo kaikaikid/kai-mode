@@ -191,7 +191,7 @@ def advance(s: dict[str, Any], root: "Path | None" = None) -> None:
         s["resume"]["next_action"] = "task(s) blocked: " + ", ".join(blocked_ids)
 
     # 跃迁模式：phase 推进到 closing 后，门卫代理自动批 G2 → 发货（merge → 收尾门 → push → 关票）。
-    # 发货权只归加急跃迁（can_ship）：普通 jump 停在 closing，等舰桥或人工 gate g2 发货。
+    # 发货权只归加急跃迁（can_ship）：普通 jump 停在 closing，等康娜或人工 gate g2 发货。
     if s.get("autopilot") and s.get("phase") == "closing" and s.get("gates", {}).get("g2") == "pending":
         if root is None:
             pass
@@ -206,7 +206,7 @@ def advance(s: dict[str, Any], root: "Path | None" = None) -> None:
                 s["phase"] = "blocked"
                 s["resume"]["next_action"] = f"ship failed: {msg}"
         else:
-            s["resume"]["next_action"] = "construction done; no ship right — ship via bridge or `coding gate <run> g2 approve`"
+            s["resume"]["next_action"] = "construction done; no ship right — ship via bridge or `fleet gate <run> g2 approve`"
 
 
 def _task(s: dict[str, Any], tid: str) -> dict[str, Any]:
@@ -304,7 +304,7 @@ def cmd_run(args: argparse.Namespace) -> None:
 
 def cmd_warp(args: argparse.Namespace) -> None:
     """曲速：全自动挡（不发货）。autopilot=True，施工+门由门卫代理自批，只在红线/异常时停。
-    发货权只归跃迁（jump / --urgent）：普通 warp 停在 closing，由舰桥或人工 gate g2 发货。"""
+    发货权只归跃迁（jump / --urgent）：普通 warp 停在 closing，由康娜或人工 gate g2 发货。"""
     # 复用 cmd_run 的建 run 逻辑，但强制 autopilot
     args.autopilot = True
     args.urgent = getattr(args, "urgent", False)
@@ -869,7 +869,7 @@ def cmd_status(args: argparse.Namespace) -> None:
         gate = next((g for g in ("g0", "g1", "g2") if s.get("gates", {}).get(g) == "pending"), "-")
         print(f"{s['run_id']:10} {s.get('phase',''):11} {f'{done}/{total}' if total else '-':7} "
               f"{gate:6} {s.get('priority','normal'):7} {s.get('issue','')[:40]}")
-        # 每个 session 的执行模式（cli / native）单独一行：旧 state 无 mode 时按 cli 显示。
+        # 每个 session 的执行模式单独一行：旧 state 无 mode 时按 native 显示（只剩这一种模式）。
         for sess in s.get("sessions", []):
             role = f" role={sess['role']}" if sess.get("role") else ""
             print(f"  session {sess.get('id','')} task={sess.get('task_id') or '-'} "
@@ -935,7 +935,7 @@ def cmd_doctor(args: argparse.Namespace) -> None:
     sessions: list[dict[str, Any]] = []
     for s in st.list_runs(root):
         rid = s["run_id"]
-        # 诊断面列出全部 session 的执行模式（旧 state 无 mode 时按 cli）。
+        # 诊断面列出全部 session 的执行模式（旧 state 无 mode 时按 native，只剩这一种模式）。
         for sess in s.get("sessions", []):
             sessions.append({
                 "run_id": rid, "session": sess.get("id"), "task": sess.get("task_id"),
@@ -960,7 +960,7 @@ def cmd_doctor(args: argparse.Namespace) -> None:
 
 
 def promote_queued(root: "Path") -> list[str]:
-    """惰性排班：把 queued 的 run 按创建时间依次塞进空槽并推进。"""
+    """惰性调度：把 queued 的 run 按创建时间依次塞进空槽并推进。"""
     promoted: list[str] = []
     with st.lock(root):
         queued = sorted(
@@ -1003,8 +1003,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     r = sub.add_parser("run", help="create a run")
     r.add_argument("--fleet", default=None, help="fleet id; slots are per-fleet")
-    r.add_argument("--ships", type=int, default=None, help="ship count 1-3 (default 1)")
-    r.add_argument("--crew", type=int, default=None, help="crew cap 1-5 (default 5)")
+    r.add_argument("--ships", type=int, default=None, help="run count 1-3 (default 1)")
+    r.add_argument("--crew", type=int, default=None, help="concurrent subagents 1-5 (default 5)")
     r.add_argument("issue")
     r.add_argument("--urgent", action="store_true")
     r.add_argument("--base")
@@ -1109,8 +1109,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     wp = sub.add_parser("warp", help="autopilot run: warp mode (no ship)")
     wp.add_argument("--fleet", default=None, help="fleet id; slots are per-fleet")
-    wp.add_argument("--ships", type=int, default=None, help="ship count 1-3 (default 1)")
-    wp.add_argument("--crew", type=int, default=None, help="crew cap 1-5 (default 5)")
+    wp.add_argument("--ships", type=int, default=None, help="run count 1-3 (default 1)")
+    wp.add_argument("--crew", type=int, default=None, help="concurrent subagents 1-5 (default 5)")
     wp.add_argument("issue")
     wp.add_argument("--urgent", action="store_true")
     wp.add_argument("--base")
@@ -1122,8 +1122,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     jp = sub.add_parser("jump", help="urgent autopilot run (ships)")
     jp.add_argument("--fleet", default=None, help="fleet id; slots are per-fleet")
-    jp.add_argument("--ships", type=int, default=None, help="ship count 1-3 (default 1)")
-    jp.add_argument("--crew", type=int, default=None, help="crew cap 1-5 (default 5)")
+    jp.add_argument("--ships", type=int, default=None, help="run count 1-3 (default 1)")
+    jp.add_argument("--crew", type=int, default=None, help="concurrent subagents 1-5 (default 5)")
     jp.add_argument("issue")
     jp.add_argument("--base")
     jp.add_argument("--depends", nargs="*", default=[])

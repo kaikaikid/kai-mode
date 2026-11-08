@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""卸载 V1（机场体系）技能：探测 → 退役 → 复核 → 回执。
+"""卸载 V1 技能：探测 → 退役 → 复核 → 回执。
 
 判据住本脚本，技能正文只写流程位。复用 magpie-sync 的库定位、落点面、
 退役与注册档函数，不写第二把尺。
@@ -94,7 +94,7 @@ def probe(sync, library: str, home: str | None, repo: str | None) -> dict:
 
 
 def scan_scheduled(home: str | None) -> list:
-    """宿主自动化里的 V1 塔台轮巡：只报告，不停用。"""
+    """宿主自动化里的 V1 定时轮巡：只报告，不停用。"""
     home = home or os.path.expanduser("~")
     hits = []
     auto_root = os.path.join(home, ".codex", "automations")
@@ -108,7 +108,7 @@ def scan_scheduled(home: str | None) -> list:
                 text = open(toml, encoding="utf-8", errors="replace").read()
             except OSError:
                 continue
-            if "tower" in text.lower() or "塔台" in text:
+            if "tower" in text.lower() or "塔台" in text:  # canon:allow-retired
                 hits.append({"kind": "codex-automation", "path": d, "how": "移到 .retired 或在宿主停用"})
     return hits
 
@@ -143,7 +143,7 @@ def scan_project(repo: str) -> list:
             text = open(qoder, encoding="utf-8", errors="replace").read()
         except OSError:
             text = ""
-        if "tower" in text.lower() or "塔台" in text:
+        if "tower" in text.lower() or "塔台" in text:  # canon:allow-retired
             hits.append({"kind": "qoder-scheduled", "path": qoder,
                          "how": "在宿主停用或删除该任务"})
     return hits
@@ -207,7 +207,7 @@ def verify(sync, library: str, home: str | None) -> list:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="卸载 V1（机场体系）技能")
+    ap = argparse.ArgumentParser(description="卸载 V1 技能")
     ap.add_argument("--apply", action="store_true", help="执行退役（缺省只读探测）")
     ap.add_argument("--library", help="中央库 skills 目录（缺省沿 kai-mode 链接反查）")
     ap.add_argument("--home", help="宿主家目录（缺省 ~）")

@@ -160,7 +160,7 @@ def _run_record(state: dict, run_id: str, repo_root: str) -> dict | None:
 
 
 def _coding_row(rec: dict) -> dict:
-    """从 flight 记录里摘出监工面字段（落 coding_run 表）。"""
+    """从 flight 记录里摘出执行内核面字段（落 coding_run 表）。"""
     keys = ("run_id", "issue", "phase", "stage", "priority", "fleet_id",
             "ship_limit", "crew_limit", "gates", "tasks_total", "tasks_done",
             "tasks_running", "tasks_blocked", "sessions", "ship", "next_action",

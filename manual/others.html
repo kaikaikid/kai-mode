@@ -30,18 +30,18 @@
           <tr><td>记个想法</td><td><code>/idea</code>，或说“记个想法”</td><td>全文收进想法池，不开票、不改代码</td></tr>
           <tr><td>处理线上事故</td><td><code>/incident</code>，或说“出事了”</td><td>先分级止损，再记时间线、出复盘和后续票</td></tr>
           <tr><td>把重复操作写下来</td><td><code>/runbook</code>，或说“写个 runbook”</td><td>产出能照着跑的步骤，带预期结果和失败分支</td></tr>
-          <tr><td>看现在在飞什么</td><td><code>/航班信息</code>，或说“看现在在飞什么”</td><td>读看板，汇报在飞、待发货和卡点</td></tr>
+          <tr><td>看现在施工中什么</td><td><code>/任务看板</code>，或说“看现在施工中什么”</td><td>读看板，汇报施工中、待发货和卡点</td></tr>
           <tr><td>写交接</td><td><code>/handoff</code>，或说“写交接”</td><td>把当前会话压成一份可续接的交接文档</td></tr>
         </tbody>
       </table>
     </div>
 
     <h2>想法池：只收，不做</h2>
-    <p>想法会全文落在项目配置的 <code>ideas_dir</code> 里，一天一份文件；汇总票只贴一句简述，不把长文堆进 Issue。它不会自动变成票——要不要做，交给舰桥分流。</p>
+    <p>想法会全文落在项目配置的 <code>ideas_dir</code> 里，一天一份文件；汇总票只贴一句简述，不把长文堆进 Issue。它不会自动变成票——要不要做，交给康娜分流。</p>
 
     <div class="callout">
       <span class="label">一个边界</span>
-      <p>想法池只收想法，不开票、不改代码。真正要开工，还是走 <code>/bridge</code> 或让舰桥判断。</p>
+      <p>想法池只收想法，不开票、不改代码。真正要开工，还是走 <code>/bridge</code> 或让康娜判断。</p>
     </div>
 
     <h2>事故与运维：先止损，再复盘</h2>
@@ -78,7 +78,7 @@
       <div class="fold-body">
         <p><code>intake</code>：技能 <code>kai-boom-idea-log</code>，命令 <code>/idea</code>；只写 <code>paths.ideas_dir</code> 与想法池汇总票，不开票。</p>
         <p><code>ops</code>：技能 <code>incident-response</code>（<code>/incident</code>）与 <code>runbook</code>（<code>/runbook</code>）；两者只产出记录与票，不直接改生产。</p>
-        <p><code>board</code>：技能 <code>flight-info</code>（<code>/航班信息</code>，命令 <code>/refresh</code>）；产物是 <code>board.db</code> / <code>board.json</code> / <code>index.html</code>。</p>
+        <p><code>board</code>：技能 <code>flight-info</code>（<code>/任务看板</code>，命令 <code>/refresh</code>）；产物是 <code>board.db</code> / <code>board.json</code> / <code>index.html</code>。</p>
         <p><code>core</code> 的六条原则是技能，不是命令；它们随会话自动带入，影响 AI 怎么问你、怎么自决、怎么登记缺件。</p>
       </div>
     </details>

@@ -28,15 +28,15 @@ TREND_KEEP = 24                          # 折线画近多少轮
 FOCAL_STAGE = "to_ship"
 
 LABELS = {
-    "flights": "航班",
+    "flights": "任务看板",
     "tickets": "TICKETS",
-    "schedule": "排班",
+    "schedule": "任务表",
     "roster": "ROSTER",
     "ticket": "票号",
     "content": "内容",
     "stage": "阶段",
-    "owner": "掌机",
-    "lane": "车道",
+    "owner": "负责角色",
+    "lane": "工作树槽位",
     "summary": "内容",
     "note": "备注",
 }
@@ -60,7 +60,7 @@ def compute_kpi(flights: list[dict]) -> dict:
         "ready": by_stage.get("ready", 0),
         "queued": by_stage.get("queued", 0),
         "hold": by_stage.get("hold", 0),
-        # 停滞单独计数：它不算在飞（挂着分支不动 ≠ 有人在敲）
+        # 停滞单独计数：它不算施工中（挂着分支不动 ≠ 有人在敲）
         "stale": by_stage.get("stale", 0),
         "unresolved": by_stage.get("unresolved", 0),
         "closed": by_stage.get("closed", 0),
@@ -179,7 +179,7 @@ def append_history(board_dir: str, run_id: str, kpi: dict, sources: dict,
     return True
 
 
-# ── V2 监工面（coding-runs 源）─────────────────────────────────────
+# ── 执行内核面（coding-runs 源）─────────────────────────────────────
 #
 # 三问：现在需要我做什么 / 系统健康吗 / 这件事的来龙去脉。
 # 这里只做前两问的摘要；完整任务图仍在 .coding/runs/*/state.json。
@@ -248,7 +248,7 @@ def _coding_run_view(row: dict) -> dict:
 
 
 def _build_coding(rows: list[dict], cfg: dict, history: list[dict] | None = None) -> dict:
-    """把 coding_run 行整理成监工面摘要；没有 run 时返回空壳。"""
+    """把 coding_run 行整理成执行内核面摘要；没有 run 时返回空壳。"""
     summary_cfg = cfg.get("summary") or {}
     max_runs = int(summary_cfg.get("coding_max_runs") or 20)
     max_needs = int(summary_cfg.get("coding_needs_max") or 8)
@@ -274,7 +274,7 @@ def _build_coding(rows: list[dict], cfg: dict, history: list[dict] | None = None
         fid = row.get("fleet_id") or "default"
         f = fleets.setdefault(fid, {"fleet_id": fid, "ships": 0, "ship_limit": 0,
                                     "crew": 0, "crew_limit": 0, "urgent": 0})
-        # 与控制面 slot_usage 同一口径：queued 不占舰位（排队不算在飞）。
+        # 与控制面 slot_usage 同一口径：queued 不占 run 名额（排队不算施工中）。
         if row.get("phase") not in {"done", "cancelled", "failed", "queued"}:
             f["ships"] += 1
             f["ship_limit"] = max(f["ship_limit"], _safe_int(row.get("ship_limit")))
@@ -310,7 +310,7 @@ def _safe_int(value, default: int = 0) -> int:
 
 
 def _coding_trend(history: list[dict] | None) -> list[dict]:
-    """最近 N 轮的 V2 概览（给折线）：在飞 / 需要人 / blocked / 等门。
+    """最近 N 轮的执行内核概览（给折线）：施工中 / 需要人 / blocked / 等门。
 
     每轮刷板时 `coding_run` 表都被整表替换，历史从 history.jsonl 的 kpi 侧照不进来，
     所以在 append_history 侧另记一份 coding 快照（`coding_trend` 键），这里只读。
@@ -332,10 +332,10 @@ def build_summary(conn, cfg: dict, board_dir: str | None = None) -> dict:
     flights = [f for f in all_flights
                if not includes or f.get("stage") in includes]
     schedules = db.fetch_schedules(conn, run) if run else []
-    # 排班只出「每条车道自己最新那张日表」：各车道写表的日子不一样
-    # （塔台天天写；王牌道只在有加急活时才写），取**全场**最大日期会把落后
-    # 车道的整张表筛掉（Kai-vass 2026-10-29 实测：主/副道 10-29、王牌道 10-27
-    # ⇒ 王牌道的行一条不剩，看着像"ACE 手上没活"）。
+    # 任务表只出「每个槽位自己最新那张表」：各槽位写表的日子不一样
+    # （康娜天天写；加急委托槽位只在有加急活时才写），取**全场**最大日期会把落后
+    # 槽位的整张表筛掉（Kai-vass 2026-10-29 实测：主/副槽位 10-29、加急委托槽位 10-27
+    # ⇒ 加急委托槽位的行一条不剩，看着像"加急委托手上没活"）。
     if schedules:
         latest: dict[str, str] = {}
         for s in schedules:
@@ -345,13 +345,13 @@ def build_summary(conn, cfg: dict, board_dir: str | None = None) -> dict:
                 latest[lane] = d
         schedules = [s for s in schedules
                      if (s.get("table_date") or "") == latest.get(s.get("lane") or "", "")]
-    # 加急腿：王牌车道的排班行 ＋ 打了加急标签的开放票。两条信号任一成立就亮。
+    # 加急腿：加急委托槽位的任务行 ＋ 打了加急标签的开放票。两条信号任一成立就亮。
     urgent_cfg = (cfg.get("view") or {}).get("urgent") or {}
     urgent_lanes = set(urgent_cfg.get("lanes") or ["ace"])
     urgent_label = urgent_cfg.get("label") or "ace-queue"
     ace_sched = [s for s in schedules if (s.get("lane") or "") in urgent_lanes]
     schedules = [s for s in schedules if (s.get("lane") or "") not in urgent_lanes]
-    # 「在手」＝票还没关。日表里留着已关票的行是完工留痕，不是待办
+    # 「在手」＝票还没关。任务表里留着已关票的行是完工留痕，不是待办
     # （2026-10-29 实测：6 张 ace-queue 票全部已关，却仍被算成 6 张超编）。
     closed = {f.get("ticket") for f in all_flights if not f.get("open")}
     ace_sched = [s for s in ace_sched if (s.get("ticket") or "") not in closed]
@@ -372,7 +372,7 @@ def build_summary(conn, cfg: dict, board_dir: str | None = None) -> dict:
     flights = _sort_flights(flights, order)
 
     max_flights = int(summary_cfg.get("max_flights") or 20)
-    # AI 面的判据留首句就够（全文在人面展开行里）。不截的话一条 800 字的日表备注
+    # AI 面的判据留首句就够（全文在人面展开行里）。不截的话一条 800 字的任务表备注
     # 能把 20 行的预算吃光——实测 board.json 被裁到只剩 1 张票，那就是假"没事干"。
     ai_why_chars = int(summary_cfg.get("ai_why_chars") or 160)
     keep = summary_cfg.get("flight_fields") or [
@@ -821,7 +821,7 @@ tr.flight[data-stage="to_ship"] .stg{color:var(--accent-text);font-weight:600}
 tr.flight[data-stage="stale"] .stg{color:var(--warn);font-weight:600}
 tr.flight[data-stage="hold"] .stg{color:var(--negative);font-weight:600}
 tr.flight[data-stage="flying"] .stg{color:var(--info);font-weight:600}
-/* V2 监工面：需要人优先；run 卡片只读，不参与拖拽 */
+/* 执行内核面：需要人优先；run 卡片只读，不参与拖拽 */
 .coding-needs{background:var(--bg-secondary);border-radius:var(--radius);padding:10px 14px;
 margin-bottom:10px;border-left:3px solid var(--negative)}
 .coding-needs .hd{display:flex;align-items:baseline;gap:8px;margin-bottom:4px}
@@ -883,11 +883,11 @@ def _keep1(m):
 
 
 def _plain(text) -> str:
-    """日表原文带的 markdown 记号洗掉——`**粗体**` 与反引号在页面上是噪音不是格式。"""
+    """任务表原文带的 markdown 记号洗掉——`**粗体**` 与反引号在页面上是噪音不是格式。"""
     s = str(text or "")
     s = re.sub(BOLD_RE, _keep1, s)
     s = re.sub(CODE_RE, _keep1, s)
-    # 日表原文里常有配不成对的记号（截断或手抖），成对洗完后落单的也清掉：
+    # 任务表原文里常有配不成对的记号（截断或手抖），成对洗完后落单的也清掉：
     # 这个域里 "**" 只可能是粗体、"`" 只可能是代码，不存在合法字面量。
     return s.replace("**", "").replace("`", "")
 
@@ -947,7 +947,7 @@ def _search_blob(f: dict) -> str:
 
 
 def _flight_rows(payload: dict, cfg: dict) -> str:
-    """人面航班行：未收尾全量、按里程碑分组、组内链序→停滞天数降序。"""
+    """人面任务行：未收尾全量、按里程碑分组、组内链序→停滞天数降序。"""
     rows = payload.get("all_open") or []
     if not rows:
         return (f'<tr><td colspan="4" class="empty">'
@@ -983,7 +983,7 @@ def _flight_rows(payload: dict, cfg: dict) -> str:
             own = (f'<span class="own">{_esc(owner)}</span>' if owner
                    else '<span class="own dash">未派</span>')
             if f.get("owner_from") == "infer":
-                own += ('<span class="infer" title="推断：日表里没这张票的排班，'
+                own += ('<span class="infer" title="推断：任务表里没这张票的任务行，'
                         '按协议独占权推的">推</span>')
             out.append(
                 '<tr class="flight" tabindex="0" data-k="' + tk + '" data-stage="'
@@ -995,7 +995,7 @@ def _flight_rows(payload: dict, cfg: dict) -> str:
                 + _age_cell(f)
                 + "</tr>"
                 + '<tr class="det" data-d="' + tk + '"><td colspan="4"><div class="kv">'
-                + f'<span class="k">掌机</span><span class="v">{_esc(owner or "—")}'
+                + f'<span class="k">负责角色</span><span class="v">{_esc(owner or "—")}'
                 + ('（推断）' if f.get("owner_from") == "infer" else "") + '</span>'
                 + f'<span class="k">下一步</span><span class="v">{_esc(nxt or "—")}</span>'
                 + f'<span class="k">阶段判据</span><span class="v">{why or "—"}</span>'
@@ -1059,19 +1059,19 @@ def _sidebar(cfg: dict, payload: dict, kpi: dict) -> str:
     u = payload.get("urgent") or {}
     coding = payload.get("coding") or {}
     coding_runs_n = (coding.get("counts") or {}).get("runs") or len(coding.get("runs") or [])
-    secs = ([("s-coding", "⏱", "V2 监工", coding_runs_n)] if coding_runs_n else []) + [
+    secs = ([("s-coding", "⏱", "执行内核", coding_runs_n)] if coding_runs_n else []) + [
         ("s-urgent", "▲", "紧急任务",
          len({(r.get("ticket") or "") for r in (u.get("rows") or [])}
              | {(x.get("ticket") or "") for x in (u.get("tickets") or [])})),
-        ("s-shift", "▤", "塔台排班", len(payload.get("schedules") or [])),
-        ("s-board", "✈", "航班信息表", len(face)),
+        ("s-shift", "▤", "任务表", len(payload.get("schedules") or [])),
+        ("s-board", "✈", "任务看板", len(face)),
         ("s-mile", "◎", "里程碑", len(payload.get("milestones") or [])),
         ("s-hand", "▥", "交接日报", len(payload.get("handoffs") or []))]
     nav = "".join(f'<a href="#{key}" data-sec="{key}"><span class="ic" aria-hidden="true">'
                   f'{ic}</span>{_esc(lab)}<span class="c">{n}</span></a>'
                   for key, ic, lab, n in secs)
     stages = [("all", "○", "全部", len(face)),
-              ("flying", "◉", "在飞", kpi["in_flight"]),
+              ("flying", "◉", "施工中", kpi["in_flight"]),
               ("stale", "▲", "停滞", kpi["stale"]),
               ("to_ship", "▶", "待发货", kpi["to_ship"]),
               ("hold", "■", "卡点", kpi["hold"]),
@@ -1087,12 +1087,12 @@ def _sidebar(cfg: dict, payload: dict, kpi: dict) -> str:
         f'<div><div class="grp-t">段</div><nav class="nav" id="nav">{nav}</nav></div>'
         f'<div><div class="grp-t">按阶段筛</div><nav class="nav" id="stages">{stg}</nav></div>'
         '<details class="foot"><summary>口径与数据源</summary><p>'
-        '在飞＝日表在飞段 或 分支近期有提交；有指派人／只有残留分支<b>不算在飞</b>。<br>'
-        '停滞＝在飞证据超过阈值没动（阈值按阶段分档，写在板配置里）。<br>'
-        '掌机带「推」＝按协议推断，不是有人认领。<br>'
+        '施工中＝任务表施工中段 或 分支近期有提交；有指派人／只有残留分支<b>不算施工中</b>。<br>'
+        '停滞＝施工中证据超过阈值没动（阈值按阶段分档，写在板配置里）。<br>'
+        '负责角色带「推」＝按协议推断，不是有人认领。<br>'
         '库 board.db · 人面未收尾全量不截断。<br>'
         '未收尾＝有票面（能在 GitHub 对上）＋无票面（残留分支、无票热修）'
-        '⇒ 它会比 GitHub 的 open 数大，差额是本地在飞的残留，不是漏抓。'
+        '⇒ 它会比 GitHub 的 open 数大，差额是本地施工中的残留，不是漏抓。'
         '</p></details></aside>')
 
 
@@ -1108,10 +1108,10 @@ def _bento(payload: dict, kpi: dict, cfg: dict) -> str:
            f'<div class="sub">有票面 {kpi["open_with_face"]} · '
            f'无票面 {kpi["open_no_face"]}</div></div>']
     for key, lab, sub, cls, sk in (
-            ("to_ship", "待发货", "塔台合并推送", "is-hot", "to_ship"),
+            ("to_ship", "待发货", "康娜合并推送", "is-hot", "to_ship"),
             ("stale", "停滞", "超阈值没动", "is-warn", "stale"),
             ("hold", "卡点", "等解", "is-warn", ""),
-            ("flying", "在飞", "有活证据", "", "")):
+            ("flying", "施工中", "有活证据", "", "")):
         n = kpi["in_flight"] if key == "flying" else kpi[key]
         tip = f' title="近 24 轮{lab}趋势"' if sk else ""
         out.append(f'<div class="card b1 {cls}" data-stage="{key}" role="button" tabindex="0">'
@@ -1120,21 +1120,21 @@ def _bento(payload: dict, kpi: dict, cfg: dict) -> str:
                    f'<div class="sub">{_esc(sub)}</div></div>')
     sched = payload.get("schedules") or []
     day = max((s.get("table_date") or "") for s in sched) if sched else ""
-    out.append('<div class="card b1"><p class="lab"><i aria-hidden="true"></i>今日排班</p>'
+    out.append('<div class="card b1"><p class="lab"><i aria-hidden="true"></i>今日任务表</p>'
                f'<div class="num">{len(sched)}'
                '<span style="font-size:14px;font-weight:500;color:var(--text-muted)"> '
-               '行 · 日表只由塔台写</span></div>'
-               f'<div class="sub">{_esc(day or "今天还没有日表")}</div></div>')
+               '行 · 任务表只由康娜写</span></div>'
+               f'<div class="sub">{_esc(day or "今天还没有任务表")}</div></div>')
     out.append('<div class="card b2 dir"><p class="lab"><i aria-hidden="true"></i>下一轮方向</p>'
                f"<p>{_esc(payload['direction'] or '暂无方向句')}</p></div>")
     return f'<div class="bento">{"".join(out)}</div>'
 
 
 def _lane_order(cfg: dict) -> list:
-    """车道顺序＝板配置 sources[].lanes 的书写顺序。
+    """槽位顺序＝板配置 sources[].lanes 的书写顺序。
 
-    以前按字母排，deputy 天然排在 main 前面 ⇒ 主机长被挤到右边，
-    与协议里"主道优先"读反了。顺序是配置，不是排序键。
+    以前按字母排，deputy 天然排在 main 前面 ⇒ 主槽位被挤到右边，
+    与协议里"主槽位优先"读反了。顺序是配置，不是排序键。
     """
     out = []
     for sc in cfg.get("sources") or []:
@@ -1155,7 +1155,7 @@ def _shift_section(payload: dict, cfg: dict) -> str:
     blocks = []
     for lane in _ordered_lanes({s.get("lane") for s in sched} or {"main"}, _lane_order(cfg)):
         rows = [s for s in sched if s.get("lane") == lane]
-        # 每条车道写自己的日期（各道推进节奏不同），别拿全场最大日期冒充
+        # 每个槽位写自己的日期（各槽位推进节奏不同），别拿全场最大日期冒充
         day = max((s.get("table_date") or "") for s in rows) if rows else ""
         items = "".join(
             f'<li><a href="https://github.com/{_esc(cfg.get("repo") or "")}/issues/'
@@ -1166,9 +1166,9 @@ def _shift_section(payload: dict, cfg: dict) -> str:
             + "</li>" for r in rows[:14])
         blocks.append(f'<div class="shift"><div class="hd"><b>{_esc(role_labels.get(lane) or lane)}'
                       f'</b><span>{len(rows)} 行 · {_esc(day or "—")}</span></div>'
-                      f"<ol>{items or '<li>今天没有排班</li>'}</ol></div>")
-    return ('<details class="sect" id="s-shift" open><summary><h2>塔台排班</h2>'
-            '<span class="hint">置顶 · 先看今天谁飞什么 · 日表只由塔台写</span>'
+                      f"<ol>{items or '<li>今天没有任务行</li>'}</ol></div>")
+    return ('<details class="sect" id="s-shift" open><summary><h2>任务表</h2>'
+            '<span class="hint">置顶 · 先看今天谁干什么 · 任务表只由康娜写</span>'
             '<span class="arw" aria-hidden="true">收起</span></summary>'
             f'<div class="sect-body"><div class="shifts">{"".join(blocks)}</div></div></details>')
 
@@ -1186,7 +1186,7 @@ def _coding_age(age_min) -> str:
 
 
 def _coding_section(payload: dict, cfg: dict) -> str:
-    """V2 监工面：先「需要人」，再 fleet 用量，最后 run 卡片。
+    """执行内核面：先「需要人」，再 fleet 用量，最后 run 卡片。
 
     没有 run 时整段不出现——健康状态不占空间（借 dsh Panel 的「quiet by default」）。
     """
@@ -1227,7 +1227,7 @@ def _coding_section(payload: dict, cfg: dict) -> str:
             if f.get("crew_limit"):
                 crew += f"/{f['crew_limit']}"
             bits.append(f'<span class="tag">{_esc(f.get("fleet_id") or "default")} · '
-                        f'舰 {_esc(ships)} · 船员 {_esc(crew)}</span>')
+                        f'run {_esc(ships)} · 队员 {_esc(crew)}</span>')
         fleet_html = '<div class="coding-fleets">' + "".join(bits) + '</div>'
 
     phase_label = {"queued": "排队", "planning": "规划", "design": "设计",
@@ -1268,7 +1268,7 @@ def _coding_section(payload: dict, cfg: dict) -> str:
     hint = (f'{counts.get("runs", len(runs))} 个 run · 需要人 {counts.get("needs_person", len(needs))}'
             f' · 等门 {counts.get("gate_pending", 0)} · 加急 {counts.get("urgent", 0)}')
     trend_html = _coding_trend_spark(coding.get("trend") or [])
-    return ('<details class="sect" id="s-coding" open><summary><h2>V2 监工</h2>'
+    return ('<details class="sect" id="s-coding" open><summary><h2>执行内核</h2>'
             '<span class="hint">' + _esc(hint) + '</span>'
             '<span class="arw" aria-hidden="true">收起</span></summary>'
             '<div class="sect-body">' + need_html + fleet_html + trend_html
@@ -1276,7 +1276,7 @@ def _coding_section(payload: dict, cfg: dict) -> str:
 
 
 def _coding_trend_spark(trend: list[dict]) -> str:
-    """V2 概览迷你趋势：需要人 / 在飞 run 数，纯文本火花（与 KPI 火花同思路，零 JS）。"""
+    """执行内核概览迷你趋势：需要人 / 施工中 run 数，纯文本火花（与 KPI 火花同思路，零 JS）。"""
     if len(trend) < 2:
         return ""
     blocks = "▮".join("1" if (t.get("needs_person") or 0) else "0"
@@ -1286,11 +1286,11 @@ def _coding_trend_spark(trend: list[dict]) -> str:
             + str(min(len(trend), 12)) + '轮</span>'
             + '<span class="ct-b" title="每格一轮；亮＝有需要人的 run">' + blocks + '</span>'
             + '<span class="ct-l">有run</span>'
-            + '<span class="ct-b" title="每格一轮；亮＝板上有 V2 run">' + flying + '</span></div>')
+            + '<span class="ct-b" title="每格一轮；亮＝板上有执行内核 run">' + flying + '</span></div>')
 
 
 def _urgent_section(payload: dict, cfg: dict) -> str:
-    """紧急任务＝王牌机长这条腿。加急优先可见，所以排在塔台排班之前。"""
+    """紧急任务＝加急委托这条腿。加急优先可见，所以排在任务表之前。"""
     role_labels = cfg.get("role_labels") or {}
     u = payload.get("urgent") or {}
     rows = u.get("rows") or []
@@ -1299,15 +1299,15 @@ def _urgent_section(payload: dict, cfg: dict) -> str:
     total = len({(r.get("ticket") or "") for r in rows} | {(t.get("ticket") or "") for t in tickets})
     max_urgent = int(((cfg.get("view") or {}).get("urgent") or {}).get("max") or 1)
     over = total - max_urgent if total > max_urgent else 0
-    ace_name = role_labels.get("ace") or "王牌"   # 叫法跟配置与术语表走，不在代码里另立一名
+    ace_name = role_labels.get("ace") or "加急委托"   # 叫法跟配置与术语表走，不在代码里另立一名
     head = (f'<span class="hint">{_esc(ace_name)} · 用户直连加急通道 · 协议同刻只许 {max_urgent} 张</span>')
     if over:
         head = (f'<span class="hint is-over">超编：同刻 {total} 张（协议只许 {max_urgent} 张）</span>')
     if not total:
         body = ('<p class="empty">当前没有加急任务。<br>亮起方式（任一即可）：'
                 f'① 给票打 <code>{_esc(label)}</code> 标签；'
-                '② 或落王牌日表 <code>&lt;日表目录&gt;/&lt;日期&gt;-ace.md</code>'
-                '（王牌日表只由王牌写）。</p>')
+                '② 或落加急委托任务表 <code>&lt;任务表目录&gt;/&lt;日期&gt;-ace.md</code>'
+                '（该表只由加急委托写）。</p>')
     else:
         items = []
         seen = set()
@@ -1338,7 +1338,7 @@ def _urgent_section(payload: dict, cfg: dict) -> str:
                          + (' · ' + _esc(tk.get("owner")) if tk.get("owner") else "")
                          + '</em></li>')
         body = ('<div class="urgent-box"><div class="hd"><b>'
-                + _esc(role_labels.get("ace") or "王牌飞行员") + '</b><span>'
+                + _esc(role_labels.get("ace") or "加急委托") + '</b><span>'
                 + str(total) + ' 张 · 加急</span></div><ol>' + "".join(items) + "</ol></div>")
     return ('<details class="sect urgent" id="s-urgent" open><summary><h2>紧急任务</h2>'
             + head + '<span class="arw" aria-hidden="true">收起</span></summary>'
@@ -1437,11 +1437,11 @@ def _age_text(f: dict) -> str:
 
 
 def _queue_section(payload: dict) -> str:
-    """待发货队列（ship-queue 源）：塔台还没发出去的票。读不到就明说读不到。"""
+    """待发货队列（ship-queue 源）：康娜还没发出去的票。读不到就明说读不到。"""
     q = (payload.get("runtime") or {}).get("queue") or {}
     rows = q.get("rows") or []
     if not rows:
-        detail = "尚无队列（塔台跑过 ship-queue sync 后才有）" if q else "未接 ship-queue 源"
+        detail = "尚无队列（康娜跑过 ship-queue sync 后才有）" if q else "未接 ship-queue 源"
         return ('<details class="sect" id="s-queue"><summary><h2>待发货队列</h2>'
                 f'<span class="hint">{_esc(detail)}</span>'
                 '<span class="arw" aria-hidden="true">展开</span></summary></details>')
@@ -1454,7 +1454,7 @@ def _queue_section(payload: dict) -> str:
                      + '</span><span class="br">' + _esc(r.get("branch") or "")
                      + '</span>' + held + "</div>")
     return ('<details class="sect" id="s-queue" open><summary><h2>待发货队列</h2>'
-            f'<span class="hint">{len(rows)} 张 · 由塔台写，新判词下一轮进队</span>'
+            f'<span class="hint">{len(rows)} 张 · 由康娜写，新判词下一轮进队</span>'
             '<span class="arw" aria-hidden="true">收起</span></summary>'
             f'<div class="sect-body">{"".join(items)}</div></details>')
 
@@ -1474,15 +1474,15 @@ def _statusbar(sources: dict, runtime: dict | None = None) -> str:
         cls = "ok" if state == "running" else ""
         age = tower.get("age_min")
         txt = (f"{tower.get('holder')} 心跳 {age:.0f} 分钟前" if age is not None
-               else "塔台空闲")
+               else "康娜空闲")
         if state == "stale":
             txt = f"{tower.get('holder')} 令牌可能已死（心跳 {age:.0f} 分钟前）" \
-                if age is not None else "塔台令牌状态未知"
-        tower_lamp = (f'<span class="lamp {cls}" title="塔台令牌"><i aria-hidden="true"></i>'
-                      f'塔台 {_esc(txt)}</span>')
+                if age is not None else "康娜令牌状态未知"
+        tower_lamp = (f'<span class="lamp {cls}" title="康娜令牌"><i aria-hidden="true"></i>'
+                      f'康娜 {_esc(txt)}</span>')
     return ('<div class="statusbar"><span class="lamps">' + "".join(lamps) + '</span>'
             + tower_lamp +
-            '<span class="sp"></span><span>flight-info · 只读各源，不写票面与日表</span></div>')
+            '<span class="sp"></span><span>flight-info · 只读各源，不写票面与任务表</span></div>')
 
 
 JS = r"""
@@ -1636,7 +1636,7 @@ document.addEventListener("keydown",function(e){
 
 /* C3：阶段名兜底 + 阶段链点亮。生成器给 queued 行留了空的 .stg，
    这里按行的 data-stage 补真文本（CSS 生成内容不可被稳定朗读，故走 JS）。 */
-var STG={queued:"排队",ready:"可领",flying:"在飞",review:"审查",to_ship:"待发货",
+var STG={queued:"排队",ready:"可领",flying:"施工中",review:"审查",to_ship:"待发货",
 hold:"卡点",stale:"停滞",assigned:"已派未动",unresolved:"残留分支",closed:"已收尾"};
 var CHAIN_AT={queued:0,flying:1,review:2,to_ship:3,closed:4,
 stale:1,hold:1,ready:0,assigned:0,unresolved:0};
@@ -1647,7 +1647,7 @@ function fillStages(){
     var cs=$$(".chain i",tr),i=CHAIN_AT[tr.dataset.stage];
     if(cs.length&&i!=null)cs.forEach(function(c,n){c.classList.toggle("on",n<=i)});
     var ch=tr.querySelector(".chain");
-    if(ch)ch.setAttribute("title","阶段链 排队→在飞→审查→待发货→已收尾；当前＝"+(STG[tr.dataset.stage]||"—"));
+    if(ch)ch.setAttribute("title","阶段链 排队→施工中→审查→待发货→已收尾；当前＝"+(STG[tr.dataset.stage]||"—"));
     tr.setAttribute("aria-expanded","false");
     var dd=document.querySelector('tr.det[data-d="'+tr.dataset.k+'"]');
     if(dd){var did="det-"+String(tr.dataset.k).replace(/[^0-9A-Za-z_-]/g,"");
@@ -1691,7 +1691,7 @@ def render_html(payload: dict, cfg: dict) -> str:
 <meta name="color-scheme" content="light dark">
 <title>{_esc(payload['title'])}</title>
 <style>{CSS}</style></head><body>
-<a class="skip" href="#s-board">跳到航班表</a>
+<a class="skip" href="#s-board">跳到任务看板</a>
 <div class="shell">
 {_sidebar(cfg, payload, kpi)}
 <main class="main"><div class="inner">
@@ -1757,7 +1757,7 @@ def render_html(payload: dict, cfg: dict) -> str:
 </div>
 {_statusbar(payload.get("sources") or {}, payload.get("runtime") or {})}
 <div class="ov" id="ov"><div class="pal" role="dialog" aria-modal="true" aria-label="搜索票">
-  <input id="q" type="search" autocomplete="off" placeholder="搜票号 / 标题 / 里程碑 / 掌机 / 判据" aria-label="搜票">
+  <input id="q" type="search" autocomplete="off" placeholder="搜票号 / 标题 / 里程碑 / 负责角色 / 判据" aria-label="搜票">
   <p class="tip"><span>Esc 关闭 · 再按一次清筛选</span>
     <span style="margin-left:auto">筛选态写进网址</span></p>
 </div></div>
@@ -1779,7 +1779,7 @@ def write_outputs(board_dir: str, payload: dict, cfg: dict) -> dict:
     ai_payload = {k: v for k, v in payload.items() if k not in HUMAN_ONLY_KEYS}
     ai_payload["counts"] = dict(payload.get("counts") or {})
     ai_payload["schedules"] = [dict(s) for s in (payload.get("schedules") or [])]
-    # 排班备注一条能到 2 千字，实测占 board.json 的 65% 预算，把航班挤到只剩两条。
+    # 任务表备注一条能到 2 千字，实测占 board.json 的 65% 预算，把任务卡挤到只剩两条。
     # 全文留在人面展开行里，AI 面只留首句。
     note_cap = int((cfg.get("summary") or {}).get("ai_note_chars") or 160)
     label_cap = int((cfg.get("summary") or {}).get("ai_label_max") or 6)
@@ -1791,15 +1791,15 @@ def write_outputs(board_dir: str, payload: dict, cfg: dict) -> dict:
         note = s.get("note") or ""
         if len(note) > note_cap:
             s["note"] = note[:note_cap].rstrip() + "…"
-    # 同一把尺要盖住 AI 面的每一处正文：原来只截了航班判据与排班备注，
+    # 同一把尺要盖住 AI 面的每一处正文：原来只截了任务卡判据与任务表备注，
     # 加急行的备注、卡点行的判据都留着全文（一条能到 2 千字）——
-    # 2026-10-29 实测：这些正文把 25.6 KB 预算吃光，AI 面最后只剩 0 张航班。
+    # 2026-10-29 实测：这些正文把 25.6 KB 预算吃光，AI 面最后只剩 0 张任务卡。
     ai_payload["urgent"] = _ai_face_urgent(payload.get("urgent") or {},
                                          note_cap=note_cap,
                                          why_cap=int((cfg.get("summary") or {}).get("ai_why_chars") or 160))
     ai_payload["blocked"] = [_cap_text(b, "why", int((cfg.get("summary") or {}).get("ai_why_chars") or 160))
                              for b in (payload.get("blocked") or [])]
-    # V2 监工面：人面可以全量，AI 面只留摘要（run 卡片 + 需要人），
+    # 执行内核面：人面可以全量，AI 面只留摘要（run 卡片 + 需要人），
     # 否则一个大 run 的 issue 正文就能把 board.json 预算吃光。
     coding = ai_payload.get("coding") or {}
     if coding.get("runs"):
@@ -1820,7 +1820,7 @@ def write_outputs(board_dir: str, payload: dict, cfg: dict) -> dict:
                 if len(n.get(k) or "") > cap:
                     n[k] = n[k][:cap].rstrip() + "…"
     # 趋势是给人画折线用的：全量正本在 history.jsonl，AI 面只留最近几轮。
-    # 24 轮要 13 KB——占掉一半预算，航班全被挤没。
+    # 24 轮要 13 KB——占掉一半预算，任务卡全被挤没。
     trend_keep = int((cfg.get("summary") or {}).get("ai_trend_rounds") or 8)
     if isinstance(ai_payload.get("trend"), list) and len(ai_payload["trend"]) > trend_keep:
         ai_payload["trend"] = ai_payload["trend"][-trend_keep:]

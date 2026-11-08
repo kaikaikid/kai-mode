@@ -68,14 +68,14 @@ def run_refresh(repo_root: str, config_path: str, quiet: bool = False,
 
     if not quiet:
         print(f"板：{cfg['name']}  →  {bdir}")
-        print(f"航班 {stats['flights']} 张，排班 {stats['schedules']} 行，库 run_id={run_id}")
+        print(f"任务卡 {stats['flights']} 张，任务行 {stats['schedules']} 行，库 run_id={run_id}")
         for sid, v in stats["sources"].items():
             print(f"  [{v['status']}] {sid}：{v['detail']}")
         for k in ("board.json", "index.html"):
             print(f"  {k}  {paths[k]['bytes']} B  sha256={paths[k]['sha256'][:12]}")
     else:
         bad = sum(1 for v in stats["sources"].values() if v["status"] != "ok")
-        print(f"[{cfg['name']}] {stats['flights']} 航班 / {stats['schedules']} 排班"
+        print(f"[{cfg['name']}] {stats['flights']} 任务卡 / {stats['schedules']} 任务行"
               f" / 降级 {bad} 源")
     return {"ok": True, "rc": 0, "stats": stats, "paths": paths,
             "board_dir": bdir, "config": cfg}

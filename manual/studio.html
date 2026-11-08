@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:,">
 <title>创作体系 · kai-mode 使用手册</title>
-<meta name="description" content="文娱集团：企划、主笔、主美、导演、终审、宣发，六道门推进一个作品项目。">
+<meta name="description" content="武器集：企划、主笔、主美、导演、终审、宣发，六道门推进一个作品项目。">
 <link rel="stylesheet" href="assets/manual.css">
 </head>
 <body>
@@ -22,25 +22,25 @@
     <h1>创作体系</h1>
     <p class="lede">做绘本、文案、动画、海报这类作品，不走“票”，走“项目”。企划立项，三条创作线各管一段，终审独立验收，宣发提前进场。</p>
 
-    <h2>和 V2 执行体系怎么分工</h2>
-    <svg class="diagram" viewBox="0 0 900 300" role="img" aria-label="两个体系：V2 执行体系管代码和工程，文娱集团管作品和创作">
+    <h2>和 执行内核怎么分工</h2>
+    <svg class="diagram" viewBox="0 0 900 300" role="img" aria-label="两个体系：执行内核管代码和工程，武器集管作品和创作">
       <rect class="d-box" x="25" y="35" width="405" height="215" rx="12"/>
-      <text class="d-t" x="227" y="68" text-anchor="middle">V2 执行体系 · 票制</text>
+      <text class="d-t" x="227" y="68" text-anchor="middle">执行内核 · 票制</text>
       <text class="d-s" x="227" y="94" text-anchor="middle">管代码、文档、发布</text>
-      <text class="d-s" x="227" y="128" text-anchor="middle">舰桥 → 开 run → 子会话 / 门卫</text>
-      <text class="d-s" x="227" y="152" text-anchor="middle">舰桥独占 push 与关票</text>
+      <text class="d-s" x="227" y="128" text-anchor="middle">康娜 → 开 run → 子会话 / 门卫</text>
+      <text class="d-s" x="227" y="152" text-anchor="middle">康娜独占 push 与关票</text>
       <text class="d-l" x="227" y="188" text-anchor="middle">记录：Issue · run 状态 · 分支提交</text>
       <text class="d-l" x="227" y="212" text-anchor="middle">核心单位：一张票</text>
 
       <rect class="d-box-accent" x="470" y="35" width="405" height="215" rx="12"/>
-      <text class="d-t" x="672" y="68" text-anchor="middle">文娱集团 · 项目制</text>
+      <text class="d-t" x="672" y="68" text-anchor="middle">武器集 · 项目制</text>
       <text class="d-s" x="672" y="94" text-anchor="middle">管绘本、文案、动画、海报</text>
       <text class="d-s" x="672" y="128" text-anchor="middle">企划 → 主笔 / 主美 / 导演 → 终审 → 宣发</text>
       <text class="d-s" x="672" y="152" text-anchor="middle">G0–G5 六道门，终审只判不修</text>
       <text class="d-l" x="672" y="188" text-anchor="middle">记录：brief · decisions · delivery</text>
       <text class="d-l" x="672" y="212" text-anchor="middle">核心单位：一个项目</text>
 
-      <text class="d-l" x="450" y="282" text-anchor="middle">机场管代码，文娱管作品；两边都只在你拍板时停。</text>
+      <text class="d-l" x="450" y="282" text-anchor="middle">执行内核管代码，武器管作品；两边都只在你拍板时停。</text>
     </svg>
 
     <h2>六个岗位</h2>
@@ -100,9 +100,9 @@
     <details class="fold">
       <summary>给技术同事：协议、记录面与新上下文</summary>
       <div class="fold-body">
-        <p>正本：<code>studio/skills/studio/SKILL.md</code>；六个岗位技能只写各自的执行清单。派活判据借用 <code>loop</code> 的 <code>references/dispatch.md</code>，取舍裁决借用 <code>references/adjudication.md</code>，不各写一份。</p>
+        <p>正本：<code>studio/PLAYBOOK.md</code>；六个武器技能只写各自的执行清单与产出规格。派活规则住 <code>engine/skills/fleet/SKILL.md</code>，取舍裁决住本技能集自带的裁决角色，不各写一份。</p>
         <p>记录面（项目内 <code>studio/</code>，首次立项时创建）：<code>brief.md</code>（企划）、<code>decisions.md</code>（拍板与代决）、<code>delivery.md</code>（交付规格）、各线记录（<code>visual/</code>、<code>text/</code>、<code>time/</code>）、<code>review/</code>。</p>
-        <p>终审必须另起新上下文；起不了就登记 <code>no-new-context</code>，不许记“已审”。这条和机场的“审查独立”是同一条判据。</p>
+        <p>终审必须另起新上下文；起不了就登记 <code>no-new-context</code>，不许记“已审”。这条和旧体系的“审查独立”是同一条判据。</p>
         <p>命令：<code>/producer</code> <code>/writer</code> <code>/artist</code> <code>/director</code> <code>/review</code> <code>/marketing</code>。</p>
       </div>
     </details>

@@ -30,7 +30,7 @@
 
 ## 1. 装什么
 
-一个剧本一个插件目录。以机场剧本为例，装三样：
+一个剧本一个插件目录，现行共六个：`core`／`board`／`intake`／`ops`／`studio`／`engine`。以 `core` 为例，装三样：
 
 | 装什么 | 源 | 放哪 |
 |---|---|---|
@@ -58,7 +58,7 @@ Qoder 没有 Claude Code 那种 `/plugin:command` 命名空间。叫她有两种
 
 ## 3. 默认入口（不装定时器）
 
-机场体系下线后没有塔台轮巡，也没有 60 分钟唤醒定时器。
+V1 岗位体系下线后没有定时轮巡，也没有 60 分钟唤醒定时器。
 
 - 在项目 `CLAUDE.md` / `AGENTS.md` 末尾写一段「默认入口＝康娜」；
 - 用户按需起会话；会话里不打斜杠命令时，读 `bridge` 技能执行；
@@ -102,7 +102,7 @@ test -f .qoder-plugin/plugin.json && echo plugin-ok
 - 付费／额度未授权 ⇒ `paid-not-authorized`，不偷偷换模型。
 - 版本、认证状态与探针读数写进项目本机配置，不回写框架正文。
 
-## 原生子代理（舰队必需）
+## 原生子代理（执行内核必需）
 
 > **实测订正（2026-11-08，Desktop CN 构建）**：用户级 `~/.qoder-cn/agents/*.md` 里的定义
 > **注册成「设备级 Agent」**（`list_agents` 能列出来，可用 `create_chat_session` 的 `agentId` 起会话），

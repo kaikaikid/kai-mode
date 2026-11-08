@@ -109,7 +109,7 @@
     if (!host) return;
 
     var skills = window.KAI_SKILLS || [];
-    var GROUPS = ["机场体系", "入口与安装", "文娱集团", "支持能力", "外部方法"];
+    var GROUPS = ["酒馆冒险团与安装", "执行内核", "武器集", "看板", "想法池", "事故与运维", "支持能力", "外部方法"];
 
     function rowHtml(s) {
       var version = s.version ? '<span class="badge">v' + escapeHtml(s.version) + "</span>" : "";

@@ -9,7 +9,7 @@
     labels        list[str]   票的标签
     last_comment  str         最新一条评论正文
     branches      list[str]   匹配到的分支名
-    table_note    str         日表里的备注
+    table_note    str         任务表里的备注
     assignee      str         指派对象
     url           str         票面链接（空＝只有分支、GitHub 上认不到这张票）
 """
@@ -53,7 +53,7 @@ def dwell_days(updated_at: str | None, now: datetime | None = None) -> int | Non
 
 def apply_stale(stage_key: str, why: str, updated_at: str | None,
                 stale_after: dict | None, now: datetime | None = None):
-    """按阶段分档把「在飞／审查／待发货…」降级成停滞。
+    """按阶段分档把「施工中／审查／待发货…」降级成停滞。
 
     返回 (stage, why, prev_stage, days)。阈值按阶段给，是因为各阶段的"正常等待时长"
     本来就不同：待发货压一天就该喊，排队一周不动才是常态。
@@ -69,7 +69,7 @@ def apply_stale(stage_key: str, why: str, updated_at: str | None,
     to = stale_after.get(STALE_KEY) or DEFAULT_STALE_TO
     if stage_key == to:
         return stage_key, why, "", days
-    label = {"flying": "在飞", "review": "审查", "to_ship": "待发货",
+    label = {"flying": "施工中", "review": "审查", "to_ship": "待发货",
              "queued": "排队", "ready": "可领", "hold": "挡住"}.get(stage_key, stage_key)
     return to, f"{why} · 原{label} {days} 天没动", stage_key, days
 
@@ -130,7 +130,7 @@ def _hit(rule: dict, ev: dict) -> tuple[bool, str]:
         return bool(who), why.replace("{assignee}", str(who))
 
     if when == "no_issue":
-        # 有分支、却没取到票面（无 url）＝残留分支，不该冒充在飞的航班
+        # 有分支、却没取到票面（无 url）＝残留分支，不该冒充施工中的任务卡
         branches = ev.get("branches") or []
         hit = bool(branches) and not (ev.get("url") or "")
         br = branches[0] if branches else ""
@@ -154,5 +154,5 @@ def decide(rules: list[dict], ev: dict) -> tuple[str, str]:
 
 
 def stage_chain(stages: list[dict]) -> str:
-    """「排队 → 在飞 → 审查 → 待发货 → 已收尾」。"""
+    """「排队 → 施工中 → 审查 → 待发货 → 已收尾」。"""
     return " → ".join(s.get("label") or s.get("key") or "" for s in stages or [])

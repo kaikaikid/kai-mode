@@ -30,7 +30,7 @@ def make_repo(tmp_path, handoff_dir=None):
 
 def test_new_card_uses_project_handoff_dir(tmp_path):
     repo = make_repo(tmp_path, handoff_dir="records/handoff")
-    p = run(["new", "--title", "冒烟", "--ticket", "#1", "--role", "机长"], repo)
+    p = run(["new", "--title", "冒烟", "--ticket", "#1", "--role", "engineer"], repo)
     assert p.returncode == 0, p.stderr
     cards = list((repo / "records/handoff/60-board/open").glob("*.md"))
     assert len(cards) == 1

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""一键接上「活的航班信息板」自动更新（Windows；零 token、无黑窗）。
+"""一键接上「活的任务看板」自动更新（Windows；零 token、无黑窗）。
 
 把三件事按依赖顺序收齐：
   ① git 钩子（post-commit / post-merge / post-checkout）：写进仓的 *有效* hooksPath——
@@ -45,9 +45,9 @@ SIGN = "# managed by kai-mode skill: flight-info"
 SCHTASK_PREFIX = "flight-info-"
 HOOKS = ("post-commit", "post-merge", "post-checkout")
 
-# 现有 .githooks/post-commit / post-merge 是退役残 stub（指向已删的「技能/航班信息」
-# 和 .design/航班信息）。本工具会识别并覆盖它们；非本工具生成则拒绝。
-STUB_SIGN = ("kai-mode 板工坊", "skills/航班信息", ".design/航班信息",
+# 现有 .githooks/post-commit / post-merge 是退役残 stub（指向已删的旧技能目录与旧设计目录）。
+# 本工具会识别并覆盖它们；非本工具生成则拒绝。
+STUB_SIGN = ("kai-mode 板工坊", "skills/航班信息", ".design/航班信息",  # 历史残 stub 的探测特征：旧目录字面，认老项目要用，保留  # canon:allow-retired
              "实现委托给 post-commit（同一套 fail-open 规矩）")
 
 HOOK = """#!/bin/sh
@@ -195,7 +195,7 @@ def install_vbs(board_dir: str, apply: bool) -> int:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="接上航班信息板自动更新（钩子＋定时任务＋人工入口）")
+    ap = argparse.ArgumentParser(description="接上任务看板自动更新（钩子＋定时任务＋人工入口）")
     ap.add_argument("--repo-root", required=True)
     ap.add_argument("--config", required=True, help="板配置 board.config.json")
     ap.add_argument("--interval", type=int, default=30, help="定时任务间隔（分钟，默认 30）")

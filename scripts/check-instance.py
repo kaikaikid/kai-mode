@@ -15,7 +15,7 @@
   ③ 零机器绝对路径（盘符 / UNC）
   ④ 登记落点逐个 stat：路径型键必须在盘上；门禁值按「脚本 + 子命令」解析后 stat 脚本；
      `issue.repo` 与 git remote 对账。按需生成的落点只提示不判红。
-  ⑤ 退役键清零：schema 4 的机场体系键（日表、车道、塔台定时器、三键门禁）不得再出现。
+  ⑤ 退役键清零：schema 4 遗留的 V1 键（任务表机制、工作树槽位、定时器键、三键门禁）不得再出现。
 
 退出码：0 全绿（可含提示）／1 有红／2 缺件（仓根、实例或模板读不到）。
 """
@@ -41,7 +41,7 @@ PATH_KEYS = (
     "registry.adrs.dir", "registry.rules.dir", "registry.skills.project_skills_dir",
 )
 ON_DEMAND_KEYS = ("paths.state_dir",)
-# 问答答案型落点：刚装完还没建是正常的（舰桥开票／收想法时才生成），只提示不判红
+# 问答答案型落点：刚装完还没建是正常的（康娜开票／收想法时才生成），只提示不判红
 PENDING_OK_KEYS = ("paths.ideas_dir", "paths.handoff_dir")
 GATE_KEYS = ("gates.finish_cmd",)
 MAIN_TREE_REL_KEYS = ("runtime.backend_python.fallback.rel", "runtime.node.rel", "runtime.deps.check_dir_rel")
@@ -204,7 +204,7 @@ def main() -> int:
     )
     leftovers = [k for k in retired if getpath(cfg, k) is not None]
     rep.add("红" if leftovers else "绿",
-            "⑤ 退役键：" + ("仍在实例里：" + "、".join(leftovers) if leftovers else "已清零（机场体系已下线）"))
+            "⑤ 退役键：" + ("仍在实例里：" + "、".join(leftovers) if leftovers else "已清零（V1 机制已下线）"))
 
     if a.json:
         print(json.dumps({"repo": repo, "red": rep.red, "note": rep.note, "green": rep.green,

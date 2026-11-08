@@ -1,9 +1,9 @@
 {
-  "_note": "板配置样例。name 会成为目录名；output.root 是板库根（相对项目仓根，必填，无缺省）。stage_rules 按顺序取第一条命中，最后必须是 else。源路径不写 path 时读项目配置实例 paths.day_tables_dir / paths.handoff_dir。view.focal_stage＝哪一段着赭色（只标一个，0 张时不亮）；view.font_source＝system（默认，零网络）/ web（走 Google Fonts）；view.metrics 可选，不写就读 航班总数 / 今日收尾 / 今日排班。",
+  "_note": "板配置样例。name 会成为目录名；output.root 是板库根（相对项目仓根，必填，无缺省）。stage_rules 按顺序取第一条命中，最后必须是 else。源路径不写 path 时读项目配置实例 paths.day_tables_dir / paths.handoff_dir。view.focal_stage＝哪一段着赭色（只标一个，0 张时不亮）；view.font_source＝system（默认，零网络）/ web（走 Google Fonts）；view.metrics 可选，不写就读 任务卡总数 / 今日收尾 / 今日任务行。",
   "schema": "flight-info-board/1",
   "name": "flight",
-  "title": "航班信息",
-  "subtitle": "当日在飞全景",
+  "title": "任务看板",
+  "subtitle": "当日施工全景",
   "repo": "",
   "output": {
     "root": "boards"
@@ -36,8 +36,9 @@
     {
       "id": "worktrees",
       "type": "git-worktrees",
-      "branch_prefix": "exec/",
+      "branch_prefix": "travel/",
       "branch_prefixes": [
+        "travel/",
         "exec/",
         "land/"
       ]
@@ -64,7 +65,7 @@
     },
     {
       "key": "flying",
-      "label": "在飞"
+      "label": "施工中"
     },
     {
       "key": "review",
@@ -177,21 +178,21 @@
       "when": "table_note_contains",
       "value": "卡点|退票|阻塞|挡住",
       "stage": "hold",
-      "why": "日表：{note}",
+      "why": "任务表：{note}",
       "ignore_case": true
     },
     {
       "when": "table_note_contains",
       "value": "已发货|待发货|verdict=pass",
       "stage": "to_ship",
-      "why": "日表：{note}",
+      "why": "任务表：{note}",
       "ignore_case": true
     },
     {
       "when": "table_note_contains",
-      "value": "在制|在飞|施工中",
+      "value": "在制|施工中",
       "stage": "flying",
-      "why": "日表：{note}"
+      "why": "任务表：{note}"
     },
     {
       "when": "no_issue",
@@ -212,7 +213,7 @@
     {
       "when": "assignee_exists",
       "stage": "assigned",
-      "why": "已指派 {assignee}（无在飞证据）"
+      "why": "已指派 {assignee}（无施工中证据）"
     },
     {
       "when": "else",
@@ -221,7 +222,7 @@
     }
   ],
   "next_text": {
-    "queued": "等排班",
+    "queued": "等任务表",
     "ready": "可领 · 等认领",
     "flying": "等审查判词",
     "review": "等审查判词",
@@ -230,22 +231,22 @@
     "closed": "已收尾"
   },
   "role_labels": {
-    "main": "主机长",
-    "deputy": "副机长",
-    "second": "二副",
-    "tower": "塔台",
-    "ace": "王牌飞行员"
+    "main": "engineer",
+    "deputy": "施工子代理",
+    "second": "施工子代理",
+    "tower": "康娜",
+    "ace": "加急委托"
   },
   "direction": {
-    "template": "下一轮：先发货 {to_ship} 张，再给日表补位。",
+    "template": "下一轮：先发货 {to_ship} 张，再给任务表补位。",
     "variants": [
       {
         "when": "to_ship",
-        "template": "下一轮：先发货 {to_ship} 张待发货票，再给日表补位。"
+        "template": "下一轮：先发货 {to_ship} 张待发货票，再给任务表补位。"
       },
       {
         "when": "no_to_ship",
-        "template": "当前没有待发货；在飞 {in_flight} 张，按审查判词推进。"
+        "template": "当前没有待发货；施工中 {in_flight} 张，按审查判词推进。"
       }
     ]
   },

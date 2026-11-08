@@ -1,6 +1,6 @@
 {
   "schema": 5,
-  "_note_0": "kai-mode 项目差异层实例模板（schema 5）。落点：<项目仓根>/.ai/kai-mode.project.json（tracked）。唯一项目差异事实源：技能运行时读它拿路径/宿主/平台；读不到 rc!=0 报缺件，永不猜路径。schema 5 删除了机场体系（V1）的日表、车道、塔台定时器与三键门禁；准入判据仍是活契约真按名读这个键（ADR-0015），没被问答填到的字段一律 null，本仓的门名/包管理命令/宿主偏好不得作缺省写进用户实例。写者＝scripts/init-project.py（由 set-kai-mode 驱动十问）；_note_* 键与注释值读取端忽略；字段语义写在对应段的 _note 里。",
+  "_note_0": "kai-mode 项目差异层实例模板（schema 5）。落点：<项目仓根>/.ai/kai-mode.project.json（tracked）。唯一项目差异事实源：技能运行时读它拿路径/宿主/平台；读不到 rc!=0 报缺件，永不猜路径。schema 5 删除了 V1 的任务表机制、工作树槽位与定时器键，以及三键门禁；准入判据仍是活契约真按名读这个键（ADR-0015），没被问答填到的字段一律 null，本仓的门名/包管理命令/宿主偏好不得作缺省写进用户实例。写者＝scripts/init-project.py（由 set-kai-mode 驱动十一问 ＋ 双仓五题）；_note_* 键与注释值读取端忽略；字段语义写在对应段的 _note 里。",
   "project": "<project-name>",
   "host": {
     "_note": "宿主选择器：只记用哪份宿主适配说明，不记宿主字段名、不记模型。换宿主时改这一处；宿主差异仍住适配说明。",
@@ -11,7 +11,7 @@
     "playbooks": [
       {
         "name": "bridge",
-        "trigger": "/bridge、/舰桥，或未显式点名其它技能时的默认入口",
+        "trigger": "/bridge，或未显式点名其它技能时的默认入口",
         "route": "bridge",
         "notes": "康娜（主 AI 人格）：唯一对话面；判断、开票、开 run、清场、发货、回报"
       }

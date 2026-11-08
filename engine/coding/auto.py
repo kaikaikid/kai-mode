@@ -1,7 +1,7 @@
 """自动接上：把 claim→派活→report→审查→verdict 的循环在控制面里自己走完。
 
-设计裁决（2026-11-05）：舰桥说一次 `/jump` 之后不再逐条敲命令。循环必须住在
-能跨会话的东西里——内核，不是舰桥的技能文本。执行仍走宿主原生子代理；
+设计裁决（2026-11-05）：康娜说一次 `/jump` 之后不再逐条敲命令。循环必须住在
+能跨会话的东西里——内核，不是康娜的技能文本。执行仍走宿主原生子代理；
 内核不 import 任何 CLI SDK，只通过「宿主命令」拉起一次性会话（命令从 TRAVEL_WORKER_CMD 环境变量读）。
 状态推进仍只由现有命令写 state.json，本模块不自己改状态。
 """
@@ -40,7 +40,7 @@ def _config_cmd(key: str) -> str:
 
 
 def _run_cmd(args: list[str], cwd: str | None = None) -> dict | list:
-    """调 `travel` 自己：一律走 coding_main.py（包入口），不直接跑 cli.py（相对导入会炸）。"""
+    """调 `fleet` 自己：一律走 coding_main.py（包入口），不直接跑 cli.py（相对导入会炸）。"""
     r = subprocess.run([sys.executable, str(Path(__file__).parent.parent / "coding_main.py")] + args,
                        cwd=cwd or str(_root()), capture_output=True, text=True,
                        encoding="utf-8", errors="replace",
@@ -86,7 +86,7 @@ def _spawn_worker(card: dict, host_cmd: str) -> dict:
     if not shutil.which(program):
         return {"_error": f"host command not found: {program}; fix TRAVEL_WORKER_CMD or remove it"}
     prompt = (
-        "你是舰队施工子代理。只改 touchset 范围内的文件，完成后把报告写到 report_path。\n"
+        "你是执行内核的施工子代理。只改 touchset 范围内的文件，完成后把报告写到 report_path。\n"
         "报告契约：{\"result\":\"done|partial|blocked\",\"files_changed\":[\"path — 改了什么\"],"
         "\"commit\":\"<HEAD sha，无改动留空>\",\"verification\":[\"命令 -> 结果\"],"
         "\"open_questions\":[],\"notes\":\"<=100字\"}\n\n"
@@ -115,7 +115,7 @@ def _spawn_reviewer(card: dict, host_cmd: str) -> dict:
     if not shutil.which(program):
         return {"_error": f"host command not found: {program}; fix TRAVEL_REVIEWER_CMD or remove it"}
     prompt = (
-        "你是舰队门卫审查子代理，只读。读 worktree 里 diff_base..HEAD 的实际 diff，"
+        "你是执行内核的门卫审查子代理，只读。读 worktree 里 diff_base..HEAD 的实际 diff，"
         "逐条对 AC，不改任何文件。把裁决写到 review_report_path："
         "{\"verdict\":\"accept|return\",\"defects\":[],\"reason\":\"\"}\n\n"
         "审查卡：\n" + json.dumps(card, ensure_ascii=False, indent=2)
@@ -196,7 +196,7 @@ def drive(run_id: str, worker_cmd: str = DEFAULT_WORKER, reviewer_cmd: str = DEF
 
         for t in ready[:3]:  # 每轮最多推 3 个任务，避免一次吃太多
             tid = t["task_id"]
-            # 该任务连续失败 2 次先停：不像舰桥那样死循环烧 token。
+            # 该任务连续失败 2 次先停：不死循环烧 token。
             with st.lock(_root()):
                 _s = st.load(run_id, _root())
             _t = next((x for x in _s.get("tasks", []) if x["id"] == tid), None)

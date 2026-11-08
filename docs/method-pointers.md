@@ -12,7 +12,7 @@
 | 审查 diff | `code-review` | Standards 与 Spec 双轴分开报，不代替机器门，不越出票面 AC |
 | 连续失败、原因不明 | `diagnosing-bugs` | 先造红得起来的反馈环；常规施工不走它 |
 | 术语 / ADR / GLOSSARY | `domain-modeling` | 不替项目做业务决策 |
-| 拆票 | `to-tickets` | 只出草案，开票归舰桥 |
+| 拆票 | `to-tickets` | 只出草案，开票归康娜 |
 | 写 SKILL / AGENTS 文档 | `writing-for-agents` | 不替代 `docs/skill-layout.md` 的八字段契约 |
 | 安全专项 | `security-review`（宿主自带；中央库没有时按缺件登记） | 无沙箱时最高结论 `needs_validation` |
 

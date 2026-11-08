@@ -89,7 +89,7 @@ def main() -> int:
         except Exception:
             pass
 
-    print(f"首版已出：{stats['flights']} 航班 / {stats['schedules']} 排班")
+    print(f"首版已出：{stats['flights']} 任务卡 / {stats['schedules']} 任务行")
     for sid, v in stats["sources"].items():
         print(f"  [{v['status']}] {sid}：{v['detail']}")
     print(f"人读面：{paths['index.html']['path']}")

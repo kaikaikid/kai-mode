@@ -4,7 +4,7 @@
 不写它是谁的岗位，也不写组织层级。
 
 每把武器在 frontmatter 里用 `metadata.weapon_of` 标明归哪个角色调用；
-角色正本住 `roles/canon/`，调用口径住项目里的 `.ai/BOOTSTRAP.md`。
+角色正本住 `roles/canon/`，调用口径住`<项目>/.ai/BOOTSTRAP.md`。
 主 AI 人格（康娜）可以自己派，用户点名也可以直接调。
 
 ## 清单

@@ -228,7 +228,7 @@
       "last_diff": "2026-10-24",
       "next_diff_due": "2026-11-23",
       "status": "watching",
-      "reason": "本仓塔台直推 dev、不走 PR；170 行里大半是 PR 描述与评审流程，暂不适用",
+      "reason": "本仓康娜直推 dev、不走 PR；170 行里大半是 PR 描述与评审流程，暂不适用",
       "deltas": [],
       "inherited": []
     },

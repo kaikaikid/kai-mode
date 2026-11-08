@@ -36,7 +36,7 @@
 
 ## 2. 宿主落法对照（装机前必须按 §1 复核，宿主会改）
 
-| 宿主 | 插件清单 | 技能落点 | 命令 | 新上下文 | 定时口 | 原生子代理（舰队必需） |
+| 宿主 | 插件清单 | 技能落点 | 命令 | 新上下文 | 定时口 | 原生子代理（执行内核必需） |
 |---|---|---|---|---|---|
 | Claude Code | `.claude-plugin/marketplace.json` | `.claude/skills/<名>/SKILL.md` 或中央库副本 | 无角色命令；`bridge` 为默认入口 | 原生子代理或独立进程 | 无内置；人工按需起 | 原生子代理（Agent/.claude/agents） |
 | Qoder | `.qoder-plugin/plugin.json` | `.qoder/skills/<名>/SKILL.md`（项目）／`~/.qoder/skills/`（用户） | 自然语言或显式提示词指向 `bridge` | 原生 subagent 或新会话 | 可不用；人工按需起 | 原生 subagent（.qoder/agents） |

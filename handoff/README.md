@@ -32,7 +32,7 @@ handoff/<槽>/<YYYY-MM>/YYYY-MM-DD-<票号|slug>-<类型>.md
 
 | 类型词 | 什么时候用 |
 |---|---|
-| `msg` | 角色之间通知一件事（「你的票我退了」「日表已改」） |
+| `msg` | 角色之间通知一件事（「你的票我退了」「任务表已改」） |
 | `ask` | 要另一个角色回答一个具体问题（一个文件只问一件事） |
 | `answer` | 回答某个 `ask`，文件名带被回答的件名 |
 | `notice` | 对下一轮生效的约定（「这几张票先别碰」） |
@@ -51,14 +51,18 @@ handoff/<槽>/<YYYY-MM>/YYYY-MM-DD-<票号|slug>-<类型>.md
 | `type` | 类型词，**必须等于文件名尾类型词** |
 | `ticket` | 票号（`#12`）；**没开票写 `-`** |
 | `date` | `YYYY-MM-DD` |
-| `owner_role` | **岗位**，管会话权责：`地勤`/`塔台`/`机长`/`副机长` |
-| `persona` | **人格**，管委派能力：`worker`/`reviewer`/... |
+| `owner_role` | **负责角色**，取八个 role_id 之一：`coordinator`（康娜）／`researcher`／`architect`／`engineer`／`designer`／`writer`／`archivist`／`reviewer` |
+| `persona` | **角色模板 id**：这次的会话按哪份模板跑（如 `engineer`／`reviewer`）。字段名是既有契约，不改名 |
+
+三个词别混：**主 AI 人格**＝康娜，唯一对话面，不填进这两个字段；**角色模板**＝稳定的身份、职责与方法
+（版本化正本，住 `roles/canon/`）；**角色实例**＝按某份模板起的一次任务会话，同模板可多实例、各自上下文隔离。
+`owner_role` 记「这张活归谁」，`persona` 记「按哪份模板跑」。取值域同一套 role_id，不再有岗位／人格两套说法。
 
 模板：`templates/HANDOFF-template.md`
 
 ## 4. 路径纪律
 
-- 一律**相对仓根**（`skills/tower/SKILL.md`）；**禁写 `D:\` `C:\`** 机器绝对路径
+- 一律**相对仓根**（`core/skills/bridge/SKILL.md`）；**禁写 `D:\` `C:\`** 机器绝对路径
 - 只放 `.md`；仓根 `.md` 只放项目级说明（如 `README`/`AGENTS`/`CHANGELOG`/`GLOSSARY`），业务正文别散落
 
 ## 5. 寿命

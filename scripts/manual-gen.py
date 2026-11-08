@@ -39,12 +39,12 @@ SELF_COMMAND_SKILLS = {
 }
 
 GROUP_BY_PLUGIN = {
-    "core": "舰桥与安装",
-    "engine": "舰队执行内核",
+    "core": "入口与装机",
+    "engine": "执行内核",
     "studio": "武器集",
-    "intake": "支持能力",
-    "ops": "支持能力",
-    "board": "支持能力",
+    "board": "任务看板",
+    "intake": "想法与收料",
+    "ops": "运维与事故",
 }
 
 
@@ -157,7 +157,7 @@ def main() -> int:
                 command = "手动技能"
             if not trigger:
                 if skill == "fleet":
-                    trigger = "由舰桥触发 /warp 或 /jump"
+                    trigger = "由康娜触发 /warp 或 /jump"
                 elif skill == "studio":
                     trigger = "随六个创作口令自动带入"
                 elif skill == "principles":
@@ -167,7 +167,9 @@ def main() -> int:
 
             rows.append(
                 {
-                    "group": GROUP_BY_PLUGIN.get(plugin["name"], "支持能力"),
+                    # 分组名以 marketplace 的 displayName 为正本（一个语义一个家）；
+                    # GROUP_BY_PLUGIN 只在老 marketplace 没写 displayName 时兜底。
+                    "group": plugin.get("displayName") or GROUP_BY_PLUGIN.get(plugin["name"], "支持能力"),
                     "plugin": plugin.get("displayName", plugin["name"]),
                     "pluginId": plugin["name"],
                     "skill": skill,

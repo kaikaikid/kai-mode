@@ -25,7 +25,7 @@ try:
 except Exception:
     pass
 
-LEGACY = {"航班信息", "set-航班信息"}
+LEGACY = {"航班信息", "set-航班信息"}  # canon:allow-retired 探测旧技能目录的特征名，读历史件用
 PERSONA_SKIP = {"README.md", "dispatch.md"}
 
 

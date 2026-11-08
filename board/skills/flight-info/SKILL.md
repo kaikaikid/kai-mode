@@ -12,26 +12,26 @@ description: >
   看板展示形态（Flight Information）：一块板 = 一个 SQLite 库 ＋ 一份板配置 ＋ 两个产物。
   采集各源 → 归一化落库 → 判阶段 → 出 board.json（AI 只读，≤25KB）与 index.html（人读）。
   模块化：db / stage / sources / collect / render / config 单向依赖，源按类型插件式增删。
-  可接 V2 执行内核的 `.coding/runs/*/state.json`（`coding-runs` 源），把 run 显示成航班。
+  可接执行内核的 `.coding/runs/*/state.json`（`coding-runs` 源），把 run 显示成任务卡。
   刷新靠 git 钩子打脏标记 ＋ 30 分钟脚本定时任务（`--max-age` 兜底 GitHub 侧更新）＋ 页面自刷新，
   零 token、跨 agent；任一源失败只降级点名，不整页崩。
-  触发：/航班信息、刷新航班信息板、看现在在飞什么、给这个仓装一块板。
+  触发：/航班信息（兼容口令）、刷新任务看板、看现在在施工什么、给这个仓装一块板。 <!-- canon:allow-retired -->
 version: 1.6.0
 updated: 2026-11-01
 allowed-tools: Bash(python:*) Bash(git:*) Read Write
 compatibility: Requires python3 (stdlib only), git
 metadata:
-  alias: 航班信息
+  alias: 航班信息  # 兼容口令：旧激活词，只作入口别名，不是现行口径 <!-- canon:allow-retired -->
 ---
 
-> **口径（2026-11-08 统一）**：本技能是**机场时期的看板展示层**，只读历史产物，
-> 不再产生新数据。词表里出现的「塔台／日表／车道／王牌」是**数据列名与历史叫法**，
-> 不是现行角色。现行口径只有一套：酒馆冒险团（主 AI 人格＝康娜 ＋ 七个可派发角色）
+> **口径（2026-11-08 统一）**：本技能是**历史时期的看板展示层**，只读历史产物，
+> 不再产生新数据。老文档里的比喻叫法是**数据列名与历史叫法**，不是现行角色。
+> 现行口径只有一套：酒馆冒险团（主 AI 人格＝康娜 ＋ 七个可派发角色）
 > ＋ 双仓通用规范，见仓根 `GLOSSARY.md`。
 
 # flight-info —— 看板展示形态
 
-> 「航班信息」是中文口令（`/航班信息`）；本技能正名 `flight-info`（Flight Information）。
+> 「航班信息」是中文兼容口令（`/航班信息`），用户还会敲；本技能正名 `flight-info`（Flight Information）。 <!-- canon:allow-retired -->
 > 只依赖 Python 标准库（`sqlite3` 在内），不引第三方。
 
 ## 1. 三层里它占哪层
@@ -42,7 +42,7 @@ metadata:
 | **展示层（本技能）** | 板库 `<output.root>/<板名>/`：`board.db` ＋ `board.json` ＋ `index.html` | 人读 HTML；AI 只读 `board.json` |
 | 触发层 | git 钩子（`post-commit`/`post-merge`）＋ 系统闹钟 | 零 token、跨 agent |
 
-**单向**：展示层只读各源、只写板目录；不改票面、不改日表、不写回卡片。
+**单向**：展示层只读各源、只写板目录；不改票面、不改任务表、不写回卡片。
 
 ## 2. 模块地图（依赖只能向下）
 
@@ -56,9 +56,9 @@ metadata:
 | `flightinfo/config.py` | 板配置加载 / 校验 / 定位落点 | 不许写盘 |
 | `schema/*.sql` | 表结构正本（可重复执行） | — |
 
-加一个**航班形态**的源（产出 `flights`/`schedules`）＝在 `sources/` 放一个实现 `collect(cfg, ctx)` 的模块 ＋ 在 `flightinfo/sources/__init__.py` 的 `REGISTRY` 加一行。**其他文件一个字都不用改。**
+加一个**任务行形态**的源（产出 `flights`/`schedules`）＝在 `sources/` 放一个实现 `collect(cfg, ctx)` 的模块 ＋ 在 `flightinfo/sources/__init__.py` 的 `REGISTRY` 加一行。**其他文件一个字都不用改。**
 
-加一个**非航班形态**的源（如 `handoff-index`，产出 `handoffs` 这类自定义键）要四件事：源模块返回该键 → `collect.run_sources` 汇总该键并调 `db.replace_*` 落库 → `db.py` 加读函数 ＋ `schema/00X-*.sql` 建表 → `render.py` 加段落。`run_sources` 是显式按键名取的（不是自动透传），所以键名要和落库/渲染函数对齐。
+加一个**非任务行形态**的源（如 `handoff-index`，产出 `handoffs` 这类自定义键）要四件事：源模块返回该键 → `collect.run_sources` 汇总该键并调 `db.replace_*` 落库 → `db.py` 加读函数 ＋ `schema/00X-*.sql` 建表 → `render.py` 加段落。`run_sources` 是显式按键名取的（不是自动透传），所以键名要和落库/渲染函数对齐。
 
 ## 3. 板配置字段
 
@@ -77,16 +77,16 @@ metadata:
 | `next_text` | 否 | `阶段 → 下一步文案` |
 | `direction` | 否 | `{template, variants[{when,template}]}`，占位符用 KPI 名 |
 | `summary` | 否 | `max_flights` / `max_bytes`（默认 25600）/ `flight_stages[]` / `flight_fields[]` |
-| `stale_after` | 否 | **停滞阈值按阶段分档**：`{"flying":3,"review":2,"to_ship":1,"_to":"stale"}`。命中即从该阶段降级成 `_to`（默认 `stale`），并在 `why` 里写明「原在飞 N 天没动」、`prev_stage` 留原阶段。不给某阶段设阈值＝该阶段永不判停滞。理由：待发货压一天就该喊，排队一周不动是常态——一刀切 3 天会把两类混成一锅。 |
-| `owner_infer` | 否 | 阶段 → 推断掌机（默认 `{"to_ship":"tower"}`：发货权归塔台独占）。推断出来的掌机在界面上带「推」角标——事实与推断不许长一个样。 |
+| `stale_after` | 否 | **停滞阈值按阶段分档**：`{"flying":3,"review":2,"to_ship":1,"_to":"stale"}`。命中即从该阶段降级成 `_to`（默认 `stale`），并在 `why` 里写明「原施工中 N 天没动」、`prev_stage` 留原阶段。不给某阶段设阈值＝该阶段永不判停滞。理由：待发货压一天就该喊，排队一周不动是常态——一刀切 3 天会把两类混成一锅。 |
+| `owner_infer` | 否 | 阶段 → 推断负责角色（默认 `{"to_ship":"tower"}`：发货权归康娜独占）。推断出来的负责角色在界面上带「推」角标——事实与推断不许长一个样。 |
 | `summary.ai_why_chars` | 否 | AI 面判据截断（默认 160）。全文在人面展开行里。 |
-| `summary.ai_note_chars` | 否 | AI 面排班备注截断（默认 160）。实测一条备注能到 2 千字，占 board.json 65% 预算、把航班挤到只剩 2 条。 |
+| `summary.ai_note_chars` | 否 | AI 面任务表备注截断（默认 160）。实测一条备注能到 2 千字，占 board.json 65% 预算、把任务卡挤到只剩 2 条。 |
 | `summary.ai_label_max` | 否 | AI 面每票标签上限（默认 6，超出折成「…共 N 枚」）。 |
-| `sources[].lanes` | 否 | **书写顺序＝页面上车道块的左右顺序**（如 `["main","deputy","second","ace"]` ⇒ 主机长在左）。以前按字母排，`deputy` 天然压到 `main` 前面，把"主道优先"读反了 |
-| `view.urgent` | 否 | 加急腿（王牌飞行员）：`{"lanes":["ace"],"label":"ace-queue"}`。两条信号**任一成立**即上「紧急任务」段——① 该车道的日表行；② 开放票带该标签。ace 车道的排班行**不进**「塔台排班」（免得挤占排班行数额度，额度见协议 §零）。王牌执行帽口径见协议 §一，按该口径判「超编」（授权并行后以人工核对为准）。空态自带亮起方式，不许一片空白让人以为坏了（D-05） |
+| `sources[].lanes` | 否 | **书写顺序＝页面上槽位块的左右顺序**（如 `["main","deputy","second","ace"]` ⇒ 主槽位在左）。以前按字母排，`deputy` 天然压到 `main` 前面，把"主槽位优先"读反了 |
+| `view.urgent` | 否 | 加急腿（加急委托）：`{"lanes":["ace"],"label":"ace-queue"}`。两条信号**任一成立**即上「紧急任务」段——① 该槽位的任务行；② 开放票带该标签。ace 槽位的任务行**不进**任务表段（免得挤占任务行数额度，额度见协议 §零）。加急委托执行帽口径见协议 §一，按该口径判「超编」（授权并行后以人工核对为准）。空态自带亮起方式，不许一片空白让人以为坏了（D-05） |
 | `view.focal_stage` | 否 | 哪一段着赭色，默认 `to_ship`；该段为 0 张时**不亮** |
 | `view.font_source` | 否 | `system`（默认，零网络）/ `web`（引 Google Fonts） |
-| `view.metrics[]` | 否 | `{key,label}` 次级读数；不写＝航班总数 / 今日收尾 / 今日排班 |
+| `view.metrics[]` | 否 | `{key,label}` 次级读数；不写＝任务卡总数 / 今日收尾 / 今日任务行 |
 | `view.labels` | 否 | 覆盖界面文案（`flights`/`ticket`/`content`/`stage`/`owner`/`lane`/`schedule`/`note`…） |
 | `view.eyebrow` | 否 | 页头小标前缀，缺省只有 `RUN <run_id>` |
 
@@ -95,20 +95,20 @@ metadata:
 | type | 参数 | 读什么 |
 |---|---|---|
 | `board-cards` | `path`（缺省 `paths.handoff_dir`） | `handoff/60-board/{open,claimed,done}/` 卡片的 frontmatter |
-| `tasks-table` | `path`（缺省 `paths.day_tables_dir`）/ `include`（默认 `*-main.md`／`*-deputy.md`／`*-second.md`／`*-ace.md`）/ `lanes`（默认 `main`／`deputy`／`second`／`ace`） | 日表 markdown：列表行 `- [ ] #12 事 \| 备注`，或表格 `\| 序 \| 票号 \| 里程碑 \| 一句话 \| 备注 \|`（两种都认，可混用） |
-| `git-worktrees` | `branch_prefixes`（默认 `["exec/","land/"]`；也认单个 `branch_prefix`；`hotfix/` 不在此源，走王牌日表） | 本地 worktree/分支 → 在飞证据 |
+| `tasks-table` | `path`（缺省 `paths.day_tables_dir`）/ `include`（默认 `*-main.md`／`*-deputy.md`／`*-second.md`／`*-ace.md`）/ `lanes`（默认 `main`／`deputy`／`second`／`ace`） | 任务表 markdown：列表行 `- [ ] #12 事 \| 备注`，或表格 `\| 序 \| 票号 \| 里程碑 \| 一句话 \| 备注 \|`（两种都认，可混用；历史表头别名也认） |
+| `git-worktrees` | `branch_prefixes`（默认 `["travel/","exec/","land/"]`；也认单个 `branch_prefix`；`hotfix/` 不在此源，走加急委托任务表） | 本地 worktree/分支 → 施工中证据 |
 | `github-issues` | `repo` / `state`（`open`\|`closed`\|`none`）/ `limit` / `include_closed`＋`closed_limit` | 票面（`gh` 不可用则降级）。`include_closed: true` 顺带拉已关票——残留 `exec/` 分支只有靠「已关」才能归到已收尾 |
-| `coding-runs` | 无 | **V2 执行内核的 run**：只读 `.coding/runs/*/state.json`，一个 run 一条航班；阶段用 `v2:queued`／`v2:flying`／`v2:review`／`v2:to_ship`／`v2:hold`／`v2:closed` 标签映射，板配置里这些 `label_equals` 规则必须排在 `no_issue`／`branch_exists` 之前；`uid` 用 `run:<run_id>`，不用 issue 号（同一 issue 可开多个 run）。**已装的老板加这个源时，必须同时把六条 `v2:*` 规则插到 `stage_rules` 开头**（`state_closed` 之后），否则 blocked run 会落到 `else → queued`，显示成「排队」而不是「挡住」 |
+| `coding-runs` | 无 | **执行内核的 run**：只读 `.coding/runs/*/state.json`，一个 run 一条任务卡；阶段用 `v2:queued`／`v2:flying`／`v2:review`／`v2:to_ship`／`v2:hold`／`v2:closed` 标签映射，板配置里这些 `label_equals` 规则必须排在 `no_issue`／`branch_exists` 之前；`uid` 用 `run:<run_id>`，不用 issue 号（同一 issue 可开多个 run）。**已装的老板加这个源时，必须同时把六条 `v2:*` 规则插到 `stage_rules` 开头**（`state_closed` 之后），否则 blocked run 会落到 `else → queued`，显示成「排队」而不是「挡住」 |
 | `handoff-index` | `path`（缺省 `paths.handoff_dir`）/ `slots` / `limit`（默认 8） | 交接日报索引：只读 `handoff/<槽>/<YYYY-MM>/*.md` 的文件名＋首行标题，**不搬正文**；渲染成可点相对链接的「交接日报索引」区 | **文件名日期两种写法都认**：`YYYY-MM-DD-*.md` 与跨角色件常用的 `HANDOFF-YYYYMMDD-*.md`；解析不到日期会沉到月初、被 `limit` 挤掉（2026-10-27 实测：两份 HANDOFF-* 在板上完全隐形）。月/日做合法性校验，`12345678.md` 一类不当日期 |
-| `ship-queue` | 无（读 `paths.state_dir`） | **塔台待发货队列**：读 `.git/<框架>/ship-queue.json`（正本写者＝塔台 `ship-queue.py sync`），出 pending/hotfix/invalid 计数与逐票行；文件不在 ⇒ `absent`（「塔台还没跑过 sync」），不猜。不产生航班记录，只供「待发货队列」区块 |
-| `tower-token` | 无（读 `paths.state_dir`） | **塔台令牌**：读同目录 `tower-token.json`，出持牌人／心跳龄／是否已被判死；只做状态条的一枚灯，不改任何阶段判据 |
+| `ship-queue` | 无（读 `paths.state_dir`） | **待发货队列（历史件）**：读 `.git/<框架>/ship-queue.json`，出 pending/hotfix/invalid 计数与逐票行；文件不在 ⇒ `absent`（「还没跑过 sync」），不猜。写者已随 V1 删除，本源只读老项目的遗留文件。不产生任务卡记录，只供「待发货队列」区块 |
+| `tower-token` | 无（读 `paths.state_dir`） | **运行令牌（历史件）**：读同目录 `tower-token.json`，写者已随 V1 删除；出持牌人／心跳龄／是否已被判死；只做状态条的一枚灯，不改任何阶段判据 |
 
 **`stage_rules.when` 取值**：`state_closed` `label_equals` `comment_contains` `branch_exists` `table_note_contains` `assignee_exists` `no_issue` `else`。
 `no_issue`＝有 `exec/` 分支但 GitHub 认不到这张票（`url` 空）⇒ 判「残留分支」。
-**判据按顺序取第一条命中**，所以 `no_issue` 必须排在 `branch_exists` **前面**，否则残留分支永远先被 `branch_exists` 判成在飞（2026-10-26 实测踩过）。
+**判据按顺序取第一条命中**，所以 `no_issue` 必须排在 `branch_exists` **前面**，否则残留分支永远先被 `branch_exists` 判成施工中（2026-10-26 实测踩过）。
 `why` 可带占位 `{branch}` `{note}` `{assignee}` `{label}`。
 
-**KPI 名**：`in_flight`（在飞+审查，**不含停滞**）`to_ship` `ready` `queued` `ready_plus_queued` `hold` `stale`（停滞）`unresolved`（残留分支）`closed` `closed_today` `open` `total` `planned`；
+**KPI 名**：`in_flight`（施工中+审查，**不含停滞**）`to_ship` `ready` `queued` `ready_plus_queued` `hold` `stale`（停滞）`unresolved`（残留分支）`closed` `closed_today` `open` `total` `planned`；
 外加 `by_stage`（`{阶段key: 张数}`，阶段轨用它，自定义阶段也认）。
 
 ## 4. 版式（`index.html`）
@@ -126,13 +126,13 @@ KPI 卡／图表／页脚时间戳方法论 ＋ `productivity/skills/dashboard.h
 | 圆角 | 列 12 / 卡 10 / 段卡 10 / 面板 14 / 胶囊 pill | — |
 | 壳几何 | 外留白 12 · 栏间 16 · 侧栏 216 · 内容上限 1400 · 卡片各自描边（KWP 用 1px 边框而非阴影分层） | — |
 | 左侧栏 | **纯导航**：品牌行 → 段导航 → 按阶段筛 → 栏底口径折叠。读数、源灯、搜索框不许进侧栏 | 用户令 |
-| 主区次序 | 页头（眉标＋h1＋快照龄＋未收尾读数）→ 工具排 → 降级旗 → Bento → **紧急任务（最前）** → **塔台排班（三车道，主左副中二副右）** → **待发货队列** → 航班（看板列／列表）→ 里程碑 → 交接日报 → 趋势 | 用户令 |
-| 看板列 | 列＝阶段链（排队／在飞／审查／待发货／已收尾）；链外阶段（停滞／卡点／可领／已派／残留）**只有真有票才成列**。列宽 280–340、列内滚动、列头带计数徽章；**卡只读不可拖**（板不改状态） | 用户令 |
-| 卡片 | 票号（有 `url` 出链）＋标题＋徽章 → 掌机＋阶段标签＋里程碑＋距今 → 判据一行（截 110 字） | — |
+| 主区次序 | 页头（眉标＋h1＋快照龄＋未收尾读数）→ 工具排 → 降级旗 → Bento → **紧急任务（最前）** → **任务表（三槽位，主左副中次右）** → **待发货队列** → 任务看板（看板列／列表）→ 里程碑 → 交接日报 → 趋势 | 用户令 |
+| 看板列 | 列＝阶段链（排队／施工中／审查／待发货／已收尾）；链外阶段（停滞／卡点／可领／已派／残留）**只有真有票才成列**。列宽 280–340、列内滚动、列头带计数徽章；**卡只读不可拖**（板不改状态） | 用户令 |
+| 卡片 | 票号（有 `url` 出链）＋标题＋徽章 → 负责角色＋阶段标签＋里程碑＋距今 → 判据一行（截 110 字） | — |
 | 视图切换 | 工具排「看板／列表」两档，选择存 `localStorage`；列表档＝旧四列表格（含展开行） | KWP `.view-toggle` |
 | 工具排 | 搜索（⌘K）· 看板/列表 · 展开细节 · 外观 · 刷新。**带底件只 1 枚** | — |
-| 待发货队列 | 读 `paths.state_dir/ship-queue.json`（塔台写）；每行＝票号／ac／sha／分支／挂起原因。读不到明说读不到，不装空 | 用户令 |
-| 状态条 | 底部固定：源健康灯 ＋ **塔台灯**（持牌人＋心跳龄，读 `paths.state_dir/tower-token.json`）＋「只读各源」 | — |
+| 待发货队列 | 读 `paths.state_dir/ship-queue.json`（历史件，写者已随 V1 删除）；每行＝票号／ac／sha／分支／挂起原因。读不到明说读不到，不装空 | 用户令 |
+| 状态条 | 底部固定：源健康灯 ＋ **令牌灯**（持牌人＋心跳龄，读 `paths.state_dir/tower-token.json`）＋「只读各源」 | — |
 | 告警色 | 小字不直接染红（#C4553F 对白底不足 4.5:1）：停滞交给红点，快照过期交给下划条 | WCAG AA |
 | 自刷新 | 三档：① http 下每 60 秒比对 `board.json.generated_at`，变了就重载；② 手动「刷新」按钮重读磁盘；③ 重建由钩子/定时器/`refresh.vbs` 触发。页头常驻「快照 … · N 分钟前」，超 15 分钟加下划条 | 用户令 |
 | 零网络 | 默认 `font_source: system`：不外链字体与任何资源，离线可看；筛选态走 URL hash；只有「看板/列表」视图偏好写 `localStorage`（读取失败不影响功能） | — |
@@ -196,7 +196,7 @@ python scripts/refresh_if_dirty.py --repo-root <仓根> --config <板配置> [--
 
 - **`0` 只表示「板生成了」，不代表数据全好** —— 判据读 `board.json` 的 `sources`（`ok`/`absent`/`skipped`/`fail`），别拿退出码当绿灯。
 - 单源炸 ⇒ 该源记 `fail` 并点名，其余照出板。
-- 票源塌 ⇒ 退化成只画日表与卡片里的票。
+- 票源塌 ⇒ 退化成只画任务表与卡片里的票。
 - 摘要层超 `max_bytes` ⇒ 从尾部丢票并置 `counts.flights_truncated`。**这条只管 AI 面**：人面（`index.html`）走 `all_open`，未收尾全量出、不截断。以前两本账混在一起，人的屏幕被 AI 的上下文预算管着——正本只画 12 行、页脚小字写「余量见 board.json」，而 board.json 里也只有那 12 行。
 - 字节预算**按写盘形态量**（`indent=1`）。以前按紧凑 JSON 量、按美化写盘，量少约 20%，实测超预算 2.3 KB 还自认合规。
 - git 钩子**只打标记**，退出码恒 0，绝不阻塞 commit。
@@ -204,9 +204,9 @@ python scripts/refresh_if_dirty.py --repo-root <仓根> --config <板配置> [--
 
 ## 7. 权限与禁区
 
-**可以**：读日表、卡片、票面、分支；写板目录（库、两个产物、配置留档）；装/卸自己的 git 钩子。
+**可以**：读任务表、卡片、票面、分支；写板目录（库、两个产物、配置留档）；装/卸自己的 git 钩子。
 
-**不可以**：写票面/评论/标签；写日表（塔台唯一写者）；写 `handoff/60-board/` 卡片（改用 `scripts/handoff-board.py`）；
+**不可以**：写票面/评论/标签；写任务表（康娜唯一写者）；写 `handoff/60-board/` 卡片（改用 `scripts/handoff-board.py`）；
 改目标仓源码；把 `index.html` 当数据源解析（AI 只读 `board.json`）。
 
 ## 8. 验证命令

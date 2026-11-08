@@ -66,7 +66,7 @@ def new_run_id() -> str:
 
 
 def new_fleet_id() -> str:
-    """舰队 ID：宿主前缀 + 时间戳 + 随机后缀（谁拉舰队就谁的 ID）。"""
+    """run 集合 ID：宿主前缀 + 时间戳 + 随机后缀（谁拉起就谁的 ID）。"""
     suffix = "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(4))
     return f"{host_id()}-{int(time.time()):x}{suffix}"
 
@@ -126,7 +126,7 @@ def migrate(state: dict[str, Any]) -> dict[str, Any]:
     v = int(state.get("schema_version", 0))
     if v > SCHEMA_VERSION:
         raise RuntimeError(
-            f"state schema {v} is newer than this travel ({SCHEMA_VERSION}); upgrade fleet first"
+            f"state schema {v} is newer than this build ({SCHEMA_VERSION}); upgrade fleet first"
         )
     # v0/v1 -> v2: add fleet fields
     if "fleet_id" not in state:

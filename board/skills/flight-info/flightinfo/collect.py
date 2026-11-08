@@ -13,10 +13,10 @@ from .sources import get as get_source
 MERGE_FIRST = ("title", "ticket", "assignee", "milestone", "url",
                "owner", "persona", "last_comment", "table_note")
 
-# 掌机归属三源，按「事实优先」排：日表车道 → 票面指派 → 阶段推断。
-# 推断只给「塔台独占发货」这类协议事实用，且必须标 owner_from=infer，
+# 负责角色归属三源，按「事实优先」排：任务表槽位 → 票面指派 → 阶段推断。
+# 推断只给「康娜独占发货」这类协议事实用，且必须标 owner_from=infer，
 # 界面上要能看出这一格是推出来的、不是有人认领的。
-DEFAULT_OWNER_INFER = {"to_ship": "tower"}
+DEFAULT_OWNER_INFER = {"to_ship": "tower"}   # 塔台 是历史写者名的接口字面（库与配置的键），不许改；显示名按 role_labels 走  # canon:allow-retired
 
 
 def ticket_key(value) -> str:
@@ -28,12 +28,12 @@ def ticket_key(value) -> str:
 
 
 def lane_index(schedules: list[dict]) -> dict[str, str]:
-    """票号 → 车道。每条车道各取自己最新那张日表。
+    """票号 → 槽位。每个槽位各取自己最新那张任务表。
 
-    2026-10-29 实测踩过：原实现取**全局** max(table_date)，于是只要有一条车道
-    的表更旧，它整条车道的行都被筛掉（Kai-vass：主/副道写 10-29，王牌道停在
-    10-27 ⇒ 王牌道的票全丢了归属，看着像"ACE 手上没活"）。
-    各车道的日表各自独立推进，按车道分组取最新才对。
+    2026-10-29 实测踩过：原实现取**全局** max(table_date)，于是只要有一个槽位的
+    表更旧，它整个槽位的行都被筛掉（Kai-vass：主/副槽位写 10-29，加急委托槽位停在
+    10-27 ⇒ 加急委托的票全丢了归属，看着像"加急委托手上没活"）。
+    各槽位的任务表各自独立推进，按槽位分组取最新才对。
     """
     if not schedules:
         return {}
@@ -43,7 +43,7 @@ def lane_index(schedules: list[dict]) -> dict[str, str]:
         d = s.get("table_date") or ""
         if d > latest.get(lane, ""):
             latest[lane] = d
-    # 同一票出现在多条车道的最新表里 → 取日表日期较新的那条（更新的排班＝现在的归属）
+    # 同一票出现在多个槽位的最新表里 → 取任务表日期较新的那条（更新的任务行＝现在的归属）
     best: dict[str, tuple[str, str]] = {}
     for s in schedules:
         lane = s.get("lane") or ""
@@ -117,7 +117,7 @@ def _evidence_kinds(rec: dict) -> list[tuple[str, str]]:
 
 def run_sources(config: dict, ctx: dict, conn, run_id: str) -> dict:
     """跑全部源，返回 {"sources": {...}, "flights": n, "schedules": n,
-    "handoffs": n}。源除 flights/schedules 外可带 handoffs（非航班形态的记录）。"""
+    "handoffs": n}。源除 flights/schedules 外可带 handoffs（非任务行形态的记录）。"""
     all_records, all_schedules, all_handoffs, all_coding, report = [], [], [], [], {}
     runtime = {"queue": None, "tower": None}
 
@@ -189,7 +189,7 @@ def run_sources(config: dict, ctx: dict, conn, run_id: str) -> dict:
               "url": rec.get("url")}
         st, why = stage.decide(rules, ev)
         st = st or "undefined"
-        # 二道闸：有在飞证据但已经不动了 → 停滞；别让"挂着分支"冒充"有人在敲"
+        # 二道闸：有施工中证据但已经不动了 → 停滞；别让"挂着分支"冒充"有人在敲"
         st, why, prev, days = stage.apply_stale(st, why, rec.get("updated_at"), stale_after)
         if st != prev and prev:
             stale_n += 1

@@ -20,7 +20,7 @@
   <main class="page">
     <p class="kicker">上手</p>
     <h1>一句话，变成一张有人负责的票</h1>
-    <p class="lede">kai-mode 是一套“接活、排班、施工、审查、发货”的分工办法。你只需要说清楚想要什么；谁来做、谁来查、什么时候该你拍板，它都写好了。</p>
+    <p class="lede">kai-mode 是一套“接活、任务表、施工、审查、发货”的分工办法。你只需要说清楚想要什么；谁来做、谁来查、什么时候该你拍板，它都写好了。</p>
 
     <div class="callout">
       <span class="label">先说清楚</span>
@@ -44,9 +44,9 @@
     </div>
 
     <h2>谁把活交给谁</h2>
-    <p>你只跟舰桥说话：它把需求整理成票、开 run、派子会话施工与独立审查，最后统一发货。中间任何一步卡住，只停当前 run，不会把整条线拖垮。</p>
+    <p>你只跟康娜说话：它把需求整理成票、开 run、派子会话施工与独立审查，最后统一发货。中间任何一步卡住，只停当前 run，不会把整条线拖垮。</p>
 
-    <svg class="diagram" viewBox="0 0 900 250" role="img" aria-label="人和舰桥怎么接力：你说需求，舰桥开票并开 run，子会话施工，门卫独立审查，舰桥发货">
+    <svg class="diagram" viewBox="0 0 900 250" role="img" aria-label="人和康娜怎么接力：你说需求，康娜开票并开 run，子会话施工，门卫独立审查，康娜发货">
       <defs>
         <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
           <path d="M0,0 L8,4 L0,8 z" fill="var(--accent)"/>
@@ -58,12 +58,12 @@
       <text class="d-s" x="80" y="102" text-anchor="middle">说想要什么</text>
 
       <rect class="d-box" x="180" y="50" width="120" height="78" rx="10"/>
-      <text class="d-t" x="240" y="80" text-anchor="middle">舰桥</text>
+      <text class="d-t" x="240" y="80" text-anchor="middle">康娜</text>
       <text class="d-s" x="240" y="102" text-anchor="middle">整理成票</text>
 
       <rect class="d-box" x="340" y="50" width="120" height="78" rx="10"/>
       <text class="d-t" x="400" y="80" text-anchor="middle">开 run</text>
-      <text class="d-s" x="400" y="102" text-anchor="middle">排班 / 发货</text>
+      <text class="d-s" x="400" y="102" text-anchor="middle">任务表 / 发货</text>
 
       <rect class="d-box" x="500" y="50" width="120" height="78" rx="10"/>
       <text class="d-t" x="560" y="80" text-anchor="middle">施工 / 审查</text>
@@ -75,7 +75,7 @@
 
       <text class="d-l" x="160" y="42" text-anchor="middle">一句话</text>
       <text class="d-l" x="320" y="42" text-anchor="middle">开票</text>
-      <text class="d-l" x="480" y="42" text-anchor="middle">排班</text>
+      <text class="d-l" x="480" y="42" text-anchor="middle">任务表</text>
       <text class="d-l" x="640" y="42" text-anchor="middle">派活</text>
 
       <path class="d-a" d="M140,89 H180" marker-end="url(#arrow)"/>
@@ -84,18 +84,18 @@
       <path class="d-a" d="M620,89 H660" marker-end="url(#arrow)"/>
       <path class="d-a" d="M720,128 V200 H400 V128" marker-end="url(#arrow)"/>
       <text class="d-l" x="560" y="192" text-anchor="middle">verdict=pass → 待发货</text>
-      <text class="d-l" x="450" y="232" text-anchor="middle">只有舰桥能合并、推送、关票；施工和审查都不碰。</text>
+      <text class="d-l" x="450" y="232" text-anchor="middle">只有康娜能合并、推送、关票；施工和审查都不碰。</text>
     </svg>
 
     <h2>两个体系，各管一摊</h2>
     <div class="cards">
       <div class="card">
-        <h3>舰队执行体系 · 管代码和工程</h3>
-        <p>用票来推进：开票 → 排班 → 施工 → 审查 → 发货。适合修功能、改文档、做发布。</p>
+        <h3>执行内核 · 管代码和工程</h3>
+        <p>用票来推进：开票 → 任务表 → 施工 → 审查 → 发货。适合修功能、改文档、做发布。</p>
         <p><a href="tickets.html">从“开票与施工”开始 →</a></p>
       </div>
       <div class="card">
-        <h3>文娱集团 · 管作品和创作</h3>
+        <h3>武器集 · 管作品和创作</h3>
         <p>用项目来推进：企划 → 主笔 / 主美 / 导演 → 终审 → 宣发。适合绘本、文案、动画、海报。</p>
         <p><a href="studio.html">从“创作体系”开始 →</a></p>
       </div>
@@ -126,7 +126,7 @@
       <summary>给技术同事：这套东西由什么组成</summary>
       <div class="fold-body">
         <p>本仓是宿主装机正本：7 个插件、35 个自动技能；执行内核正本在 <code>v2/skills/coding/SKILL.md</code>。</p>
-        <p>插件：<code>core</code>（舰桥 / 安装 / 交接 / 七原则）、<code>v2</code>（执行内核）、<code>methods</code>（方法库）、<code>studio</code>（文娱六岗位）、<code>intake</code>（想法池）、<code>ops</code>（事故与运维）、<code>board</code>（看板）。</p>
+        <p>插件：<code>core</code>（康娜 / 安装 / 交接 / 七原则）、<code>v2</code>（执行内核）、<code>methods</code>（方法库）、<code>studio</code>（武器六岗位）、<code>intake</code>（想法池）、<code>ops</code>（事故与运维）、<code>board</code>（看板）。</p>
         <p>完整结构、装配链路和记录面，见 <a href="plugins.html">插件与装配</a>；一张图看全，见 <a href="assets/full-map.html">完整技术图</a>。</p>
       </div>
     </details>

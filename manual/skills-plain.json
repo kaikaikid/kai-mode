@@ -1,98 +1,78 @@
 {
-  "ace": {
-    "oneLine": "加急通道：小活直接修，大活补票后修，不占正常排队。",
-    "trigger": "/ace；说「王牌」"
+  "bridge": {
+    "oneLine": "康娜的方法正文与默认入口：接单、判断、清场、施工、发货、回报。",
+    "trigger": "默认入口；/bridge；说「开工」「发货」「清理脏文件」"
   },
-  "copilot": {
-    "oneLine": "副机长：自己带一张日表，和机长并行跑票。",
-    "trigger": "/copilot；说「副机长」"
-  },
-  "director": {
-    "oneLine": "导演：分镜、剪辑、配音，管成片节奏。",
-    "trigger": "/director；说「导演」"
-  },
-  "final-review": {
-    "oneLine": "终审：独立验收，只判不修，出 pass/fail。",
-    "trigger": "/review；说「终审」"
-  },
-  "flight-info": {
-    "oneLine": "看板：把票、日表、交接和 Issue 汇总成一页。",
-    "trigger": "/航班信息；说「看现在在飞什么」"
-  },
-  "ground-crew": {
-    "oneLine": "地勤：把想法整理成一张能执行的票。",
-    "trigger": "/ground-crew；说「地勤」"
-  },
-  "harness-audit": {
-    "oneLine": "给技能和文档做体检，找重叠、过期和该退役的东西。",
-    "trigger": "说「体检」；手动安装"
-  },
-  "incident-response": {
-    "oneLine": "事故处置：先分级止损，再复盘补票。",
-    "trigger": "/incident；说「出事了」"
-  },
-  "kai-boom-idea-log": {
-    "oneLine": "记想法：全文收进想法池，不开票。",
-    "trigger": "说「记个想法」；/idea"
-  },
-  "kai-handoff": {
-    "oneLine": "把当前会话压成一份交接文档，下一棒能接着跑。",
-    "trigger": "/handoff；说「写交接」"
+  "fleet": {
+    "oneLine": "执行内核：一张票一个 run，宿主子代理施工，门点验收。",
+    "trigger": "由康娜调用；说「开个 run」「跑起来」"
   },
   "staff": {
-    "oneLine": "总入口：把一句话需求拆成票，再交给对应角色。",
-    "trigger": "由舰桥调用；说「先规划」「想清楚再做」"
+    "oneLine": "参谋部：把模糊需求收敛成规划表与拆票草案。",
+    "trigger": "由康娜调用；说「先规划」「想清楚再做」"
   },
-  "lead-artist": {
-    "oneLine": "主美：风格板、角色、版面、成稿。",
-    "trigger": "/artist；说「主美」"
+  "pk": {
+    "oneLine": "通用对比分析：多对象维度化对比，出图表与结论。",
+    "trigger": "/pk；说「对比」「比一比」"
   },
-  "lead-writer": {
-    "oneLine": "主笔：故事、剧本、台词、文案。",
-    "trigger": "/writer；说「主笔」"
-  },
-  "loop": {
-    "oneLine": "机长每张票的固定流程（施工→审查→待发货），不是口令。",
-    "trigger": "随 /pilot、/copilot、/second-officer、/ace 自动带入"
-  },
-  "marketing": {
-    "oneLine": "宣发：物料、渠道、投放与数据回收。",
-    "trigger": "/marketing；说「宣发」"
-  },
-  "pilot": {
-    "oneLine": "机长：带施工和审查，滚动跑完自己的日表。",
-    "trigger": "/pilot；说「机长」"
-  },
-  "producer": {
-    "oneLine": "企划：立项、排期、预算、指派负责人。",
-    "trigger": "/producer；说「企划」"
-  },
-  "runbook": {
-    "oneLine": "把重复操作写成能照着跑的步骤。",
-    "trigger": "/runbook；说「写个 runbook」"
-  },
-  "second-officer": {
-    "oneLine": "二副：第三条正常车道，和机长、副机长并行。",
-    "trigger": "/second-officer；说「二副」"
+  "flight-info": {
+    "oneLine": "任务看板：把票、run、交接汇总成一页，给人和 AI 各一份。",
+    "trigger": "/flight-info；说「看看板」「现在到哪了」"
   },
   "set-kai-mode": {
     "oneLine": "安装与体检：先看缺什么，只装缺的。",
     "trigger": "/set-kai-mode；说「装一下」"
   },
-  "studio": {
-    "oneLine": "文娱集团的共享规则：六道门、记录面、接口卡。",
-    "trigger": "随六个创作口令自动带入"
-  },
-  "tower": {
-    "oneLine": "塔台：排班、发货、合并、推送、关票；只有它能做这些。",
-    "trigger": "/tower；说「塔台」；定时器也会唤醒"
-  },
   "upgrade-kai-mode": {
     "oneLine": "把已经装好的 kai-mode 升到新版：先出清单，再备份、回写、验收。",
     "trigger": "/upgrade-kai-mode；说「升级 kai-mode」"
   },
+  "harness-audit": {
+    "oneLine": "给技能和文档做体检，找重叠、过期和该退役的东西。",
+    "trigger": "说「体检」；手动安装"
+  },
+  "kai-handoff": {
+    "oneLine": "把当前会话压成一份交接文档，下一棒能接着跑。",
+    "trigger": "/handoff；说「写交接」"
+  },
+  "kai-boom-idea-log": {
+    "oneLine": "记想法：全文收进想法池，不开票。",
+    "trigger": "说「记个想法」；/idea"
+  },
+  "incident-response": {
+    "oneLine": "事故处置：先分级止损，再复盘补票。",
+    "trigger": "/incident；说「出事了」"
+  },
+  "runbook": {
+    "oneLine": "把重复操作写成能照着跑的步骤。",
+    "trigger": "/runbook；说「写个 runbook」"
+  },
   "principles": {
     "oneLine": "七条原则合集：一次一问、只问可见与红线、能测就别问、一个语义一个家、缺件登记、仪式随规模、输出挑载体。",
     "trigger": "自动带入"
+  },
+  "producer": {
+    "oneLine": "武器｜立项排期：把创作委托拆成阶段、排期与验收标准。",
+    "trigger": "/producer；说「立项」「排期」"
+  },
+  "lead-writer": {
+    "oneLine": "武器｜剧本文案：故事骨架、剧本、台词、文案、字幕。",
+    "trigger": "/writer；说「写稿」「改文案」"
+  },
+  "lead-artist": {
+    "oneLine": "武器｜视觉成稿：风格板、角色、色彩、版面、成稿。",
+    "trigger": "/artist；说「画」「风格板」「配色」"
+  },
+  "director": {
+    "oneLine": "武器｜分镜成片：分镜、节奏、声音、成片。",
+    "trigger": "/director；说「分镜」「剪辑」「成片」"
+  },
+  "final-review": {
+    "oneLine": "武器｜交付终审：独立验收，只判不修，出 pass/fail。",
+    "trigger": "/review；说「终审」「验收」"
+  },
+  "marketing": {
+    "oneLine": "武器｜物料投放：包装成能到达受众的物料，排渠道、回收数据。",
+    "trigger": "/marketing；说「宣发」「投放」"
   }
 }

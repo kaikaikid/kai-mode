@@ -7,7 +7,7 @@
 约定：
 - 一板一库：`<板库根>/<板名>/board.db`
 - 每次采集一个 `run_id`（ISO 时间戳），同一个 run 内的行共享它
-- `v_flight` 视图只认「最新 run 出现过的航班」，避免残留旧票
+- `v_flight` 视图只认「最新 run 出现过的任务卡」，避免残留旧票
 """
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ DB_FILENAME = "board.db"
 # 所以补列走 Python 侧幂等确保（PRAGMA 查一下再决定加不加），不写进 .sql。
 ENSURE_COLUMNS = {
     "flight": (
-        ("owner_from", "TEXT"),     # lane | assignee | infer | ""（掌机是事实还是推断）
+        ("owner_from", "TEXT"),     # lane | assignee | infer | ""（负责角色是事实还是推断）
         ("prev_stage", "TEXT"),     # 被降级成「停滞」前原本在哪一阶段
         ("stale_days", "INTEGER"),  # 距上次更新几天（渲染期也会现算，这里留痕）
     ),
@@ -106,7 +106,7 @@ def record_source(conn, run_id, source_id, type_, status, row_count=0, detail=No
     )
 
 
-# ── 航班写入 ────────────────────────────────────────────────────────
+# ── 任务卡写入 ──────────────────────────────────────────────────────
 
 _FLIGHT_COLS = (
     "uid", "ticket", "title", "stage", "stage_label", "owner", "persona",
@@ -157,7 +157,7 @@ def add_evidence(conn, uid: str, kind: str, value: str | None, run_id: str) -> N
 
 
 def replace_schedules(conn, run_id: str, rows: list[dict]) -> int:
-    """一轮采集的日表快照整体替换（幂等，不累加）。"""
+    """一轮采集的任务表快照整体替换（幂等，不累加）。"""
     conn.execute("DELETE FROM schedule_row WHERE run_id = ?", (run_id,))
     for i, r in enumerate(rows, 1):
         conn.execute(

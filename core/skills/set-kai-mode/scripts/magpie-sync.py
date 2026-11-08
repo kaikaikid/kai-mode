@@ -55,16 +55,18 @@ REGISTRY_SKILLS_DEFAULT = {
     "loop_dir": os.path.join(".ai", "skills", "loop"),
 }
 # 老根目录回落清单（无 registry.json 时用；值＝上面缺省布局的逐名展开）。
+# 「地勤／塔台／机长／副机长／二副／航班信息」是 V1 时代的目录名，**不是现行口径**：  # canon:allow-retired
+# 这张表是退役 V1 装机面的反查表，uninstall-v1.py 与 retire_registry_entries() 靠它找旧目录。
 FAMILIES = {
     "kai-mode": os.path.join(".ai", "skills", "project-skills", "kai-mode"),
     "set-kai-mode": os.path.join(".ai", "skills", "project-skills", "set-kai-mode"),
     "loop": os.path.join(".ai", "skills", "loop"),
-    "地勤": os.path.join(".ai", "skills", "project-skills", "地勤"),
-    "塔台": os.path.join(".ai", "skills", "project-skills", "塔台"),
-    "机长": os.path.join(".ai", "skills", "project-skills", "机长"),
-    "副机长": os.path.join(".ai", "skills", "project-skills", "副机长"),
-    "二副": os.path.join(".ai", "skills", "project-skills", "二副"),
-    "航班信息": os.path.join(".ai", "skills", "project-skills", "航班信息"),
+    "地勤": os.path.join(".ai", "skills", "project-skills", "地勤"),  # canon:allow-retired
+    "塔台": os.path.join(".ai", "skills", "project-skills", "塔台"),  # canon:allow-retired
+    "机长": os.path.join(".ai", "skills", "project-skills", "机长"),  # canon:allow-retired
+    "副机长": os.path.join(".ai", "skills", "project-skills", "副机长"),  # canon:allow-retired
+    "二副": os.path.join(".ai", "skills", "project-skills", "二副"),  # canon:allow-retired
+    "航班信息": os.path.join(".ai", "skills", "project-skills", "航班信息"),  # canon:allow-retired
 }
 # 正本根认两种布局：项目仓落点（实例 registry.skills，缺省同上）与框架仓 `skills/<名>`。
 ANCHOR_MARKERS = (
@@ -106,15 +108,17 @@ BACKUP_DIR = ".backups"
 BACKUP_KEEP = 5
 RETIRED_DIR = ".retired"
 # 角色改名的一次性迁移：旧中文目录 → 新英文目录。只在显式 --retire-legacy 时移动/摘链。
+# 键是历史目录名，**不是现行口径**；「航班信息」同时是 flight-info 的中文兼容口令，  # canon:allow-retired
+# 所以它既在退役表里、也仍是有效入口——这是一处已知的语义重叠，别把任一侧单独挪走。
 LEGACY_ALIASES = {
-    "塔台": "tower",
-    "机长": "pilot",
-    "副机长": "copilot",
-    "二副": "second-officer",
-    "第二副机长": "second-officer",
-    "地勤": "ground-crew",
-    "航班信息": "flight-info",
-    "set-航班信息": "flight-info",
+    "塔台": "tower",  # canon:allow-retired
+    "机长": "pilot",  # canon:allow-retired
+    "副机长": "copilot",  # canon:allow-retired
+    "二副": "second-officer",  # canon:allow-retired
+    "第二副机长": "second-officer",  # canon:allow-retired
+    "地勤": "ground-crew",  # canon:allow-retired
+    "航班信息": "flight-info",  # canon:allow-retired
+    "set-航班信息": "flight-info",  # canon:allow-retired
 }
 
 

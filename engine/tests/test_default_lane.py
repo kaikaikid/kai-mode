@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """ADR-0032：默认档位的机械回归。
 
-命令默认 1 船、adopt 不占第二槽、scheduler 旧状态兜底也是 1。
+命令默认 1 个 run、adopt 不占第二槽、scheduler 旧状态兜底也是 1。
 不建真 worktree，只用源码文本与纯函数检查。
 """
 
@@ -27,7 +27,7 @@ def test_warp_default_is_one_ship():
 
 def test_cli_help_says_default_one_ship():
     text = _kernel_text("cli.py")
-    assert text.count('help="ship count 1-3 (default 1)"') == 3
+    assert text.count('help="run count 1-3 (default 1)"') == 3
     assert "(default 2)" not in text
 
 
@@ -37,7 +37,7 @@ def test_adopt_uses_one_ship_limit():
 
 
 def test_scheduler_missing_ship_limit_defaults_to_one(monkeypatch):
-    """旧 state 无 ship_limit 时只允许一艘在飞；第二艘排队。"""
+    """旧 state 无 ship_limit 时只允许一个 run 施工中；第二个排队。"""
     monkeypatch.setattr(scheduler.st, "load", lambda *_args, **_kw: {"phase": "done"})
     monkeypatch.setattr(scheduler, "slot_usage",
                         lambda *_args, **_kw: {"normal": 0, "urgent": 0, "sessions": 0})

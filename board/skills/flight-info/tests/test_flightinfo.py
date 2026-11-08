@@ -19,7 +19,7 @@ from flightinfo.sources import board_cards, handoff, issues, tasks  # noqa: E402
 RULES = [
     {"when": "state_closed", "stage": "closed"},
     {"when": "label_equals", "value": "hold", "stage": "hold", "why": "标签：hold"},
-    {"when": "table_note_contains", "value": "施工中", "stage": "flying", "why": "日表：{note}"},
+    {"when": "table_note_contains", "value": "施工中", "stage": "flying", "why": "任务表：{note}"},
     {"when": "branch_exists", "stage": "flying", "why": "分支 {branch}"},
     {"when": "assignee_exists", "stage": "flying", "why": "已指派 {assignee}"},
     {"when": "else", "stage": "queued", "why": ""},
@@ -98,52 +98,52 @@ class TestTasks(unittest.TestCase):
             self.assertEqual(res["status"], "absent")
 
     def test_pipe_table_rows(self):
-        """五列表格日表（塔台写法）必须读出票，不能只读出排班。"""
+        """五列表格任务表必须读出票，不能只读出任务行。"""
         with tempfile.TemporaryDirectory() as repo:
             d = os.path.join(repo, "tasks")
             os.makedirs(d)
             with open(os.path.join(d, "2026-10-25-main.md"), "w", encoding="utf-8") as f:
-                f.write("# 任务表 · 主机长\n\n"
-                        "| 序 | 票号 | 里程碑 | 一句话 | 塔台备注 |\n"
+                f.write("# 任务表 · engineer\n\n"
+                        "| 序 | 票号 | 里程碑 | 一句话 | 塔台备注 |\n"  # 历史表头别名 fixture，读老表要认  # canon:allow-retired
                         "|---|---|---|---|---|\n"
                         "| 1 | #1711 | ② 记忆网络 | 云模型通道接线 | **在制**：别关 |\n"
                         "| 2 | #1890 | 横切治理 | 假阳收口 | 新派·可开工 |\n")
             res = tasks.collect({"include": ["*-main.md"], "lanes": ["main"]},
                                 {"repo_root": repo, "paths": {"day_tables_dir": "tasks"}})
-            self.assertEqual(res["detail"], "2 行排班 / 2 张票")
+            self.assertEqual(res["detail"], "2 行任务 / 2 张票")
             first = res["flights"][0]
             self.assertEqual((first["ticket"], first["title"], first["milestone"], first["owner"]),
                              ("#1711", "云模型通道接线", "② 记忆网络", "main"))
             self.assertEqual(res["schedules"][0]["note"], "**在制**：别关")
 
     def test_ace_hotfix_row(self):
-        """王牌热修行（H-日期-序号）也要进板，不能当无票号的杂活丢掉。"""
+        """加急委托热修行（H-日期-序号）也要进板，不能当无票号的杂活丢掉。"""
         self.assertEqual(tasks._parse_line("H-20261027-1 修文案 | 施工中"),
                          ("#H-20261027-1", "修文案", "施工中"))
         with tempfile.TemporaryDirectory() as repo:
             d = os.path.join(repo, "tasks")
             os.makedirs(d)
             with open(os.path.join(d, "2026-10-27-ace.md"), "w", encoding="utf-8") as f:
-                f.write("| 序 | 票号 | 里程碑 | 一句话 | 王牌备注 |\n"
+                f.write("| 序 | 票号 | 里程碑 | 一句话 | 王牌备注 |\n"  # 历史表头别名 fixture，读老表要认  # canon:allow-retired
                         "|---|---|---|---|---|\n"
                         "| 1 | H-20261027-1 | 加急通道 | 修文案 | 施工中 |\n")
             res = tasks.collect({"include": ["*-ace.md"], "lanes": ["ace"]},
                                 {"repo_root": repo, "paths": {"day_tables_dir": "tasks"}})
-            self.assertEqual(res["detail"], "1 行排班 / 1 张票")
+            self.assertEqual(res["detail"], "1 行任务 / 1 张票")
             self.assertEqual(res["flights"][0]["ticket"], "#H-20261027-1")
             self.assertEqual(res["flights"][0]["owner"], "ace")
 
     def test_second_lane_in_defaults(self):
-        """二副日表必须被默认 include / lanes 接住，不能掉出看板。"""
+        """施工子代理（second）任务表必须被默认 include / lanes 接住，不能掉出看板。"""
         with tempfile.TemporaryDirectory() as repo:
             d = os.path.join(repo, "tasks")
             os.makedirs(d)
             with open(os.path.join(d, "2026-10-27-second.md"), "w", encoding="utf-8") as f:
-                f.write("| 序 | 票号 | 里程碑 | 一句话 | 塔台备注 |\n"
+                f.write("| 序 | 票号 | 里程碑 | 一句话 | 塔台备注 |\n"  # 历史表头别名 fixture，读老表要认  # canon:allow-retired
                         "|---|---|---|---|---|\n"
-                        "| 1 | #1900 | 二副道 | 跑第三条机长道 | 新派·可开工 |\n")
+                        "| 1 | #1900 | 副槽位 | 跑第三条 engineer 槽位 | 新派·可开工 |\n")
             res = tasks.collect({}, {"repo_root": repo, "paths": {"day_tables_dir": "tasks"}})
-            self.assertEqual(res["detail"], "1 行排班 / 1 张票")
+            self.assertEqual(res["detail"], "1 行任务 / 1 张票")
             self.assertEqual(res["flights"][0]["owner"], "second")
             self.assertEqual(res["schedules"][0]["lane"], "second")
 
@@ -156,7 +156,7 @@ class TestTasks(unittest.TestCase):
                 f.write("- [ ] #12 修断链 | 施工中\n")
             res = tasks.collect({"include": ["*-copilot.md"], "lanes": ["copilot"]},
                                 {"repo_root": repo, "paths": {"day_tables_dir": "tasks"}})
-            self.assertEqual(res["detail"], "1 行排班 / 1 张票")
+            self.assertEqual(res["detail"], "1 行任务 / 1 张票")
             self.assertEqual(res["schedules"][0]["ticket"], "#12")
 
 
@@ -282,7 +282,7 @@ class TestDb(unittest.TestCase):
             db.migrate(conn, os.path.join(SKILL_ROOT, "schema"))
             self.assertEqual(db.schema_version(conn), "1")
             rec = {"uid": "issue:1", "ticket": "#1", "title": "A", "stage": "flying",
-                   "stage_label": "在飞", "labels": ["P0"], "source": "test"}
+                   "stage_label": "施工中", "labels": ["P0"], "source": "test"}
             db.upsert_flight(conn, rec, "r1")
             db.upsert_flight(conn, dict(rec, title="B", labels=["P0", "hold"]), "r2")
             rows = db.fetch_flights(conn)
@@ -356,7 +356,7 @@ class TestChainOrderAndLabels(unittest.TestCase):
         cfg = {
             "name": "t", "output": {"root": "boards"},
             "stages": [{"key": "queued", "label": "排队"},
-                       {"key": "flying", "label": "在飞"}],
+                       {"key": "flying", "label": "施工中"}],
             "off_chain_stages": [{"key": "hold", "label": "挡住"}],
             "next_text": {"flying": "等审查"},
         }
@@ -428,7 +428,7 @@ class TestEndToEnd(unittest.TestCase):
             cfg = {
                 "name": "t", "title": "T", "output": {"root": "boards"},
                 "sources": [{"id": "tasks", "type": "tasks-table"}],
-                "stages": [{"key": "flying", "label": "在飞"}],
+                "stages": [{"key": "flying", "label": "施工中"}],
                 "stage_rules": [{"when": "else", "stage": "flying"}],
                 "summary": {"max_flights": 5, "max_bytes": 25600},
             }
@@ -447,7 +447,7 @@ class TestEndToEnd(unittest.TestCase):
 
 
 class TestStaleRemap(unittest.TestCase):
-    """停滞：有在飞证据但已经不动了，不许继续冒充在飞。"""
+    """停滞：有施工中证据但已经不动了，不许继续冒充施工中。"""
 
     def test_flying_becomes_stale_after_threshold(self):
         from datetime import datetime, timedelta
@@ -487,7 +487,7 @@ class TestStaleRemap(unittest.TestCase):
 
 
 class TestUnresolvedBranch(unittest.TestCase):
-    """残留分支：有 exec/ 分支但 GitHub 认不到这张票，不该进航班流。"""
+    """残留分支：有 exec/ 分支但 GitHub 认不到这张票，不该进任务卡流。"""
 
     def test_no_issue_wins_over_branch(self):
         rules = [{"when": "no_issue", "stage": "unresolved", "why": "分支 {branch} 无票面"},
@@ -512,13 +512,13 @@ class TestUnresolvedBranch(unittest.TestCase):
 
 
 class TestOwnerResolution(unittest.TestCase):
-    """掌机三源：日表车道（事实）→ 票面指派（事实）→ 阶段推断（要标记）。"""
+    """负责角色三源：任务表槽位（事实）→ 票面指派（事实）→ 阶段推断（要标记）。"""
 
     def test_lane_beats_assignee(self):
         rec = {"owner": "", "assignee": "kaikaikid", "stage": "flying"}
         self.assertEqual(collect.resolve_owner(rec, "deputy",
-                                               {"deputy": "副机长"}, {}),
-                         ("副机长", "lane"))
+                                               {"deputy": "施工子代理"}, {}),
+                         ("施工子代理", "lane"))
 
     def test_assignee_when_no_lane(self):
         rec = {"owner": "", "assignee": "kaikaikid", "stage": "flying"}
@@ -527,9 +527,9 @@ class TestOwnerResolution(unittest.TestCase):
 
     def test_infer_is_marked(self):
         rec = {"owner": "", "assignee": "", "stage": "to_ship"}
-        self.assertEqual(collect.resolve_owner(rec, None, {"tower": "塔台"},
+        self.assertEqual(collect.resolve_owner(rec, None, {"tower": "康娜"},
                                                {"to_ship": "tower"}),
-                         ("塔台", "infer"))
+                         ("康娜", "infer"))
 
     def test_nothing_found_is_honest_blank(self):
         self.assertEqual(collect.resolve_owner({"stage": "queued"}, None, {}, {}),
@@ -543,17 +543,17 @@ class TestOwnerResolution(unittest.TestCase):
         self.assertEqual(idx, {"1": "deputy", "2": "main"})
 
     def test_lane_index_is_per_lane_not_global(self):
-        """各车道各取自己最新那张表：落后车道不许被别车道的日期挤掉。
+        """各槽位各取自己最新那张表：落后槽位不许被别槽位的日期挤掉。
 
-        2026-10-29 实测踩过：主/副道写 10-29，王牌道停在 10-27，
-        原实现取全局 max ⇒ 王牌道的票全丢了归属，看着像"ACE 手上没活"。
+        2026-10-29 实测踩过：主/副槽位写 10-29，加急委托槽位停在 10-27，
+        原实现取全局 max ⇒ 加急委托的票全丢了归属，看着像"加急委托手上没活"。
         """
         rows = [{"ticket": "#1", "lane": "main", "table_date": "2026-10-29"},
                 {"ticket": "#2", "lane": "ace", "table_date": "2026-10-27"}]
         self.assertEqual(collect.lane_index(rows), {"1": "main", "2": "ace"})
 
     def test_lane_index_newer_table_wins_across_lanes(self):
-        """同一票在两条车道的最新表里都有 → 取日表较新的那条。"""
+        """同一票在两个槽位的最新表里都有 → 取任务表较新的那条。"""
         rows = [{"ticket": "#1", "lane": "main", "table_date": "2026-10-29"},
                 {"ticket": "#1", "lane": "ace", "table_date": "2026-10-30"}]
         self.assertEqual(collect.lane_index(rows), {"1": "ace"})
@@ -568,7 +568,7 @@ class TestFacesNotSharedBudget(unittest.TestCase):
 
     def _cfg(self):
         return {"name": "t", "output": {"root": "boards"},
-                "stages": [{"key": "flying", "label": "在飞"},
+                "stages": [{"key": "flying", "label": "施工中"},
                            {"key": "closed", "label": "已收尾"}],
                 "off_chain_stages": [{"key": "stale", "label": "停滞"}],
                 "summary": {"max_flights": 3, "max_bytes": 25600},
@@ -621,7 +621,7 @@ class TestFacesNotSharedBudget(unittest.TestCase):
         """AI 面超预算时，先瘦历史与长文，票不许被挤成 0 张。
 
         2026-10-29 实测踩过：24 轮趋势占 13 KB，加急行/卡点行留着全文，
-        25.6 KB 的预算被吃光 ⇒ AI 面最后只剩 0 张航班（板上 48 张未收尾），
+        25.6 KB 的预算被吃光 ⇒ AI 面最后只剩 0 张任务卡（板上 48 张未收尾），
         那等于对 AI 说"没事干"。
         """
         payload = {"schema": "x", "title": "T", "direction": "", "run_id": "r",
@@ -631,7 +631,7 @@ class TestFacesNotSharedBudget(unittest.TestCase):
                    "degraded": [],
                    "trend": [{"run_id": f"r{i}", "kpi": {"total": 100, "open": 10}}
                              for i in range(24)],
-                   "schedules": [{"lane": "main", "ticket": "#1", "summary": "排班",
+                   "schedules": [{"lane": "main", "ticket": "#1", "summary": "任务行",
                                   "note": "备注" * 500, "table_date": "2026-10-29"}],
                    "urgent": {"label": "ace-queue", "lanes": ["ace"],
                               "rows": [{"lane": "ace", "ticket": "#77", "summary": "加急",
@@ -639,7 +639,7 @@ class TestFacesNotSharedBudget(unittest.TestCase):
                                         "table_date": "2026-10-29"}],
                               "tickets": [{"ticket": "#88", "why": "判据" * 200}]},
                    "sources": {}, "runtime": {},
-                   "blocked": [{"ticket": "#9", "title": "卡住", "owner": "主机长",
+                   "blocked": [{"ticket": "#9", "title": "卡住", "owner": "engineer",
                                 "why": "卡点判据" * 300}],
                    "milestones": [], "handoffs": [],
                    "counts": {"flights_total": 30, "flights_included": 30,
@@ -712,11 +712,12 @@ class TestKpiNewCounters(unittest.TestCase):
 
 
 class TestLaneOrder(unittest.TestCase):
-    """车道左右顺序＝配置书写顺序，不是字母序（副机长不该天然压在主前面）。"""
+    """槽位左右顺序＝配置书写顺序，不是字母序（副槽位不该天然压在主槽位前面）。"""
 
     def _cfg(self):
         return {"name": "t", "output": {"root": "boards"}, "repo": "o/r",
-                "role_labels": {"main": "主机长", "deputy": "副机长", "tower": "塔台"},
+                "role_labels": {"main": "engineer", "deputy": "施工子代理·副",
+                                "tower": "康娜"},
                 "stages": [{"key": "queued", "label": "排队"}],
                 "sources": [{"id": "tasks", "type": "tasks-table",
                              "lanes": ["main", "deputy", "second", "ace"]}],
@@ -727,20 +728,22 @@ class TestLaneOrder(unittest.TestCase):
                          ["main", "deputy", "second", "ace"])
 
     def test_main_renders_left_of_deputy(self):
-        sched = [{"lane": "deputy", "ticket": "#2", "summary": "副道活", "note": "",
+        sched = [{"lane": "deputy", "ticket": "#2", "summary": "副槽位活", "note": "",
                   "table_date": "2026-10-27"},
-                 {"lane": "main", "ticket": "#1", "summary": "主道活", "note": "",
+                 {"lane": "main", "ticket": "#1", "summary": "主槽位活", "note": "",
                   "table_date": "2026-10-27"}]
         html = render._shift_section({"schedules": sched}, self._cfg())
-        self.assertLess(html.index("主机长"), html.index("副机长"))
+        self.assertLess(html.index("engineer"), html.index("施工子代理·副"))
 
     def test_second_renders_after_deputy(self):
-        sched = [{"lane": "second", "ticket": "#3", "summary": "二副道活", "note": "",
+        sched = [{"lane": "second", "ticket": "#3", "summary": "次槽位活", "note": "",
                   "table_date": "2026-10-27"},
-                 {"lane": "deputy", "ticket": "#2", "summary": "副道活", "note": "",
+                 {"lane": "deputy", "ticket": "#2", "summary": "副槽位活", "note": "",
                   "table_date": "2026-10-27"}]
-        self.assertLess(render._shift_section({"schedules": sched}, self._cfg()).index("副机长"),
-                        render._shift_section({"schedules": sched}, self._cfg()).index("二副"))
+        cfg = dict(self._cfg(), role_labels={"main": "engineer", "deputy": "施工子代理·副",
+                                            "second": "施工子代理·次", "tower": "康娜"})
+        self.assertLess(render._shift_section({"schedules": sched}, cfg).index("施工子代理·副"),
+                        render._shift_section({"schedules": sched}, cfg).index("施工子代理·次"))
 
     def test_unknown_lane_still_shows_after_known(self):
         self.assertEqual(render._ordered_lanes({"zed", "main"}, ["main", "deputy"]),
@@ -748,14 +751,14 @@ class TestLaneOrder(unittest.TestCase):
 
 
 class TestUrgentLane(unittest.TestCase):
-    """紧急任务＝王牌腿：日表 ace 车道 或 ace-queue 标签，任一成立就亮。"""
+    """紧急任务＝加急委托腿：任务表 ace 槽位 或 ace-queue 标签，任一成立就亮。"""
 
     def _cfg(self):
         return {"name": "t", "output": {"root": "boards"}, "repo": "o/r",
-                "role_labels": {"main": "主机长", "deputy": "副机长",
-                                "tower": "塔台", "ace": "王牌机长"},
+                "role_labels": {"main": "engineer", "deputy": "施工子代理·副",
+                                "tower": "康娜", "ace": "加急委托"},
                 "stages": [{"key": "queued", "label": "排队"},
-                           {"key": "flying", "label": "在飞"}],
+                           {"key": "flying", "label": "施工中"}],
                 "off_chain_stages": [{"key": "hold", "label": "挡住"}],
                 "sources": [{"id": "tasks", "type": "tasks-table",
                              "lanes": ["main", "deputy", "second", "ace"]}],
@@ -779,17 +782,17 @@ class TestUrgentLane(unittest.TestCase):
 
     def test_ace_rows_leave_shift_and_light_urgent(self):
         payload = self._payload(
-            [{"lane": "main", "ticket": "#1", "summary": "主道", "note": "",
+            [{"lane": "main", "ticket": "#1", "summary": "主槽位", "note": "",
               "table_date": "2026-10-27"},
              {"lane": "ace", "ticket": "#77", "summary": "线上着火", "note": "加急",
               "table_date": "2026-10-27"}],
-            [{"uid": "issue:1", "ticket": "#1", "title": "主道", "stage": "queued",
+            [{"uid": "issue:1", "ticket": "#1", "title": "主槽位", "stage": "queued",
               "open": 1}])
         self.assertEqual([r["ticket"] for r in payload["urgent"]["rows"]], ["#77"])
         self.assertEqual([s["ticket"] for s in payload["schedules"]], ["#1"])
         html = render._urgent_section(payload, self._cfg())
         self.assertIn("线上着火", html)
-        self.assertIn("王牌机长", html)
+        self.assertIn("加急委托", html)
         self.assertNotIn("当前没有加急任务", html)
 
     def test_ace_queue_label_counts_as_urgent(self):
@@ -806,7 +809,7 @@ class TestUrgentLane(unittest.TestCase):
         """已关的票不是"在手活"：不该占加急名额、也不该报超编。
 
         2026-10-29 实测踩过：ace-queue 标签留在一堆已关票上，板子因此报
-        "超编：同刻 6 张"——那是完工留痕，不是 ACE 手上有六件活。
+        "超编：同刻 6 张"——那是完工留痕，不是加急委托手上有六件活。
         """
         payload = self._payload([], [
             {"uid": "issue:90", "ticket": "#90", "title": "早关了", "stage": "closed",
@@ -816,7 +819,7 @@ class TestUrgentLane(unittest.TestCase):
         self.assertIn("当前没有加急任务", html)
 
     def test_closed_ticket_row_is_not_urgent(self):
-        """日表行对应的票已关 ⇒ 那行是留痕，不算在手活。"""
+        """任务表行对应的票已关 ⇒ 那行是留痕，不算在手活。"""
         payload = self._payload(
             [{"lane": "ace", "ticket": "#91", "summary": "早关了", "note": "已发货",
               "table_date": "2026-10-27"}],
@@ -825,16 +828,16 @@ class TestUrgentLane(unittest.TestCase):
         self.assertEqual(payload["urgent"]["rows"], [])
 
     def test_lagging_lane_keeps_its_own_latest_day(self):
-        """落后车道的日表不许被别车道的日期挤掉（2026-10-29 实测）。
+        """落后槽位的任务表不许被别槽位的日期挤掉（2026-10-29 实测）。
 
-        主/副道写 10-29、王牌道停在 10-27 时，牌子上不该"王牌道整条消失"。
+        主/副槽位写 10-29、加急委托槽位停在 10-27 时，牌子上不该"加急委托整条消失"。
         """
         payload = self._payload(
-            [{"lane": "main", "ticket": "#1", "summary": "主道今天", "note": "",
+            [{"lane": "main", "ticket": "#1", "summary": "主槽位今天", "note": "",
               "table_date": "2026-10-29"},
              {"lane": "ace", "ticket": "#77", "summary": "加急还没完", "note": "加急",
               "table_date": "2026-10-27"}],
-            [{"uid": "issue:1", "ticket": "#1", "title": "主道今天", "stage": "queued",
+            [{"uid": "issue:1", "ticket": "#1", "title": "主槽位今天", "stage": "queued",
               "open": 1}])
         self.assertEqual([r["ticket"] for r in payload["urgent"]["rows"]], ["#77"])
         self.assertEqual([s["ticket"] for s in payload["schedules"]], ["#1"])
@@ -851,7 +854,7 @@ class TestUrgentLane(unittest.TestCase):
         self.assertIn("-ace.md", html)
 
     def test_over_one_ticket_is_reported(self):
-        """协议：王牌同刻只许 1 张。超了必须看得见，不能默默堆着。"""
+        """协议：加急委托同刻只许 1 张。超了必须看得见，不能默默堆着。"""
         payload = self._payload(
             [{"lane": "ace", "ticket": "#a1", "summary": "一", "note": "",
               "table_date": "2026-10-27"},
@@ -862,7 +865,7 @@ class TestUrgentLane(unittest.TestCase):
 
     def test_urgent_section_precedes_shift(self):
         payload = self._payload(
-            [{"lane": "main", "ticket": "#1", "summary": "主道", "note": "",
+            [{"lane": "main", "ticket": "#1", "summary": "主槽位", "note": "",
               "table_date": "2026-10-27"}], [])
         html = render.render_html(dict(payload, title="T", direction="", run_id="r1",
                                        kpi=render.compute_kpi([]), degraded=[], trend=[],
@@ -873,7 +876,7 @@ class TestUrgentLane(unittest.TestCase):
 
 
 class TestDayTableRobustness(unittest.TestCase):
-    """Kai-vass 2026-10-27 实测事故回归：塔台备注里的裸 `|` 撑破一行表格，
+    """Kai-vass 2026-10-27 实测事故回归：任务表历史别名备注列里的裸 `|` 撑破一行表格，
     解析器把列映射冲掉 ⇒ 「序」3/4/5/10 被当成票号 ⇒ 板库多出 4 张不存在的票。"""
 
     def _repo(self, body):
@@ -887,10 +890,10 @@ class TestDayTableRobustness(unittest.TestCase):
 
     def test_bare_sequence_number_is_not_a_ticket(self):
         """「序」列是裸数字，永远不该变成票号。"""
-        d = self._repo("# 任务表 · 主机长 · 2026-10-27\n\n"
-                       "| 序 | 票号 | 里程碑 | 一句话 | 塔台备注 |\n"
+        d = self._repo("# 任务表 · engineer · 2026-10-27\n\n"
+                       "| 序 | 票号 | 里程碑 | 一句话 | 塔台备注 |\n"  # 历史表头别名 fixture，读老表要认  # canon:allow-retired
                        "|---|---|---|---|---|\n"
-                       "| 1 | #1512 | ② 记忆网络 | 质疑功能 | 在飞 |\n")
+                       "| 1 | #1512 | ② 记忆网络 | 质疑功能 | 施工中 |\n")
         res = tasks.collect({"include": ["*-main.md"], "lanes": ["main"]},
                             {"repo_root": d, "paths": {"day_tables_dir": "tasks"}})
         self.assertEqual([f["ticket"] for f in res["flights"]], ["#1512"])
@@ -898,12 +901,12 @@ class TestDayTableRobustness(unittest.TestCase):
 
     def test_broken_row_does_not_poison_later_rows(self):
         """备注含裸 `|` ⇒ 该行溢出成正文 ⇒ 后面的行仍要按表头列取票号。"""
-        d = self._repo("# 任务表 · 副机长 · 2026-10-24\n\n"
-                       "| 序 | 票号 | 里程碑 | 一句话 | 塔台备注 |\n"
+        d = self._repo("# 任务表 · 施工子代理 · 2026-10-24\n\n"
+                       "| 序 | 票号 | 里程碑 | 一句话 | 塔台备注 |\n"  # 历史表头别名 fixture，读老表要认  # canon:allow-retired
                        "|---|---|---|---|---|\n"
                        "| 1 | #1512 | ② 记忆网络 | 质疑 | **票面与** 标签是 |\n"
                        "eady-for-human＋hold」，实际标签是\n"
-                       "eady-for-agent 无 hold ⇒ 归地勤订正\n"
+                       "eady-for-agent 无 hold ⇒ 归康娜（分流）订正\n"
                        "| 3 | #1887 | ② 记忆网络 | 读侧挑作品 | 备用 |\n"
                        "| 4 | #1879 | ① 资源管理 | 写库失败被吞 | 备用 |\n")
         res = tasks.collect({"include": ["*-main.md"], "lanes": ["main"]},
@@ -919,7 +922,7 @@ class TestDayTableRobustness(unittest.TestCase):
 
     def test_hotfix_ticket_number_keeps_shape(self):
         """无票热修号 H-YYYYMMDD-N 不是 bug，要照常收，且不被拼成 #H-。"""
-        d = self._repo("# 任务表 · 王牌飞行员 · 2026-10-27\n\n"
+        d = self._repo("# 任务表 · 加急委托 · 2026-10-27\n\n"
                        "| 序 | 票号 | 里程碑 | 一句话 | 备注 |\n"
                        "|---|---|---|---|---|\n"
                        "| 1 | H-20261027-1 | 无票热修 | 板不自动更新 | 施工中 |\n")
@@ -934,7 +937,7 @@ class TestOpenCountReconciliation(unittest.TestCase):
 
     def _cfg(self):
         return {"name": "t", "output": {"root": "boards"},
-                "stages": [{"key": "flying", "label": "在飞"},
+                "stages": [{"key": "flying", "label": "施工中"},
                            {"key": "queued", "label": "排队"}],
                 "off_chain_stages": [{"key": "unresolved", "label": "残留分支"}],
                 "sources": [{"id": "tasks", "type": "tasks-table", "lanes": ["main"]}],

@@ -172,7 +172,7 @@ class TestCodingRuns(unittest.TestCase):
         self.assertEqual(out["counts"]["gate_pending"], 1)
 
     def test_queued_not_counted_in_fleet_ships(self):
-        """与控制面 slot_usage 同口径：queued 不占舰位。"""
+        """与控制面 slot_usage 同口径：queued 不占 run 名额。"""
         rows = [{"run_id": "r-q", "phase": "queued", "gates": {}, "tasks_total": 0,
                  "tasks_done": 0, "tasks_running": 0, "tasks_blocked": 0,
                  "sessions": [], "ship": {}, "next_action": "", "age_min": 1,
@@ -180,7 +180,7 @@ class TestCodingRuns(unittest.TestCase):
                  "priority": "normal"}]
         out = render._build_coding(rows, {"summary": {}})
         self.assertEqual(out["fleets"][0]["ships"], 0)
-        # ship_limit 只由在飞 run 刷新：全队 queued 时 limit 未知，显示 0 比猜一个诚实
+        # ship_limit 只由施工中 run 刷新：全队 queued 时 limit 未知，显示 0 比猜一个诚实
         self.assertEqual(out["fleets"][0]["ship_limit"], 0)
 
     def test_unknown_phase_is_hold_not_queued(self):
@@ -200,7 +200,7 @@ class TestCodingRuns(unittest.TestCase):
 class TestCodingStoreAndRender(unittest.TestCase):
     def _cfg(self):
         return {"name": "t", "title": "T", "output": {"root": "boards"},
-                "stages": [{"key": "flying", "label": "在飞"},
+                "stages": [{"key": "flying", "label": "施工中"},
                            {"key": "hold", "label": "挡住"},
                            {"key": "to_ship", "label": "待发货"},
                            {"key": "review", "label": "审查"},

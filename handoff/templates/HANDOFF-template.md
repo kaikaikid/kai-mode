@@ -3,8 +3,8 @@ slot: 20-plan            # 落哪个槽（机器正本——AI 认用途读这�
 type: plan               # 类型词，必须与文件名尾部一致
 ticket: "#12"            # 无票写 -
 date: YYYY-MM-DD
-owner_role: -            # 岗位，管会话权责：地勤 / 塔台 / 机长 / 副机长
-persona: -               # 人格，管委派能力：worker / reviewer / explorer ...
+owner_role: -            # 负责角色：八个 role_id 之一（coordinator / researcher / architect / engineer / designer / writer / archivist / reviewer）
+persona: -               # 角色模板 id：这次按哪份模板跑（engineer / reviewer / ...）
 ---
 
 # <一句话主题>
@@ -25,7 +25,7 @@ persona: -               # 人格，管委派能力：worker / reviewer / explor
 
 ## 二、谁在做
 
-| 角色（岗位） | 人格（工种） | 负责范围 | 状态 |
+| 角色（role_id） | 角色模板 | 负责范围 | 状态 |
 |---|---|---|---|
 |  |  |  |  |
 
@@ -58,7 +58,7 @@ persona: -               # 人格，管委派能力：worker / reviewer / explor
 
 ## 引用文档清单（只给相对仓根路径，不复制内容）
 
-- ADR：`docs/adr/000X-xxx.md`
+- ADR：`docs/adr/<ADR 文件名>.md`
 - 票：`#NNN`
 - 代码：`<相对仓根的路径>`
 

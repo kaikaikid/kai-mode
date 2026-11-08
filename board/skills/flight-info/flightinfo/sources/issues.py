@@ -32,8 +32,8 @@ def queries_for(state: str, limit: int, include_closed: bool,
                 closed_limit: int | None = None) -> list[tuple[str, int]]:
     """→ [(--state 取值, 条数)]。include_closed ⇒ 顺带拉已关票。
 
-    为什么需要：残留的 `exec/<票号>-*` 分支是「在飞」的硬证据，只有票已关这一条
-    能把它压回「已收尾」；只拉 open 时，几十条历史分支会把板子说成「在飞 N 张」。
+    为什么需要：残留的 `exec/<票号>-*` 分支是「施工中」的硬证据，只有票已关这一条
+    能把它压回「已收尾」；只拉 open 时，几十条历史分支会把板子说成「施工中 N 张」。
     """
     if state == "none":
         return []

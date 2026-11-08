@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""源：日表（塔台写的排班视图，本模块只读）。
+"""源：任务表（康娜写的任务行视图，本模块只读）。
 
 文件名约定 `YYYY-MM-DD-<lane>.md`。认两种行（同一文件里混用也行）：
 
@@ -8,12 +8,12 @@
        - [x] #12 一句话            已完成
        - #12 一句话 | 备注          无复选框，`|` 后是备注
 2. markdown 表格行（表头 + 数据行），列名认中英两套：
-       | 序 | 票号 | 里程碑 | 一句话 | 塔台备注 |
+       | 序 | 票号 | 里程碑 | 一句话 | 塔台备注 |   （历史表头别名，读老任务表要用）  # canon:allow-retired
 
-    0.24.13 补第 2 种：项目侧的塔台日表就是五列表格，旧版只认列表行，
-    于是「22 行排班 / 0 张票」还报 ok——排班看得见、票全丢，失败不点名。
+    0.24.13 补第 2 种：项目侧的任务表就是五列表格，旧版只认列表行，
+    于是「22 行任务 / 0 张票」还报 ok——任务行看得见、票全丢，失败不点名。
 
-日表既是**排班快照**（schedule_row），也是**航班兜底来源**（票源不可用时的退化路径）。
+任务表既是**任务行快照**（schedule_row），也是**任务卡兜底来源**（票源不可用时的退化路径）。
 """
 from __future__ import annotations
 
@@ -26,7 +26,7 @@ TICKET = re.compile(r"^(#(\d+)|H-\d{8}-\d+)\b")
 DATE = re.compile(r"(\d{4}-\d{2}-\d{2})")
 PIPE = re.compile(r"^\s*\|.*\|\s*$")
 SEP = re.compile(r"^\s*\|[\s:|-]+\|\s*$")
-# 裸数字不是票号——日表第一列就是「序」。必须带 # 或 H- 前缀。
+# 裸数字不是票号——任务表第一列就是「序」。必须带 # 或 H- 前缀。
 TICKET_CELL = re.compile(r"^(#(\d+)|H-\d{8}-\d+)$")
 
 # 表格列名：表头里精确命中优先，其次包含
@@ -34,7 +34,7 @@ COLUMNS = {
     "ticket": ("票号", "编号", "ticket", "issue"),
     "milestone": ("里程碑", "milestone"),
     "summary": ("一句话", "事", "任务", "摘要", "title", "summary"),
-    "note": ("塔台备注", "备注", "说明", "note", "notes"),
+    "note": ("塔台备注", "王牌备注", "备注", "说明", "note", "notes"),  # 前两个是历史表头别名，读老任务表要用  # canon:allow-retired
 }
 
 
@@ -70,7 +70,7 @@ def _header_map(cells: list[str]) -> dict[str, int]:
                 continue
             if any(n.lower() == low for n in names):
                 m[key] = i
-    for i, c in enumerate(cells):                  # 第二遍：包含匹配（如「塔台备注」）
+    for i, c in enumerate(cells):                  # 第二遍：包含匹配（如带前缀的备注列）
         low = c.lower()
         for key, names in COLUMNS.items():
             if key not in m and any(len(n) > 1 and n.lower() in low for n in names):
@@ -119,7 +119,7 @@ def collect(cfg: dict, ctx: dict) -> dict:
     base = os.path.join(repo_root, rel)
     if not os.path.isdir(base):
         return {"flights": [], "schedules": [], "status": "absent",
-                "detail": f"日表目录不存在：{rel}"}
+                "detail": f"任务表目录不存在：{rel}"}
 
     patterns = cfg.get("include") or ["*-main.md", "*-deputy.md", "*-second.md", "*-ace.md"]
     lanes_cfg = cfg.get("lanes") or ctx["paths"].get("lanes") or ["main", "deputy", "second", "ace"]
@@ -146,7 +146,7 @@ def collect(cfg: dict, ctx: dict) -> dict:
                     continue
                 cells = _cells(raw)
                 if not any(TICKET_CELL.match(c) for c in cells):
-                    hmap = _header_map(cells)      # 表头行：只记列名，不出排班
+                    hmap = _header_map(cells)      # 表头行：只记列名，不出任务行
                     continue
                 parsed = _parse_pipe_row(cells, hmap)
                 if not parsed:
@@ -154,7 +154,7 @@ def collect(cfg: dict, ctx: dict) -> dict:
                 ticket, summary, note, milestone = parsed
                 done = False
             else:
-                # 不清 hmap：塔台正文里的裸 `|` 会把一行表格撑破成几行正文，
+                # 不清 hmap：康娜正文里的裸 `|` 会把一行表格撑破成几行正文，
                 # 那是数据脏；清掉映射会让后面每一行都退回"扫第一格"，把「序」读成票号。
                 m = LINE.match(raw)
                 if not m:
@@ -189,6 +189,6 @@ def collect(cfg: dict, ctx: dict) -> dict:
 
     if not schedules:
         return {"flights": [], "schedules": [], "status": "absent",
-                "detail": f"{rel} 下没有匹配 {patterns} 的日表"}
+                "detail": f"{rel} 下没有匹配 {patterns} 的任务表"}
     return {"flights": flights, "schedules": schedules, "status": "ok",
-            "detail": f"{len(schedules)} 行排班 / {len(flights)} 张票"}
+            "detail": f"{len(schedules)} 行任务 / {len(flights)} 张票"}

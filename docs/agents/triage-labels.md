@@ -16,5 +16,5 @@ Edit the right-hand column to match whatever vocabulary you actually use.
 
 ## Lane labels（已退役）
 
-机场体系下线后，`main-queue` / `deputy-queue` / `second-queue` / `ace-queue` 四条车道标签不再被任何技能读取；
-历史 Issue 上的标签可以保留，也可以清理。舰桥按 Issue 本身与 run 状态工作，不再按车道排班。
+V1 岗位体系下线后，`main-queue` / `deputy-queue` / `second-queue` / `ace-queue` 四条队列标签不再被任何技能读取；
+历史 Issue 上的标签可以保留，也可以清理。康娜按 Issue 本身与 run 状态工作，不再按队列分派。

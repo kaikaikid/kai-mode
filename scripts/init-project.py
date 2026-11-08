@@ -11,9 +11,10 @@
   python scripts/init-project.py --repo <目标仓> --answers a.json   # 机器填（CI/批处理）
   python scripts/init-project.py --repo <目标仓> --dry-run     # 只打印结果不写盘
 
-十一问（顺序固定，缺一不可）：
-  1 项目名 2 票源 3 仓库 slug 4 日表目录 5 交接目录 6 想法目录
-  7 ADR 目录 8 宿主 9 收工门禁脚本 10 想法池汇总票号 11 推送边界
+十一问 ＋ 双仓五题（顺序固定，缺一不可）：
+  1 项目名 2 票源 3 仓库 slug 4 交接目录 5 想法目录 6 ADR 目录
+  7 规则目录 8 宿主 9 收尾门命令 10 想法池汇总票号 11 推送边界
+  其后 Q1–Q5 双仓五题 ＋ 发布库 slug（回车一律落「待定」，不替用户选默认值）
 """
 
 from __future__ import annotations
@@ -528,8 +529,8 @@ def main() -> int:
     print("  1) 补收尾门：gates.finish_cmd 按本仓实情填，没有就留 null（V2 发货时跳过并注明）")
     print("     值可带子命令（读取端按 `python <值>` 直接插值），例：scripts/scope-check.py close-gate")
     print("  2) 补记录面：paths.audit_dir / module_cards / dashboard 填本仓实有落点，没有的留 null（读取端如实报缺件，不猜路径）")
-    print("  3) 跑 python <kai-mode 仓>/scripts/doctor.py 确认本仓绿；在目标仓跑一次舰桥自证")
-    print("  4) 在项目 CLAUDE.md / AGENTS.md 写上「默认入口＝舰桥」，见 set-kai-mode 第 3 步")
+    print("  3) 跑 python <kai-mode 仓>/scripts/doctor.py 确认本仓绿；在目标仓跑一次康娜自证")
+    print("  4) 在项目 CLAUDE.md / AGENTS.md 写上「默认入口＝康娜」，见 set-kai-mode 第 3 步")
     return 0
 
 

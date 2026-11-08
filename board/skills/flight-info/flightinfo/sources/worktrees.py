@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
-"""源：git worktree / 分支（在飞证据）。
+"""源：git worktree / 分支（施工中证据）。
 
-有 `exec/<票号>-*` 分支 = 这张票有人正在施工。这是**最硬的在飞证据**：
-不依赖任何平台 API，只看本地 git。
+有 `travel/<run_id>` 分支 = 这条 run 有人正在施工；`exec/`、`land/` 是历史兼容前缀。
+这是**最硬的施工中证据**：不依赖任何平台 API，只看本地 git。
+
+注意：票号从分支名的数字段里取（`<前缀>/<票号>-*`），而执行内核现行分支是
+`travel/<run_id>`（`engine/coding/worktree.py` 的 `branch_name`），run_id 不带票号——
+这类分支因此只作「有活」信号，票据身份由 `coding-runs` 源（读 `.coding/runs/*/state.json`）给。
 """
 from __future__ import annotations
 
@@ -11,6 +15,9 @@ import re
 import subprocess
 
 EXEC = re.compile(r"^(?P<prefix>.+?)/(?P<num>\d+)(?:[-_].*)?$")
+
+# 默认前缀：travel/ 是执行内核现行分支；exec/、land/ 是历史兼容（老仓库还留着）。
+DEFAULT_BRANCH_PREFIXES = ("travel/", "exec/", "land/")
 
 
 def _worktrees(repo_root: str) -> list[str]:
@@ -75,7 +82,7 @@ def collect(cfg: dict, ctx: dict) -> dict:
     repo_root = ctx["repo_root"]
     raw = cfg.get("branch_prefixes")
     if raw is None:
-        raw = cfg.get("branch_prefix") or "exec/"
+        raw = cfg.get("branch_prefix") or DEFAULT_BRANCH_PREFIXES
     prefixes = [raw] if isinstance(raw, str) else [str(x) for x in raw]
     names = set(_worktrees(repo_root)) | set(_local_branches(repo_root))
     if not names:
@@ -110,4 +117,4 @@ def collect(cfg: dict, ctx: dict) -> dict:
             "kind": "task",
         })
     return {"flights": flights, "schedules": [], "status": "ok",
-            "detail": f"{len(hit)} 个在飞分支" if hit else "无在飞分支"}
+            "detail": f"{len(hit)} 个施工中分支" if hit else "无施工中分支"}

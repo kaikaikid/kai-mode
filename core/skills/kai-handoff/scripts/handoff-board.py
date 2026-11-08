@@ -9,10 +9,10 @@ handoff 看板（handoff/60-board/）操作脚本 —— 纯结构化、AI 读�
 
 用法：
   python <本技能目录>/scripts/handoff-board.py new  --title "一句话" [--ticket "#12"] [--type task]
-                                       [--role 机长] [--persona worker]
+                                       [--role engineer] [--persona worker]
   python <本技能目录>/scripts/handoff-board.py list [--state open|claimed|done|all]
   python <本技能目录>/scripts/handoff-board.py show <id>
-  python <本技能目录>/scripts/handoff-board.py claim <id> [--by 机长]
+  python <本技能目录>/scripts/handoff-board.py claim <id> [--by engineer]
   python <本技能目录>/scripts/handoff-board.py close <id> --outcome "一句话结果"
   python <本技能目录>/scripts/handoff-board.py archive [--month YYYY-MM]
 
@@ -279,7 +279,8 @@ def main() -> int:
     p.add_argument("--title", required=True)
     p.add_argument("--ticket", default="-", help='票号，如 "#12"；没开票就留 -')
     p.add_argument("--type", default="task", choices=TYPES)
-    p.add_argument("--role", default="-", help="角色（岗位）：舰桥/参谋部/船员")
+    p.add_argument("--role", default="-",
+                   help="角色（岗位）：coordinator/researcher/architect/engineer/designer/writer/archivist/reviewer")
     p.add_argument("--persona", default="-", help="人格（委派能力）：worker 等")
     p.set_defaults(fn=cmd_new)
 

@@ -1,5 +1,5 @@
 ---
-description: 刷新航班信息看板：采集、落库、出 board.json 与 index.html
+description: 刷新任务看板：采集、落库、出 board.json 与 index.html
 argument-hint: "[看板配置路径，可留空]"
 ---
 

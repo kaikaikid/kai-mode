@@ -1,5 +1,5 @@
 -- V2 执行内核的 run 快照（coding-runs 源）。
--- 航班表只放阶段判据；这里放监工面要用的任务/gate/session 摘要。
+-- 任务卡表只放阶段判据；这里放执行内核面要用的任务/gate/session 摘要。
 CREATE TABLE IF NOT EXISTS coding_run (
     run_id         TEXT PRIMARY KEY,
     issue          TEXT,

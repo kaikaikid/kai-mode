@@ -1,17 +1,17 @@
 /* 自动生成：python scripts/manual-gen.py；不要手改。 */
 window.KAI_SKILLS = [
   {
-    "group": "舰桥与安装",
+    "group": "酒馆冒险团与安装",
     "plugin": "酒馆冒险团与安装",
     "pluginId": "core",
     "skill": "bridge",
-    "oneLine": "康娜（主 AI 人格，通用职业名「协调调度」）的方法正文与默认入口——不是另一个角色。",
-    "trigger": "/bridge、/舰桥、/warp <任务>、/jump <任务>（曲速-N-任务、跃迁-N-任务 简写也认）；",
+    "oneLine": "康娜的方法正文与默认入口：接单、判断、清场、施工、发货、回报。",
+    "trigger": "默认入口；/bridge；说「开工」「发货」「清理脏文件」",
     "command": "/bridge",
-    "version": "0.5.0"
+    "version": "0.6.0"
   },
   {
-    "group": "舰桥与安装",
+    "group": "酒馆冒险团与安装",
     "plugin": "酒馆冒险团与安装",
     "pluginId": "core",
     "skill": "harness-audit",
@@ -21,7 +21,7 @@ window.KAI_SKILLS = [
     "version": "0.2.1"
   },
   {
-    "group": "舰桥与安装",
+    "group": "酒馆冒险团与安装",
     "plugin": "酒馆冒险团与安装",
     "pluginId": "core",
     "skill": "kai-handoff",
@@ -31,7 +31,7 @@ window.KAI_SKILLS = [
     "version": "0.3.6"
   },
   {
-    "group": "舰桥与安装",
+    "group": "酒馆冒险团与安装",
     "plugin": "酒馆冒险团与安装",
     "pluginId": "core",
     "skill": "principles",
@@ -41,27 +41,27 @@ window.KAI_SKILLS = [
     "version": "1.0.0"
   },
   {
-    "group": "舰桥与安装",
+    "group": "酒馆冒险团与安装",
     "plugin": "酒馆冒险团与安装",
     "pluginId": "core",
     "skill": "set-kai-mode",
     "oneLine": "安装与体检：先看缺什么，只装缺的。",
     "trigger": "/set-kai-mode；说「装一下」",
     "command": "/set-kai-mode",
-    "version": "6.3.0"
+    "version": "7.0.0"
   },
   {
-    "group": "舰桥与安装",
+    "group": "酒馆冒险团与安装",
     "plugin": "酒馆冒险团与安装",
     "pluginId": "core",
     "skill": "staff",
-    "oneLine": "总入口：把一句话需求拆成票，再交给对应角色。",
-    "trigger": "由舰桥调用；说「先规划」「想清楚再做」",
+    "oneLine": "参谋部：把模糊需求收敛成规划表与拆票草案。",
+    "trigger": "由康娜调用；说「先规划」「想清楚再做」",
     "command": "/staff",
     "version": "4.2.0"
   },
   {
-    "group": "舰桥与安装",
+    "group": "酒馆冒险团与安装",
     "plugin": "酒馆冒险团与安装",
     "pluginId": "core",
     "skill": "upgrade-kai-mode",
@@ -71,17 +71,17 @@ window.KAI_SKILLS = [
     "version": "0.2.1"
   },
   {
-    "group": "支持能力",
+    "group": "看板",
     "plugin": "看板",
     "pluginId": "board",
     "skill": "flight-info",
-    "oneLine": "看板：把票、日表、交接和 Issue 汇总成一页。",
-    "trigger": "/航班信息；说「看现在在飞什么」",
+    "oneLine": "任务看板：把票、run、交接汇总成一页，给人和 AI 各一份。",
+    "trigger": "/flight-info；说「看看板」「现在到哪了」",
     "command": "/refresh",
     "version": "1.6.0"
   },
   {
-    "group": "支持能力",
+    "group": "想法池",
     "plugin": "想法池",
     "pluginId": "intake",
     "skill": "kai-boom-idea-log",
@@ -91,7 +91,7 @@ window.KAI_SKILLS = [
     "version": "0.1.4"
   },
   {
-    "group": "支持能力",
+    "group": "事故与运维",
     "plugin": "事故与运维",
     "pluginId": "ops",
     "skill": "incident-response",
@@ -101,7 +101,7 @@ window.KAI_SKILLS = [
     "version": "0.1.0"
   },
   {
-    "group": "支持能力",
+    "group": "事故与运维",
     "plugin": "事故与运维",
     "pluginId": "ops",
     "skill": "runbook",
@@ -115,8 +115,8 @@ window.KAI_SKILLS = [
     "plugin": "武器集",
     "pluginId": "studio",
     "skill": "director",
-    "oneLine": "导演：分镜、剪辑、配音，管成片节奏。",
-    "trigger": "/director；说「导演」",
+    "oneLine": "武器｜分镜成片：分镜、节奏、声音、成片。",
+    "trigger": "/director；说「分镜」「剪辑」「成片」",
     "command": "/director",
     "version": "2.0.0"
   },
@@ -125,8 +125,8 @@ window.KAI_SKILLS = [
     "plugin": "武器集",
     "pluginId": "studio",
     "skill": "final-review",
-    "oneLine": "终审：独立验收，只判不修，出 pass/fail。",
-    "trigger": "/review；说「终审」",
+    "oneLine": "武器｜交付终审：独立验收，只判不修，出 pass/fail。",
+    "trigger": "/review；说「终审」「验收」",
     "command": "/final-review",
     "version": "2.0.0"
   },
@@ -135,8 +135,8 @@ window.KAI_SKILLS = [
     "plugin": "武器集",
     "pluginId": "studio",
     "skill": "lead-artist",
-    "oneLine": "主美：风格板、角色、版面、成稿。",
-    "trigger": "/artist；说「主美」",
+    "oneLine": "武器｜视觉成稿：风格板、角色、色彩、版面、成稿。",
+    "trigger": "/artist；说「画」「风格板」「配色」",
     "command": "/lead-artist",
     "version": "2.0.0"
   },
@@ -145,8 +145,8 @@ window.KAI_SKILLS = [
     "plugin": "武器集",
     "pluginId": "studio",
     "skill": "lead-writer",
-    "oneLine": "主笔：故事、剧本、台词、文案。",
-    "trigger": "/writer；说「主笔」",
+    "oneLine": "武器｜剧本文案：故事骨架、剧本、台词、文案、字幕。",
+    "trigger": "/writer；说「写稿」「改文案」",
     "command": "/lead-writer",
     "version": "2.0.0"
   },
@@ -155,8 +155,8 @@ window.KAI_SKILLS = [
     "plugin": "武器集",
     "pluginId": "studio",
     "skill": "marketing",
-    "oneLine": "宣发：物料、渠道、投放与数据回收。",
-    "trigger": "/marketing；说「宣发」",
+    "oneLine": "武器｜物料投放：包装成能到达受众的物料，排渠道、回收数据。",
+    "trigger": "/marketing；说「宣发」「投放」",
     "command": "/marketing",
     "version": "2.0.0"
   },
@@ -165,28 +165,28 @@ window.KAI_SKILLS = [
     "plugin": "武器集",
     "pluginId": "studio",
     "skill": "producer",
-    "oneLine": "企划：立项、排期、预算、指派负责人。",
-    "trigger": "/producer；说「企划」",
+    "oneLine": "武器｜立项排期：把创作委托拆成阶段、排期与验收标准。",
+    "trigger": "/producer；说「立项」「排期」",
     "command": "/producer",
     "version": "2.0.0"
   },
   {
-    "group": "舰队执行内核",
+    "group": "执行内核",
     "plugin": "执行内核",
     "pluginId": "engine",
     "skill": "fleet",
-    "oneLine": "舰队执行内核（由康娜调度）：一个 issue 一个 run（舰船），主会话规划与验收，宿主自己的子代理执行；",
-    "trigger": "由舰桥触发 /warp 或 /jump",
+    "oneLine": "执行内核：一张票一个 run，宿主子代理施工，门点验收。",
+    "trigger": "由康娜调用；说「开个 run」「跑起来」",
     "command": "",
-    "version": "0.8.0"
+    "version": "0.9.0"
   },
   {
-    "group": "舰队执行内核",
+    "group": "执行内核",
     "plugin": "执行内核",
     "pluginId": "engine",
     "skill": "pk",
-    "oneLine": "通用对比分析 PK：对项目/图像/文章等多对象做维度化对比，输出图表与结论。",
-    "trigger": "/pk、/PK、/对比，或用户说「PK」「对比」「比一比」「PK 一下」",
+    "oneLine": "通用对比分析：多对象维度化对比，出图表与结论。",
+    "trigger": "/pk；说「对比」「比一比」",
     "command": "",
     "version": "0.1.1"
   }

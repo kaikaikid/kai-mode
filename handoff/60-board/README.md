@@ -8,7 +8,7 @@
 
 ```
 open/  →  claimed/  →  done/  →  archive/YYYY-MM/
-                                  + archive/YYYY-MM.md（月度生命周期索引，脚本生成）
+                                  + archive/<YYYY-MM>.md（月度生命周期索引，脚本生成）
 ```
 
 ## 2. 卡片 = frontmatter 全字段（正文可选，≤3 行）
@@ -21,8 +21,8 @@ open/  →  claimed/  →  done/  →  archive/YYYY-MM/
 | `ticket` | 票号（`#12`）；**没开票的热修、杂活写 `-`** |
 | `title` | 一句话 |
 | `state` | `open` / `claimed` / `done` |
-| `role` | 岗位：地勤 / 塔台 / 机长 / 副机长 |
-| `persona` | 人格（委派能力）：worker / reviewer / ... |
+| `role` | 负责角色：八个 role_id 之一（`coordinator`／`researcher`／`architect`／`engineer`／`designer`／`writer`／`archivist`／`reviewer`） |
+| `persona` | 角色模板 id：这次按哪份模板跑（如 `engineer`／`reviewer`） |
 | `created_at` `claimed_by` `claimed_at` `closed_at` `outcome` | 生命周期时间戳，脚本写 |
 
 ## 3. 命令（全部走脚本，别手搬文件）
@@ -32,13 +32,13 @@ open/  →  claimed/  →  done/  →  archive/YYYY-MM/
 
 ```bash
 # 有票
-python <本技能目录>/scripts/handoff-board.py new --title "修文档引用断链" --ticket "#12" --role 机长 --persona worker
+python <本技能目录>/scripts/handoff-board.py new --title "修文档引用断链" --ticket "#12" --role engineer --persona engineer
 # 无票热修
 python <本技能目录>/scripts/handoff-board.py new --title "热修门禁假红" --type hotfix
 
 python <本技能目录>/scripts/handoff-board.py list                 # 结构化列出
 python <本技能目录>/scripts/handoff-board.py show 20261024-01     # 单张全字段
-python <本技能目录>/scripts/handoff-board.py claim 20261024-01 --by 机长
+python <本技能目录>/scripts/handoff-board.py claim 20261024-01 --by engineer
 python <本技能目录>/scripts/handoff-board.py close  20261024-01 --outcome "断链已修"
 python <本技能目录>/scripts/handoff-board.py archive              # 归月 + 生成月度索引
 ```
@@ -49,17 +49,19 @@ python <本技能目录>/scripts/handoff-board.py archive              # 归月 
 - 只有 `open/` 能认领，只有 `claimed/` 能完成
 - 卡住 >24h → 退回 `open/`，卡点写正文，**别删别人的认领记录**
 
-## 5. 角色 vs 人格
+## 5. 主 AI 人格 / 角色模板 / 角色实例
 
-**岗位**＝会话身份管权责｜**人格**＝委派契约管能力。
-一个岗位可拉起多个人格，一个人格从不排班 → 两个字段，不是两套目录。
-一个角色可调用多个人格，反之亦然 → **两个字段，不是两套目录**。
+**主 AI 人格**＝康娜：唯一对话面，不派活给自己，也不进卡片上的 `role`。
+**角色模板**＝稳定的身份、职责、专业方法与输出契约（版本化正本，住 `roles/canon/`）；
+**角色实例**＝按某份模板起的一次任务会话，同模板可多实例、各自上下文隔离。
+
+`role` 记「这张活归哪个角色」，`persona` 记「按哪份模板跑」——**两个字段，一套 role_id 取值域，不是两套目录**。
 
 ## 6. 归档与生命周期
 
 `done/` 的件按 `closed_at` 月份落 `archive/YYYY-MM/`；**卡片本身就是完整生命周期记录**
 （创建 / 认领 / 完成 / 结果全在 frontmatter），归档不另建文件。
-月度索引 `archive/YYYY-MM.md` 由 `handoff-board.py archive` 自动生成，**人不写**。
+月度索引 `archive/<YYYY-MM>.md` 由 `handoff-board.py archive` 自动生成，**人不写**。
 
 ## 7. 展示形态（人看的那个）
 
