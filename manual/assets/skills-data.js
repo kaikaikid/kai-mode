@@ -4,6 +4,46 @@ window.KAI_SKILLS = [
     "group": "酒馆冒险团与安装",
     "plugin": "酒馆冒险团与安装",
     "pluginId": "core",
+    "skill": "architect",
+    "oneLine": "直接唤醒 瑞兹（architect）子代理的薄入口（角色名即命令，省去前缀）。",
+    "trigger": "/architect、/瑞兹；如 /reviewer、/崔希丝",
+    "command": "/architect",
+    "version": "0.1.0"
+  },
+  {
+    "group": "酒馆冒险团与安装",
+    "plugin": "酒馆冒险团与安装",
+    "pluginId": "core",
+    "skill": "archivist",
+    "oneLine": "直接唤醒 克罗米（archivist）子代理的薄入口（角色名即命令，省去前缀）。",
+    "trigger": "/archivist、/克罗米；如 /reviewer、/崔希丝",
+    "command": "/archivist",
+    "version": "0.1.0"
+  },
+  {
+    "group": "酒馆冒险团与安装",
+    "plugin": "酒馆冒险团与安装",
+    "pluginId": "core",
+    "skill": "designer",
+    "oneLine": "直接唤醒 泰兰德（designer）子代理的薄入口（角色名即命令，省去前缀）。",
+    "trigger": "/designer、/泰兰德；如 /reviewer、/崔希丝",
+    "command": "/designer",
+    "version": "0.1.0"
+  },
+  {
+    "group": "酒馆冒险团与安装",
+    "plugin": "酒馆冒险团与安装",
+    "pluginId": "core",
+    "skill": "engineer",
+    "oneLine": "直接唤醒 布莱恩（engineer）子代理的薄入口（角色名即命令，省去前缀）。",
+    "trigger": "/engineer、/布莱恩；如 /reviewer、/崔希丝",
+    "command": "/engineer",
+    "version": "0.1.0"
+  },
+  {
+    "group": "酒馆冒险团与安装",
+    "plugin": "酒馆冒险团与安装",
+    "pluginId": "core",
     "skill": "gold",
     "oneLine": "康娜的方法正文与默认入口：接单、判断、清场、施工、发货、回报。",
     "trigger": "默认入口；/gold（旧名 /bridge 兼容）；说「开工」「发货」「清理脏文件」",
@@ -44,6 +84,26 @@ window.KAI_SKILLS = [
     "group": "酒馆冒险团与安装",
     "plugin": "酒馆冒险团与安装",
     "pluginId": "core",
+    "skill": "researcher",
+    "oneLine": "直接唤醒 崔希丝（researcher）子代理的薄入口（角色名即命令，省去前缀）。",
+    "trigger": "/researcher、/崔希丝；如 /reviewer、/崔希丝",
+    "command": "/researcher",
+    "version": "0.1.0"
+  },
+  {
+    "group": "酒馆冒险团与安装",
+    "plugin": "酒馆冒险团与安装",
+    "pluginId": "core",
+    "skill": "reviewer",
+    "oneLine": "直接唤醒 提里奥（reviewer）子代理的薄入口（角色名即命令，省去前缀）。",
+    "trigger": "/reviewer、/提里奥；如 /reviewer、/崔希丝",
+    "command": "/reviewer",
+    "version": "0.1.0"
+  },
+  {
+    "group": "酒馆冒险团与安装",
+    "plugin": "酒馆冒险团与安装",
+    "pluginId": "core",
     "skill": "set-kai-mode",
     "oneLine": "安装与体检：先看缺什么，只装缺的。",
     "trigger": "/set-kai-mode；说「装一下」",
@@ -64,21 +124,21 @@ window.KAI_SKILLS = [
     "group": "酒馆冒险团与安装",
     "plugin": "酒馆冒险团与安装",
     "pluginId": "core",
-    "skill": "summon",
-    "oneLine": "手动唤醒一个专业角色子代理的方法论入口（酒馆名「召集」）。",
-    "trigger": "/summon <角色>、/召集 <角色>；角色＝researcher/architect/engineer/designer/writer/archivist/reviewer",
-    "command": "",
-    "version": "0.1.1"
-  },
-  {
-    "group": "酒馆冒险团与安装",
-    "plugin": "酒馆冒险团与安装",
-    "pluginId": "core",
     "skill": "upgrade-kai-mode",
     "oneLine": "把已经装好的 kai-mode 升到新版：先出清单，再备份、回写、验收。",
     "trigger": "/upgrade-kai-mode；说「升级 kai-mode」",
     "command": "/upgrade-kai-mode",
     "version": "0.2.1"
+  },
+  {
+    "group": "酒馆冒险团与安装",
+    "plugin": "酒馆冒险团与安装",
+    "pluginId": "core",
+    "skill": "writer",
+    "oneLine": "直接唤醒 周卓（writer）子代理的薄入口（角色名即命令，省去前缀）。",
+    "trigger": "/writer、/周卓；如 /reviewer、/崔希丝",
+    "command": "/writer",
+    "version": "0.1.0"
   },
   {
     "group": "看板",

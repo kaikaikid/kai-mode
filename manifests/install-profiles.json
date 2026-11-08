@@ -24,7 +24,6 @@
         "upgrade-kai-mode",
         "kai-handoff",
         "fleet",
-        "summon",
         "kai-boom-idea-log",
         "flight-info",
         "incident-response",
@@ -36,7 +35,14 @@
         "final-review",
         "marketing",
         "principles",
-        "pk"
+        "pk",
+        "researcher",
+        "architect",
+        "engineer",
+        "designer",
+        "writer",
+        "archivist",
+        "reviewer"
       ]
     }
   }

@@ -1,10 +1,10 @@
 # kai-mode —— 酒馆冒险团与执行内核
 
-> **状态：0.39.0（2026-11-08 口径与技能结构收口：全仓只留酒馆冒险团一套口径，旧比喻进退役词黑名单并由机器门逐行扫描；6 个插件 / 20 个技能；`gold` / `fleet` / `set-kai-mode` 三份主技能拆成「正文流程 ＋ references 查表」，新增技能结构模板；控制面正名 `fleet`（`travel` / `coding` 兼容别名）；详见 [`CHANGELOG.md`](CHANGELOG.md) 与 [`GLOSSARY.md`](GLOSSARY.md)）。
+> **状态：0.39.0（2026-11-08 口径与技能结构收口：全仓只留酒馆冒险团一套口径，旧比喻进退役词黑名单并由机器门逐行扫描；6 个插件 / 26 个技能；`gold` / `fleet` / `set-kai-mode` 三份主技能拆成「正文流程 ＋ references 查表」，新增技能结构模板；控制面正名 `fleet`（`travel` / `coding` 兼容别名）；详见 [`CHANGELOG.md`](CHANGELOG.md) 与 [`GLOSSARY.md`](GLOSSARY.md)）。
 > `kai-mode` → `staff`；角色实例的入口必须属于当前宿主（优先原生子代理，宿主本身就是命令行工具时可用它自己的进程）；通用方法不再 fork，按名用宿主中央库原版；
 > 详见 [`CHANGELOG.md`](CHANGELOG.md) 与 [`docs/method-pointers.md`](docs/method-pointers.md)）。**
 >
-> 本仓是宿主装机正本（`magpie-sync apply --root <本仓>`，按市场清单的插件目录装齐，当前 20 个技能），
+> 本仓是宿主装机正本（`magpie-sync apply --root <本仓>`，按市场清单的插件目录装齐，当前 26 个技能），
 > 项目仓那份技能副本只作镜像。旧五角色、租约、班次、按铃那套早已退役；2026-10-31 机场体系（地勤/塔台/机长/副机长/二副/王牌）整体下线，git 历史可捞。<!-- canon:allow-retired -->
 >
 > 现行口径只有一套：酒馆冒险团（团队与角色）＋ 一套通用规范；词义正本见 [`GLOSSARY.md`](GLOSSARY.md)。

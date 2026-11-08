@@ -11,16 +11,22 @@
     },
     "core": {
       "version": "1.4.0",
-      "digest": "aecb9d25ead6767cdcd9224819abb38ba7f6d6ef298f9ae540e3268a87bc0060",
+      "digest": "6b5c4877473b2a4619fc0efeacca5c01eb4526347517f9279b9bbef16a5c41e6",
       "skills": {
+        "architect": "0.1.0",
+        "archivist": "0.1.0",
+        "designer": "0.1.0",
+        "engineer": "0.1.0",
         "gold": "0.8.0",
         "harness-audit": "0.2.1",
         "kai-handoff": "0.3.6",
         "principles": "1.0.0",
+        "researcher": "0.1.0",
+        "reviewer": "0.1.0",
         "set-kai-mode": "7.0.0",
         "staff": "4.2.0",
-        "summon": "0.1.1",
-        "upgrade-kai-mode": "0.2.1"
+        "upgrade-kai-mode": "0.2.1",
+        "writer": "0.1.0"
       }
     },
     "engine": {
