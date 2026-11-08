@@ -1,7 +1,8 @@
 # Codex 适配器（付费档备胎）
 
-> 本文只讲**怎么在这个宿主上起舰桥**。舰队施工不适用：Codex 没有宿主原生子代理，
-> 而 框架已明确只调用宿主自己的子代理，不拉 `codex exec` 子进程。
+> 本文只讲**怎么在这个宿主上起康娜（主代理）与专业角色**。Codex 没有宿主原生子代理，
+> 但它本身就是命令行 agent 工具 ⇒ 按 ADR-0033 D3，**可以拉它自己的 `codex exec` 一次性进程**当角色实例。
+> 禁止的是在别的宿主里拉 Codex（跨宿主借兵）；在本宿主里拉自己的口合法。
 
 > 适用：Qoder 子会话不可用、opencode 不可用，或编排层明确要求 Codex。
 > **付费档**：必须显式授权（如 `KAI_WATCHDOG_ALLOW_PAID=1`）；没有授权不许起。
@@ -42,12 +43,16 @@ codex exec -C <仓库根> -s read-only --json -o <回执文件> \
   "按票面 AC 评审 <票号>；只输出 verdict 与逐条证据路径。"
 ```
 
-## 执行三职（舰队不适用）
+## 执行三职（走内核的宿主命令腿）
 
-- 框架只用宿主原生子代理；Codex 当前没有这一层 ⇒ `fleet claim/report/review/verdict` 派活链不适用。
-- 按缺件三格登记 `no-new-context`，如实告诉用户「这个宿主跑不了舰队执行内核」；不退化去拉 `codex exec`。
-- 舰桥本身仍可用：它只做对话、开票、发货，不依赖宿主子代理。
-- 若 Codex 未来提供原生子代理，再在这里补「怎么起、怎么锁只读、报告落哪」三条。
+- Codex 没有原生子代理层，但内核早就有这条腿：`fleet auto` 只调 `.coding/config.json` 的
+  `worker_cmd` / `reviewer_cmd`（或环境变量 `TRAVEL_WORKER_CMD` / `TRAVEL_REVIEWER_CMD`）配好的宿主命令，
+  内核不内置任何厂商适配器。把这两个值配成 `codex exec` 即可，`fleet claim/report/review/verdict` 派活链照常走。
+- **施工**：`worker_cmd` 用 `-s workspace-write`；**审查**：`reviewer_cmd` 用 `-s read-only`，
+  且必须是另一次调用（新上下文）；复用施工会话 ⇒ 不算独立验收。
+- **付费档**：起角色仍需显式授权；未授权记 `paid-not-authorized`，不偷偷跑，也不切到别家宿主去绕。
+- 康娜（主代理）本身不依赖子代理：它只做对话、开票、发货。
+- 连 `codex` 入口都探测不到 ⇒ 本档不可用，按 §6 登记 `no-launcher`；两条腿都起不了新上下文才登记 `no-new-context`。
 
 ## 边界
 
@@ -55,10 +60,12 @@ codex exec -C <仓库根> -s read-only --json -o <回执文件> \
 - 不建/删其他宿主的定时任务；不替舰桥施工。
 - 未实测的 flag 不许写进正本；版本与探针读数写进项目本机配置。
 
-## 原生子代理（舰队必需）
+## 原生子代理（没有这一层，走宿主命令腿）
 
-- Codex **没有**宿主内建的原生子代理（当前实测）；舰队内核的 `fleet claim` / `report` /
-  `review` / `verdict` 派活链因此不适用。
-- 不退化去拉 `codex exec` 子进程：用户已明确框架只调用宿主自己的子代理。
-- 起不了新上下文 ⇒ 按 §6 登记 `no-new-context`，如实告诉用户「这个宿主跑不了舰队执行内核」。
-- 若未来 Codex 提供原生子代理，再在本节补「怎么起、怎么锁只读、报告落哪」三条。
+- Codex **没有**宿主内建的原生子代理（当前实测）。这不是缺件终局：按 ADR-0033 D3，
+  它自己的 `codex exec` 一次性进程就是合法的角色实例载体，内核经 `worker_cmd` / `reviewer_cmd` 驱动。
+- **只许拉自己的口**：在 Codex 会话里拉 `codex exec` 合法；在 Qoder/Claude 会话里拉 `codex exec` 禁止。
+- 只读靠沙箱档位（`-s read-only`）＋内核的范围校验与发货单点，不靠 prompt 自觉；
+  装完按总则 §7 自证：让只读角色真去写一次，必须被拒。
+- 两条腿都起不了新上下文 ⇒ 按 §6 登记 `no-new-context`，**不许记「已审查」**。
+- 若未来 Codex 提供原生子代理，优先切回原生腿，并在本节补「怎么起、怎么锁只读、报告落哪」三条。

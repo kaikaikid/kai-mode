@@ -12,14 +12,20 @@
 | 插件技能 | `<plugin>/skills/<name>/SKILL.md` | https://docs.qoder.com/cli/plugins |
 | 插件清单 | `.qoder-plugin/plugin.json`；`qoder plugins install <dir> -s project` | https://docs.qoder.com/cli/plugins |
 | 项目规则 | `.qoder/rules/**/*.md`；`AGENTS.md` 也读 | https://docs.qoder.com/user-guide/rules |
-| 子代理 | `.qoder/agents/<agentName>.md`（frontmatter `name`／`description`） | https://docs.qoder.com/cli/subagent |
+| 子代理 | `.qoder/agents/<名>.md`（项目）／`~/.qoder/agents/<名>.md`（用户）；名字由 frontmatter `name` 决定，不由文件名决定 | https://docs.qoder.com/cli/subagent |
+| 子代理字段面 | `name` `description` `tools` `disallowedTools` `effort` `hooks` `initialPrompt` `isolation` `maxTurns` `mcpServers` `memory` `model` `permissionMode` `skills` `temperature` `timeoutMins` `background` `color`；不认识的字段忽略 | 同上（2026-11-08 复查） |
 | 定时任务 | CLI `<project>/.qoder/scheduled_tasks.json`、`/loop`、`/crontab`；IDE「Automations」 | https://docs.qoder.com/cli/scheduled-tasks |
 | 兼容 Claude 配置 | CLI 0.1.22 发布说明有 `--with-claude-config`（读 Claude Skills/Commands/Subagents）；CLI 参考页未列 | https://docs.qoder.com/release-notes/qoder-cli |
 
 - **技能 frontmatter**：官方只要求 `name`（小写字母数字连字符，≤64）与 `description`（≤1024）；
   本仓的八字段在 Qoder 里按「额外字段忽略」处理，不会报错。
-- **优先级冲突**：IDE 文档说项目级优先；CLI 文档与排障页说用户级优先（`built-in < plugins < project < user`）。
-  装机时以**实际加载到的那份**为准，并把版本与优先级读数写进回执。
+- **优先级（2026-11-08 复查，取代旧句）**：官方现行表是 `Built-in < User < Project < Plugin < --agents`，
+  即**项目级高于用户级、插件级高于项目级**；旧文写的「用户级优先」与此相反，已废。
+  同名遮蔽可用 `qoder agents list` 的 shadowed 标记核。装机时仍以**实际加载到的那份**为准，
+  并把版本与优先级读数写进回执。
+- **角色文件必须装项目级、不随插件腿**（ADR-0033 D4）：官方明写插件提供的子代理会被剥掉
+  `hooks`、`mcpServers`、`permissionMode`，只保留 `tools`/`disallowedTools` 与 `isolation: worktree`；
+  加上插件优先级高于项目级，随插件装会既丢门禁又盖掉项目级那份。
 - `qoder_cron` 在公开文档里**查不到**；旧文那条是运行时观测。以 `.qoder/scheduled_tasks.json`／`/loop` 为准。
 
 ## 1. 装什么
@@ -56,13 +62,14 @@ Qoder 没有 Claude Code 那种 `/plugin:command` 命名空间。舰桥用两种
 
 - 在项目 `CLAUDE.md` / `AGENTS.md` 末尾写一段「默认入口＝舰桥」；
 - 用户按需起会话；会话里不打斜杠命令时，读 `bridge` 技能执行；
-- 施工由 `fleet warp`/`fleet jump` 起独立进程，不靠宿主定时任务。
+- 施工由 `fleet warp`/`fleet jump` 派宿主原生子代理，不靠宿主定时任务。
 
-```
 ## 4. 新上下文（审查腿）
 
-- 首选 Qoder 原生 subagent：`.qoder/agents/<名>.md`，frontmatter 至少 `name`／`description`；
-  只读用 `tools` 白名单或 `disallowedTools`（有硬机制就写死，没有就标软约束）。
+- 首选 Qoder 原生 subagent：角色文件装**项目级** `.qoder/agents/<名>.md`，frontmatter 至少 `name`／`description`；
+  只读用 `tools: [Read, Grep, Glob]` ＋ `disallowedTools: [Write, Edit, Bash]`（已查证是硬机制，写死）。
+  禁止嵌套派工用 `disallowedTools: [Agent]`，或用 `Agent(Explore, Plan)` 精确允许派谁。
+- **不随插件腿装角色**：插件提供的子代理会被剥掉 `hooks`/`mcpServers`/`permissionMode`（见 §0）。
 - 次选：另起一个新会话，只给 AC／diff／证据。
 - 再次：独立进程（若本机有 CLI 入口）。
 - **复用施工会话 ⇒ 不算独立验收**；起不了新上下文 ⇒ 登记 `no-new-context`，不许记「已审查」。
@@ -97,6 +104,9 @@ test -f .qoder-plugin/plugin.json && echo plugin-ok
 
 ## 原生子代理（舰队必需）
 
-- 起新上下文：Qoder 原生 subagent（`.qoder/agents/<名>.md`，frontmatter `name`/`description`）。
-- 只读：`tools` 白名单或 `disallowedTools`；起只读子代理让它写临时文件，**必须被拒**。
+- 起新上下文：Qoder 原生 subagent，角色文件装项目级 `.qoder/agents/<名>.md`，由角色正本渲染而来、头部记正本指纹。
+- 只读：`tools` 白名单 ＋ `disallowedTools`；起只读子代理让它写临时文件，**必须被拒**。
+- 身份：`name` 只是调用方的选择键，子代理上下文里看不到它，也看不到调用时传的运行时名字；
+  角色名与职业必须写进正文（正文＝子代理系统提示），实例编号写进任务包 prompt。
+- `skills` 字段是**限制能用哪些技能**，不是把技能注入上下文；职业设定不能靠它承载。
 - 报告落盘：子代理自己写或主会话代写到任务卡的 `report_path` / `review_report_path`。

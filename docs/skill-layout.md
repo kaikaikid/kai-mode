@@ -164,8 +164,13 @@ python scripts/doctor.py --with-tests   # 一条命令验全仓
 宿主中立、交接文档分类、Agent Skills 1.2 对齐、判据归属、
 安装面字节预算，以及各技能自己的 pytest。
 
-## 10. 人格层已退役
+## 10. 角色层（原「人格层已退役」）
 
-旧的 `agents/` 人格层（七个人格文件 ＋ `dispatch.md`）已按 ADR-0021 退役。
-派活规则与裁决形状住 [`engine/skills/fleet/SKILL.md`](../engine/skills/fleet/SKILL.md)。
+旧的 `agents/` 人格层（七个人格文件 ＋ `dispatch.md`）已按 ADR-0021 退役；该退役的**历史事实保留**，
+但「框架此后不得定义 per-agent 角色」这一推论已由 [`ADR-0033`](adr/0033-guild-role-layer.md) D1 废止。
+现在框架定义**角色模板**（八角色，酒馆冒险团体系），与旧人格层的区别是：不承载派活规则、不授予权限、
+唯一正本 ＋ 宿主侧带指纹的派生物。逐句冲突清单见
+[`docs/design/2026-11-08-guild-role-layer-conflicts.md`](design/2026-11-08-guild-role-layer-conflicts.md)。
+
+派活规则与裁决形状仍住 [`engine/skills/fleet/SKILL.md`](../engine/skills/fleet/SKILL.md)。
 审查独立性由「另一段新上下文」保证；宿主上怎么起新上下文见 [`adapters/`](../adapters/README.md)。

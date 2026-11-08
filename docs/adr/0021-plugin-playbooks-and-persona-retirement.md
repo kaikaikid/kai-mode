@@ -8,6 +8,16 @@ accepted —— 2026-10-27 用户拍板「按这版插件化框架开工」。�
 本文取代 [0007](0007-agents-layer-generic-contract.md)／[0008](0008-persona-model-config-and-host-adaptation.md) 的**载体形态**，
 不改其中的判据（审查独立、只读/可写、宿主中立、模型不发明 slug）；0007／0008 保留为历史决策。
 
+> **演变注（2026-11-08，[ADR-0033](0033-guild-role-layer.md) D1）**：D4「人格层退役」**部分被取代**。
+> 删除 `agents/` 七个人格文件、`agents-contract` 门、实例 `models.agents` 与初始化第 11 问，
+> 这些**历史事实与删除动作保留不变**；被废止的只是它蕴含的推论——「框架此后不得定义 per-agent 角色」。
+> 现在框架重新定义**角色模板**（酒馆冒险团体系，八角色），但与旧人格层有三点硬区别：
+> 模板不承载派活规则（仍住 `engine/skills/fleet/SKILL.md`，模板里只留指针）、
+> 模板不授予权限（只声明需求，实际按门禁取交集）、
+> 模板唯一正本且宿主上的定义文件是带指纹的派生物（不许手改）。
+> D1/D2/D3/D5–D8 全部不动。装机来源那份 `agents/README.md` 的「一句判据都不写」抬头随实施票同批改，
+> 见 [`docs/design/2026-11-08-guild-role-layer-conflicts.md`](../design/2026-11-08-guild-role-layer-conflicts.md) A9。
+
 ## Context
 
 对 `anthropics/knowledge-work-plugins`（下称 KWP）的核对结论：它与 kai-mode 重合约一成，且全在知识层

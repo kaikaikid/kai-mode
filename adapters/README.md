@@ -4,10 +4,14 @@
 > **① 怎么把插件/技能/命令装到宿主**（`<宿主>.md`）；
 > **② 怎么在宿主上起一段新上下文**（子代理／独立进程／新会话）；
 > **③ 缺什么怎么登记**（三格，不猜）。
-> 人格文件已退役：框架不再定义 per-agent 人格；派活规则住 `engine/skills/fleet/SKILL.md`。
+> 角色模板由框架定义（ADR-0033 D1）：一份正本，装机时按宿主渲染成定义文件、正文内联、头部记正本指纹。
+> 派活规则仍住 `engine/skills/fleet/SKILL.md`，模板里只留指针；旧「人格文件已退役」口径已废止。
 
-> **执行侧只用宿主原生子代理。** 框架不拉 CLI 进程；宿主起不了子代理就不适用，按 §6 登记
-> `no-new-context`，不退化成「主会话自己写代码」或「另起 CLI」。
+> **角色实例的入口必须属于当前宿主**（ADR-0033 D3）。宿主有原生子代理就用原生子代理；
+> 宿主本身就是命令行 agent 工具而没有原生子代理时，**可以拉它自己的一次性进程**
+> （Codex 里拉 `codex exec`、OpenCode 里拉 `opencode run`）。
+> **禁止在 A 宿主里拉 B 宿主的 CLI**——那是跨宿主借兵、消耗别家额度，要另立 ADR 并经用户批准。
+> 两条路都起不了新上下文 ⇒ 按 §6 登记 `no-new-context`，不退化成「主会话自己写代码」。
 
 ## 0. 三层分工
 
@@ -36,8 +40,8 @@
 |---|---|---|---|---|---|
 | Claude Code | `.claude-plugin/marketplace.json` | `.claude/skills/<名>/SKILL.md` 或中央库副本 | 无角色命令；`bridge` 为默认入口 | 原生子代理或独立进程 | 无内置；人工按需起 | 原生子代理（Agent/.claude/agents） |
 | Qoder | `.qoder-plugin/plugin.json` | `.qoder/skills/<名>/SKILL.md`（项目）／`~/.qoder/skills/`（用户） | 自然语言或显式提示词指向 `bridge` | 原生 subagent 或新会话 | 可不用；人工按需起 | 原生 subagent（.qoder/agents） |
-| Codex | 无 | 项目技能目录；`codex exec` 读 `SKILL.md` | 无；用 prompt 指向 `bridge` | 独立 `codex exec -s read-only` 进程 | 无 | 无原生；退化为独立进程 |
-| OpenCode | 无 | 项目技能目录（`registry.skills.project_skills_dir`） | 无；用 prompt | 独立 `opencode run` 进程 | 无 | 无原生；退化为独立进程 |
+| Codex | 无 | 项目技能目录；`codex exec` 读 `SKILL.md` | 无；用 prompt 指向 `bridge`（康娜的方法） | 独立 `codex exec -s read-only` 进程 | 无 | 无原生；用本宿主自己的进程当角色实例（D3），内核走 `worker_cmd`/`reviewer_cmd` |
+| OpenCode | 无 | 项目技能目录（`registry.skills.project_skills_dir`） | 无；用 prompt | 独立 `opencode run` 进程 | 无 | 无原生；用本宿主自己的进程当角色实例（D3），内核走 `worker_cmd`/`reviewer_cmd` |
 | Copilot | 无 | `.github/agents/<名>.agent.md`（宿主自有） | 无 | 宿主 agent | 视版本 | 视版本 |
 | Cursor | 无 | `.cursor/agents/<名>.md`（宿主自有） | 无 | 宿主 agent | 视版本 | 视版本 |
 
@@ -53,9 +57,10 @@
 
 ## 4. 模型与新上下文
 
-- 框架不再有 `models.agents.<人格>`：人格文件退役，模型用宿主默认。
+- 项目实例仍不复活 `models.agents.<人格>` 这个键（ADR-0015：键必须有活消费方）；
+  模型档位住角色正本与适配器映射，由装机时渲染进宿主定义文件，不写进项目配置。
 - 项目实例若仍保留旧 `models` 段，按迁移腿删除；不把模型 slug 写进框架正文。
-- **审查独立性看「另一段新上下文」**，不看人格文件名：
+- **审查独立性看「另一段新上下文」**，不看角色文件名：
   Claude Code 原生子代理／Qoder subagent／Codex 独立进程／OpenCode 独立进程。
 - 起不了新上下文 ⇒ 审查腿登记 `no-new-context`，**不许记「已审查」**。
 

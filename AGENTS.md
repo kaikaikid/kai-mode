@@ -62,9 +62,11 @@ scope + risk, and goes stale when scope changes.
 
 ## Entry fence
 
-`bridge` is the only conversational surface and the default entry. It does not call session-creation
-tools to wake other roles; there are no other roles. A session that is not explicitly pointed at another
-skill runs bridge's method. Source of truth: `docs/adr/0028-bridge-entry-and-airport-retirement.md`.
+One conversational surface and one default entry: the primary agent (康娜 / coordinator). `bridge` is
+its method, not a separate role. Professional roles are instantiated on demand as subagents — they are
+not long-lived sessions and never wake each other. A session that is not explicitly pointed at another
+skill runs bridge's method. Source of truth: `docs/adr/0033-guild-role-layer.md`
+(entry shape inherited from `docs/adr/0028-bridge-entry-and-airport-retirement.md`).
 
 ## Where each kind of rule lives (one kind, one home)
 
@@ -81,6 +83,7 @@ skill runs bridge's method. Source of truth: `docs/adr/0028-bridge-entry-and-air
 | Project config instance: key set | `docs/adr/0015-schema-4-keys-with-consumers.md` (a key must have a live consumer) | pointer |
 | Project config instance: default-value policy | `docs/adr/0014-config-instance-no-invented-values.md` + `templates/kai-mode.project.json` | pointer |
 | Role wake permissions (who may wake whom) | `docs/adr/0010-role-wake-fence.md` | pointer in role skills |
+| Role layer (primary agent, role template vs instance, memory writer, own-host-only dispatch) | `docs/adr/0033-guild-role-layer.md` | pointer; per-sentence conflict ledger in `docs/design/2026-11-08-guild-role-layer-conflicts.md` |
 | Runtime mechanics (retry, timeout, circuit breaker, budget, TTL) | **not in docs** — belongs to the host runtime | — |
 | Project instance values (thresholds, paths, ticket ids) | project config instance | template only |
 

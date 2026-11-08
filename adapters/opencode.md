@@ -1,7 +1,8 @@
 # opencode 适配器（免费档备胎）
 
-> 本文只讲**怎么在这个宿主上起舰桥**。舰队施工不适用：opencode 没有宿主原生子代理，
-> 而 框架已明确只调用宿主自己的子代理，不拉 `opencode run` 子进程。
+> 本文只讲**怎么在这个宿主上起康娜（主代理）与专业角色**。opencode 没有宿主原生子代理，
+> 但它本身就是命令行 agent 工具 ⇒ 按 ADR-0033 D3，**可以拉它自己的 `opencode run` 一次性进程**当角色实例。
+> 禁止的是在别的宿主里拉 opencode（跨宿主借兵）；在本宿主里拉自己的口合法。
 
 > 适用：宿主没有会话创建口 / 定时口，或需要非 Qoder 执行体直接跑舰桥。
 > 不依赖宿主定时口；舰桥按需起会话。
@@ -39,12 +40,15 @@ opencode run --model <free-model> \
 - 技能落点读项目配置实例 `registry.skills.project_skills_dir`（框架仓正本＝本仓 `<plugin>/skills/`），路径不写死。
 - 失败写 `launch-failed`；不重试到死，交人工。
 
-## 执行三职（舰队不适用）
+## 执行三职（走内核的宿主命令腿）
 
-- 框架只用宿主原生子代理；opencode 当前没有这一层 ⇒ `fleet claim/report/review/verdict` 派活链不适用。
-- 按缺件三格登记 `no-new-context`，如实告诉用户「这个宿主跑不了舰队执行内核」；不退化去拉 `opencode run`。
-- 舰桥本身仍可用：它只做对话、开票、发货，不依赖宿主子代理。
-- 若 opencode 未来提供原生子代理，再在这里补「怎么起、怎么锁只读、报告落哪」三条。
+- opencode 没有原生子代理层，但内核早就有这条腿：`fleet auto` 只调 `.coding/config.json` 的
+  `worker_cmd` / `reviewer_cmd`（或环境变量 `TRAVEL_WORKER_CMD` / `TRAVEL_REVIEWER_CMD`）配好的宿主命令。
+  把这两个值配成 `opencode run` 即可，`fleet claim/report/review/verdict` 派活链照常走。
+- **审查必须另起一次调用**（新上下文）；复用施工会话 ⇒ 不算独立验收。
+- 免费档优先；不静默切付费档，也不切到别家宿主去绕。
+- 康娜（主代理）本身不依赖子代理：它只做对话、开票、发货。
+- 起不动写 `launch-failed` 交人工，不重试到死；两条腿都起不了新上下文才登记 `no-new-context`。
 
 ## 边界
 
@@ -53,7 +57,12 @@ opencode run --model <free-model> \
 - 不替舰桥施工；只把舰桥技能跑起来。
 - 与按需子会话一样，目标在岗不重复起。
 
-## 原生子代理（舰队必需）
+## 原生子代理（没有这一层，走宿主命令腿）
 
-- 没有 agent 定义文件这一层 ⇒ **原生子代理不适用**；舰队不适用，按 §6 登记 `no-new-context`。
-- 不退化去拉 `opencode run` 子进程：用户已明确框架只调用宿主自己的子代理。
+- 没有 agent 定义文件这一层 ⇒ 宿主定义文件面登记 `no-agent-surface`；但**角色不缺件**：
+  按 ADR-0033 D3，opencode 自己的 `opencode run` 一次性进程就是合法的角色实例载体，
+  角色正文由内核任务包与宿主命令带入。
+- **只许拉自己的口**：在 opencode 会话里拉 `opencode run` 合法；在别家宿主里拉 opencode 禁止。
+- 只读靠独立工作区／只读副本 ＋ 内核的范围校验与发货单点，不靠 prompt 自觉；
+  装完按总则 §7 自证：让只读角色真去写一次，必须被拒。
+- 两条腿都起不了新上下文 ⇒ 按 §6 登记 `no-new-context`，**不许记「已审查」**。
