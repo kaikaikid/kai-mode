@@ -124,6 +124,7 @@ test -f .qoder-plugin/plugin.json && echo plugin-ok
 > （工作树隔离／范围校验／发货单点），并按 `soft-permission-only` 登记。
 
 - 起新上下文：Qoder 原生 subagent，角色文件装项目级 `.qoder/agents/<名>.md`，由角色正本渲染而来、头部记正本指纹。
+  **只装可派发的七个**；主 AI 人格（康娜）不进这一堆，她是会话级人格，走 `--agent` 那条路。
 - 只读：`tools` 白名单 ＋ `disallowedTools`；起只读子代理让它写临时文件，**必须被拒**。
 - 身份：`name` 只是调用方的选择键，子代理上下文里看不到它，也看不到调用时传的运行时名字；
   角色名与职业必须写进正文（正文＝子代理系统提示），实例编号写进任务包 prompt。

@@ -1,6 +1,7 @@
 ---
 role_id: reviewer
 canon_version: 1.0.0
+kind: dispatchable
 access_need: read_only
 model_tier: strong
 effort: max

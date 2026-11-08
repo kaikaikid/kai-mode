@@ -25,12 +25,17 @@ roles/
 `role_id` 是稳定标识，不随皮肤变：`coordinator` `researcher` `architect` `engineer`
 `designer` `writer` `archivist` `reviewer`。
 
-## 正本 frontmatter（五键，固定顺序）
+**其中一个不是子代理**：`coordinator`（康娜）是**主 AI 人格**——默认对话激活的就是它，
+`kind: primary`。另外七个是 `kind: dispatchable`，按需调出：用户点名可以直接调，主 AI 也能自己派。
+所以「渲染成可派发定义文件」的只有七个；主 AI 人格单独出 `_primary`，是**会话级**人格，不是候选项。
+
+## 正本 frontmatter（六键，固定顺序）
 
 ```yaml
 ---
 role_id: coordinator
 canon_version: 1.0.0
+kind: primary
 access_need: writable
 model_tier: strong
 effort: high
@@ -39,6 +44,8 @@ effort: high
 
 - `access_need` 只是**声明角色需要什么**，不授权。实际权限按 ADR-0033 D7 取交集：
   宿主无关三样（工作树隔离／范围校验／发货单点）永远生效，宿主工具白名单是加分项。
+- `kind` 只有两档：`primary`（主 AI 人格，有且只有 `coordinator`）／`dispatchable`（可派发）。
+  尺子会拦「两个 primary」与「把主 AI 人格标成可派发」。
 - `model_tier` 是宿主中立档位（`fast` / `standard` / `strong` / `inherit`），
   由投影表翻成宿主认的值；`effort` 用通用档位词，宿主不认就不写该字段。
 - `canon_version` 改动必须升版；产物头部的指纹记版本与 hash，用来对账，不用来判断过期。
@@ -78,13 +85,19 @@ effort: high
 
 | 落地 | 怎么用 | 正本改了 |
 |---|---|---|
-| **现读** | `render-roles.py prompt --role X --skin S`（或 `--pack` 一次八份） | **不用动任何文件**，下次调用就是新的 |
-| **定义文件** | `render-roles.py render --host H --dest <目录>` | 重跑一次 `render` 覆盖 |
+| **现读·主 AI 人格** | `render-roles.py prompt --primary --skin S` | **不用动任何文件**，下次调用就是新的 |
+| **现读·可派发** | `render-roles.py prompt --role X --skin S`（或 `--pack` 一次七个） | 同上 |
+| **定义文件** | `render-roles.py render --host H --dest <目录>`（默认七个；`--with-primary` 多出 `_primary`） | 重跑一次 `render` 覆盖 |
 
 ```bash
-python scripts/render-roles.py prompt --role reviewer --skin guild
+python scripts/render-roles.py prompt --primary --skin guild          # 康娜的会话提示词（含可调出角色表）
+python scripts/render-roles.py prompt --role reviewer --skin guild    # 单个可派发角色
 python scripts/render-roles.py render --host qoder --skin generic --dest <项目>/.qoder/agents
 ```
+
+- **主 AI 人格的提示词自带一张「可调出角色」表**（role_id／名字／管什么／读写），
+  这样它不需要额外读文档就知道该派谁。表由正本现拼，不手写。
+- 可派发包默认**不含**主 AI 人格：它是会话级人格，混进候选项会变成「派自己」。
 
 - `render` ＝ 同一份现拼结果前面加宿主 frontmatter（字段与值按 `adapters/role-hosts.json` 翻译）。
 - **没有 stale 巡检**（2026-11-08 用户令）：派生物只是缓存。装／升级一律重渲染覆盖，

@@ -64,7 +64,8 @@ def cmd_render(args: argparse.Namespace) -> int:
         for b in bad:
             print(f"  - {b}", file=sys.stderr)
         return 2
-    files = rolelib.render_all(root, args.host, args.skin)
+    files = rolelib.render_all(root, args.host, args.skin,
+                               with_primary=getattr(args, "with_primary", False))
     cfg = rolelib.load_hosts(root)["hosts"][args.host]
     dest = Path(args.dest).resolve()
     plan = {"new": [], "overwrite": [], "same": []}
@@ -144,11 +145,15 @@ def cmd_prompt(args: argparse.Namespace) -> int:
         for b in bad:
             print(f"  - {b}", file=sys.stderr)
         return 2
+    if args.primary:
+        sys.stdout.write(rolelib.render_primary(root, args.skin))
+        return 0
     if args.pack:
-        sys.stdout.write(rolelib.render_pack(root, args.skin))
+        sys.stdout.write(rolelib.render_pack(root, args.skin,
+                                             with_primary=getattr(args, "with_primary", False)))
         return 0
     if not args.role:
-        print("要么给 --role，要么给 --pack", file=sys.stderr)
+        print("要么给 --role / --primary，要么给 --pack", file=sys.stderr)
         return 2
     sys.stdout.write(rolelib.render_prompt(root, args.role, args.skin))
     return 0
@@ -165,12 +170,17 @@ def main() -> int:
     pp = sub.add_parser("prompt", help="现读组装角色提示词（零同步，不写盘）")
     pp.add_argument("--skin", required=True, choices=rolelib.SKINS)
     pp.add_argument("--role", choices=rolelib.ROLE_IDS)
-    pp.add_argument("--pack", action="store_true", help="八个角色拼成一份")
+    pp.add_argument("--primary", action="store_true",
+                    help="主 AI 人格的会话提示词（含可调出角色表）")
+    pp.add_argument("--pack", action="store_true", help="可派发角色拼成一份（默认七个）")
+    pp.add_argument("--with-primary", action="store_true", help="包里也带上主 AI 人格")
     sp = sub.add_parser("render", help="渲染到目标目录（一律覆盖，不做 stale 判断）")
     sp.add_argument("--host", required=True, choices=rolelib.HOSTS)
     sp.add_argument("--skin", required=True, choices=rolelib.SKINS)
     sp.add_argument("--dest", required=True, help="目标目录（项目里的宿主落点）")
     sp.add_argument("--dry-run", action="store_true", help="只报告将做什么，不写盘")
+    sp.add_argument("--with-primary", action="store_true",
+                    help="多出一个 _primary 文件（会话级主 AI 人格，不是可派发子代理）")
     args = p.parse_args()
     return {"validate": cmd_validate, "render": cmd_render,
             "emit-table": cmd_emit_table, "prompt": cmd_prompt}[args.cmd](args)

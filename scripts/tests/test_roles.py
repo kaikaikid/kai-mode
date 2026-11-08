@@ -54,6 +54,15 @@ def test_eight_roles_two_skins_six_hosts():
     assert set(rl.load_hosts(REPO)["hosts"]) == set(rl.HOSTS)
 
 
+def test_exactly_one_primary_and_it_is_the_coordinator():
+    """康娜是主 AI 人格，不是可派发的子代理——由 kind 字段机械定住。"""
+    canon = rl.load_canon(REPO)
+    primaries = [rid for rid, c in canon.items() if c["meta"].get("kind") == "primary"]
+    assert primaries == [rl.PRIMARY_ID] == ["coordinator"]
+    assert rl.PRIMARY_ID not in rl.DISPATCHABLE_IDS
+    assert len(rl.DISPATCHABLE_IDS) == 7
+
+
 def test_canon_has_exactly_four_blocks_in_order():
     for rid, c in rl.load_canon(REPO).items():
         assert tuple(c["blocks"]) == rl.CANON_BLOCKS, rid
@@ -99,9 +108,10 @@ def test_ac08_filenames_stable_across_skins():
 @pytest.mark.parametrize("host", rl.HOSTS)
 @pytest.mark.parametrize("skin", rl.SKINS)
 def test_ac02_render_is_idempotent(host, skin, tmp_path):
-    """渲染两遍结果一样：派生物没有「旧版」这个概念，重渲染就是全部。"""
+    """渲染两遍结果一样：派生物没有「旧版」这个概念，重渲染就是全部。默认只出七个可派发角色。"""
     first = rl.render_all(REPO, host, skin)
-    assert len(first) == 8
+    assert len(first) == 7
+    assert "coordinator.md" not in first and "_primary.md" not in first
     for name, text in first.items():
         (tmp_path / name).write_bytes(text.encode("utf-8"))
     second = rl.render_all(REPO, host, skin)
@@ -110,11 +120,19 @@ def test_ac02_render_is_idempotent(host, skin, tmp_path):
         assert (tmp_path / name).read_bytes() == text.encode("utf-8")
 
 
+def test_ac02_with_primary_adds_only_the_session_agent(host="qoder"):
+    files = rl.render_all(REPO, host, "guild", with_primary=True)
+    assert len(files) == 8
+    prim = next(n for n in files if n.startswith("_primary"))
+    body = _body_of(files[prim])
+    assert body == rl.render_primary(REPO, "guild")
+
+
 def test_ac02_render_body_comes_from_prompt(tmp_path):
     """同一个组装点：渲染文件的正文逐字节等于 prompt 现读结果，没有第二套拼装。"""
     for host in rl.HOSTS:
         files = rl.render_all(REPO, host, "guild")
-        for rid in rl.ROLE_IDS:
+        for rid in rl.DISPATCHABLE_IDS:
             fname = next(n for n in files if n.startswith(rid))
             assert _body_of(files[fname]) == rl.render_prompt(REPO, rid, "guild"), f"{host}/{rid}"
 
@@ -179,6 +197,19 @@ def test_readonly_roles_get_no_write_tools_on_qoder():
         assert "Agent" in fm, f"{rid} 没禁再派子代理"
 
 
+def test_primary_keeps_the_agent_tool():
+    """主 AI 人格是派活的那一方：把它自己的 Agent 工具禁掉，「由康娜自己调出来」就没了。"""
+    files = rl.render_all(REPO, "qoder", "generic", with_primary=True)
+    prim = files["_primary.md"]
+    fm = prim.split("---")[1]
+    assert "disallowedTools: [Agent]" not in fm
+    assert "disallowedTools" not in fm, "主 AI 人格不该有任何 disallowedTools"
+    for name, text in files.items():
+        if name == "_primary.md":
+            continue
+        assert "Agent" in text.split("---")[1], f"{name} 应禁再派"
+
+
 def test_cursor_readonly_uses_flag_not_tools():
     files = rl.render_all(REPO, "cursor", "generic")
     assert "readonly: true" in files["reviewer.md"]
@@ -225,13 +256,15 @@ def _body_of(text: str) -> str:
 
 
 def test_prompt_equals_body_of_rendered_file():
-    """现读出来的正文与该宿主渲染文件的正文逐字相同——两条路同源，不是两套。"""
+    """现读出来的正文与该宿主渲染文件的正文逐字相同——两条路同源，不是两套。
+    主 AI 人格不在渲染面里，单独比 render_primary。"""
     for host in rl.HOSTS:
         for skin in rl.SKINS:
             files = rl.render_all(REPO, host, skin)
-            for rid in rl.ROLE_IDS:
+            for rid in rl.DISPATCHABLE_IDS:
                 fname = next(n for n in files if n.startswith(rid))
                 assert _body_of(files[fname]) == rl.render_prompt(REPO, rid, skin), f"{host}/{rid}"
+    assert rl.render_primary(REPO, "guild").startswith("<!-- kai-role role_id=coordinator")
 
 
 def test_prompt_tracks_canon_without_any_file(repo_copy):
@@ -243,11 +276,21 @@ def test_prompt_tracks_canon_without_any_file(repo_copy):
     assert rl.render_prompt(repo_copy, "reviewer", "generic") != before
 
 
-def test_pack_contains_all_eight_roles():
+def test_pack_contains_seven_dispatchable_roles():
     pack = rl.render_pack(REPO, "guild")
-    for rid in rl.ROLE_IDS:
+    for rid in rl.DISPATCHABLE_IDS:
         assert f"role={rid}" in pack
-    assert pack.count("<!-- kai-role") == 8
+    assert "role=coordinator" not in pack, "主 AI 人格不该混进可派发包"
+    assert pack.count("<!-- kai-role") == 7
+
+
+def test_primary_prompt_carries_dispatch_table():
+    """主 AI 人格的会话提示词要自带「能调出谁」，否则它不知道怎么派。"""
+    p = rl.render_primary(REPO, "guild")
+    assert "## 可调出的角色" in p
+    for rid in rl.DISPATCHABLE_IDS:
+        assert rid in p
+    assert "只读角色拿不到写权限时" in p
 
 
 # ── 反向：把病灶种回副本，尺子必须红 ──────────────────────────────────────────
@@ -300,6 +343,31 @@ def test_reverse_host_without_own_cli_is_red(repo_copy):
     p.write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
     bad = rl.validate(repo_copy)
     assert any("本宿主自己的 CLI" in b for b in bad), bad
+
+
+def test_reverse_second_primary_is_red(repo_copy):
+    """只许一个主 AI 人格：给别人也标 primary，尺子必须红。"""
+    p = repo_copy / "roles" / "canon" / "reviewer.md"
+    p.write_text(p.read_text(encoding="utf-8").replace("kind: dispatchable", "kind: primary"),
+                 encoding="utf-8")
+    bad = rl.validate(repo_copy)
+    assert any("主 AI 人格只能是" in b for b in bad), bad
+
+
+def test_reverse_primary_marked_dispatchable_is_red(repo_copy):
+    p = repo_copy / "roles" / "canon" / "coordinator.md"
+    p.write_text(p.read_text(encoding="utf-8").replace("kind: primary", "kind: dispatchable"),
+                 encoding="utf-8")
+    bad = rl.validate(repo_copy)
+    assert any("不能声明 dispatchable" in b for b in bad), bad
+
+
+def test_reverse_bad_kind_is_red(repo_copy):
+    p = repo_copy / "roles" / "canon" / "writer.md"
+    p.write_text(p.read_text(encoding="utf-8").replace("kind: dispatchable", "kind: subagent"),
+                 encoding="utf-8")
+    bad = rl.validate(repo_copy)
+    assert any("kind 非法" in b for b in bad), bad
 
 
 def test_reverse_unverified_host_without_evidence_is_red(repo_copy):

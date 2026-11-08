@@ -1,6 +1,7 @@
 ---
 role_id: designer
 canon_version: 1.0.0
+kind: dispatchable
 access_need: writable
 model_tier: standard
 effort: high

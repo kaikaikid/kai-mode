@@ -1,6 +1,7 @@
 ---
 role_id: coordinator
 canon_version: 1.0.0
+kind: primary
 access_need: writable
 model_tier: strong
 effort: high

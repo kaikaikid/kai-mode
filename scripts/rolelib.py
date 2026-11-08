@@ -19,10 +19,14 @@ ROLE_IDS = (
     "designer", "writer", "archivist", "reviewer",
 )
 CANON_BLOCKS = ("mission", "boundaries", "workflow", "output_contract")
-META_KEYS = ("role_id", "canon_version", "access_need", "model_tier", "effort")
+META_KEYS = ("role_id", "canon_version", "kind", "access_need", "model_tier", "effort")
 SKIN_KEYS = ("name", "identity", "personality")
 SKINS = ("generic", "guild")
 ACCESS = ("read_only", "writable")
+KINDS = ("primary", "dispatchable")
+# 主 AI 人格：默认对话激活的就是它，不渲染成可派发的子代理定义。
+PRIMARY_ID = "coordinator"
+DISPATCHABLE_IDS = tuple(r for r in ROLE_IDS if r != PRIMARY_ID)
 TIERS = ("fast", "standard", "strong", "inherit")
 EFFORTS = ("low", "medium", "high", "xhigh", "max")
 HOSTS = ("qoder", "claude", "codex", "opencode", "copilot", "cursor")
@@ -209,7 +213,8 @@ def role_frontmatter(host_cfg: dict, canon: dict, entry: dict) -> str:
     if "tools" in fields and tools:
         fm.append(f"{fields['tools']}: {yaml_list(tools, host_cfg.get('tools_style', 'array'))}")
     dis_key = "readonly_disallowed" if access == "read_only" else "writable_disallowed"
-    dis = host_cfg.get(dis_key) or []
+    # 主 AI 人格是派活的那一方：不许把 Agent 从它手里拿走，否则「由康娜自己调出来」就废了。
+    dis = [] if meta.get("kind") == "primary" else (host_cfg.get(dis_key) or [])
     if "disallowed_tools" in fields and dis:
         fm.append(f"{fields['disallowed_tools']}: {yaml_list(dis, host_cfg.get('tools_style', 'array'))}")
     if "model" in fields:
@@ -267,19 +272,42 @@ def render_prompt(root: Path, role_id: str, skin: str) -> str:
     return render_body(canon[role_id], sk, entry, skin)
 
 
-def render_pack(root: Path, skin: str) -> str:
-    """把八个角色拼成一份包，给只收单块提示词的宿主/调用方用。同样是现读。"""
-    parts = [f"# 角色包（skin={skin}）\n"]
-    for rid in ROLE_IDS:
+def render_pack(root: Path, skin: str, with_primary: bool = False) -> str:
+    """把可派发角色拼成一份包（默认七个，不含主 AI 人格）。同样是现读。"""
+    ids = ROLE_IDS if with_primary else DISPATCHABLE_IDS
+    parts = [f"# 角色包（skin={skin}，{len(ids)} 个）\n"]
+    for rid in ids:
         parts.append(f"\n---\n\n<!-- role={rid} -->\n")
         parts.append(render_prompt(root, rid, skin))
     return "".join(parts)
 
 
-def render_all(root: Path, host: str, skin: str) -> dict[str, str]:
-    """返回 {文件名: 文本}。正文一律走 render_prompt——打包与现读同一个组装点。
+def render_primary(root: Path, skin: str) -> str:
+    """主 AI 人格的会话提示词：本角色正文 ＋ 一张「可调出谁」的调度表。
 
-    文件名用 role_id，不用皮肤名（换皮肤不改文件名）。
+    默认对话激活的就是它；它自己不是可派发的子代理。
+    """
+    canon = load_canon(root)
+    sk = load_skin(root, skin)
+    entries = sk.get("roles") or {}
+    head = render_prompt(root, PRIMARY_ID, skin)
+    rows = ["", "## 可调出的角色", "",
+            "这些按需调出：用户点名可以直接调，你也可以自己派。只读角色拿不到写权限时，"
+            "其改动会被内核判 returned，所以别派只读角色去改文件。", "",
+            "| role_id | 名字 | 管什么 | 读写 |", "|---|---|---|---|"]
+    for rid in DISPATCHABLE_IDS:
+        e = entries.get(rid) or {}
+        need = canon[rid]["meta"].get("access_need", "")
+        rows.append(f"| {rid} | {e.get('name', '')} | {description_for(e.get('name', ''), canon[rid]['body'])[len(e.get('name','')) + 1:]} "
+                    f"| {'只读' if need == 'read_only' else '可写'} |")
+    return head + "\n".join(rows) + "\n"
+
+
+def render_all(root: Path, host: str, skin: str, with_primary: bool = False) -> dict[str, str]:
+    """返回 {文件名: 文本}。默认只渲染**可派发**的七个角色。
+
+    主 AI 人格不是子代理：默认对话激活的就是它，要用就单独 `--with-primary` 出 `_primary.md`
+    （会话级人格），不要混进按名派发的那一堆里。正文一律走同一个组装点。
     """
     hosts = load_hosts(root)
     if host not in (hosts.get("hosts") or {}):
@@ -289,14 +317,16 @@ def render_all(root: Path, host: str, skin: str) -> dict[str, str]:
     sk = load_skin(root, skin)
     entries = sk.get("roles") or {}
     suffix = cfg.get("suffix", ".md")
+    ids = ROLE_IDS if with_primary else DISPATCHABLE_IDS
     out: dict[str, str] = {}
-    for rid in ROLE_IDS:
+    for rid in ids:
         if rid not in canon:
             raise RoleError(f"缺正本：roles/canon/{rid}.md")
         if rid not in entries:
             raise RoleError(f"皮肤 {skin} 缺角色 {rid}")
-        out[f"{rid}{suffix}"] = role_frontmatter(cfg, canon[rid], entries[rid]) + \
-            render_prompt(root, rid, skin)
+        body = render_primary(root, skin) if rid == PRIMARY_ID else render_prompt(root, rid, skin)
+        name = f"_primary{suffix}" if rid == PRIMARY_ID else f"{rid}{suffix}"
+        out[name] = role_frontmatter(cfg, canon[rid], entries[rid]) + body
     return out
 
 
@@ -327,6 +357,12 @@ def validate(root: Path) -> list[str]:
             bad.append(f"{rel} canon_version 不是 x.y.z：{meta.get('canon_version')!r}")
         if meta.get("access_need") not in ACCESS:
             bad.append(f"{rel} access_need 非法：{meta.get('access_need')!r}")
+        if meta.get("kind") not in KINDS:
+            bad.append(f"{rel} kind 非法：{meta.get('kind')!r}（primary / dispatchable）")
+        elif meta.get("kind") == "primary" and rid != PRIMARY_ID:
+            bad.append(f"{rel} 声明 primary，但主 AI 人格只能是 {PRIMARY_ID}")
+        elif meta.get("kind") == "dispatchable" and rid == PRIMARY_ID:
+            bad.append(f"{rel} 是主 AI 人格，不能声明 dispatchable")
         if meta.get("model_tier") not in TIERS:
             bad.append(f"{rel} model_tier 非法：{meta.get('model_tier')!r}")
         if meta.get("effort") not in EFFORTS:
