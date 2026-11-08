@@ -2,6 +2,31 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.39.0 — 2026-11-08
+
+- **口径收口，只留一套**：酒馆冒险团（团队与角色）＋ 通用规范（双仓库）。旧比喻（机场／航班／塔台／地勤／
+  机长／二副／王牌／排班／日表／在飞／掌机／车道／舰队／舰船／船员／舰桥／文娱集团）全部退役，逐行清掉
+  696 处；`GLOSSARY.md` 补齐执行层词条（执行内核／run／run 集合／队员／任务表／工作树槽位／施工中／负责角色）。
+- **口径门从瞎的变成会响的**：`docs/canon.json` 退役词从 11 个扩到 38 个，扫描范围补 `engine`／`studio`／
+  `manual`／`scripts`／`handoff`／`GLOSSARY.md`／`.gitignore`，文本面补 `.html`／`.js`／`.sql`；
+  新增 `doctor.py --list-retired`，逐条吐出全部命中（以前只报前 6 条）。历史件（ADR／design／CHANGELOG／
+  handoff 记录槽）豁免；正当退役声明与必须保留的兼容标识符用行内 `canon:allow-retired` 逐行豁免。
+- **技能结构：模块化拆分 ＋ 渐进式加载 ＋ 核心精简**。`bridge` 227→161 行、`fleet` 183→152 行、
+  `set-kai-mode` 359 行/24KB→198 行；查表类内容下沉到各自 `references/`（共 13 份），正文只留步骤与
+  每步的完成终点。`set-kai-mode` 不再是安装面最大件。
+- **技能模板换新**：`templates/skill/SKILL.md` 先教「哪段进正文、哪段下沉」的分层判据，再给骨架；
+  新增技能不再长成八段式。
+- **控制面正名 `fleet`**：`travel`／`coding` 降为兼容别名（三个 launcher 同一入口）；文档与帮助文本只写 `fleet`。
+- **取值域统一**：`owner_role`／`--role` 一律取八个角色 id（`coordinator`／`researcher`／`architect`／
+  `engineer`／`designer`／`writer`／`archivist`／`reviewer`）；旧「岗位 × 人格」二分重述为
+  主 AI 人格／角色模板／角色实例，字段名不变。
+- **修两处真缺陷**：① 看板默认分支前缀只认 `exec/`，抓不到内核实际建的 `travel/<run_id>` ⇒ 改为
+  `("travel/", "exec/", "land/")`；② `cli.py` 两处注释写「旧 state 按 cli 显示」，与
+  `SESSION_MODES = ("native",)` 矛盾 ⇒ 订正为 native。
+- **手册**：静态页全量对齐；`skills-plain.json` 删掉 8 个已不存在技能的条目；`skills-data.js` 重生成
+  （19 技能／6 插件，分组名改由 marketplace `displayName` 派生）；`assets/full-map.html` 是旧体系时期的
+  出图，加红色历史横幅并登记待重出。
+
 ## 0.38.1 — 2026-11-05
 
 - **默认档位收敛（ADR-0032）**：拆 task 只允许「能并行 / 能独立发货 / 风险隔离」；touchset 重叠且串行依赖时合并成一个 task、多 AC。规划表标并行宽度。

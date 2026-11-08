@@ -3,51 +3,51 @@
   "_note": "版本钉死：由 scripts/plugin-check.py --bump 生成，不手改。digest 是插件安装面的内容摘要。",
   "plugins": {
     "board": {
-      "version": "1.3.0",
-      "digest": "81abd4af10fe26d9b70d3c34cd25822a13386f4896525aea2454b9d082509242",
+      "version": "1.4.0",
+      "digest": "6687e9b24769161a1cb879b82fa1873705ce7ea1157c2a4fdb5106e46bf0fff8",
       "skills": {
         "flight-info": "1.6.0"
       }
     },
     "core": {
-      "version": "1.3.1",
-      "digest": "2152ff02d35ad4e6b18430686702e542ca88b7dfe17b92a693918fb073dc20f2",
+      "version": "1.4.0",
+      "digest": "9f2eab181b6b7f9be4bd4ca1eb211918a0b011d4d89812b65da78d830e5d7e6f",
       "skills": {
-        "bridge": "0.5.0",
+        "bridge": "0.6.0",
         "harness-audit": "0.2.1",
         "kai-handoff": "0.3.6",
         "principles": "1.0.0",
-        "set-kai-mode": "6.3.0",
+        "set-kai-mode": "7.0.0",
         "staff": "4.2.0",
         "upgrade-kai-mode": "0.2.1"
       }
     },
     "engine": {
-      "version": "0.5.0",
-      "digest": "6ef7918784f222fca98bde4161e8dddee340e9fb9f31cdce4d811a096e0219a2",
+      "version": "0.6.0",
+      "digest": "4769245e2738c49556dbd90f4b19caf06ab2e894edb4163f2f14ca3bef754f5b",
       "skills": {
-        "fleet": "0.8.0",
+        "fleet": "0.9.0",
         "pk": "0.1.1"
       }
     },
     "intake": {
-      "version": "1.0.0",
-      "digest": "51818d9c1b6764fd987df471cb69595d37688b3c052df62bd5ed1ef8f85acb2c",
+      "version": "1.0.1",
+      "digest": "940bab3c3eba431b6472c3e406711dddb803e78bf01dea86bc5e563990882dbc",
       "skills": {
         "kai-boom-idea-log": "0.1.4"
       }
     },
     "ops": {
-      "version": "1.0.0",
-      "digest": "0aa9e120b15ebf170c6795116595e4b7fdad6fab90411dc1079121262ff62023",
+      "version": "1.0.1",
+      "digest": "f1bbd059e0e4e6c1bafb32d011b625010b05e554acae9d40b511985a6a0504cb",
       "skills": {
         "incident-response": "0.1.0",
         "runbook": "0.1.0"
       }
     },
     "studio": {
-      "version": "1.0.0",
-      "digest": "833dd259b762bf5302f4442fc99fdd36b66a80758e489d29e5b787a1fb139355",
+      "version": "1.1.0",
+      "digest": "649c916136b2b394a6335c27aec179b73e36615233a21e616cc0378364db32af",
       "skills": {
         "director": "2.0.0",
         "final-review": "2.0.0",

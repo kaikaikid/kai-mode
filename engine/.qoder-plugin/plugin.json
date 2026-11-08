@@ -1,6 +1,6 @@
 {
   "name": "engine",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "一个 issue 一个 run：主会话规划与验收，宿主原生子代理执行；含自有方法件 pk；通用方法按名用宿主中央库原版。",
   "author": {
     "name": "kaikaikid"

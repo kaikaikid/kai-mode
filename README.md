@@ -1,12 +1,13 @@
 # kai-mode —— 酒馆冒险团与执行内核
 
-> **状态：0.38.1（2026-11-05 默认档位收敛：任务合并规则、轻车道放宽、舰队默认 1 船；6 个插件 / 20 个技能；`v2/` → `engine/`，`travel` → `fleet`，
+> **状态：0.39.0（2026-11-08 口径与技能结构收口：全仓只留酒馆冒险团一套口径，旧比喻进退役词黑名单并由机器门逐行扫描；6 个插件 / 19 个技能；`bridge` / `fleet` / `set-kai-mode` 三份主技能拆成「正文流程 ＋ references 查表」，新增技能结构模板；控制面正名 `fleet`（`travel` / `coding` 兼容别名）；详见 [`CHANGELOG.md`](CHANGELOG.md) 与 [`GLOSSARY.md`](GLOSSARY.md)）。
 > `kai-mode` → `staff`；角色实例的入口必须属于当前宿主（优先原生子代理，宿主本身就是命令行工具时可用它自己的进程）；通用方法不再 fork，按名用宿主中央库原版；
 > 详见 [`CHANGELOG.md`](CHANGELOG.md) 与 [`docs/method-pointers.md`](docs/method-pointers.md)）。**
 >
 > 本仓是宿主装机正本（`magpie-sync apply --root <本仓>`，按市场清单的插件目录装齐，当前 20 个技能），
-> 项目仓那份技能副本只作镜像。旧五角色、租约、班次、按铃那套早已退役；2026-10-31 机场体系（地勤/塔台/<!-- canon:allow-retired -->
-> 机长/副机长/二副/王牌）整体下线，git 历史可捞。
+> 项目仓那份技能副本只作镜像。旧五角色、租约、班次、按铃那套早已退役；2026-10-31 机场体系（地勤/塔台/机长/副机长/二副/王牌）整体下线，git 历史可捞。<!-- canon:allow-retired -->
+>
+> 现行口径只有一套：酒馆冒险团（团队与角色）＋ 一套通用规范；词义正本见 [`GLOSSARY.md`](GLOSSARY.md)。
 
 > 使用手册（HTML，多页）：[manual/index.html](manual/index.html)；完整技术图在附录。
 
@@ -19,7 +20,7 @@ kai-mode 是「一句话需求 → 判断 → 票 → run → 施工 → 审查 
 项目自己的 ADR、票、日报、门禁脚本与项目专用剧本留在项目仓。
 
 - 技能清单：**以 [`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json) 为准**（单一事实源；安装器从插件目录现场派生）。
-- 执行内核：`engine/`，命令 `engine/bin/travel`（`coding` 兼容别名一版）。
+- 执行内核：`engine/`；控制面命令 `fleet <子命令>`（launcher `engine/bin/fleet`；`travel`、`coding` 是兼容别名）。
 - 通用方法：直接用宿主中央库里的上游原版（`mattpocock/skills` 等），本仓不维护副本、不做 30 天对账；只保留与本仓流程挂钩的特化指针（见 [`docs/method-pointers.md`](docs/method-pointers.md)）。
 - 项目配置模板：`templates/kai-mode.project.json`（schema 5）。
 
@@ -27,11 +28,11 @@ kai-mode 是「一句话需求 → 判断 → 票 → run → 施工 → 审查 
 
 | 角色 | 口令 | 只负责 | 绝不做 |
 |---|---|---|---|
-| **康娜**（主 AI 人格） | `/bridge`、`/舰桥`，或未点名其它技能时的默认入口 | 听懂、判断、开票、开 run、清场（脏文件分类与安全收起）、发货、白话回报 | 写产品代码、替用户做产品取舍 |
-| staff 参谋部 | `/staff`（或舰桥调用） | 需求大、方向未定时，由舰桥调用：拷问 → 定稿 → 拆票草案 → 规划表 | 开票、施工、发货 |
+| **康娜**（主 AI 人格） | `/bridge`，或未点名其它技能时的默认入口 | 听懂、判断、开票、开 run、清场（脏文件分类与安全收起）、发货、白话回报 | 写产品代码、替用户做产品取舍 |
+| staff 参谋部 | `/staff`（或由康娜调用） | 需求大、方向未定时，由康娜调用：拷问 → 定稿 → 拆票草案 → 规划表 | 开票、施工、发货 |
 | set-kai-mode 装配 | `/set-kai-mode` | 安装、默认入口、环境自检、doctor、缺件登记 | 日常施工 |
 | upgrade-kai-mode 升级 | `/upgrade-kai-mode` | 读回执与漂移表出升级清单、备份、回写、迁移、验收、回滚 | 首次安装、碰项目数据 |
-| fleet 舰队内核 | `travel`（控制面，不是对话入口） | 一个 issue 一个 run；任务图、槽位、worktree、验收、发货 | 规划与产品判断 |
+| 执行内核 `fleet` | `fleet`（控制面，不是对话入口） | 一个 issue 一个 run；任务图、槽位、worktree、验收、发货 | 规划与产品判断 |
 
 **权限硬线**：康娜是唯一对话面与发货口；施工交子会话，子会话不 push、不合并；
 规划只出草案；安装器只补缺。红线（花钱 / 对外真发布 / 不可逆 / 删未提交内容）先问用户。
@@ -44,7 +45,7 @@ kai-mode 是「一句话需求 → 判断 → 票 → run → 施工 → 审查 
               └─ 要做成一件有验收标准的事
                     → 开票（目标/AC/允许/禁止/验证）
                     → 清场（dirty 分类；无关产品改动 park 成可逆 stash）
-                    → travel warp（自动批门 → 宿主子代理施工 → 门卫只读审查）
+                    → fleet warp（自动批门 → 宿主子代理施工 → 门卫只读审查）
                     → 发货（merge → 收尾门 → push → 关票）
                     → 三行白话回报
 ```
@@ -54,10 +55,10 @@ kai-mode 是「一句话需求 → 判断 → 票 → run → 施工 → 审查 
 
 ## 交接与断点（省叙述，不省证据）
 
-- run 状态只由 `travel` 写；AI 与子会话都不直接改 `state.json`。
+- run 状态只由 `fleet` 写；AI 与子会话都不直接改 `state.json`。
 - 子会话报告是 claim，不是事实；验收读实际 diff。
 - 门卫审查是新上下文的只读审查，施工者不得自审。
-- 断点续跑用 `travel resume <run>`；不要求用户重新描述任务。
+- 断点续跑用 `fleet resume <run>`；不要求用户重新描述任务。
 
 ## 可靠性
 
@@ -70,12 +71,12 @@ kai-mode 是「一句话需求 → 判断 → 票 → run → 施工 → 审查 
 
 ```text
 .claude-plugin/marketplace.json   唯一分发清单：插件名、版本、来源
-core/       舰桥入口、规划方法、安装/升级、交接、方法原则
-engine/     执行内核：travel 命令、任务图、worktree、状态机，以及自有方法件 pk
+core/       康娜入口、规划方法、安装/升级、交接、方法原则
+engine/     执行内核：fleet 命令、任务图、worktree、状态机，以及自有方法件 pk
 intake/     想法池
 ops/        事故与运维
 studio/     武器集
-board/      看板（flight-info，可选；舰队进度优先用 travel status --html）
+board/      看板（flight-info，可选；run 集合进度优先用 fleet status --html）
 <插件>/.claude-plugin/plugin.json  Claude Code 插件清单
 <插件>/.qoder-plugin/plugin.json   Qoder 插件清单
 <插件>/PLAYBOOK.md                 剧本总览
@@ -92,8 +93,8 @@ CHANGELOG.md  版本变更记录
 
 1. 项目根写 `.ai/kai-mode.project.json`（从 `templates/` 复制），填运行时**发现方式**与收尾门；机器绝对路径不入库。
 2. `/set-kai-mode` 装 `bridge`、`staff`、`fleet` 与自有方法件 `pk`；通用方法不随装，按名用宿主中央库原版；按 `core`／`full` 档位（`manifests/install-profiles.json`），缺件如实登记。
-3. 在项目 `CLAUDE.md` / `AGENTS.md` 写「默认入口＝舰桥」，见 set-kai-mode 第 3 步。
-4. 用一件真事走通「舰桥 → 开票 → `/warp` 或 `/jump` → 发货」做自证。
+3. 在项目 `CLAUDE.md` / `AGENTS.md` 写「默认入口＝康娜」，见 set-kai-mode 第 3 步。
+4. 用一件真事走通「康娜 → 开票 → `/warp` 或 `/jump` → 发货」做自证。
 5. 项目专用路径、票号、job id 只进项目配置与本机文件，不进本仓技能正文。
 
 ## 加一个技能（四步）
@@ -130,8 +131,8 @@ python scripts/plugin-check.py
 
 ## 判据正本
 
-- 舰桥入口与机场下线：本仓 [`docs/adr/0028-bridge-entry-and-airport-retirement.md`](docs/adr/0028-bridge-entry-and-airport-retirement.md)
-- 舰队执行内核：本仓 [`docs/design/2026-10-30-v2-execution-kernel.md`](docs/design/2026-10-30-v2-execution-kernel.md)
+- 康娜入口与 V1 岗位体系下线：本仓 [`docs/adr/0028-bridge-entry-and-airport-retirement.md`](docs/adr/0028-bridge-entry-and-airport-retirement.md)
+- 执行内核：本仓 [`docs/design/2026-10-30-v2-execution-kernel.md`](docs/design/2026-10-30-v2-execution-kernel.md)
 - 插件化剧本：本仓 [`docs/adr/0021-plugin-playbooks-and-persona-retirement.md`](docs/adr/0021-plugin-playbooks-and-persona-retirement.md)
 - 评估与安装治理：本仓 [`docs/adr/0009-harness-audit-install-profiles-and-host-neutrality.md`](docs/adr/0009-harness-audit-install-profiles-and-host-neutrality.md)
 - 三层打包边界：[`manifests/package-layout.json`](manifests/package-layout.json) ＋ [`docs/package-layout.md`](docs/package-layout.md)
@@ -142,6 +143,7 @@ python scripts/plugin-check.py
 
 ## 沿革
 
-机场体系（2026-10-21 至 2026-10-31）已整体下线：六岗位、日表、车道、60 分钟塔台定时器、
-`ready-for-agent` 与四条车道标签不再存在。历史裁决留在 `docs/adr/0003`、`0020`、`0023`、`0025`、`0027`，
+V1 岗位体系（2026-10-21 至 2026-10-31）已整体下线：六岗位、按天的任务排布与独立工作树名额那套旧口径、
+60 分钟定时唤醒、`ready-for-agent` 与四条队列标签都不再存在；现行替代是任务表、工作树槽位与 `fleet` 命令。
+历史裁决留在 `docs/adr/0003`、`0020`、`0023`、`0025`、`0027`，
 新裁决见 [ADR-0028](docs/adr/0028-bridge-entry-and-airport-retirement.md)。
