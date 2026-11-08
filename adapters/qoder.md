@@ -44,9 +44,9 @@
 
 ## 2. 叫什么都
 
-Qoder 没有 Claude Code 那种 `/plugin:command` 命名空间。舰桥用两种叫法：
+Qoder 没有 Claude Code 那种 `/plugin:command` 命名空间。叫她有两种叫法：
 
-1. **自然语言**：说「舰桥」「开工」「发货」「清理脏文件」——技能 `description` 里的触发词负责命中。
+1. **自然语言**：说「康娜」「开工」「发货」「清理脏文件」——技能 `description` 里的触发词负责命中。
 2. **显式提示词**：
 
 ```text
@@ -60,7 +60,7 @@ Qoder 没有 Claude Code 那种 `/plugin:command` 命名空间。舰桥用两种
 
 机场体系下线后没有塔台轮巡，也没有 60 分钟唤醒定时器。
 
-- 在项目 `CLAUDE.md` / `AGENTS.md` 末尾写一段「默认入口＝舰桥」；
+- 在项目 `CLAUDE.md` / `AGENTS.md` 末尾写一段「默认入口＝康娜」；
 - 用户按需起会话；会话里不打斜杠命令时，读 `bridge` 技能执行；
 - 施工由 `fleet warp`/`fleet jump` 派宿主原生子代理，不靠宿主定时任务。
 
@@ -83,7 +83,7 @@ test -f .qoder/skills/bridge/SKILL.md && echo skill-ok
 test -f .qoder-plugin/plugin.json && echo plugin-ok
 ```
 
-再跑一次真实舰桥提示词，确认它能读到技能并只做技能里的事；做不到的写「未测」，不算完成。
+再跑一次真实的康娜提示词，确认它能读到技能并只做技能里的事；做不到的写「未测」，不算完成。
 
 ## 6. 降级与缺件
 
@@ -97,7 +97,7 @@ test -f .qoder-plugin/plugin.json && echo plugin-ok
 
 ## 7. 边界
 
-- 不替舰桥施工；只把舰桥按契约跑起来。
+- 不替康娜施工；只把 `bridge` 按契约跑起来。
 - 不建/删其他宿主的定时任务。
 - 付费／额度未授权 ⇒ `paid-not-authorized`，不偷偷换模型。
 - 版本、认证状态与探针读数写进项目本机配置，不回写框架正文。

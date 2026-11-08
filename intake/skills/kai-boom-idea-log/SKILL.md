@@ -9,7 +9,7 @@ sources:
 description: >
   收想法：全文落项目配置 paths.ideas_dir 下的一天一份文件，想法池汇总票只贴简述（不回堆长文）。
   只收不开票、不改代码；分发是整理会话的事。
-  触发：舰桥分流到想法；用户说「记个想法／丢进想法池」。
+  触发：康娜分流到想法；用户说「记个想法／丢进想法池」。
 version: 0.1.4
 updated: 2026-10-26
 allowed-tools: Bash(gh:*) Bash(git:*) Read Grep Write

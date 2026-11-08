@@ -6,7 +6,7 @@
 
 > 适用：Qoder 子会话不可用、opencode 不可用，或编排层明确要求 Codex。
 > **付费档**：必须显式授权（如 `KAI_WATCHDOG_ALLOW_PAID=1`）；没有授权不许起。
-> 与 opencode 同：不依赖宿主定时口；舰桥按需起会话。
+> 与 opencode 同：不依赖宿主定时口；康娜按需起会话。
 
 ## 探测
 
@@ -29,7 +29,7 @@ codex --version          # 本机实测 0.164.0-alpha.11.1
 
 - **降级**：无 Task 类子代理字段 ⇒ 三个角色都用独立 `codex exec` 进程顶替，各带各的 sandbox；付费未授权 ⇒ 记 `paid-not-authorized`，不偷偷跑。
 
-## 起舰桥（可写，仅人工执行）
+## 起康娜（可写，仅人工执行）
 
 ```bash
 codex exec -C <仓库根> -s workspace-write --json -o <回执文件> \
@@ -57,7 +57,7 @@ codex exec -C <仓库根> -s read-only --json -o <回执文件> \
 ## 边界
 
 - 付费前先取得用户/项目授权；未授权 ⇒ 记 `paid-not-authorized`，不降级偷偷跑。
-- 不建/删其他宿主的定时任务；不替舰桥施工。
+- 不建/删其他宿主的定时任务；不替康娜施工。
 - 未实测的 flag 不许写进正本；版本与探针读数写进项目本机配置。
 
 ## 初始化一个项目（一条命令）

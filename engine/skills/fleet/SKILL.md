@@ -5,10 +5,10 @@ approved_by: human:kaikaikid
 approved: 2026-10-31
 sources: []
 description: >
-  舰队执行内核（由舰桥调度）：一个 issue 一个 run（舰船），主会话规划与验收，宿主自己的子代理执行；
+  舰队执行内核（由康娜调度）：一个 issue 一个 run（舰船），主会话规划与验收，宿主自己的子代理执行；
   舰队（fleet）= 同一宿主拉起的 run 集合，舰船数 1–3（默认 1）、船员数（并发子代理）1–5（默认 5）按舰队独立计数；
   一次触发连续跑到门点才停。用 `travel` 控制平面推进（`coding` 兼容别名一版），不直接改 state.json。
-  只走宿主原生子代理，不拉 CLI 进程。由舰桥在开船时调用（用户口令 `/warp`、`/jump` 归舰桥）；
+  只走宿主原生子代理，不拉 CLI 进程。由康娜在开船时调用（用户口令 `/warp`、`/jump` 归康娜）；
   控制面命令 `fleet <子命令>`（`travel`/`coding` 兼容别名）；中文「用舰队做」「开个 run」也认。
 version: 0.8.0
 updated: 2026-11-05
@@ -24,7 +24,7 @@ compatibility: Host-agnostic; host must be able to spawn subagents
 
 ## 这是什么
 
-`/warp` `/jump` 由舰桥触发，fleet 只负责施工执行与验收。**你只跟主会话说话**；施工交给宿主自己的子代理，
+`/warp` `/jump` 由康娜触发，fleet 只负责施工执行与验收。**你只跟主会话说话**；施工交给宿主自己的子代理，
 不拉起 CLI 进程，也不要求挂机。主会话开着，调度就在；关了就停了。
 
 与创作体系（`/producer` `/writer` `/artist`）严格分开：fleet 只做代码开发，不调用它们的角色，也不共用状态。
@@ -156,11 +156,11 @@ touchset 重叠且串行依赖时，默认合成一个 task、多 AC；不要按
 `/warp <任务> [--tasks tasks.json]` = 全自动挡：施工全程主会话自推，门卫代理自动批 G0/G1，G2 留 pending（warp 不发货），只在红线/异常时停。
 - `--tasks` 可在开 run 时直接写任务图；并发满时 run 排队，槽位空出后自动提升（`promote_queued`）。
 - 舰队节制：舰船数（run）1–3（`--ships`，warp/jump/run 默认 1）、船员数（并发子代理）1–5（`--crew`，默认 5），按舰队独立计数；
-  不同舰桥 / agent 框架互不抢占，touchset 冲突检测仍全局。
+  不同康娜 / agent 框架互不抢占，touchset 冲突检测仍全局。
 - `--ships N` 一次创建 N 艘舰船（各自 worktree + 分支），共享 `fleet_id`（`<宿主>-<时间戳><后缀>`）；
   混搭曲速/跃迁时给两条命令传同一个 `--fleet <ID>`。
 - return 上限 3 轮，failed 重试 2 次，merge 冲突自动 rebase 一次。
-- 发货权只归加急：普通 `/warp` 停在 closing（next_action 注明等发货），由舰桥或人工 `gate g2 approve` 发货；
+- 发货权只归加急：普通 `/warp` 停在 closing（next_action 注明等发货），由康娜或人工 `gate g2 approve` 发货；
   `/jump` 才自动发货 = merge → 收尾门 → push → 关票，全脚本化。
 - push 目标默认 `dev`；仓里没有 dev（如本仓已并入 main）则用当前分支。
 - issue 引用自动识别：任务文本里的 `#123` 或 GitHub issue URL 会自动关票；识别不到则跳过，不阻塞发货。

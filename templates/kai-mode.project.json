@@ -13,7 +13,7 @@
         "name": "bridge",
         "trigger": "/bridge、/舰桥，或未显式点名其它技能时的默认入口",
         "route": "bridge",
-        "notes": "唯一对话面；判断、开票、开 run、清场、发货、回报"
+        "notes": "康娜（主 AI 人格）：唯一对话面；判断、开票、开 run、清场、发货、回报"
       }
     ],
     "skills": {
