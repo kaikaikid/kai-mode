@@ -144,7 +144,7 @@ def test_install_plan_falls_back_to_builtin_without_registry(tmp_path):
     assert set(plan) == set(ms.FAMILIES)
     assert len(plan) == 9
     assert plan["loop"]["source"] == os.path.join(".ai", "skills", "loop")
-    assert plan["二副"]["source"] == os.path.join(".ai", "skills", "project-skills", "二副")
+    assert plan["二副"]["source"] == os.path.join(".ai", "skills", "project-skills", "二副")  # canon:allow-retired
 
 
 def test_unknown_schema_is_reported_not_guessed(tmp_path):
@@ -194,7 +194,7 @@ def test_marketplace_synthesis(tmp_path):
             {
                 "name": "airport",
                 "source": "./airport",
-                "description": "五岗位机场剧本"
+                "description": "五岗位剧本"
             },
             {
                 "name": "core",
@@ -400,18 +400,19 @@ def test_backup_and_restore_roundtrip(tmp_path):
 
 
 def test_retire_registry_entries_only_removes_named(tmp_path):
+    # 旧中文目录名是退役反查表（FAMILIES / LEGACY_ALIASES）的键，属被测契约，不是现行口径
     lib = str(tmp_path / "data" / "library" / "skills")
     os.makedirs(lib)
     reg = ms.registry_path(lib)
     before = {
-        "skills": [{"name": "塔台", "agents": ["qoder"]}, {"name": "tower"}],
-        "applied": {"qoder": {"skills": ["塔台", "tower"], "mcp": ["keep"]}},
+        "skills": [{"name": "塔台", "agents": ["qoder"]}, {"name": "tower"}],  # canon:allow-retired
+        "applied": {"qoder": {"skills": ["塔台", "tower"], "mcp": ["keep"]}},  # canon:allow-retired
         "icons": {"x": 1},
     }
     with open(reg, "w", encoding="utf-8") as f:
         json.dump(before, f, ensure_ascii=False)
-    removed = ms.retire_registry_entries(lib, {"塔台"})
-    assert removed == ["塔台"]
+    removed = ms.retire_registry_entries(lib, {"塔台"})  # canon:allow-retired
+    assert removed == ["塔台"]  # canon:allow-retired
     after = json.loads(open(reg, encoding="utf-8").read())
     assert [s["name"] for s in after["skills"]] == ["tower"]
     assert after["applied"]["qoder"]["skills"] == ["tower"]
@@ -421,7 +422,7 @@ def test_retire_registry_entries_only_removes_named(tmp_path):
 
 def test_retire_legacy_moves_dir_and_unlinks(tmp_path):
     lib = str(tmp_path / "data" / "library" / "skills")
-    for name in (ms.ANCHOR, "kai-mode", "塔台", "tower"):
+    for name in (ms.ANCHOR, "kai-mode", "塔台", "tower"):  # canon:allow-retired
         os.makedirs(os.path.join(lib, name))
         with open(os.path.join(lib, name, "SKILL.md"), "w", encoding="utf-8") as f:
             f.write(f"# {name}\n")
@@ -430,21 +431,21 @@ def test_retire_legacy_moves_dir_and_unlinks(tmp_path):
     os.makedirs(face)
     os.symlink(os.path.join(lib, ms.ANCHOR), os.path.join(face, ms.ANCHOR),
                target_is_directory=True)
-    os.symlink(os.path.join(lib, "塔台"), os.path.join(face, "塔台"), target_is_directory=True)
+    os.symlink(os.path.join(lib, "塔台"), os.path.join(face, "塔台"), target_is_directory=True)  # canon:allow-retired
     moved, unlinked, skipped = ms.retire_legacy(lib, home=home)
     assert moved and unlinked and not skipped
-    assert not os.path.exists(os.path.join(lib, "塔台"))
-    assert not os.path.lexists(os.path.join(face, "塔台"))
+    assert not os.path.exists(os.path.join(lib, "塔台"))  # canon:allow-retired
+    assert not os.path.lexists(os.path.join(face, "塔台"))  # canon:allow-retired
     assert os.path.isdir(os.path.join(lib, "tower"))
 
 
 def test_retire_legacy_dry_run_does_not_move(tmp_path):
     lib = str(tmp_path / "data" / "library" / "skills")
-    os.makedirs(os.path.join(lib, "塔台"))
+    os.makedirs(os.path.join(lib, "塔台"))  # canon:allow-retired
     home = str(tmp_path / "home")
     moved, unlinked, skipped = ms.retire_legacy(lib, home=home, dry=True)
     assert moved
-    assert os.path.isdir(os.path.join(lib, "塔台"))
+    assert os.path.isdir(os.path.join(lib, "塔台"))  # canon:allow-retired
 
 
 def test_source_marker_roundtrip(tmp_path):

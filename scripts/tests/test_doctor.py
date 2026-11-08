@@ -264,12 +264,12 @@ def test_canon_wake_fence_phrase_is_red(tmp_path):
         "canon_keys": [{
             "key": "wake-fence",
             "home": "docs/adr/0010-role-wake-fence.md",
-            "pattern": "拉起继任机长",
+            "pattern": "拉起继任角色会话",
             "forbidden": ["skills"],
         }],
     }, ensure_ascii=False), encoding="utf-8")
     (root / "skills" / "alpha" / "notes.md").write_text(
-        "发现停摆就拉起继任机长。\n", encoding="utf-8")
+        "发现停摆就拉起继任角色会话。\n", encoding="utf-8")
     rc, data = run_doctor(root)
     assert rc == 1
     assert status_of(data, "canon-dup") == "fail"
@@ -277,7 +277,7 @@ def test_canon_wake_fence_phrase_is_red(tmp_path):
 
 
 def test_canon_value_restatement_is_red(tmp_path):
-    """可调数值（在飞名额）只许住 home：技能里出现同义复述即红。"""
+    """可调数值（施工中名额）只许住 home：技能里出现同义复述即红。"""
     root = make_repo(tmp_path)
     (root / "loops").mkdir()
     (root / "loops" / "loop-protocol.md").write_text("名额：各同时最多 2 张 issue。\n", encoding="utf-8")
@@ -286,11 +286,11 @@ def test_canon_value_restatement_is_red(tmp_path):
         "canon_keys": [{
             "key": "pilot-wip",
             "home": "loops/loop-protocol.md",
-            "pattern": "(最多|各|只能)\\s*2\\s*张|2\\s*张在飞",
+            "pattern": "(最多|各|只能)\\s*2\\s*张|2\\s*张施工中",
             "forbidden": ["skills"],
         }],
     }, ensure_ascii=False), encoding="utf-8")
-    (root / "skills" / "alpha" / "notes.md").write_text("机长最多 2 张在飞。\n", encoding="utf-8")
+    (root / "skills" / "alpha" / "notes.md").write_text("engineer 最多 2 张施工中。\n", encoding="utf-8")
     rc, data = run_doctor(root)
     assert rc == 1
     assert status_of(data, "canon-dup") == "fail"
@@ -835,7 +835,7 @@ def test_marketplace_layout_registry_file_check(tmp_path):
             {
                 "name": "airport",
                 "source": "./airport",
-                "description": "五岗位机场剧本"
+                "description": "五岗位剧本"
             },
             {
                 "name": "core",
@@ -937,3 +937,44 @@ def test_marketplace_layout_payload_budget_paths(tmp_path):
 
     rc, data = run_doctor(root)
     assert status_of(data, "payload-budget") == "ok" or status_of(data, "payload-budget") == "note"
+
+
+# ── 口径尺（canon-dup / --list-retired）：会响、会豁免、会把清单吐全 ──────────────
+
+def _canon_fixture(tmp_path):
+    """最小仓：一份退役词表 ＋ 三种文件（普通命中／行内豁免／目录豁免）。"""
+    (tmp_path / "docs" / "adr").mkdir(parents=True)
+    (tmp_path / "docs" / "canon.json").write_text(json.dumps({
+        "retired_terms": ["ZZZ-retired"],
+        "scan_roots": ["docs"],
+        "exempt": ["docs/adr", "docs/canon.json"],
+        "canon_text_ext": [".md", ".json"],
+        "canon_keys": [],
+    }, ensure_ascii=False), encoding="utf-8")
+    (tmp_path / "docs" / "live.md").write_text(
+        "第一行是活的旧词：ZZZ-retired\n"
+        "第二行是退役声明：ZZZ-retired <!-- canon:allow-retired -->\n",
+        encoding="utf-8")
+    (tmp_path / "docs" / "adr" / "old.md").write_text("历史件里的ZZZ-retired\n", encoding="utf-8")
+    return tmp_path
+
+
+def test_list_retired_reports_hits_and_honours_exemptions(tmp_path):
+    root = _canon_fixture(tmp_path)
+    p = subprocess.run([sys.executable, DOCTOR, "--root", str(root), "--list-retired"],
+                       capture_output=True, text=True, encoding="utf-8")
+    assert p.returncode == 1, p.stdout + p.stderr
+    assert "docs/live.md:1" in p.stdout, p.stdout          # 活文案必须报，带行号
+    assert "live.md:2" not in p.stdout, p.stdout           # 行内标记豁免那一行
+    assert "old.md" not in p.stdout, p.stdout              # 目录豁免
+    assert "命中 1 处" in p.stdout, p.stdout                # 报数要与逐条清单一致
+
+
+def test_list_retired_green_when_only_exempt_lines_remain(tmp_path):
+    root = _canon_fixture(tmp_path)
+    (root / "docs" / "live.md").write_text(
+        "ZZZ-retired <!-- canon:allow-retired -->\n", encoding="utf-8")
+    p = subprocess.run([sys.executable, DOCTOR, "--root", str(root), "--list-retired"],
+                       capture_output=True, text=True, encoding="utf-8")
+    assert p.returncode == 0, p.stdout + p.stderr
+    assert "命中 0 处" in p.stdout, p.stdout

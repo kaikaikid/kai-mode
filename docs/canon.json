@@ -1,52 +1,121 @@
 {
- "_note": "判据归属正本。doctor 的 canon-dup 项消费：退役词命中 scan_roots 即红；canon_keys 的 pattern 出现在自己 forbidden 目录即红（平行正本）。docs/adr 与 handoff 是历史记录，豁免。接口字面（如 verdict=pass）不登记——它是审查与适配之间的字面契约，不是可调数值。新平行正本一律先登记此处。",
- "retired_terms": [
-  "租约",
-  "班次",
-  "按铃",
-  "Coordinator",
-  "合同哈希",
-  "五角色",
-  "Group-A",
-  "tier_models",
-  "agent-emit",
-  "档位核对",
-  "vendor/skills"
- ],
- "scan_roots": [
-  "core",
-  "board",
-  "intake",
-  "ops",
-  "adapters",
-  "roles",
-  "templates",
-  "manifests",
-  "docs",
-  "README.md",
-  "AGENTS.md"
- ],
- "exempt": [
-  "docs/adr",
-  "docs/canon.json",
-  "handoff"
- ],
- "canon_keys": [
-  {
-   "key": "role-host-dispatch",
-   "home": "adapters/README.md",
-   "forbidden": [
+  "_note": "判据归属正本。doctor 的 canon-dup 项消费：退役词命中 scan_roots 即红；canon_keys 的 pattern 出现在自己 forbidden 目录即红（平行正本）。历史件（docs/adr、docs/design、CHANGELOG、handoff 记录槽）豁免；handoff 的规范与模板不豁免——它们会被 init-project 逐字复制进用户仓。接口字面（如 verdict=pass、v2:* 阶段标签、flight/fleet_id 等列名与装机标识）不登记：它们是契约不是口径。新平行正本一律先登记此处。逐行豁免只有一种写法：该行内含 canon:allow-retired。",
+  "retired_terms": [
+    "租约",
+    "班次",
+    "按铃",
+    "Coordinator",
+    "合同哈希",
+    "五角色",
+    "Group-A",
+    "tier_models",
+    "agent-emit",
+    "档位核对",
+    "vendor/skills",
+    "机场",
+    "航站楼",
+    "登机",
+    "起飞",
+    "降落",
+    "跑道",
+    "航班",
+    "在飞",
+    "掌机",
+    "塔台",
+    "地勤",
+    "机长",
+    "二副",
+    "王牌",
+    "排班",
+    "日表",
+    "车道",
+    "舰桥",
+    "舰队",
+    "舰船",
+    "船员",
+    "舰长",
+    "开船",
+    "星际穿越",
+    "监工",
+    "文娱集团",
+    "文娱"
+  ],
+  "scan_roots": [
     "core",
     "board",
     "intake",
     "ops",
+    "studio",
+    "engine",
+    "adapters",
     "roles",
     "templates",
     "manifests",
+    "manual",
+    "scripts",
+    "docs",
+    "handoff",
     "README.md",
-    "AGENTS.md"
-   ],
-   "pattern": "只走宿主原生子代理|不拉 CLI 进程|不拉起 CLI 进程"
-  }
- ]
+    "AGENTS.md",
+    "GLOSSARY.md",
+    ".gitignore"
+  ],
+  "exempt": [
+    "docs/adr",
+    "docs/design",
+    "docs/canon.json",
+    "CHANGELOG.md",
+    "handoff/00-inbox",
+    "handoff/10-session",
+    "handoff/20-plan",
+    "handoff/30-research",
+    "handoff/40-review",
+    "handoff/50-comms",
+    "handoff/90-archive",
+    "handoff/60-board/archive",
+    "handoff/60-board/claimed",
+    "handoff/60-board/done",
+    "handoff/60-board/open",
+    "manual/assets/full-map.html"
+  ],
+  "canon_text_ext": [".md", ".py", ".bat", ".cmd", ".ps1", ".json", ".yml", ".yaml", ".txt", ".cfg", ".ini", ".sh", ".html", ".js", ".sql"],
+  "canon_keys": [
+    {
+      "key": "role-host-dispatch",
+      "home": "adapters/README.md",
+      "forbidden": [
+        "core",
+        "board",
+        "intake",
+        "ops",
+        "roles",
+        "templates",
+        "manifests",
+        "README.md",
+        "AGENTS.md"
+      ],
+      "pattern": "只走宿主原生子代理|不拉 CLI 进程|不拉起 CLI 进程"
+    },
+    {
+      "key": "vocab-mapping",
+      "home": "GLOSSARY.md",
+      "forbidden": [
+        "core",
+        "board",
+        "intake",
+        "ops",
+        "studio",
+        "engine",
+        "adapters",
+        "roles",
+        "templates",
+        "manifests",
+        "manual",
+        "scripts",
+        "README.md",
+        "AGENTS.md"
+      ],
+      "pattern": "旧称「|旧称『"
+    }
+  ]
 }

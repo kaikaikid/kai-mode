@@ -1576,19 +1576,23 @@ def chk_skill_spec(root, ms):
 CANON_REL = "docs/canon.json"
 
 
-def chk_canon(root, ms):
-    """18 判据归属：退役词黑名单 + 每个判据键只许住 home，不许出现在 forbidden 目录。"""
+def canon_scan(root):
+    """扫判据归属：返回 (hits, scanned, err)。hits 逐条 (relf, lineno, kind, term)。
+    与 chk_canon 共用同一把尺——`--list-retired` 打印的就是门自己会红的那些条，
+    不是另写一份 grep（两份尺必然漂）。"""
     path = os.path.join(root, CANON_REL)
     if not os.path.isfile(path):
-        return "fail", f"缺件：{CANON_REL}（判据归属表正本）"
+        return [], 0, f"缺件：{CANON_REL}（判据归属表正本）"
     try:
         with open(path, encoding="utf-8") as f:
             cfg = json.load(f)
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
-        return "fail", f"{CANON_REL} 读不出来：{exc!r}"
+        return [], 0, f"{CANON_REL} 读不出来：{exc!r}"
     retired = cfg.get("retired_terms") or []
     exempt = tuple(cfg.get("exempt") or ())
     keys = cfg.get("canon_keys") or []
+    # 口径面比通用文本面宽：手册 .html/.js 与看板 .sql 注释也是人读的活文案。
+    exts = tuple(cfg.get("canon_text_ext") or TEXT_EXT)
     files = []
     for rel in cfg.get("scan_roots") or []:
         p = os.path.join(root, rel)
@@ -1598,9 +1602,9 @@ def chk_canon(root, ms):
             for dirpath, dirs, names in os.walk(p):
                 dirs[:] = [x for x in dirs if x not in ("__pycache__", ".pytest_cache")]
                 for fn in names:
-                    if fn.endswith(TEXT_EXT):
+                    if fn.endswith(exts):
                         files.append(os.path.join(dirpath, fn))
-    bad, scanned = [], 0
+    hits, scanned = [], 0
     for fp in files:
         relf = os.path.relpath(fp, root).replace("\\", "/")
         if any(relf.startswith(e) for e in exempt):
@@ -1616,7 +1620,7 @@ def chk_canon(root, ms):
                 continue  # 显式声明某词已退役的那一行，豁免
             for term in retired:
                 if term in ln:
-                    bad.append(f"{relf}:{i} 退役词「{term}」")
+                    hits.append((relf, i, "退役词", term))
             for ck in keys:
                 if relf == ck.get("home"):
                     continue
@@ -1624,12 +1628,28 @@ def chk_canon(root, ms):
                     continue
                 try:
                     if re.search(ck["pattern"], ln):
-                        bad.append(f"{relf}:{i} 平行正本「{ck['key']}」（家={ck['home']}）")
+                        hits.append((relf, i, "平行正本", f"{ck['key']}（家={ck['home']}）"))
                 except re.error:
-                    bad.append(f"{CANON_REL}：判据键 {ck.get('key')} 正则非法")
-    if bad:
-        return "fail", "；".join(bad[:6]) + (f"（共 {len(bad)} 处）" if len(bad) > 6 else "")
-    return "ok", f"{scanned} 个文件：退役词 {len(retired)} 个零命中，判据键 {len(keys)} 条单点住家"
+                    hits.append((relf, i, "判据键正则非法", str(ck.get("key"))))
+    return hits, scanned, None
+
+
+def chk_canon(root, ms):
+    """18 判据归属：退役词黑名单 + 每个判据键只许住 home，不许出现在 forbidden 目录。"""
+    hits, scanned, err = canon_scan(root)
+    if err:
+        return "fail", err
+    try:
+        with open(os.path.join(root, CANON_REL), encoding="utf-8") as f:
+            cfg = json.load(f)
+    except (OSError, ValueError):
+        cfg = {}
+    if hits:
+        bad = [f"{relf}:{i} {kind}「{term}」" for relf, i, kind, term in hits]
+        return "fail", "；".join(bad[:6]) + (
+            f"（共 {len(bad)} 处；逐条清单跑 doctor.py --list-retired）" if len(bad) > 6 else "")
+    return "ok", (f"{scanned} 个文件：退役词 {len(cfg.get('retired_terms') or [])} 个零命中，"
+                  f"判据键 {len(cfg.get('canon_keys') or [])} 条单点住家")
 
 
 # ── 宿主中立（ADR-0008）：宿主专有 token 只许住 adapters/ ─────────────────
@@ -2094,8 +2114,19 @@ def main() -> int:
     ap.add_argument("--root", default=None, help="仓根（默认＝脚本上溯一级）")
     ap.add_argument("--with-tests", action="store_true", help="追加跑各技能自己的 pytest")
     ap.add_argument("--json", action="store_true", help="机器可读输出")
+    ap.add_argument("--list-retired", action="store_true",
+                    help="只跑口径尺并逐条打印全部命中（file:line 类别 词）；不跑其它门")
     a = ap.parse_args()
     root = os.path.abspath(a.root) if a.root else OWN_ROOT
+    if a.list_retired:
+        hits, scanned, err = canon_scan(root)
+        if err:
+            print(err)
+            return 1
+        print(f"口径尺 —— 根 {root}｜扫了 {scanned} 个文件｜命中 {len(hits)} 处")
+        for relf, i, kind, term in hits:
+            print(f"{relf}:{i}\t{kind}\t{term}")
+        return 1 if hits else 0
     results = run_checks(root, a.with_tests)
     reds = [r for r in results if r["status"] == "fail"]
     ok = not reds
