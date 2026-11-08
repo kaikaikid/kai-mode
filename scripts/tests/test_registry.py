@@ -602,3 +602,85 @@ def test_apply_without_skip_overwrites_after_user_choice(tmp_path):
     assert rc == 0
     assert "# ours" in _read(lib, "tower")
 
+
+# ── Issue #2：正本根解析两坑（钉子——撤掉任一处修法，对应这条必须红）──────────────
+
+def _norm(p):
+    return os.path.normcase(os.path.abspath(str(p)))
+
+
+def test_issue2_plugin_subdir_hits_anchor_but_is_not_repo_root(tmp_path):
+    """坑 A 的病灶必须真实存在：<repo>/core 也命中 anchor，但它不是仓根。
+    先断言 has_anchor(core) 为真，否则这条尺是空转（永远绿）。"""
+    repo = tmp_path / "repo"
+    _mk_skill(repo / "core" / "skills", ms.ANCHOR, "# 插件目录里的 anchor")
+    (repo / "manifests").mkdir(parents=True)
+    (repo / "manifests" / "package-layout.json").write_text("{}\n", encoding="utf-8")
+    assert ms.has_anchor(str(repo / "core")), "预置失败：core/ 没命中 anchor，断言是空转"
+    assert not ms.is_source_root(str(repo / "core"))
+    assert ms.is_source_root(str(repo))
+
+
+def test_issue2_real_repo_core_is_not_root():
+    """本仓实况：core/ 有 anchor 却不是仓根（VERSION／打包清单只在仓根）。"""
+    core = os.path.join(REPO, "core")
+    assert ms.has_anchor(core)
+    assert not ms.is_source_root(core)
+    assert ms.is_source_root(REPO)
+
+
+def test_issue2_resolve_root_from_plugin_scripts_lands_on_repo(tmp_path, monkeypatch):
+    """从 <repo>/core/skills/set-kai-mode/scripts 跑，正本根必须是仓根而不是 core/。"""
+    repo = tmp_path / "repo"
+    _mk_skill(repo / "core" / "skills", ms.ANCHOR, "# anchor")
+    (repo / "manifests").mkdir(parents=True)
+    (repo / "manifests" / "package-layout.json").write_text("{}\n", encoding="utf-8")
+    script = repo / "core" / "skills" / "set-kai-mode" / "scripts"
+    script.mkdir(parents=True)
+    (repo / "manifests" / "install-profiles.json").write_text(
+        json.dumps({"schema": ms.PROFILES_SCHEMA, "profiles": {"full": {"skills": [ms.ANCHOR]}}}),
+        encoding="utf-8")
+    monkeypatch.setenv(ms.LIBRARY_ENV, str(tmp_path / "nolib" / "skills"))
+    monkeypatch.chdir(str(tmp_path))
+    resolved = ms.resolve_root(script_dir=str(script))
+    assert _norm(resolved) == _norm(repo)
+    # 票面症状：根认错 ⇒ read_profiles 读空 ⇒ 报「指定了 --profile full，但清单不存在」
+    assert ms.read_profiles(resolved) is not None
+    assert ms.profile_skill_names(resolved, "full") == [ms.ANCHOR]
+
+
+def test_issue2_marked_root_accepts_library_skills_dir(tmp_path):
+    """坑 B：find_library() 返回 <库根>/skills，标记在上一级 ⇒ 两种递法都要解出同一个仓。"""
+    lib_root = tmp_path / "data" / "library"
+    lib = lib_root / "skills"
+    lib.mkdir(parents=True)
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    ms.write_source_marker(str(lib), str(repo), 3, profile="full")
+    assert _norm(ms.marked_root(str(lib_root))) == _norm(repo)
+    assert _norm(ms.marked_root(str(lib))) == _norm(repo), "坑 B：递 skills 目录时读空"
+    assert ms.marked_profile(str(lib)) == "full"
+
+
+def test_issue2_library_marker_wins_when_library_is_off_the_ancestor_chain(tmp_path, monkeypatch):
+    """坑 B 的真正病灶：库住自己的数据目录，**不在**脚本／cwd 的上溯链上 ⇒
+    只走祖先链永远撞不到库根，「谁跑都回本仓」整段失效。"""
+    repo = tmp_path / "framework"
+    _mk_skill(repo / "core" / "skills", ms.ANCHOR, "# anchor")
+    (repo / "manifests").mkdir(parents=True)
+    (repo / "manifests" / "package-layout.json").write_text("{}\n", encoding="utf-8")
+    proj = tmp_path / "elsewhere" / "project"
+    _mk_skill(proj / ".ai" / "skills" / "project-skills", ms.ANCHOR, "# 项目仓")
+    lib_root = tmp_path / "tools" / "magpie" / "data" / "library"
+    lib = lib_root / "skills"
+    lib.mkdir(parents=True)
+    ms.write_source_marker(str(lib), str(repo), 1)
+    script = tmp_path / "unrelated" / "scripts"
+    script.mkdir(parents=True)
+    monkeypatch.setenv(ms.LIBRARY_ENV, str(lib))
+    monkeypatch.chdir(str(proj))
+    assert _norm(ms.resolve_root(script_dir=str(script))) == _norm(repo)
+    # 反向自证：摘掉标记就回落老路（cwd 链上的项目仓）——证明上面那条不是恒真
+    os.remove(os.path.join(str(lib_root), ms.SOURCE_MARKER_NAME))
+    assert _norm(ms.resolve_root(script_dir=str(script))) == _norm(proj)
+

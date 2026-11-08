@@ -45,7 +45,7 @@ try:  # Windows 控制台下中文输出
 except Exception:
     pass
 
-ANCHOR = "bridge"  # 库位与落点面都沿这条既有条目反查（舰桥是永久入口）；不写死机器路径
+ANCHOR = "bridge"  # 库位与落点面都沿这条既有条目反查（康娜的方法是永久入口）；不写死机器路径
 LIBRARY_ENV = "KAI_MAGPIE_LIBRARY"
 # 项目技能落点缺省（registry.skills 的模板缺省值）：只在项目配置实例
 # 不在／没写 registry.skills 时回落用；实例给了就以实例为准（一个语义一个家）。
@@ -72,6 +72,19 @@ ANCHOR_MARKERS = (
     os.path.join("skills", ANCHOR, "SKILL.md"),
     os.path.join("core", "skills", ANCHOR, "SKILL.md"),
     os.path.join(".claude-plugin", "marketplace.json"),
+)
+# 坑 A（Issue #2）：`skills/<anchor>/SKILL.md` 是**相对布局**，插件子目录也会命中——
+# `<repo>/core/skills/bridge/SKILL.md` 确实存在，于是 `<repo>/core` 被当成仓根。
+# 根级独占标记（项目仓落点／marketplace 根）命中即算仓根；只命中相对标记时，
+# 必须另有根级件才算（插件子目录只有 `.claude-plugin/plugin.json`，没有下面这些）。
+ANCHOR_ROOT_MARKERS = (
+    os.path.join(REGISTRY_SKILLS_DEFAULT["project_skills_dir"], ANCHOR, "SKILL.md"),
+    os.path.join(".claude-plugin", "marketplace.json"),
+)
+ROOT_MARKERS = (
+    "VERSION",
+    os.path.join("manifests", "package-layout.json"),
+    PROJECT_CONFIG,
 )
 ROOT_WALK_LIMIT = 8  # 上溯层级上限（脚本最深在仓根下 5 层，留余量）
 # 装机清单的单一事实源＝仓根 registry.json；FAMILIES 只是「没有 registry.json 的老根目录」的回落清单。
@@ -197,8 +210,12 @@ def profile_skill_names(root: str, profile: str) -> list:
 
 def marked_root(lib_root: str) -> str | None:
     """读库根上的装机来源标记：指向一个**存在的目录** ⇒ 那是正本根；
-    标记缺失／损坏／schema 不认识／目录没了 ⇒ None（不硬失败，走老路）。"""
+    标记缺失／损坏／schema 不认识／目录没了 ⇒ None（不硬失败，走老路）。
+    坑 B（Issue #2）：调用方可能递进来的是 `<库根>/skills`（`find_library()` 的返回值），
+    标记在上一级 ⇒ 本级读不到就再上溯一级找一次。"""
     path = os.path.join(lib_root, SOURCE_MARKER_NAME)
+    if not os.path.isfile(path):
+        path = os.path.join(os.path.dirname(os.path.abspath(lib_root)), SOURCE_MARKER_NAME)
     if not os.path.isfile(path):
         return None
     try:
@@ -217,6 +234,16 @@ def marked_root(lib_root: str) -> str | None:
 def has_anchor(root: str) -> bool:
     """这个根下有没有 anchor 正本（两种布局任一）。"""
     return any(os.path.isfile(os.path.join(root, m)) for m in ANCHOR_MARKERS)
+
+
+def is_source_root(root: str) -> bool:
+    """候选根是**仓根**而不是插件子目录：光有 anchor 不够（坑 A，见 ROOT_MARKERS 注释）。
+    根级独占标记命中即算；只命中相对布局标记时，必须另有根级件。"""
+    if any(os.path.isfile(os.path.join(root, m)) for m in ANCHOR_ROOT_MARKERS):
+        return True
+    if not has_anchor(root):
+        return False
+    return any(os.path.isfile(os.path.join(root, m)) for m in ROOT_MARKERS)
 
 
 def read_project_config(root: str) -> tuple:
@@ -515,12 +542,13 @@ def _is_library_root(cand: str, lib: str | None) -> bool:
 def default_root() -> str:
     """脚本位置反查的仓库根：项目仓布局下脚本住 `<repo>/<registry.skills>/set-kai-mode/scripts/`
     （缺省布局＝REGISTRY_SKILLS_DEFAULT，实例可改落点）⇒ 上溯五级是仓库根；
-    框架仓布局下脚本住 `<repo>/skills/set-kai-mode/scripts/` ⇒ 上溯三级是仓库根。
-    两种布局都试，谁有 anchor 正本谁算数；都没有就退回五级的老读数。"""
+    框架仓布局下脚本住 `<repo>/core/skills/set-kai-mode/scripts/` ⇒ 上溯四级是仓库根。
+    由浅到深试，谁**是仓根**（`is_source_root`，不是光有 anchor）谁算数；
+    都不满足就退回五级的老读数。坑 A：`<repo>/core` 也有 anchor，靠根标志把它挡掉。"""
     here = os.path.dirname(os.path.abspath(__file__))
-    for up in (3, 4, 5):
+    for up in range(3, ROOT_WALK_LIMIT + 1):
         cand = os.path.abspath(os.path.join(here, *[".."] * up))
-        if has_anchor(cand):
+        if is_source_root(cand):
             return cand
     return os.path.abspath(os.path.join(here, *[".."] * 5))
 
@@ -528,9 +556,15 @@ def default_root() -> str:
 def resolve_root(script_dir: str | None = None) -> str | None:
     """正本根：**中央库记住自己是从哪个仓装来的**（`<库根>/.kai-mode-source.json`）——
     候选里出现库根时先读那个标记：标记指向的仓就是正本根（谁跑都回本仓，不会被 cwd 里的项目仓顶掉）；
-    标记缺失／坏／目录没了 ⇒ 维持老路（跳过库根，继续走脚本链 → cwd 链）。"""
+    标记缺失／坏／目录没了 ⇒ 维持老路（跳过库根，继续走脚本链 → cwd 链）。
+    坑 B（Issue #2）：库通常**不在**脚本／cwd 的上溯链上（它住自己的数据目录），
+    只走祖先链永远撞不到库根 ⇒ 标记优先逻辑整段失效。显式把库根插到候选最前。"""
     lib = find_library()
     cands = _root_candidates(script_dir)
+    if lib:
+        lib_root = library_root(lib)
+        if os.path.normcase(lib_root) not in {os.path.normcase(c) for c in cands}:
+            cands.insert(0, lib_root)
     for cand in cands:
         if not _is_library_root(cand, lib):
             continue
@@ -540,7 +574,7 @@ def resolve_root(script_dir: str | None = None) -> str | None:
     for cand in cands:
         if _is_library_root(cand, lib):
             continue
-        if has_anchor(cand):
+        if is_source_root(cand):
             return cand
     return None
 
@@ -1247,10 +1281,15 @@ def selftest() -> int:
         print(f"  正本根自证：{picked}")
     tmp = tempfile.mkdtemp(prefix="magpie-sync-selftest-")
     home = os.path.join(tmp, "home")
+    old_env = os.environ.get(LIBRARY_ENV)
     try:
         root = os.path.join(tmp, "repo")
         library = os.path.join(tmp, "data", "library", "skills")
         os.makedirs(home)
+        os.makedirs(library, exist_ok=True)
+        # 自测必须与本机真库隔离：不钉住 env，find_library() 会认出真库，
+        # 真库的装机标记按设计优先于一切候选 ⇒ 下面每条假根断言都会被真仓顶掉。
+        os.environ[LIBRARY_ENV] = library
         for rel in FAMILIES.values():
             os.makedirs(os.path.join(root, rel), exist_ok=True)
             with open(os.path.join(root, rel, "SKILL.md"), "w", encoding="utf-8") as f:
@@ -1267,11 +1306,14 @@ def selftest() -> int:
                 fails.append(f"{name} 项目仓布局没被优先认（读到 {got}）")
         # 框架仓布局：skills/<名>/SKILL.md 要能被 family_src 认出来
         fw_root = os.path.join(tmp, "fwrepo")
-        for name in FAMILIES:
+        for name in tuple(FAMILIES) + (ANCHOR,):
             d = os.path.join(fw_root, "skills", name)
             os.makedirs(d, exist_ok=True)
             with open(os.path.join(d, "SKILL.md"), "w", encoding="utf-8") as f:
                 f.write("---\nname: t\n---\n# 框架仓正本\n")
+        # 仓根标志：光有 anchor 不够（坑 A），框架仓根另有 VERSION
+        with open(os.path.join(fw_root, "VERSION"), "w", encoding="utf-8") as f:
+            f.write("0.0.0-selftest\n")
         for name in FAMILIES:
             got = family_src(fw_root, name)
             if got != os.path.join(fw_root, "skills", name):
@@ -1299,7 +1341,7 @@ def selftest() -> int:
         fallback = install_plan(root)
         if len(fallback) != len(FAMILIES):
             fails.append(f"无 registry.json 的根应回落内置 {len(FAMILIES)} 条，读到 {len(fallback)}")
-        # 有 skills/staff/SKILL.md 的仓，正本根必须读得出（不再报「正本根读不出」）
+        # 有 skills/<anchor>/SKILL.md 的仓，正本根必须读得出（不再报「正本根读不出」）
         fw_script = os.path.join(fw_root, "skills", "set-kai-mode", "scripts")
         os.makedirs(fw_script, exist_ok=True)
         picked_fw = resolve_root(script_dir=fw_script)
@@ -1307,6 +1349,27 @@ def selftest() -> int:
             fails.append("框架仓布局仍读不出正本根")
         elif os.path.normcase(picked_fw) != os.path.normcase(os.path.abspath(fw_root)):
             fails.append(f"框架仓布局正本根认错：{picked_fw}")
+        # 坑 A（Issue #2）：插件子目录 core/ 下也有 skills/<anchor>/SKILL.md，
+        # 光验 anchor 会把 <repo>/core 当仓根 ⇒ 读不到 manifests/install-profiles.json。
+        trap_root = os.path.join(tmp, "traprepo")
+        trap_core = os.path.join(trap_root, "core")
+        os.makedirs(os.path.join(trap_core, "skills", ANCHOR), exist_ok=True)
+        with open(os.path.join(trap_core, "skills", ANCHOR, "SKILL.md"), "w", encoding="utf-8") as f:
+            f.write("---\nname: t\n---\n# 插件目录里的 anchor\n")
+        os.makedirs(os.path.join(trap_root, "manifests"), exist_ok=True)
+        with open(os.path.join(trap_root, "manifests", "package-layout.json"), "w", encoding="utf-8") as f:
+            f.write("{}\n")
+        if not has_anchor(trap_core):
+            fails.append("坑 A 预置失败：core/ 上根本没命中 anchor，这条断言是空转")
+        if is_source_root(trap_core):
+            fails.append("坑 A 没修：插件子目录 core/ 被当成仓根")
+        if not is_source_root(trap_root):
+            fails.append("坑 A 修过头：真仓根反而不被认")
+        trap_script = os.path.join(trap_core, "skills", "set-kai-mode", "scripts")
+        os.makedirs(trap_script, exist_ok=True)
+        picked_trap = resolve_root(script_dir=trap_script)
+        if os.path.normcase(picked_trap or "") != os.path.normcase(os.path.abspath(trap_root)):
+            fails.append(f"坑 A：从 core/skills/…/scripts 跑，正本根应回到仓根，读到 {picked_trap}")
         # 装机来源标记：库记住自己是从哪个仓装来的 ⇒ 谁跑都回那个仓，不被 cwd 里的项目仓顶掉
         marked_repo = os.path.join(tmp, "markedrepo")
         os.makedirs(os.path.join(marked_repo, "skills", ANCHOR), exist_ok=True)
@@ -1340,9 +1403,25 @@ def selftest() -> int:
             os.chdir(old_cwd)
         if os.path.normcase(picked_mark or "") != os.path.normcase(os.path.abspath(marked_repo)):
             fails.append(f"有标记时正本根应是标记里那个仓（不是 cwd 里的项目仓），读到 {picked_mark}")
+        # 坑 B（Issue #2）：find_library() 返回的是 <库根>/skills，标记在上一级。
+        # 递 skills 目录与递库根必须解出同一个仓，否则「库记住自己从哪来」整段失效。
+        got_skills_dir = marked_root(fake_lib)
+        got_lib_root = marked_root(fake_lib_root)
+        if not got_skills_dir:
+            fails.append("坑 B：递 <库根>/skills 时 marked_root 读空（标记就在上一级）")
+        elif os.path.normcase(got_skills_dir) != os.path.normcase(got_lib_root or ""):
+            fails.append(f"坑 B：递 skills 与递库根解不一致（{got_skills_dir} vs {got_lib_root}）")
         os.makedirs(os.path.join(library, ANCHOR))
         with open(os.path.join(library, ANCHOR, "SKILL.md"), "w", encoding="utf-8") as f:
             f.write("---\nname: t\n---\n# 库内旧版\n")
+        # 安装面显式带上 anchor：FAMILIES 是「无 registry.json 的老根目录」回落清单，
+        # 里头没有 anchor ⇒ 不显式补，预置在 anchor 上的漂移永远不被查（尺半盲）。
+        plan = install_plan(root)
+        plan[ANCHOR] = {"source": default_source(ANCHOR, root), "path": os.path.join("skills", ANCHOR)}
+        anchor_src = os.path.join(root, plan[ANCHOR]["source"])
+        os.makedirs(anchor_src, exist_ok=True)
+        with open(os.path.join(anchor_src, "SKILL.md"), "w", encoding="utf-8") as f:
+            f.write("---\nname: t\n---\n# 正本\n")
         face = os.path.join(home, ".fakeagent", "skills")
         os.makedirs(face)
         os.symlink(os.path.join(library, ANCHOR), os.path.join(face, ANCHOR), target_is_directory=True)
@@ -1353,7 +1432,7 @@ def selftest() -> int:
                 f,
                 ensure_ascii=False,
             )
-        rows, drifted, nfaces = check(root, library, home)
+        rows, drifted, nfaces = check(root, library, home, plan)
         if not drifted:
             fails.append("预置漂移没被抓到（尺不响）")
         if nfaces != 1:
@@ -1361,11 +1440,11 @@ def selftest() -> int:
         for want in ("漂移", "落点缺失", "注册缺条目"):
             if not any(r[1] == want for r in rows):
                 fails.append(f"三面里没报「{want}」")
-        rc = apply(root, library, dry=False, home=home)
+        rc = apply(root, library, dry=False, home=home, plan=plan)
         if rc != 0:
             fails.append(f"apply 后仍有漂移 rc={rc}")
-        for name in FAMILIES:
-            a = os.path.join(root, FAMILIES[name], "SKILL.md")
+        for name in plan:
+            a = os.path.join(family_src(root, name, plan), "SKILL.md")
             b = os.path.join(library, name, "SKILL.md")
             if sha256(a) != sha256(b):
                 fails.append(f"{name} 正本/库副本哈希不等")
@@ -1373,8 +1452,8 @@ def selftest() -> int:
                 fails.append(f"{name} 落点链接没指回库")
         with open(registry_path(library), encoding="utf-8") as f:
             after = json.load(f)
-        if len(after["skills"]) != len(FAMILIES):  # 假库起手只有 anchor，本次补齐其余全部
-            fails.append(f"注册档条目数应为 {len(FAMILIES)}，读到 {len(after['skills'])}")
+        if len(after["skills"]) != len(plan):  # 假库起手只有 anchor，本次补齐安装面全部
+            fails.append(f"注册档条目数应为 {len(plan)}，读到 {len(after['skills'])}")
         if after.get("icons") != {"x": 1} or after["applied"]["other"] != {"skills": ["zzz"], "mcp": ["keep"]}:
             fails.append("注册档动了无关条目")
         # 真 apply ⇒ 库根出现装机来源标记，内容里的 root 就是本次正本根
@@ -1388,11 +1467,11 @@ def selftest() -> int:
                 fails.append(f"装机来源标记 schema 不对：{marker.get('schema')}")
             if os.path.normcase(str(marker.get("root") or "")) != os.path.normcase(os.path.abspath(root)):
                 fails.append(f"装机来源标记的 root 不是本次正本根：{marker.get('root')}")
-            if marker.get("skills") != len(FAMILIES):
-                fails.append(f"装机来源标记的 skills 应为 {len(FAMILIES)}，读到 {marker.get('skills')}")
+            if marker.get("skills") != len(plan):
+                fails.append(f"装机来源标记的 skills 应为 {len(plan)}，读到 {marker.get('skills')}")
         # 幂等：再跑一次不该写出任何字节
         again = []
-        for name in FAMILIES:
+        for name in plan:
             again += copy_family(root, library, name, dry=False)
         if again:
             fails.append(f"二次 apply 仍在写字节（不幂等）：{again}")
@@ -1535,6 +1614,10 @@ def selftest() -> int:
                 if not _only_additions(b2, bad, ["s1"]):
                     fails.append(f"自证对「{label}」没响（应中止不写）")
     finally:
+        if old_env is None:
+            os.environ.pop(LIBRARY_ENV, None)
+        else:
+            os.environ[LIBRARY_ENV] = old_env
         shutil.rmtree(tmp, ignore_errors=True)
     print("SELFTEST", "ok" if not fails else "FAIL")
     for f in fails:
