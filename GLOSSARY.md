@@ -34,6 +34,13 @@
 - **队员**：run 内并发干活的子代理。旧称「船员」。 <!-- canon:allow-retired -->
 - **控制面命令**：`fleet <子命令>` 是正名；`travel`、`coding` 是兼容别名（同一入口，三个 launcher）。
   文档与帮助文本只写 `fleet`，别名只在兼容说明里出现。
+- **开团**：酒馆口径的「组织托管执行」（Form a Party），对应工程命令 `fleet warp`——
+  无人值守自动挡，门卫自批 G0／G1，停在验收门不发货。
+- **速推**：酒馆口径的「快速通道／自动验收」（Fast Clear），对应工程命令 `fleet jump`——
+  加急且满足 R09 预授权时可自动验收发货；它是验收阶段的一条特殊通道，不是独立环节。
+- **口径分层**（正本：冒险者酒馆工程框架 §2.1 使用边界第 10 条）：正式工程字段、API、日志与状态机
+  用行业通用英文标识（`warp`／`jump`／`run`／`ACCEPTED`）；酒馆中文（开团／速推／开刷／交任务／验收／
+  任务结束／写入冒险日志）只用于界面展示与自然语言交互。
 - **任务表**：run 的任务图（`plan` 写入）。旧称「排班／日表」；日表机制已随 schema 5 删除。 <!-- canon:allow-retired -->
 - **工作树槽位**：一个 run 占用的独立工作树名额（代码键 `lane`）。旧称「车道」。 <!-- canon:allow-retired -->
 - **施工中**：任务已被子代理领走、还没交回判词的状态（代码键 `flying`／`delegating`）。旧称「在飞」。 <!-- canon:allow-retired -->
@@ -49,6 +56,23 @@
   **不是口径**；正文不许拿它们当现行主语。规则见 `docs/skill-layout.md`「别名」。
 - **武器**：创作类技能（原「文娱集团」六岗位）。每把归一个角色认领，认领关系写在 <!-- canon:allow-retired -->
   技能 description 首句与 `metadata.weapon_of`；剧本正本住 `studio/PLAYBOOK.md`。
+
+## 酒馆七步口径（界面与文档统一展示）
+
+用户可见的基础流程只此七步；底层状态与字段仍按行业通用标识（见上「口径分层」）。
+
+| 酒馆中文 | 酒馆英文 | 行业通用中文 | 行业英文 |
+|---|---|---|---|
+| 接任务 | Accept Quest | 任务受理 | Task Intake / Acceptance |
+| 开团 | Form a Party | 组织托管执行 | Launch Managed Execution |
+| 开刷 | Start the Run | 启动执行实例 | Start Run |
+| 交任务 | Turn In Quest | 任务结果提交 | Submit Result / Submission |
+| 验收 | Quest Review | 结果验收 | Result Acceptance |
+| 任务结束 | Quest Completed | 任务关闭 | Task Closure |
+| 写入冒险日志 | Write Adventure Log | 执行记录归档 | Run Archival / Event Log Persistence |
+
+两条边界：**任务结束**不是只代表成功（底层区分成功／失败／取消，分别记录原因）；
+**写入冒险日志**是记录持久化，任务失败或取消也必须留记录。
 
 ## 通用规范：双仓库开发
 

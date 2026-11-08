@@ -120,7 +120,7 @@ def slot_usage(root: Path | None = None, fleet_id: str | None = None) -> dict[st
 
 def can_start(run: dict[str, Any], root: Path | None = None) -> tuple[bool, str]:
     # run 数：同一 run 集合（fleet_id）里施工中的 run 数达到 ship_limit（1–3，默认 1）就排队。
-    # 曲速 / 跃迁共用同一配额；用户显式要 2–3 个 run 时才混搭（如 warp-2 + jump-1）。
+    # 开团 / 速推共用同一配额；用户显式要 2–3 个 run 时才混搭（如 warp-2 + jump-1）。
     ship_limit = max(1, min(FLEET_MAX_SHIPS, int(run.get("ship_limit") or 1)))
     u = slot_usage(root, fleet_id=run.get("fleet_id"))
     if u["normal"] + u["urgent"] >= ship_limit:

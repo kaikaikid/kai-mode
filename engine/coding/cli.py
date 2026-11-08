@@ -140,13 +140,13 @@ def advance(s: dict[str, Any], root: "Path | None" = None) -> None:
     # 没有 UI 任务时 G1 自动跳过（G1 只在碰可见 UI 时才有意义）
     if s.get("tasks") and not _has_ui(s) and s.get("gates", {}).get("g1") == "pending":
         s["gates"]["g1"] = "skipped"
-    # 跃迁模式（autopilot）：G0/G1 由门卫自批，不等人
+    # 速推模式（autopilot）：G0/G1 由门卫自批，不等人
     if s.get("autopilot"):
         if s.get("gates", {}).get("g0") == "pending":
             s["gates"]["g0"] = "approved"
         if s.get("gates", {}).get("g1") == "pending":
             s["gates"]["g1"] = "approved" if _has_ui(s) else "skipped"
-        # G2 发货门：门卫代理自动批（默认开，跃迁模式专属）— 在 phase 推进循环之后执行
+        # G2 发货门：门卫代理自动批（默认开，速推模式专属）— 在 phase 推进循环之后执行
 
     for _ in range(6):
         phase = s.get("phase")
@@ -190,8 +190,8 @@ def advance(s: dict[str, Any], root: "Path | None" = None) -> None:
         s["phase"] = "blocked"
         s["resume"]["next_action"] = "task(s) blocked: " + ", ".join(blocked_ids)
 
-    # 跃迁模式：phase 推进到 closing 后，门卫代理自动批 G2 → 发货（merge → 收尾门 → push → 关票）。
-    # 发货权只归加急跃迁（can_ship）：普通 jump 停在 closing，等康娜或人工 gate g2 发货。
+    # 速推模式：phase 推进到 closing 后，门卫代理自动批 G2 → 发货（merge → 收尾门 → push → 关票）。
+    # 发货权只归加急速推（can_ship）：普通开团停在验收门，等康娜或人工 gate g2 发货。
     if s.get("autopilot") and s.get("phase") == "closing" and s.get("gates", {}).get("g2") == "pending":
         if root is None:
             pass
@@ -303,8 +303,8 @@ def cmd_run(args: argparse.Namespace) -> None:
 
 
 def cmd_warp(args: argparse.Namespace) -> None:
-    """曲速：全自动挡（不发货）。autopilot=True，施工+门由门卫代理自批，只在红线/异常时停。
-    发货权只归跃迁（jump / --urgent）：普通 warp 停在 closing，由康娜或人工 gate g2 发货。"""
+    """开团：无人值守自动挡（不发货）。autopilot=True，施工+门由门卫代理自批，只在红线/异常时停。
+    发货权只归速推（jump / --urgent）：普通开团停在验收门，由康娜或人工 gate g2 发货。"""
     # 复用 cmd_run 的建 run 逻辑，但强制 autopilot
     args.autopilot = True
     args.urgent = getattr(args, "urgent", False)
@@ -336,7 +336,7 @@ def cmd_warp(args: argparse.Namespace) -> None:
 
 
 def cmd_jump(args: argparse.Namespace) -> None:
-    """跃迁：加急全自动，有发货权。默认无人值守跑到底；--no-auto 才退回手动逐条推。"""
+    """速推：加急无人值守，有发货权。默认无人值守跑到底；--no-auto 才退回手动逐条推。"""
     args.urgent = True
     args.autopilot = True
     cmd_warp(args)

@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="760" viewBox="0 0 1280 760"
+     role="img" aria-labelledby="kaimode-structure-title kaimode-structure-desc"
+     font-family="Segoe UI, PingFang SC, sans-serif">
+  <title id="kaimode-structure-title">kai-mode 总体结构（v0.39.0 酒馆冒险团口径）</title>
+  <desc id="kaimode-structure-desc">从用户到项目落点的层栈：康娜主 AI 人格、七个可派发角色、六插件十九技能、fleet 执行内核，以及项目仓 / GitHub Issue / 宿主三个落点。</desc>
+  <defs>
+    <marker id="kms-ar" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" fill="#475569"/>
+    </marker>
+  </defs>
+
+  <text x="48" y="52" font-size="23" font-weight="bold" fill="#0f172a">kai-mode 总体结构（v0.39.0 · 酒馆冒险团口径）</text>
+  <text x="48" y="78" font-size="13" fill="#64748b">开发工作区 kai-mode-Control ⊃ 产品仓 kai-mode（origin=kaikaikid/kai-mode，main）· 2026-11-08</text>
+
+  <!-- 用户 -->
+  <ellipse cx="640" cy="130" rx="72" ry="26" fill="#f1f5f9" stroke="#334155" stroke-width="1.5"/>
+  <text x="640" y="135" font-size="15" text-anchor="middle" fill="#0f172a">用户</text>
+  <line x1="640" y1="156" x2="640" y2="180" stroke="#475569" stroke-width="1.5" marker-end="url(#kms-ar)"/>
+
+  <!-- 康娜 -->
+  <rect x="430" y="184" width="420" height="88" rx="10" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"/>
+  <text x="640" y="212" font-size="16" font-weight="bold" text-anchor="middle" fill="#312e81">康娜 · bridge（主 AI 人格）</text>
+  <text x="640" y="234" font-size="12" text-anchor="middle" fill="#3730a3">唯一对话面 · 权限最高 · 不写产品代码 · 不做产品取舍</text>
+  <text x="640" y="254" font-size="12" text-anchor="middle" fill="#3730a3">接任务 → 开团 → 开刷 → 交任务 → 验收 → 任务结束 → 写日志</text>
+  <line x1="640" y1="272" x2="640" y2="296" stroke="#475569" stroke-width="1.5" marker-end="url(#kms-ar)"/>
+
+  <!-- 可派发角色 -->
+  <rect x="350" y="300" width="580" height="88" rx="10" fill="#f5f3ff" stroke="#6d28d9" stroke-width="1.6"/>
+  <text x="640" y="328" font-size="16" font-weight="bold" text-anchor="middle" fill="#5b21b6">7 个可派发角色（roles/canon · 按需调出的子代理）</text>
+  <text x="640" y="350" font-size="12" text-anchor="middle" fill="#6d28d9">researcher 调查 · architect 设计 · engineer 工程 · designer 视觉</text>
+  <text x="640" y="370" font-size="12" text-anchor="middle" fill="#6d28d9">writer 文本 · archivist 记录 · reviewer 审查</text>
+  <line x1="640" y1="388" x2="640" y2="412" stroke="#475569" stroke-width="1.5" marker-end="url(#kms-ar)"/>
+
+  <!-- 能力包 -->
+  <rect x="250" y="416" width="780" height="104" rx="10" fill="#eff6ff" stroke="#1d4ed8" stroke-width="1.6"/>
+  <text x="640" y="446" font-size="16" font-weight="bold" text-anchor="middle" fill="#1e3a8a">6 插件 / 19 技能（装机清单唯一事实源）</text>
+  <text x="640" y="470" font-size="12" text-anchor="middle" fill="#1d4ed8">core 酒馆冒险团与安装 7 · engine 执行内核 2 · intake 想法池 1</text>
+  <text x="640" y="490" font-size="12" text-anchor="middle" fill="#1d4ed8">ops 事故与运维 2 · studio 武器集 6 · board 看板 1</text>
+  <text x="640" y="508" font-size="11" text-anchor="middle" fill="#64748b">marketplace.json 为唯一分发清单；安装器从插件目录现场派生</text>
+  <line x1="640" y1="520" x2="640" y2="544" stroke="#475569" stroke-width="1.5" marker-end="url(#kms-ar)"/>
+
+  <!-- 执行内核 -->
+  <rect x="430" y="548" width="420" height="88" rx="10" fill="#ecfdf5" stroke="#047857" stroke-width="1.8"/>
+  <text x="640" y="576" font-size="16" font-weight="bold" text-anchor="middle" fill="#065f46">fleet 执行内核（engine/coding）</text>
+  <text x="640" y="598" font-size="12" text-anchor="middle" fill="#047857">一张票一个 run · 状态机 · 独立 worktree · 槽位</text>
+  <text x="640" y="618" font-size="12" text-anchor="middle" fill="#047857">门 G0 / G1 / G2 · 验收读 diff · 发货单点</text>
+  <line x1="640" y1="636" x2="640" y2="660" stroke="#475569" stroke-width="1.5" marker-end="url(#kms-ar)"/>
+
+  <!-- 落点三件 -->
+  <g>
+    <rect x="150" y="664" width="280" height="76" rx="8" fill="#fafafa" stroke="#94a3b8" stroke-width="1.2"/>
+    <text x="290" y="686" font-size="14" font-weight="bold" text-anchor="middle" fill="#334155">项目仓（目标项目）</text>
+    <text x="290" y="706" font-size="11" text-anchor="middle" fill="#64748b">.ai/kai-mode.project.json 配置实例</text>
+    <text x="290" y="724" font-size="11" text-anchor="middle" fill="#64748b">.coding/runs/*/state.json · .coding/parked</text>
+
+    <rect x="500" y="664" width="280" height="76" rx="8" fill="#fafafa" stroke="#94a3b8" stroke-width="1.2"/>
+    <text x="640" y="686" font-size="14" font-weight="bold" text-anchor="middle" fill="#334155">GitHub Issue</text>
+    <text x="640" y="706" font-size="11" text-anchor="middle" fill="#64748b">票面与验收的唯一事实源</text>
+    <text x="640" y="724" font-size="11" text-anchor="middle" fill="#64748b">gh 命令显式 --repo &lt;owner/name&gt;</text>
+
+    <rect x="850" y="664" width="280" height="76" rx="8" fill="#fafafa" stroke="#94a3b8" stroke-width="1.2"/>
+    <text x="990" y="686" font-size="14" font-weight="bold" text-anchor="middle" fill="#334155">宿主（适配层 adapters/）</text>
+    <text x="990" y="706" font-size="11" text-anchor="middle" fill="#64748b">claude · qoder · codex · cursor</text>
+    <text x="990" y="724" font-size="11" text-anchor="middle" fill="#64748b">copilot · opencode · 角色按宿主渲染</text>
+  </g>
+
+  <!-- 注解：红线 -->
+  <g font-family="Georgia, serif" font-style="italic" fill="#334155">
+    <text x="48" y="210" font-size="13">红线四项：花钱 / 对外真发布</text>
+    <text x="48" y="230" font-size="13">/ 不可逆 / 删未提交内容</text>
+    <text x="48" y="250" font-size="13">—— 命中只停该票，先问人</text>
+  </g>
+  <!-- 注解：正本 -->
+  <g font-family="Georgia, serif" font-style="italic" fill="#334155">
+    <text x="48" y="470" font-size="13">一条语义一个家：判据正本住 docs/</text>
+    <text x="48" y="490" font-size="13">与 AGENTS.md，别处只留指针；</text>
+    <text x="48" y="510" font-size="13">README 一处计数矛盾（20 vs 19）待修</text>
+  </g>
+</svg>

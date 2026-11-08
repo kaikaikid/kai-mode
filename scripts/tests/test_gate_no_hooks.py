@@ -170,7 +170,7 @@ def test_ship_has_exactly_two_control_plane_call_sites():
     assert src.count("def _ship(") == 1
     calls = [l.strip() for l in src.splitlines() if "_ship(" in l and "def " not in l]
     assert len(calls) == 2, calls
-    # 两条口子：advance()（加急跃迁）与 cmd_gate()（显式 G2）
+    # 两条口子：advance()（加急速推）与 cmd_gate()（显式 G2）
     lines = src.splitlines()
     enclosing = []
     for n, l in enumerate(lines, 1):
@@ -186,7 +186,7 @@ def test_ship_has_exactly_two_control_plane_call_sites():
 
 
 def test_autopilot_ship_requires_can_ship(monkeypatch):
-    """加急跃迁那条口子也要门：没有 can_ship 就不许发货。"""
+    """加急速推那条口子也要门：没有 can_ship 就不许发货。"""
     shipped = []
     state = _run("closing")
     state.update({"autopilot": True, "can_ship": False, "gates": {"g2": "pending"}})
@@ -198,7 +198,7 @@ def test_autopilot_ship_requires_can_ship(monkeypatch):
     assert shipped == [], "没有 can_ship 也发了货"
     state["can_ship"] = True
     cli.advance(state, Path("."))
-    assert shipped == ["r1"], "加急跃迁应当发一次货"
+    assert shipped == ["r1"], "加急速推应当发一次货"
 
 
 # ── ④ 只读角色改动一律不收（不依赖宿主工具白名单）────────────────────────────

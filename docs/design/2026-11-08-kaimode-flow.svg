@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="780" viewBox="0 0 1280 780"
+     role="img" aria-labelledby="kaimode-flow-title kaimode-flow-desc"
+     font-family="Segoe UI, PingFang SC, sans-serif">
+  <title id="kaimode-flow-title">冒险团七步委托流程（酒馆口径 · 工程标识并排）</title>
+  <desc id="kaimode-flow-desc">接任务、开团、开刷、交任务、验收、任务结束、写入冒险日志七步；右侧为九条判断分岔的走法与产出，速推是验收阶段的特殊通道。</desc>
+  <defs>
+    <marker id="kmf-ar" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" fill="#475569"/>
+    </marker>
+  </defs>
+
+  <text x="48" y="46" font-size="23" font-weight="bold" fill="#0f172a">冒险团七步委托流程（v0.39.0 · 酒馆口径 · 工程标识并排）</text>
+  <text x="48" y="72" font-size="13" fill="#64748b">酒馆中文用于界面与文档；底层状态、字段与 API 用行业通用英文（冒险者酒馆框架 §2.1 第 10 条）</text>
+
+  <!-- 主干 -->
+  <ellipse cx="300" cy="108" rx="74" ry="24" fill="#f1f5f9" stroke="#334155" stroke-width="1.5"/>
+  <text x="300" y="113" font-size="14" text-anchor="middle" fill="#0f172a">团长委托</text>
+  <line x1="300" y1="132" x2="300" y2="150" stroke="#475569" stroke-width="1.5" marker-end="url(#kmf-ar)"/>
+
+  <rect x="120" y="154" width="360" height="62" rx="10" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"/>
+  <text x="300" y="178" font-size="15" font-weight="bold" text-anchor="middle" fill="#312e81">① 接任务 · Accept Quest</text>
+  <text x="300" y="198" font-size="11" text-anchor="middle" fill="#3730a3">任务受理：复述目标 → 只问必要一问（不代表已执行）</text>
+  <line x1="300" y1="216" x2="300" y2="234" stroke="#475569" stroke-width="1.5" marker-end="url(#kmf-ar)"/>
+
+  <rect x="120" y="238" width="360" height="62" rx="10" fill="#f5f3ff" stroke="#6d28d9" stroke-width="1.6"/>
+  <text x="300" y="262" font-size="15" font-weight="bold" text-anchor="middle" fill="#5b21b6">② 开团 · Form a Party</text>
+  <text x="300" y="282" font-size="11" text-anchor="middle" fill="#6d28d9">定编制（M0–M6）· 阵容 · 委托契约 · 情报 · 预算与权限</text>
+  <line x1="300" y1="300" x2="300" y2="318" stroke="#475569" stroke-width="1.5" marker-end="url(#kmf-ar)"/>
+
+  <rect x="120" y="322" width="360" height="76" rx="10" fill="#eff6ff" stroke="#1d4ed8" stroke-width="1.6"/>
+  <text x="300" y="346" font-size="15" font-weight="bold" text-anchor="middle" fill="#1e3a8a">③ 开刷 · Start the Run</text>
+  <text x="300" y="366" font-size="11" text-anchor="middle" fill="#1d4ed8">启动执行实例（fleet run · warp 开团 / jump 速推）</text>
+  <text x="300" y="384" font-size="10.5" text-anchor="middle" fill="#64748b">门 G0/G1/G2 · 子代理施工 · 验收读实际 diff</text>
+  <line x1="300" y1="398" x2="300" y2="416" stroke="#475569" stroke-width="1.5" marker-end="url(#kmf-ar)"/>
+
+  <rect x="120" y="420" width="360" height="62" rx="10" fill="#fafafa" stroke="#94a3b8" stroke-width="1.3"/>
+  <text x="300" y="444" font-size="15" font-weight="bold" text-anchor="middle" fill="#334155">④ 交任务 · Turn In Quest</text>
+  <text x="300" y="464" font-size="11" text-anchor="middle" fill="#64748b">提交结果与证据（report + diff 对账；不代表验收通过）</text>
+  <line x1="300" y1="482" x2="300" y2="500" stroke="#475569" stroke-width="1.5" marker-end="url(#kmf-ar)"/>
+
+  <rect x="120" y="504" width="360" height="76" rx="10" fill="#ecfdf5" stroke="#047857" stroke-width="1.8"/>
+  <text x="300" y="528" font-size="15" font-weight="bold" text-anchor="middle" fill="#065f46">⑤ 验收 · Quest Review</text>
+  <text x="300" y="548" font-size="11" text-anchor="middle" fill="#047857">独立审查出判词；人验收或符合 R09 的自动验收</text>
+  <text x="300" y="566" font-size="10.5" text-anchor="middle" fill="#b45309">速推＝本阶段的特殊通道，不是独立环节</text>
+  <line x1="300" y1="580" x2="300" y2="598" stroke="#475569" stroke-width="1.5" marker-end="url(#kmf-ar)"/>
+
+  <rect x="120" y="602" width="360" height="62" rx="10" fill="#f1f5f9" stroke="#334155" stroke-width="1.3"/>
+  <text x="300" y="626" font-size="15" font-weight="bold" text-anchor="middle" fill="#0f172a">⑥ 任务结束 · Quest Completed</text>
+  <text x="300" y="646" font-size="11" text-anchor="middle" fill="#64748b">任务关闭：底层区分成功／失败／取消，分别记录原因</text>
+  <line x1="300" y1="664" x2="300" y2="682" stroke="#475569" stroke-width="1.5" marker-end="url(#kmf-ar)"/>
+
+  <rect x="120" y="686" width="360" height="62" rx="10" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.3"/>
+  <text x="300" y="710" font-size="15" font-weight="bold" text-anchor="middle" fill="#334155">⑦ 写入冒险日志 · Write Adventure Log</text>
+  <text x="300" y="730" font-size="11" text-anchor="middle" fill="#64748b">执行记录归档；失败或取消也不跳过</text>
+
+  <!-- 右表：9 条分岔 -->
+  <rect x="560" y="154" width="680" height="594" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="900" y="178" font-size="13" font-weight="bold" text-anchor="middle" fill="#334155">判断分岔 · 9 条（走法 → 产出）</text>
+
+  <g font-size="11.5">
+    <rect x="584" y="190" width="632" height="48" rx="6" fill="#ecfdf5" stroke="#047857" stroke-width="1"/>
+    <text x="600" y="208" font-weight="bold" fill="#065f46">要做成有验收标准的事</text>
+    <text x="600" y="226" fill="#047857">开团 → 开刷（fleet）→ 交任务 → 验收 → 任务结束 → 写日志（本图主干）</text>
+
+    <rect x="584" y="246" width="632" height="48" rx="6" fill="#fafafa" stroke="#e2e8f0"/>
+    <text x="600" y="264" font-weight="bold" fill="#334155">小修 / 单模块 / 无 UI / 无迁移</text>
+    <text x="600" y="282" fill="#64748b">免票热修：派一个可写子代理改完、跑验证、回报；不 push 不算发货</text>
+
+    <rect x="584" y="302" width="632" height="48" rx="6" fill="#fafafa" stroke="#e2e8f0"/>
+    <text x="600" y="320" font-weight="bold" fill="#334155">需求大 / 方向未定 / 跨模块</text>
+    <text x="600" y="338" fill="#64748b">调 staff：拷问 → 定稿 → 拆票草案 → 规划表；用户拍一次板后开团</text>
+
+    <rect x="584" y="358" width="632" height="48" rx="6" fill="#fafafa" stroke="#e2e8f0"/>
+    <text x="600" y="376" font-weight="bold" fill="#334155">只是想法、方向没定</text>
+    <text x="600" y="394" fill="#64748b">kai-boom-idea-log：全文落盘、不起工；问一句「先记还是现在做」</text>
+
+    <rect x="584" y="414" width="632" height="48" rx="6" fill="#fafafa" stroke="#e2e8f0"/>
+    <text x="600" y="432" font-weight="bold" fill="#334155">事故 / 复盘</text>
+    <text x="600" y="450" fill="#64748b">incident-response：先分级止损 → 记时间线 → 复盘与后续票</text>
+
+    <rect x="584" y="470" width="632" height="48" rx="6" fill="#fafafa" stroke="#e2e8f0"/>
+    <text x="600" y="488" font-weight="bold" fill="#334155">要固化可重复的运维步骤</text>
+    <text x="600" y="506" fill="#64748b">runbook：每步带预期结果与失败分支；破坏性动作单独成步标 ⚠</text>
+
+    <rect x="584" y="526" width="632" height="48" rx="6" fill="#fafafa" stroke="#e2e8f0"/>
+    <text x="600" y="544" font-weight="bold" fill="#334155">创作交付（写稿/画图/剪辑/宣发）</text>
+    <text x="600" y="562" fill="#64748b">武器集按角色：producer 立项 → writer/artist/director → final-review → marketing</text>
+
+    <rect x="584" y="582" width="632" height="48" rx="6" fill="#fafafa" stroke="#e2e8f0"/>
+    <text x="600" y="600" font-weight="bold" fill="#334155">已有票 / 已有 run</text>
+    <text x="600" y="618" fill="#64748b">fleet status 找到它，fleet resume 从断点续跑；不改票面不重开</text>
+
+    <rect x="584" y="638" width="632" height="48" rx="6" fill="#fafafa" stroke="#e2e8f0"/>
+    <text x="600" y="656" font-weight="bold" fill="#334155">单纯问问题</text>
+    <text x="600" y="674" fill="#64748b">直接答，不动仓库</text>
+  </g>
+
+  <!-- 注解 -->
+  <g font-family="Georgia, serif" font-style="italic" fill="#334155">
+    <text x="560" y="758" font-size="12.5">只有三种情况找团长：红线（花钱/对外发布/不可逆/删未提交）· 可见取舍 · 卡死（同错两次/冲突/审查退回 3 轮）</text>
+  </g>
+</svg>

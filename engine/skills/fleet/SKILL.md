@@ -22,7 +22,7 @@ compatibility: Host-agnostic; host must be able to spawn subagents
 
 ## 这是什么
 
-`/warp` `/jump` 由康娜触发，本技能只负责施工执行与验收。**你只跟主会话说话**；施工交给宿主自己的子代理，
+**开团**（工程触发 `/warp`）与**速推**（工程触发 `/jump`）由康娜触发，本技能只负责施工执行与验收。**你只跟主会话说话**；施工交给宿主自己的子代理，
 不拉起 CLI 进程，也不要求挂机。主会话开着，调度就在；关了就停了。
 
 与创作交付（武器集）严格分开：本技能只做代码开发，不调用它们的角色，也不共用状态。
@@ -35,7 +35,7 @@ compatibility: Host-agnostic; host must be able to spawn subagents
    `fleet review` 输出审查卡，用只读子代理审查。人不在线时由 `fleet auto` 驱动，它只调
    `.coding/config.json` 的 `worker_cmd`／`reviewer_cmd`（或同名环境变量）配好的宿主命令，
    内核不内置任何厂商适配器；不配就如实报缺件。
-3. **只在门点停**：手动挡在 G0／G1／G2 停；`/warp` 自动挡由门卫子代理自动批门，只在红线或异常时停。
+3. **只在门点停**：手动挡在 G0／G1／G2 停；**开团**（工程 `/warp`）自动挡由门卫子代理自动批门，只在红线或异常时停。
 4. **验收读 diff**：子代理报告是 claim，不是事实；`fleet report` 对账 diff，主会话读实际 diff 再裁决。
 5. **子会话不发货**：worker 与 reviewer 都不 push／merge；发货只由主会话在门点后执行。
 
@@ -44,7 +44,7 @@ compatibility: Host-agnostic; host must be able to spawn subagents
 每一步的终点写在这条链上；不到终点不进下一步。
 
 ```
-/warp <任务>
+开团（`/warp <任务>`）
   → fleet run "<任务>"                 # 开 run（并发满则 queued）      终点：state 里有 run
   → 拆任务图 → fleet plan              # 每任务：brief/tier/deps/touchset/ac/ui
                                                                       终点：任务图过 G0
@@ -120,13 +120,13 @@ compatibility: Host-agnostic; host must be able to spawn subagents
 touchset 重叠且串行依赖时，默认合成一个 task、多 AC；不要按实现步骤或文件层拆。
 规划时标出并行宽度；并行宽度＝1 的拆分视为纯开销。
 
-## 曲速与跃迁
+## 开团与速推（酒馆名；工程标识 `warp`／`jump`）
 
-- **`/warp`**＝全自动挡：施工全程主会话自推，门卫代理自动批 G0／G1，G2 留 pending（不发货），
-  只在红线或异常时停。普通 `/warp` 停在 closing，由康娜或人工 `gate g2 approve` 发货。
-- **`/jump`**＝加急：走加急预留槽，不抢占普通 run，touchset 重叠时排队到该任务验收；
-  跑到底并自动发货 = merge → 收尾门 → push → 关票，全脚本化。
-- 用户没显式指定时，先问一次「用 `/jump` 跃迁吗？」，不自行决定。
+- **开团**（`/warp`）＝无人值守自动挡：施工全程主会话自推，门卫代理自动批 G0／G1，G2 留 pending（不发货），
+  只在红线或异常时停。普通开团（`/warp`）停在验收门，由康娜或人工 `gate g2 approve` 发货。
+- **速推**（`/jump`）＝加急：走加急预留槽，不抢占普通 run，touchset 重叠时排队到该任务验收；
+  跑到底并自动验收发货 = merge → 收尾门 → push → 关票，全脚本化（速推是验收阶段的一条特殊通道，不是独立环节）。
+- 用户没显式指定时，先问一次「用速推吗？」，不自行决定。
 - 并发节制、槽位、`--ships`／`--crew`／`--fleet` 的用法见
   [`references/concurrency.md`](references/concurrency.md)。
 
