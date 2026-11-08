@@ -29,7 +29,7 @@ OUT = ROOT / "manual" / "assets" / "skills-data.js"
 
 # 没有 commands/ 的插件里，这些技能本身就是口令
 SELF_COMMAND_SKILLS = {
-    "bridge",
+    "guild",
     "producer",
     "lead-writer",
     "lead-artist",

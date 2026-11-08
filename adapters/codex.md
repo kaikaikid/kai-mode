@@ -33,7 +33,7 @@ codex --version          # 本机实测 0.164.0-alpha.11.1
 
 ```bash
 codex exec -C <仓库根> -s workspace-write --json -o <回执文件> \
-  "读取并执行 core/skills/bridge/SKILL.md 全文；只做该文件写的动作。"
+  "读取并执行 core/skills/guild/SKILL.md 全文；只做该文件写的动作。"
 ```
 
 ## 只读评审

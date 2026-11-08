@@ -6,7 +6,7 @@
     "core": {
       "description": "最小闭环：康娜入口、安装、执行内核。",
       "skills": [
-        "bridge",
+        "guild",
         "staff",
         "set-kai-mode",
         "upgrade-kai-mode",
@@ -18,12 +18,13 @@
     "full": {
       "description": "core ＋ 原则合集 ＋ BOOM 想法池 ＋ 事故与运维 ＋ 武器集六把 ＋ 看板 ＋ 对比分析。",
       "skills": [
-        "bridge",
+        "guild",
         "staff",
         "set-kai-mode",
         "upgrade-kai-mode",
         "kai-handoff",
         "fleet",
+        "summon",
         "kai-boom-idea-log",
         "flight-info",
         "incident-response",

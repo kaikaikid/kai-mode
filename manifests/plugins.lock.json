@@ -11,20 +11,21 @@
     },
     "core": {
       "version": "1.4.0",
-      "digest": "6095c29621bc818640e36b971f2be1e70dc265731a0e825ecd363fd23ee52a6a",
+      "digest": "f29b9488951d970653c6a4779cc620b82a4fde079eb0ff89c54ee11165a77889",
       "skills": {
-        "bridge": "0.6.0",
+        "guild": "0.7.0",
         "harness-audit": "0.2.1",
         "kai-handoff": "0.3.6",
         "principles": "1.0.0",
         "set-kai-mode": "7.0.0",
         "staff": "4.2.0",
+        "summon": "0.1.1",
         "upgrade-kai-mode": "0.2.1"
       }
     },
     "engine": {
       "version": "0.6.0",
-      "digest": "85cea675df2283b08c4d891295ac03d64840aac3f90f048260a3f0d8eb92b8e0",
+      "digest": "cb22f8e11b24d7ffb0b5e3c9d84c78432fe5ce2255dc767f579f7302c4925256",
       "skills": {
         "fleet": "0.9.0",
         "pk": "0.1.1"
@@ -32,7 +33,7 @@
     },
     "intake": {
       "version": "1.0.1",
-      "digest": "940bab3c3eba431b6472c3e406711dddb803e78bf01dea86bc5e563990882dbc",
+      "digest": "b691374e9abd85e9957ee33fab0d10c9ff76b20b60cc60b78ecd638d4649676a",
       "skills": {
         "kai-boom-idea-log": "0.1.4"
       }

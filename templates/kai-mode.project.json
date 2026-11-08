@@ -10,9 +10,9 @@
     "_note": "①判据/剧本注册面：剧本登记行全量收编于此（原登记面文件退役），新增剧本只在 playbooks[] 加一行，入口与技能不复述；判据落点 registry.adrs / registry.rules。路径相对项目仓根。",
     "playbooks": [
       {
-        "name": "bridge",
-        "trigger": "/bridge，或未显式点名其它技能时的默认入口",
-        "route": "bridge",
+        "name": "guild",
+        "trigger": "/guild（旧名 /bridge 兼容），或未显式点名其它技能时的默认入口",
+        "route": "guild",
         "notes": "康娜（主 AI 人格）：唯一对话面；判断、开票、开 run、清场、发货、回报"
       }
     ],

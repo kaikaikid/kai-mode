@@ -1,6 +1,6 @@
 """Main-tree dirty-file triage and safe parking.
 
-The fleet kernel refuses to ship while the root tree has tracked changes.  Bridge
+The fleet kernel refuses to ship while the root tree has tracked changes.  Guild
 needs a deterministic, reversible way to clear that block: classify what is
 dirty, then park unrelated *product* changes in a named stash.  Nothing here
 ever deletes or restores uncommitted work -- parking is a stash with a receipt,
@@ -137,7 +137,7 @@ def _stamp() -> str:
 
 
 def park(root: Path | None = None, message: str = "", include_records: bool = False) -> dict:
-    """Stash selected dirty paths under a bridge-named stash; write a receipt.
+    """Stash selected dirty paths under a guild-named stash; write a receipt.
 
     Default target is product changes only.  Untracked files are left alone --
     they do not block shipping.  Never drops a stash.
@@ -153,7 +153,7 @@ def park(root: Path | None = None, message: str = "", include_records: bool = Fa
 
     paths = [e["path"] for e in targets]
     why = (message or "park unrelated changes").strip()
-    msg = f"bridge: {why}"
+    msg = f"guild: {why}"
     r = _git("stash", "push", "-m", msg, "--", *paths, cwd=root, check=False)
     if r.returncode != 0:
         return {"ok": False, "error": (r.stderr or r.stdout).strip()[:800]}

@@ -37,8 +37,8 @@ frontmatter 只有五个，**全部选填**：`name`、`description`、`model`�
 
 ## 3. 默认入口
 
-- 项目 `AGENTS.md` / `CLAUDE.md` 末尾写「默认入口＝康娜，`bridge` 是它的方法」。
-- 用户按需起会话；不打斜杠命令时读 `bridge` 技能执行。
+- 项目 `AGENTS.md` / `CLAUDE.md` 末尾写「默认入口＝康娜，`guild` 是它的方法」。
+- 用户按需起会话；不打斜杠命令时读 `guild` 技能执行。
 
 ## 4. 新上下文（审查腿）
 

@@ -19,7 +19,7 @@
 
 三面判据（全部现算，不靠印象）：
   · 内容面 正本目录逐文件 SHA-256 == 库副本逐文件（缺件/多件都算漂移）
-  · 落点面 凡已把 anchor（`bridge`）链到本库的宿主家目录，必须同样有该条且解引用回库
+  · 落点面 凡已把 anchor（`guild`）链到本库的宿主家目录，必须同样有该条且解引用回库
   · 注册面 `library.json` 的 `skills[]` 有条目，且每个铺了 anchor 的 `applied[*].skills` 含该名；
     条目另带 `source`（`kind`／`repo`／`path`）——Magpie 资源库页按它分组，缺了就落「本机」（只报 warn 不判红）
 
@@ -45,7 +45,7 @@ try:  # Windows 控制台下中文输出
 except Exception:
     pass
 
-ANCHOR = "bridge"  # 库位与落点面都沿这条既有条目反查（康娜的方法是永久入口）；不写死机器路径
+ANCHOR = "guild"  # 库位与落点面都沿这条既有条目反查（康娜的方法是永久入口）；不写死机器路径
 LIBRARY_ENV = "KAI_MAGPIE_LIBRARY"
 # 项目技能落点缺省（registry.skills 的模板缺省值）：只在项目配置实例
 # 不在／没写 registry.skills 时回落用；实例给了就以实例为准（一个语义一个家）。
@@ -76,7 +76,7 @@ ANCHOR_MARKERS = (
     os.path.join(".claude-plugin", "marketplace.json"),
 )
 # 坑 A（Issue #2）：`skills/<anchor>/SKILL.md` 是**相对布局**，插件子目录也会命中——
-# `<repo>/core/skills/bridge/SKILL.md` 确实存在，于是 `<repo>/core` 被当成仓根。
+# `<repo>/core/skills/guild/SKILL.md` 确实存在，于是 `<repo>/core` 被当成仓根。
 # 根级独占标记（项目仓落点／marketplace 根）命中即算仓根；只命中相对标记时，
 # 必须另有根级件才算（插件子目录只有 `.claude-plugin/plugin.json`，没有下面这些）。
 ANCHOR_ROOT_MARKERS = (
@@ -119,6 +119,7 @@ LEGACY_ALIASES = {
     "地勤": "ground-crew",  # canon:allow-retired
     "航班信息": "flight-info",  # canon:allow-retired
     "set-航班信息": "flight-info",  # canon:allow-retired
+    "bridge": "guild",  # 旧技能名 → 冒险团口径（guild）
 }
 
 

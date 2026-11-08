@@ -31,7 +31,7 @@ claude --help             # 现场核对 plugin / agents / settings 相关 flag
 |---|---|---|---|
 | 插件清单 | `.claude-plugin/marketplace.json` ＋ `<plugin>/.claude-plugin/plugin.json` | 仓库根；作为本地 marketplace 交给宿主（`/plugin marketplace add <本仓路径>`，先按本机版本核对） | 插件名 `core`／`board`／`intake`／`ops`／`studio`／`engine` |
 | 技能 | `<plugin>/skills/<名>/SKILL.md` ＋ `scripts/`、`templates/`、`references/` | 项目 `.claude/skills/<名>/`；或中央库 `<...>/magpie/data/library/skills/<名>/`，宿主目录指向它 | 技能名；插件安装后按插件命名空间寻址 |
-| 默认入口 | 项目 `CLAUDE.md` / `AGENTS.md` 一段 ＋ `core/skills/bridge/SKILL.md` | 项目根 | `/bridge`；未点名其它技能时默认 |
+| 默认入口 | 项目 `CLAUDE.md` / `AGENTS.md` 一段 ＋ `core/skills/guild/SKILL.md` | 项目根 | `/guild`；未点名其它技能时默认 |
 | 子代理 | 宿主原生 `.claude/agents/<名>.md`（可选，宿主自有格式） | 项目 `.claude/agents/` | 宿主 agent 名 |
 
 - **不装全局**：`.claude/agents/` 与 `.claude/skills/` 只在项目级装，避免和用户其它框架的同名项打架。
@@ -41,20 +41,20 @@ claude --help             # 现场核对 plugin / agents / settings 相关 flag
 
 ## 起康娜（默认入口）
 
-> 康娜（主代理）是唯一对话面，`bridge` 是它的方法正文；不再有按岗位分的常驻会话，也不装任何唤醒定时器。
+> 康娜（主代理）是唯一对话面，`guild` 是它的方法正文；不再有按岗位分的常驻会话，也不装任何唤醒定时器。
 > 专业角色按需实例化为子代理，不长期常驻、不互相唤醒（ADR-0033 D2；唤醒围栏 ADR-0010 不变）。
 
 ```bash
 cd <项目仓根>
 claude
-# 会话内：未点名其它技能时，读取并执行 core/skills/bridge/SKILL.md 全文；
-# 你的会话名是 cc-bridge-<时间戳>；只做该文件写的动作。
+# 会话内：未点名其它技能时，读取并执行 core/skills/guild/SKILL.md 全文；
+# 你的会话名是 cc-guild-<时间戳>；只做该文件写的动作。
 ```
 
 非交互执行（脚本/回执）：
 
 ```bash
-claude -p "读取并执行 <项目仓根>/.claude/skills/bridge/SKILL.md 全文；只做该文件写的动作。" --output-format text > <回执文件>
+claude -p "读取并执行 <项目仓根>/.claude/skills/guild/SKILL.md 全文；只做该文件写的动作。" --output-format text > <回执文件>
 ```
 
 - **默认入口**：在项目 `CLAUDE.md` / `AGENTS.md` 末尾写一段「默认入口＝康娜」；这是让用户「忘了触发也进康娜」的机械落点。

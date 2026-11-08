@@ -18,7 +18,7 @@
 | 层 | 谁写 | 写在哪 |
 |---|---|---|
 | 插件与技能 | 框架 | `.claude-plugin/marketplace.json` ＋ `<plugin>/skills/<名>/SKILL.md` |
-| 默认入口 | 框架 | `core/skills/bridge/SKILL.md` ＋ 项目指令文件一段 |
+| 默认入口 | 框架 | `core/skills/guild/SKILL.md` ＋ 项目指令文件一段 |
 | 落法 | 装机 agent | 本文 §2 表 + 现场实测；不写回框架正文 |
 
 **框架仓不保存任何宿主产物**（那是每台机器现场生成的），也不发明模型 slug。
@@ -38,9 +38,9 @@
 
 | 宿主 | 插件清单 | 技能落点 | 命令 | 新上下文 | 定时口 | 原生子代理（执行内核必需） |
 |---|---|---|---|---|---|
-| Claude Code | `.claude-plugin/marketplace.json` | `.claude/skills/<名>/SKILL.md` 或中央库副本 | 无角色命令；`bridge` 为默认入口 | 原生子代理或独立进程 | 无内置；人工按需起 | 原生子代理（Agent/.claude/agents） |
-| Qoder | `.qoder-plugin/plugin.json` | `.qoder/skills/<名>/SKILL.md`（项目）／`~/.qoder/skills/`（用户） | 自然语言或显式提示词指向 `bridge` | 原生 subagent 或新会话 | 可不用；人工按需起 | 原生 subagent（.qoder/agents） |
-| Codex | 无 | 项目技能目录；`codex exec` 读 `SKILL.md` | 无；用 prompt 指向 `bridge`（康娜的方法） | 独立 `codex exec -s read-only` 进程 | 无 | 无原生；用本宿主自己的进程当角色实例（D3），内核走 `worker_cmd`/`reviewer_cmd` |
+| Claude Code | `.claude-plugin/marketplace.json` | `.claude/skills/<名>/SKILL.md` 或中央库副本 | 无角色命令；`guild` 为默认入口 | 原生子代理或独立进程 | 无内置；人工按需起 | 原生子代理（Agent/.claude/agents） |
+| Qoder | `.qoder-plugin/plugin.json` | `.qoder/skills/<名>/SKILL.md`（项目）／`~/.qoder/skills/`（用户） | 自然语言或显式提示词指向 `guild` | 原生 subagent 或新会话 | 可不用；人工按需起 | 原生 subagent（.qoder/agents） |
+| Codex | 无 | 项目技能目录；`codex exec` 读 `SKILL.md` | 无；用 prompt 指向 `guild`（康娜的方法） | 独立 `codex exec -s read-only` 进程 | 无 | 无原生；用本宿主自己的进程当角色实例（D3），内核走 `worker_cmd`/`reviewer_cmd` |
 | OpenCode | 无 | 项目技能目录（`registry.skills.project_skills_dir`） | 无；用 prompt | 独立 `opencode run` 进程 | 无 | 无原生；用本宿主自己的进程当角色实例（D3），内核走 `worker_cmd`/`reviewer_cmd` |
 | Copilot | 无 | 项目技能目录 | 无；用 prompt | 宿主自定义代理（`.github/agents/`） | 视版本 | **有**：`.github/agents/<名>.agent.md`，派发键＝文件名；只读靠 `tools` 不给 `edit`+`execute`；无 `maxTurns`/`disallowedTools`/`hooks` |
 | Cursor | 无 | 项目技能目录（`registry.skills.project_skills_dir`） | 无；用 prompt | 宿主子代理（`.cursor/agents/`） | 视版本 | **有**：`.cursor/agents/<名>.md`；只读靠 frontmatter `readonly: true`（硬机制）；无 `tools` 白名单 |
@@ -89,7 +89,7 @@ missing: <kind>
 
 1. 起一个只读上下文，让它写一个临时文件 → **必须被拒**；被写入＝权限没落住。
 2. 起一个可写上下文做一次最小可回滚写 → 通过即说明可写侧也通。
-3. `bridge` 技能能从技能目录读到，且默认入口段指向它。
+3. `guild` 技能能从技能目录读到，且默认入口段指向它。
 4. 回执写实测读数；做不到的写「未测」，不算完成。
 
 ## 8. 边界

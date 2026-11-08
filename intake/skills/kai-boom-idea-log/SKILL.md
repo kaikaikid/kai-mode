@@ -116,5 +116,5 @@ gh issue view <汇总票号> --json comments --jq '.comments[-1].url'
 
 ## 指针
 
-- 分流口径：`../../../core/skills/bridge/SKILL.md`「判断走哪条」
+- 分流口径：`../../../core/skills/guild/SKILL.md`「判断走哪条」
 - 源件：`docs/skill-sources/workflow-skills.md#boom-idea-log`

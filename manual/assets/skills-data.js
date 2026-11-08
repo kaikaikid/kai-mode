@@ -4,11 +4,11 @@ window.KAI_SKILLS = [
     "group": "酒馆冒险团与安装",
     "plugin": "酒馆冒险团与安装",
     "pluginId": "core",
-    "skill": "bridge",
+    "skill": "guild",
     "oneLine": "康娜的方法正文与默认入口：接单、判断、清场、施工、发货、回报。",
-    "trigger": "默认入口；/bridge；说「开工」「发货」「清理脏文件」",
-    "command": "/bridge",
-    "version": "0.6.0"
+    "trigger": "默认入口；/guild（旧名 /bridge 兼容）；说「开工」「发货」「清理脏文件」",
+    "command": "/guild",
+    "version": "0.7.0"
   },
   {
     "group": "酒馆冒险团与安装",
@@ -59,6 +59,16 @@ window.KAI_SKILLS = [
     "trigger": "由康娜调用；说「先规划」「想清楚再做」",
     "command": "/staff",
     "version": "4.2.0"
+  },
+  {
+    "group": "酒馆冒险团与安装",
+    "plugin": "酒馆冒险团与安装",
+    "pluginId": "core",
+    "skill": "summon",
+    "oneLine": "手动唤醒一个专业角色子代理的方法论入口（酒馆名「召集」）。",
+    "trigger": "/summon <角色>、/召集 <角色>；角色＝researcher/architect/engineer/designer/writer/archivist/reviewer",
+    "command": "",
+    "version": "0.1.0"
   },
   {
     "group": "酒馆冒险团与安装",

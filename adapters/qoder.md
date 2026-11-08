@@ -50,7 +50,7 @@ Qoder 没有 Claude Code 那种 `/plugin:command` 命名空间。叫她有两种
 2. **显式提示词**：
 
 ```text
-读取并执行 <项目>/.qoder/skills/bridge/SKILL.md 全文；只做该文件写的动作。
+读取并执行 <项目>/.qoder/skills/guild/SKILL.md 全文；只做该文件写的动作。
 ```
 
 - 如果本机 CLI 支持 `--with-claude-config`，Claude 风格的命令名会一并被读到；**先 `qoder --help` 确认**。
@@ -61,7 +61,7 @@ Qoder 没有 Claude Code 那种 `/plugin:command` 命名空间。叫她有两种
 V1 岗位体系下线后没有定时轮巡，也没有 60 分钟唤醒定时器。
 
 - 在项目 `CLAUDE.md` / `AGENTS.md` 末尾写一段「默认入口＝康娜」；
-- 用户按需起会话；会话里不打斜杠命令时，读 `bridge` 技能执行；
+- 用户按需起会话；会话里不打斜杠命令时，读 `guild` 技能执行；
 - 施工由 `fleet warp`/`fleet jump` 派宿主原生子代理，不靠宿主定时任务。
 
 ## 4. 新上下文（审查腿）
@@ -79,7 +79,7 @@ V1 岗位体系下线后没有定时轮巡，也没有 60 分钟唤醒定时器�
 ```bash
 qoder --version                      # 入口与版本
 qoder --help                         # 确认 plugins / scheduled / --with-claude-config 是否在
-test -f .qoder/skills/bridge/SKILL.md && echo skill-ok
+test -f .qoder/skills/guild/SKILL.md && echo skill-ok
 test -f .qoder-plugin/plugin.json && echo plugin-ok
 ```
 
@@ -97,7 +97,7 @@ test -f .qoder-plugin/plugin.json && echo plugin-ok
 
 ## 7. 边界
 
-- 不替康娜施工；只把 `bridge` 按契约跑起来。
+- 不替康娜施工；只把 `guild` 按契约跑起来。
 - 不建/删其他宿主的定时任务。
 - 付费／额度未授权 ⇒ `paid-not-authorized`，不偷偷换模型。
 - 版本、认证状态与探针读数写进项目本机配置，不回写框架正文。

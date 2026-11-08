@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="740" viewBox="0 0 1280 740"
      role="img" aria-labelledby="kaimode-roles-title kaimode-roles-desc"
      font-family="Segoe UI, PingFang SC, sans-serif">
-  <title id="kaimode-roles-title">角色层与技能地图（8 份角色正本 · 6 插件 19 技能）</title>
+  <title id="kaimode-roles-title">角色层与技能地图（8 份角色正本 · 6 插件 20 技能）</title>
   <desc id="kaimode-roles-desc">左侧为酒馆冒险团角色层：主 AI 人格、角色模板 canon、皮肤 skins、同一个组装点、角色实例与宿主派生物；右侧为六插件十九技能清单与武器集认领关系。</desc>
   <defs>
     <marker id="kmro-ar" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
@@ -9,7 +9,7 @@
     </marker>
   </defs>
 
-  <text x="44" y="46" font-size="23" font-weight="bold" fill="#0f172a">角色层与技能地图（v0.39.0 · 8 份角色正本 · 6 插件 19 技能）</text>
+  <text x="44" y="46" font-size="23" font-weight="bold" fill="#0f172a">角色层与技能地图（v0.39.0 · 8 份角色正本 · 6 插件 20 技能）</text>
   <text x="44" y="72" font-size="13" fill="#64748b">角色是子代理，不是常驻会话；派活规则唯一家是 engine/skills/fleet/SKILL.md</text>
 
   <text x="44" y="118" font-size="15" font-weight="bold" fill="#312e81">角色层（酒馆冒险团）</text>
@@ -67,12 +67,12 @@
   </g>
 
   <!-- 右侧技能地图 -->
-  <text x="640" y="118" font-size="15" font-weight="bold" fill="#1e3a8a">技能地图（6 插件 / 19 技能）</text>
+  <text x="640" y="118" font-size="15" font-weight="bold" fill="#1e3a8a">技能地图（6 插件 / 20 技能）</text>
 
   <g font-size="11">
     <rect x="640" y="136" width="600" height="64" rx="8" fill="#eef2ff" stroke="#4f46e5" stroke-width="1.4"/>
     <text x="656" y="158" font-size="13" font-weight="bold" fill="#312e81">core 酒馆冒险团与安装 · 7</text>
-    <text x="656" y="180" fill="#3730a3">bridge · staff · set-kai-mode · upgrade-kai-mode · kai-handoff · harness-audit · principles</text>
+    <text x="656" y="180" fill="#3730a3">guild · staff · set-kai-mode · upgrade-kai-mode · kai-handoff · harness-audit · principles</text>
 
     <rect x="640" y="208" width="600" height="64" rx="8" fill="#ecfdf5" stroke="#047857" stroke-width="1.4"/>
     <text x="656" y="230" font-size="13" font-weight="bold" fill="#065f46">engine 执行内核 · 2</text>

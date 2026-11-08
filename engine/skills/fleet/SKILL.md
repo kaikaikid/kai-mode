@@ -6,7 +6,8 @@ approved: 2026-10-31
 sources: []
 description: >
   执行内核（由康娜调度）：一张票一个 run，主会话规划与验收，宿主自己的子代理执行；
-  一个 run 集合的并发上限是 run 1–3（默认 1）、子代理 1–5（默认 5），按集合独立计数；
+  一个 run 集合的并发上限是 run 1–3（默认 1）、子代理上限 5（实际按 ready 任务数逐个 claim，
+  不是目标值），按集合独立计数；
   一次触发连续跑到门点才停。用 `fleet` 控制平面推进（`travel`／`coding` 是兼容别名），不直接改 state.json。
   只走宿主原生子代理，不拉 CLI 进程。由康娜在开工时调用；中文「开个 run」「跑起来」也认。
 version: 0.9.0
@@ -38,6 +39,7 @@ compatibility: Host-agnostic; host must be able to spawn subagents
 3. **只在门点停**：手动挡在 G0／G1／G2 停；**开团**（工程 `/warp`）自动挡由门卫子代理自动批门，只在红线或异常时停。
 4. **验收读 diff**：子代理报告是 claim，不是事实；`fleet report` 对账 diff，主会话读实际 diff 再裁决。
 5. **子会话不发货**：worker 与 reviewer 都不 push／merge；发货只由主会话在门点后执行。
+6. **并发是天花板，不是目标**：默认只开 1 个 run；子代理按 ready 任务逐个 claim，机械活一个就够时不拆。
 
 ## 流程
 

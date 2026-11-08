@@ -534,8 +534,8 @@ def add_init(root, gates_extra=None):
     tpl = {
         "schema": 5, "_note_0": "t", "project": "<project-name>",
         "host": {"_note": "n", "adapter": "<qoder|codex>"},
-        "registry": {"_note": "n", "playbooks": [{"name": "bridge", "trigger": "/bridge",
-                                                   "route": "bridge", "notes": "n"}],
+        "registry": {"_note": "n", "playbooks": [{"name": "guild", "trigger": "/guild",
+                                                   "route": "guild", "notes": "n"}],
                      "adrs": {"dir": "<adr-dir>"}, "rules": {"dir": ".ai/rules"},
                      "skills": {"project_skills_dir": ".ai/skills/project-skills"}},
         "paths": {"_note": "n", "handoff_dir": "handoff", "ideas_dir": "ideas",

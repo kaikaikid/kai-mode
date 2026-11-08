@@ -62,10 +62,10 @@ scope + risk, and goes stale when scope changes.
 
 ## Entry fence
 
-One conversational surface and one default entry: the primary agent (康娜 / coordinator). `bridge` is
+One conversational surface and one default entry: the primary agent (康娜 / coordinator). `guild` is
 its method, not a separate role. Professional roles are instantiated on demand as subagents — they are
 not long-lived sessions and never wake each other. A session that is not explicitly pointed at another
-skill runs bridge's method. Source of truth: `docs/adr/0033-guild-role-layer.md`
+skill runs guild's method. Source of truth: `docs/adr/0033-guild-role-layer.md`
 (entry shape inherited from `docs/adr/0028-bridge-entry-and-airport-retirement.md`).
 
 ## Where each kind of rule lives (one kind, one home)
