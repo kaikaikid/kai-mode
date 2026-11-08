@@ -116,6 +116,9 @@ test -f .qoder-plugin/plugin.json && echo plugin-ok
 > **只读实测（2026-11-08，同一构建）**：用 `create_chat_session` 按 `agentId` 起「提里奥·弗丁」
 > （渲染出来的 frontmatter 是 `tools: [Read, Grep, Glob]` ＋ `disallowedTools: [Write, Edit, Bash, Agent]`），
 > 派它写一个临时文件——**写成功了**，`Write` 工具正常可用，同会话里 `Bash` 也在。
+> 更硬的一条：只读角色与可写角色拿到的是**同一个工具面**（两边都是 25 个，含
+> `Write`/`Edit`/`NotebookEdit`/`Bash`/`Agent`/`mcp_call`，逐项相同）——
+> 定义文件在这条派发面上一点没收缩工具面，不是「收缩了但没拦住」。
 > 也就是说 **Desktop 这条派发面上，角色定义的工具白名单没有被执行**。
 > 结论：`readonly_hard = no`。审查腿的只读**不能**押在这份定义上，必须靠宿主无关三样
 > （工作树隔离／范围校验／发货单点），并按 `soft-permission-only` 登记。

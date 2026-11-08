@@ -160,6 +160,9 @@ V1.5 的 TRIAGE 把三轴并列，导致「改 5 个文件 ＋ 高风险」同�
 2. **工具白名单没有被执行。** 按 `agentId` 起只读角色（渲染出的 frontmatter 是
    `tools: [Read, Grep, Glob]` ＋ `disallowedTools: [Write, Edit, Bash, Agent]`），
    派它写一个临时文件——**写成功了**，`Write` 正常可用，同会话里 `Bash` 也在。
+   更硬的一条：**只读角色与可写角色拿到的是同一个工具面**（两边都是 25 个，含
+   `Write` / `Edit` / `NotebookEdit` / `Bash` / `Agent` / `mcp_call`），逐项相同。
+   也就是说定义文件在这条派发面上**一点没收缩工具面**，不是「收缩了但没拦住」。
    ⇒ 该宿主该派发面 `readonly_hard = no`，C05 记 **MISSING**，按 `soft-permission-only` 登记。
 3. **装完不等于可用。** 八份里初读有 4 份 `enabled=false / ready=false`，要用户侧启用。
    装机回执必须逐份核对 readiness，不能只看文件写成功。
