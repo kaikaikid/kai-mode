@@ -1648,6 +1648,37 @@ HOST_TOKENS = (
 )
 # 安装器按宿主分腿，点名宿主是它的职责（各宿主 flag 仍应下沉 adapters，见体检 M2 未完成项）
 HOST_NEUTRAL_ALLOW = ("core/skills/set-kai-mode/",)
+# ── 角色层（ADR-0033）：正本／皮肤／宿主投影 ────────────────────────────────
+def _load_rolelib(root: str):
+    """按路径加载 scripts/rolelib.py：与 render-roles.py 共用同一套判据，不写第二份。"""
+    import importlib.util
+    p = os.path.join(root, "scripts", "rolelib.py")
+    if not os.path.isfile(p):
+        return None
+    spec = importlib.util.spec_from_file_location("_kai_rolelib", p)
+    if spec is None or spec.loader is None:
+        return None
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def chk_role_canon(root: str, ms):
+    """角色正本契约：八份正本 × 两套皮肤 × 六家宿主；换皮肤只换 identity/personality。"""
+    from pathlib import Path as _P
+    rl = _load_rolelib(root)
+    if rl is None or not os.path.isdir(os.path.join(root, "roles")):
+        return "skip", "没有 roles/ 或 scripts/rolelib.py（角色层未接入）"
+    bad = rl.validate(_P(root))
+    if bad:
+        tail = f"（共 {len(bad)} 处）" if len(bad) > 6 else ""
+        return "fail", "角色正本不合契约： " + "；".join(bad[:6]) + tail
+    canon = rl.load_canon(_P(root))
+    hosts = rl.load_hosts(_P(root))["hosts"]
+    return "ok", (f"{len(canon)} 份正本 × {len(rl.SKINS)} 套皮肤 × {len(hosts)} 家宿主："
+                  f"四块职责逐字共用，指纹可复算")
+
+
 # ── 21 frontmatter YAML 形状（skills / agents）：不引 PyYAML，只拦最常见的粘连 ──
 YAML_RESERVED_START = ("@", "`")
 
@@ -2025,6 +2056,7 @@ CHECKS = (
     ("payload-refs", "安装面零开发史引用", chk_payload_refs),
     ("decoupling-gate", "解耦门（项目硬路径零残留）", chk_decoupling),
     ("host-neutral", "宿主专有 token 不进正本", chk_host_neutral),
+    ("role-canon", "角色正本契约（八角色 × 双皮 × 六宿主）", chk_role_canon),
     ("handoff-slots", "交接文档分类（槽位/命名/归位）", chk_handoff),
     ("skill-spec", "技能格式对齐 Agent Skills 1.2", chk_skill_spec),
     ("command-surface", "技能声明的命令在自己工具面里", chk_command_surface),

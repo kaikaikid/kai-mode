@@ -42,8 +42,8 @@
 | Qoder | `.qoder-plugin/plugin.json` | `.qoder/skills/<名>/SKILL.md`（项目）／`~/.qoder/skills/`（用户） | 自然语言或显式提示词指向 `bridge` | 原生 subagent 或新会话 | 可不用；人工按需起 | 原生 subagent（.qoder/agents） |
 | Codex | 无 | 项目技能目录；`codex exec` 读 `SKILL.md` | 无；用 prompt 指向 `bridge`（康娜的方法） | 独立 `codex exec -s read-only` 进程 | 无 | 无原生；用本宿主自己的进程当角色实例（D3），内核走 `worker_cmd`/`reviewer_cmd` |
 | OpenCode | 无 | 项目技能目录（`registry.skills.project_skills_dir`） | 无；用 prompt | 独立 `opencode run` 进程 | 无 | 无原生；用本宿主自己的进程当角色实例（D3），内核走 `worker_cmd`/`reviewer_cmd` |
-| Copilot | 无 | `.github/agents/<名>.agent.md`（宿主自有） | 无 | 宿主 agent | 视版本 | 视版本 |
-| Cursor | 无 | `.cursor/agents/<名>.md`（宿主自有） | 无 | 宿主 agent | 视版本 | 视版本 |
+| Copilot | 无 | 项目技能目录 | 无；用 prompt | 宿主自定义代理（`.github/agents/`） | 视版本 | **有**：`.github/agents/<名>.agent.md`，派发键＝文件名；只读靠 `tools` 不给 `edit`+`execute`；无 `maxTurns`/`disallowedTools`/`hooks` |
+| Cursor | 无 | 项目技能目录（`registry.skills.project_skills_dir`） | 无；用 prompt | 宿主子代理（`.cursor/agents/`） | 视版本 | **有**：`.cursor/agents/<名>.md`；只读靠 frontmatter `readonly: true`（硬机制）；无 `tools` 白名单 |
 
 不在表里的宿主：按 §1 四步自测，然后在本表补一行。
 

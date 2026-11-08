@@ -104,6 +104,22 @@ test -f .qoder-plugin/plugin.json && echo plugin-ok
 
 ## 原生子代理（舰队必需）
 
+> **实测订正（2026-11-08，Desktop CN 构建）**：用户级 `~/.qoder-cn/agents/*.md` 里的定义
+> **注册成「设备级 Agent」**（`list_agents` 能列出来，可用 `create_chat_session` 的 `agentId` 起会话），
+> **不进子代理类型注册表**——`subagent_type` 仍只有宿主内建的七个，
+> 用角色名去派会报 `Unknown agent type: '提里奥·弗丁'`。
+> 所以「装到 `.qoder/agents/` 就能当 subagent 用」在 Desktop 上**不成立**；
+> 两种派发面要分开对待。项目级落点与 `/agents reload` 的 Desktop 等价口仍未实测。
+> 另外同一批装进去的八份里，`list_agents` 初读有 4 份 `enabled=false / ready=false`，
+> 需要用户侧启用；装机回执必须逐份核对 readiness，不能只看文件写成功。
+>
+> **只读实测（2026-11-08，同一构建）**：用 `create_chat_session` 按 `agentId` 起「提里奥·弗丁」
+> （渲染出来的 frontmatter 是 `tools: [Read, Grep, Glob]` ＋ `disallowedTools: [Write, Edit, Bash, Agent]`），
+> 派它写一个临时文件——**写成功了**，`Write` 工具正常可用，同会话里 `Bash` 也在。
+> 也就是说 **Desktop 这条派发面上，角色定义的工具白名单没有被执行**。
+> 结论：`readonly_hard = no`。审查腿的只读**不能**押在这份定义上，必须靠宿主无关三样
+> （工作树隔离／范围校验／发货单点），并按 `soft-permission-only` 登记。
+
 - 起新上下文：Qoder 原生 subagent，角色文件装项目级 `.qoder/agents/<名>.md`，由角色正本渲染而来、头部记正本指纹。
 - 只读：`tools` 白名单 ＋ `disallowedTools`；起只读子代理让它写临时文件，**必须被拒**。
 - 身份：`name` 只是调用方的选择键，子代理上下文里看不到它，也看不到调用时传的运行时名字；

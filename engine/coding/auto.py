@@ -18,6 +18,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from . import hostguard
+
 # 宿主命令从环境变量或 `.coding/config.json` 的 worker_cmd / reviewer_cmd 读。
 # 占位符 {brief} 换成提示词；两处都没配时 drive() 报缺件，不碰状态。
 DEFAULT_WORKER = os.environ.get("TRAVEL_WORKER_CMD", "")
@@ -63,6 +65,10 @@ def _host_run(host_cmd: str, prompt: str, cwd: str) -> subprocess.CompletedProce
     argv = shlex.split(host_cmd, posix=(os.name != "nt"))
     if not argv:
         raise ValueError("empty host command")
+    # 角色实例的入口必须属于当前宿主（ADR-0033 D3）。跨宿主借兵在这里就炸，
+    # 不给「先跑起来再说」的缝。宿主→程序名映射从 .coding/host-programs.json 读（数据，不写死）。
+    hostguard.assert_own_host(host_cmd, hostguard.current_host(_root()),
+                              hostguard.load_table(_root()))
     if any(a == "{brief}" for a in argv):
         argv = [prompt if a == "{brief}" else a for a in argv]
     else:  # 没写占位符：追加到末尾

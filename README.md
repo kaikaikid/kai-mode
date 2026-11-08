@@ -1,7 +1,7 @@
 # kai-mode —— 舰桥入口的舰队执行框架
 
 > **状态：0.38.1（2026-11-05 默认档位收敛：任务合并规则、轻车道放宽、舰队默认 1 船；6 个插件 / 20 个技能；`v2/` → `engine/`，`travel` → `fleet`，
-> `kai-mode` → `staff`；执行内核只走宿主原生子代理；通用方法不再 fork，按名用宿主中央库原版；
+> `kai-mode` → `staff`；角色实例的入口必须属于当前宿主（优先原生子代理，宿主本身就是命令行工具时可用它自己的进程）；通用方法不再 fork，按名用宿主中央库原版；
 > 详见 [`CHANGELOG.md`](CHANGELOG.md) 与 [`docs/method-pointers.md`](docs/method-pointers.md)）。**
 >
 > 本仓是宿主装机正本（`magpie-sync apply --root <本仓>`，按市场清单的插件目录装齐，当前 20 个技能），

@@ -20,6 +20,7 @@
     "handoff/",
     "scripts/",
     "adapters/",
+    "roles/",
     "manifests/",
     "studio/"
   ],

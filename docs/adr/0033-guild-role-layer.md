@@ -149,6 +149,26 @@ V1.5 的 TRIAGE 把三轴并列，导致「改 5 个文件 ＋ 高风险」同�
 | [0013](0013-installed-payload-no-dev-history.md) 安装面零开发史 | **不动**：角色派生物里不得出现框架仓 URL 与本 ADR 编号 |
 | `engine/skills/fleet/SKILL.md` 铁律 4／5 | **不动**：验收读 diff、子会话不发货，正是 D7 的第 2、3 样 |
 
+## 实测发现（2026-11-08，Qoder Desktop CN）
+
+装机后跑了三条探针，读数如下。它们不改判 D4/D7，但把 CAP 表里一句话划掉了。
+
+1. **角色文件注册成「设备级 Agent」，不是子代理类型。** 用户级落点装进去的八份
+   在 `list_agents` 里都能列出来，可用 `create_chat_session` 的 `agentId` 起会话；
+   但 `subagent_type` 仍只有宿主内建的七个，按角色名派报 `Unknown agent type`。
+   两种派发面要分开对待。
+2. **工具白名单没有被执行。** 按 `agentId` 起只读角色（渲染出的 frontmatter 是
+   `tools: [Read, Grep, Glob]` ＋ `disallowedTools: [Write, Edit, Bash, Agent]`），
+   派它写一个临时文件——**写成功了**，`Write` 正常可用，同会话里 `Bash` 也在。
+   ⇒ 该宿主该派发面 `readonly_hard = no`，C05 记 **MISSING**，按 `soft-permission-only` 登记。
+3. **装完不等于可用。** 八份里初读有 4 份 `enabled=false / ready=false`，要用户侧启用。
+   装机回执必须逐份核对 readiness，不能只看文件写成功。
+
+**为什么不改判**：D7 本来就规定门禁押在宿主无关三样（工作树隔离／范围校验／发货单点）上，
+宿主工具白名单只当加分项。这次实测只是证明「加分项这次没加分」——
+凡是 C05 非 HAVE 的宿主与派发面，审查独立性只能靠**另一段新上下文 ＋ 只读副本 ＋ 范围校验**，
+不能靠 agent 定义文件里的 `tools`。反过来说，如果当初把只读押在白名单上，这套体系今天就漏了。
+
 ## Consequences
 
 - **好**：八角色在六家宿主上形状一致；人格有唯一正本与指纹，漂移可机械抓；

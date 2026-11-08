@@ -19,6 +19,7 @@
   "intake",
   "ops",
   "adapters",
+  "roles",
   "templates",
   "manifests",
   "docs",
@@ -30,5 +31,22 @@
   "docs/canon.json",
   "handoff"
  ],
- "canon_keys": []
+ "canon_keys": [
+  {
+   "key": "role-host-dispatch",
+   "home": "adapters/README.md",
+   "forbidden": [
+    "core",
+    "board",
+    "intake",
+    "ops",
+    "roles",
+    "templates",
+    "manifests",
+    "README.md",
+    "AGENTS.md"
+   ],
+   "pattern": "只走宿主原生子代理|不拉 CLI 进程|不拉起 CLI 进程"
+  }
+ ]
 }
