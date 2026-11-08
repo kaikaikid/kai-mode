@@ -85,6 +85,17 @@ python scripts/render-roles.py --host qoder --skin generic --dest <目标目录>
 - 没有 agent 定义文件这一层的宿主（Codex / OpenCode），渲染成**提示词文件**，
   由内核的宿主命令腿带入；投影表里 `agent_file: false` 标出。
 
+## 通用接入（换宿主、换框架都吃这一套）
+
+可搬走的核心只有三件：`roles/canon/` ＋ `roles/skins/` ＋ `scripts/render-roles.py`。
+
+- **有 agent 定义文件的宿主**：渲染成定义文件，装项目级。
+- **没有定义文件层的宿主**：渲染成提示词文件（正文一样），由它自己的调用方式带入。
+- **只读**不靠宿主的工具白名单（实测多数不执行），靠三条宿主无关的门：
+  ① 只读角色在树上改动一律被内核拒收；② 独立工作区／只读副本；③ 范围校验 ＋ 发货单点。
+- **换名字**只换皮肤，职责四块逐字不动；换宿主只换 `adapters/role-hosts.json` 的投影值。
+- 角色名与职业必须写进正文（子代理看不到自己的类型名），`identity` 块里逐字写。
+
 ## 记忆
 
 角色经验日志只有 `archivist` 能写，工具与判据住 [`scripts/role-memory.py`](../scripts/role-memory.py)。

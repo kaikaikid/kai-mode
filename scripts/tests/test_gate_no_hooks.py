@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -198,6 +199,59 @@ def test_autopilot_ship_requires_can_ship(monkeypatch):
     state["can_ship"] = True
     cli.advance(state, Path("."))
     assert shipped == ["r1"], "加急跃迁应当发一次货"
+
+
+# ── ④ 只读角色改动一律不收（不依赖宿主工具白名单）────────────────────────────
+def _report_harness(monkeypatch, tmp_path, changed, read_only=True):
+    """把 cmd_report 的输入灌成假仓：报告文件、状态、diff 三样都受控。"""
+    sdir = tmp_path / "sess"
+    sdir.mkdir()
+    (sdir / "report.json").write_text(json.dumps({
+        "result": "done", "files_changed": ["a.py — 改了"], "commit": "",
+        "verification": [], "open_questions": [], "notes": "",
+    }, ensure_ascii=False), encoding="utf-8")
+    state = {
+        "run_id": "r1", "phase": "delegating", "base_branch": "main",
+        "tasks": [{"id": "t1", "status": "running", "session_id": "s1"}],
+        "sessions": [{"id": "s1", "status": "running", "read_only": read_only}],
+        "resume": {"next_action": ""},
+    }
+    monkeypatch.setattr(cli, "_root", lambda: tmp_path)
+    monkeypatch.setattr(cli.st, "load", lambda rid, root=None, verify=True: state)
+    monkeypatch.setattr(cli.st, "lock", lambda root=None, timeout=30.0: contextlib.nullcontext())
+    monkeypatch.setattr(cli, "_session_dir", lambda rid, sid: sdir)
+    monkeypatch.setattr(cli, "_report_path", lambda rid, tid: tmp_path / "out" / "report.json")
+    monkeypatch.setattr(cli, "_save", lambda s: None)
+    monkeypatch.setattr(cli.worktree, "changed_files", lambda rid, base, root=None: changed)
+    return state
+
+
+def test_readonly_session_with_diff_is_returned(tmp_path, monkeypatch):
+    """只读角色即使在宿主上写成功了，也只到报告入口为止：一有改动就退回。"""
+    state = _report_harness(monkeypatch, tmp_path, ["a.py"], read_only=True)
+    cli.cmd_report(argparse.Namespace(run_id="r1", task_id="t1"))
+    assert state["tasks"][0]["status"] == "returned"
+    assert "read_only violation" in state["resume"]["next_action"]
+
+
+def test_readonly_session_with_no_diff_goes_to_review(tmp_path, monkeypatch):
+    state = _report_harness(monkeypatch, tmp_path, [], read_only=True)
+    cli.cmd_report(argparse.Namespace(run_id="r1", task_id="t1"))
+    assert state["tasks"][0]["status"] == "review"
+
+
+def test_writable_session_with_diff_goes_to_review(tmp_path, monkeypatch):
+    """对照：同一条路径，可写会话改了文件是正常的。"""
+    state = _report_harness(monkeypatch, tmp_path, ["a.py"], read_only=False)
+    cli.cmd_report(argparse.Namespace(run_id="r1", task_id="t1"))
+    assert state["tasks"][0]["status"] == "review"
+
+
+def test_review_session_is_marked_read_only():
+    """结构断言：审查会话建记录时就带 read_only=True，不靠调用方记得传。"""
+    src = (REPO / "engine" / "coding" / "cli.py").read_text(encoding="utf-8")
+    seg = src.split('"role": "reviewer"', 1)[1].split("}", 1)[0]
+    assert '"read_only": True' in seg
 
 
 # ── 结构层：三处实现都不靠宿主钩子 ──────────────────────────────────────────

@@ -642,6 +642,19 @@ def cmd_report(args: argparse.Namespace) -> None:
                 report["notes"] = (report.get("notes", "") + " [commit not on worktree HEAD]").strip()
         # 报告与 diff 对账
         changed = worktree.changed_files(s["run_id"], s["base_branch"], root)
+        # 只读角色不许改动：这条门不依赖宿主工具白名单（ADR-0033 D7 / 实测发现）。
+        # 声明 read_only 的会话只要在树上改了东西，一律不收，直接退回。
+        if sess and sess.get("read_only") and changed:
+            report["result"] = "returned"
+            report["notes"] = (report.get("notes", "")
+                              + f" [read_only violation: {len(changed)} 个文件被改动，"
+                                f"{', '.join(changed[:5])}]").strip()
+            t["status"] = "returned"
+            s["resume"]["next_action"] = f"returned {t['id']} (read_only violation)"
+            sess["status"] = "finished"
+            _save(s)
+            print(json.dumps(report, ensure_ascii=False, indent=2))
+            return
         claimed = report.get("files_changed") or []
         claimed_paths = [c.split(" — ")[0].strip() for c in claimed if isinstance(c, str)]
         missing = [c for c in claimed_paths if c and c not in changed]
@@ -734,6 +747,8 @@ def cmd_verdict(args: argparse.Namespace) -> None:
             "id": sid, "task_id": t["id"], "adapter": "native-review",
             "pid": None, "started_at": time.time(), "status": "finished",
             "role": "reviewer", "mode": "native",
+            # 只读声明：报告入口据此拒收任何改动（ADR-0033 D7）。不靠宿主工具白名单。
+            "read_only": True,
         })
         if verdict == "accept":
             t["status"] = "accepted"
