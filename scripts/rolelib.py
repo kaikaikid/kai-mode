@@ -228,17 +228,51 @@ def render_one(host_cfg: dict, canon: dict, skin_meta: dict, entry: dict,
         fm.append("---")
         lines.extend(fm)
 
-    lines.append(fingerprint(meta, canon["sha256"], skin_name,
-                             skin_meta.get("skin_version", ""), entry_sha256(entry)))
-    lines.append("")
-    lines.append("## identity")
-    lines.append(entry["identity"].strip())
-    lines.append("")
-    lines.append("## personality")
-    lines.append(entry["personality"].strip())
-    lines.append("")
-    lines.append(body.rstrip("\n"))
+    lines.append(render_body(canon, skin_meta, entry, skin_name).rstrip("\n"))
     return "\n".join(lines) + "\n"
+
+
+def render_body(canon: dict, skin_meta: dict, entry: dict, skin_name: str) -> str:
+    """角色正文（无 frontmatter）：指纹 ＋ identity ＋ personality ＋ 正本四块逐字。
+
+    「派发时现读」这条路用它：每次现算，永远跟正本同步，不需要重渲染任何文件。
+    """
+    meta = canon["meta"]
+    return "\n".join([
+        fingerprint(meta, canon["sha256"], skin_name,
+                    skin_meta.get("skin_version", ""), entry_sha256(entry)),
+        "",
+        "## identity",
+        entry["identity"].strip(),
+        "",
+        "## personality",
+        entry["personality"].strip(),
+        "",
+        canon["body"].lstrip("\n").rstrip("\n"),
+    ]) + "\n"
+
+
+def render_prompt(root: Path, role_id: str, skin: str) -> str:
+    """派发时现读：从正本与皮肤现组装一份角色提示词。改正本立刻生效，零同步成本。"""
+    if role_id not in ROLE_IDS:
+        raise RoleError(f"没有这个角色：{role_id!r}")
+    canon = load_canon(root)
+    if role_id not in canon:
+        raise RoleError(f"缺正本：roles/canon/{role_id}.md")
+    sk = load_skin(root, skin)
+    entry = (sk.get("roles") or {}).get(role_id)
+    if entry is None:
+        raise RoleError(f"皮肤 {skin} 缺角色 {role_id}")
+    return render_body(canon[role_id], sk, entry, skin)
+
+
+def render_pack(root: Path, skin: str) -> str:
+    """把八个角色拼成一份包，给只收单块提示词的宿主/调用方用。同样是现读。"""
+    parts = [f"# 角色包（skin={skin}）\n"]
+    for rid in ROLE_IDS:
+        parts.append(f"\n---\n\n<!-- role={rid} -->\n")
+        parts.append(render_prompt(root, rid, skin))
+    return "".join(parts)
 
 
 def render_all(root: Path, host: str, skin: str) -> dict[str, str]:

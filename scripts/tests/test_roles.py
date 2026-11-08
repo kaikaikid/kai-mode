@@ -225,6 +225,43 @@ def test_qoder_readonly_is_pinned_as_not_hard():
     assert rl.load_hosts(REPO)["hosts"]["qoder"]["readonly_hard"] == "no"
 
 
+# ── 两条消费路径：打包（要重渲染） vs 现读（零同步）──────────────────────────
+def _body_of(text: str) -> str:
+    return text.split("---", 2)[2].lstrip("\n") if text.startswith("---") else text
+
+
+def test_prompt_equals_body_of_rendered_file():
+    """现读出来的正文与该宿主渲染文件的正文逐字相同——两条路同源，不是两套。"""
+    for host in rl.HOSTS:
+        for skin in rl.SKINS:
+            files = rl.render_all(REPO, host, skin)
+            for rid in rl.ROLE_IDS:
+                fname = next(n for n in files if n.startswith(rid))
+                assert _body_of(files[fname]) == rl.render_prompt(REPO, rid, skin), f"{host}/{rid}"
+
+
+def test_prompt_tracks_canon_without_rerender(repo_copy):
+    """改正本后：现读路径立刻变；已渲染的文件被 check 判 stale。这就是同步成本的边界。"""
+    dest = repo_copy / "out"
+    dest.mkdir()
+    for n, t in rl.render_all(repo_copy, "qoder", "generic").items():
+        (dest / n).write_bytes(t.encode("utf-8"))
+    assert rl.check_dest(repo_copy, "qoder", "generic", dest) == []
+    before = rl.render_prompt(repo_copy, "reviewer", "generic")
+    p = repo_copy / "roles" / "canon" / "reviewer.md"
+    p.write_text(p.read_text(encoding="utf-8").replace(
+        "canon_version: 1.0.0", "canon_version: 1.1.0"), encoding="utf-8")
+    assert rl.render_prompt(repo_copy, "reviewer", "generic") != before, "现读路径必须立刻反映正本变化"
+    assert rl.check_dest(repo_copy, "qoder", "generic", dest), "打包路径必须报 stale"
+
+
+def test_pack_contains_all_eight_roles():
+    pack = rl.render_pack(REPO, "guild")
+    for rid in rl.ROLE_IDS:
+        assert f"role={rid}" in pack
+    assert pack.count("<!-- kai-role") == 8
+
+
 # ── 反向：把病灶种回副本，尺子必须红 ──────────────────────────────────────────
 def test_reverse_host_token_in_canon_is_red(repo_copy):
     p = repo_copy / "roles" / "canon" / "engineer.md"

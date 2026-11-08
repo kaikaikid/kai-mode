@@ -150,6 +150,25 @@ def cmd_emit_table(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_prompt(args: argparse.Namespace) -> int:
+    """派发时现读：打印角色提示词，不改盘。改正本立刻生效，不需要重渲染任何文件。"""
+    root = Path(args.root).resolve() if args.root else repo_root()
+    bad = rolelib.validate(root)
+    if bad:
+        print("正本不合契约，拒绝出提示词：", file=sys.stderr)
+        for b in bad:
+            print(f"  - {b}", file=sys.stderr)
+        return 2
+    if args.pack:
+        sys.stdout.write(rolelib.render_pack(root, args.skin))
+        return 0
+    if not args.role:
+        print("要么给 --role，要么给 --pack", file=sys.stderr)
+        return 2
+    sys.stdout.write(rolelib.render_prompt(root, args.role, args.skin))
+    return 0
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description="角色正本渲染与指纹巡检")
     p.add_argument("--root", help="框架仓根（默认脚本所在仓）")
@@ -158,6 +177,10 @@ def main() -> int:
     sub.add_parser("validate", help="只校正本/皮肤/投影表契约，不写盘")
     et = sub.add_parser("emit-table", help="导出 .coding/host-programs.json（跨宿主拦截用）")
     et.add_argument("--project", required=True, help="项目仓根，写 <项目>/.coding/host-programs.json")
+    pp = sub.add_parser("prompt", help="现读组装角色提示词（零同步，不写盘）")
+    pp.add_argument("--skin", required=True, choices=rolelib.SKINS)
+    pp.add_argument("--role", choices=rolelib.ROLE_IDS)
+    pp.add_argument("--pack", action="store_true", help="八个角色拼成一份")
     for name, help_ in (("render", "渲染到目标目录"), ("check", "巡检目标目录的派生物")):
         sp = sub.add_parser(name, help=help_)
         sp.add_argument("--host", required=True, choices=rolelib.HOSTS)
@@ -166,8 +189,8 @@ def main() -> int:
         if name == "render":
             sp.add_argument("--dry-run", action="store_true", help="只报告将做什么，不写盘")
     args = p.parse_args()
-    return {"validate": cmd_validate, "render": cmd_render,
-            "check": cmd_check, "emit-table": cmd_emit_table}[args.cmd](args)
+    return {"validate": cmd_validate, "render": cmd_render, "check": cmd_check,
+            "emit-table": cmd_emit_table, "prompt": cmd_prompt}[args.cmd](args)
 
 
 if __name__ == "__main__":
