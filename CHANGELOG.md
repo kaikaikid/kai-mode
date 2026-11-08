@@ -2,6 +2,25 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.40.0 — 2026-11-09
+
+- **入口技能改名 `bridge`→`gold`**：金币是驱动康娜干活的代价（她把 Token 想成金币口粮）。
+  旧名 `/bridge`、曾用 `/guild` 作兼容别名；`magpie-sync` 的 LEGACY_ALIASES 收录 `bridge→gold`、`guild→gold`。
+  冒险团皮肤名 `guild` 与 ADR-0033 文件名保留不动。
+- **7 个酒馆职业名唤醒入口**：`/卓尔游侠` `/符文法师` `/矮人工匠` `/德鲁伊` `/游学者` `/青铜龙` `/圣骑士`；
+  角色名（泰兰德·语风等）与英文 `role_id` 作自然语言唤醒词；技能数 19→26。
+- **七步委托口径**：接任务→开团→开刷→交任务→验收→任务结束→写入冒险日志，进 GLOSSARY 与图；
+  工程字段/API/日志仍用行业英文（冒险者酒馆框架 §2.1 第 10 条）。
+- **验收放给AI**：`fleet verdict` 三态 `accept`/`return`/`defer`；`defer` 把要团长拍板的事写进
+  `owner_deferred[]`，task 仍 accepted、不阻塞施工，团长唤醒时统一处理；`defer` 必须带 `deferred_items`。
+  开工前 QA 定 AC（可机检、有验证命令），过不了不开工。`ship` 加幂等（已合入 base 则跳过 merge/收尾门）。
+- **人格层框架**：`roles/persona/<role>.json` ×8（原初内核只读＋版本＋指纹、本我/自我/超我、记忆接口
+  `adapter=archivist`／`storage=external`／`candidate_only`／冲突隔离）；`scripts/persona.py`
+  提供 validate/fingerprint/list；doctor 新增 `persona-layer` 门；契约见 `docs/persona-layer.md`。
+- **子代理纪律**：默认 0 个子代理、派前报数量、机械 ≤1／标准施工 ≤3、深度固定 1 层；`crew` 口径改为
+  「上限 5，按 ready 任务数取，不是目标」。
+- **验证**：297 测试全绿、doctor 30 项 27 绿 0 红、canon 门 38 词零命中、plugin-check 26 技能全绿。
+
 ## 0.39.0 — 2026-11-08
 
 - **口径收口，只留一套**：酒馆冒险团（团队与角色）＋ 通用规范（双仓库）。旧比喻（机场／航班／塔台／地勤／
