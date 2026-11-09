@@ -64,6 +64,22 @@ V1 岗位体系下线后没有定时轮巡，也没有 60 分钟唤醒定时器�
 - 用户按需起会话；会话里不打斜杠命令时，读 `gold` 技能执行；
 - 施工由 `fleet warp`/`fleet jump` 派宿主原生子代理，不靠宿主定时任务。
 
+**全局级的落法（2026-11-09 本机 CN 构建实测）**：Desktop 的全局指令文件 `~/.qoder-cn/AGENTS.md`
+整份由 magpie 生成（`<!-- magpie:begin/end -->` 包着），**不可手改**——改它要走 magpie 那份
+共享指令：`magpie library instructions` 读原文、`magpie library instructions set <file>` 整份替换、
+必要时 `magpie library sync` 重写各家。三个读得的坑：
+
+- 共享指令是**一个口喂多家**：`set` 时报写进 `claude / opencode / qoder / qoder-cn` 四份文件
+  （列表里显示三家，实际四家）。只给 Qoder 用 `magpie library instructions agents qoder-cn` 收口。
+- `magpie <agent>` 只有 `model` / `effort` 两个字段，**没有单宿主指令口**，所以别指望只写一家。
+- opencode 的生效档不是 `~/.config/opencode/AGENTS.md`，而是 magpie 记的那份（本机在
+  `omo_config` 下），逐家回读前先按 `magpie <agent>` 显示的配置文件路径找对文件。
+
+写全局前留 magpie 旧文本与目标文件两份备份（magpie 自己也在其 `data/backups/` 留档）；
+写后逐家数 `## 默认入口`＝1、兜底句在位、且与 `core/skills/set-kai-mode/references/default-entry.md`
+的 fenced 块逐字相同。
+正文段、三条硬规矩与验收口径的家在 `core/skills/set-kai-mode/references/default-entry.md`，本节只记宿主差异。
+
 ## 4. 新上下文（审查腿）
 
 - 首选 Qoder 原生 subagent：角色文件装**项目级** `.qoder/agents/<名>.md`，frontmatter 至少 `name`／`description`；
