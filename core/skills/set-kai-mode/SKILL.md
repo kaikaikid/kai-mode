@@ -128,6 +128,11 @@ python $S apply --profile core                # 正本 → 库 → 各家链接�
 正文段、全局装的兜底句、生成物文件的禁忌、验收方式见
 [`references/default-entry.md`](references/default-entry.md)。
 
+**同一步还要激活人格层**（默认入口只带流程；名字与脾气另住 `roles/`，指令文件里不许抄人格文字）：
+按两条腿取一次——项目内有 bootstrap 产出的 `_primary` 角色件就读它，否则现读渲染器 `prompt --primary`；
+皮肤与宿主没记录就问团长一次，不替她选默认；两条腿都不可达登记 `persona-source-unreachable`。
+腿名、canon／skin 指纹回执与验收三条同在 `references/default-entry.md`「人格层激活」节。
+
 ### 4. worktree 环境自检
 
 工作树里**没有**主树运行时与依赖目录（检查目录由配置实例 `runtime` 段声明，均不入库）。

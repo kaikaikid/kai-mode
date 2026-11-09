@@ -80,6 +80,20 @@ V1 岗位体系下线后没有定时轮巡，也没有 60 分钟唤醒定时器�
 的 fenced 块逐字相同。
 正文段、三条硬规矩与验收口径的家在 `core/skills/set-kai-mode/references/default-entry.md`，本节只记宿主差异。
 
+### 3 续：本次实测三条（2026-11-09，Desktop CN 构建）
+
+- **没有用户级钩子口**：宿主 `settings.json` 里没有 `hooks` 键，App 设置注册表按 hook 搜 0 命中
+  ⇒ 默认入口与人格层在这台只能靠共享指令文本，登记为软约束；别再找钩子落点。
+- **写在托管标记之外也不算免疫**：新段落在 `<!-- magpie:end -->` 之后仍会被
+  `magpie library` 报 `! <agent> magpie's part was edited in <文件>`。判这条报警是不是自己造的，
+  一把尺：取 `magpie library instructions` 全文与该文件标记内内容逐字比。本机实测等值
+  ⇒ 报警归 `qoder` 那家、与 `qoder-cn` 无关，属既有账面，不是本次改动。
+- **人格层的现读腿在这台不可达**：`~/.kai-mode-library` 只写到库目录，而库内 `gold` 是拷贝
+  （realpath 就是自己），`~/.kai-mode/` 里也没有仓指针 ⇒ 从宿主侧反查不到框架仓，
+  `render-roles.py prompt --primary` 得显式给 `--root <框架仓>`；解析不到就按缺件登记。
+  项目侧的替代腿是 bootstrap 产出的 `_primary` 角色件，但按 §原生子代理 的实测订正：
+  Desktop 把角色件当**定义**用时不执行其工具约束，当**文本**读来取人格文字仍然有效，两者别混。
+
 ## 4. 新上下文（审查腿）
 
 - 首选 Qoder 原生 subagent：角色文件装**项目级** `.qoder/agents/<名>.md`，frontmatter 至少 `name`／`description`；
