@@ -60,7 +60,7 @@ compatibility: Requires python3, git
 
 ## 装到别的项目：先问清楚
 
-装进一个新项目不是拷文件，是**把项目差异问清楚**：十一问 ＋ 双仓五题，**回车一律落「待定」**
+装进一个新项目不是拷文件，是**把项目差异问清楚**：十二问 ＋ 双仓五题，**回车一律落「待定」**
 （用户没拍板的不许替选默认值）。一条命令跑完：
 
 ```bash
@@ -72,8 +72,10 @@ python scripts/init-project.py --repo <目标仓> --answers a.json   # 机器填
 > 本命令在**框架仓根**执行；技能装到项目仓后，用 `<框架仓根>/scripts/init-project.py`，
 > **不是**项目仓的 `scripts/`。维护者的门禁脚本同理只住框架仓。
 
-题目清单、落到哪个键、脚本顺手铺哪两个组件、缺件拒绝规则见
-[`references/setup-qa.md`](references/setup-qa.md)。
+题目清单、落到哪个键、脚本顺手铺哪些组件、缺件拒绝规则见
+[`references/setup-qa.md`](references/setup-qa.md)。第 12 问（主 AI 人格皮肤）拍了板才产角色件，
+留待定就点名缺件、不替你选一套皮肤——两条腿的取法与验收在 `references/default-entry.md`
+「人格层激活」；皮肤的记录家是渲染产物头部，不是配置实例新键。
 
 ## 九步（每步一个可判的验收）
 

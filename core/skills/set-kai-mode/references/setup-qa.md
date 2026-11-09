@@ -1,8 +1,8 @@
-# 装到新项目：十一问 ＋ 双仓五题
+# 装到新项目：十二问 ＋ 双仓五题
 
 装进一个新项目不是拷文件，是**把项目差异问清楚**。顺序固定，缺一不装。
 
-## 十一问
+## 十二问
 
 | # | 问什么 | 默认 | 落到哪 |
 |---|---|---|---|
@@ -13,10 +13,16 @@
 | 5 | 想法目录 | `ideas` | `paths.ideas_dir` |
 | 6 | ADR 目录 | `docs/adr` | `registry.adrs.dir` |
 | 7 | 规则目录 | `.ai/rules` | `registry.rules.dir` |
-| 8 | 宿主 | 回车＝本机当前宿主（不设默认偏置） | `host.adapter` |
+| 8 | 宿主 | 回车＝本机当前宿主（不设默认偏置） | `host.adapter`；另喂 bootstrap 的 `--host` |
 | 9 | 收尾门命令（本项目没有就留空＝null） | 空 | `gates.finish_cmd` |
 | 10 | 想法池汇总票号 | 空 | `issue.boom_summary_ticket` |
 | 11 | 推送边界 | 工作区留本地；发布／项目仓才推送且由用户推 | `<项目>/.ai/push-policy.md` |
+| 12 | 主 AI 人格皮肤（generic / guild） | **回车＝待定＝本次不装角色件** | 喂 bootstrap 的 `--skin`；**不进配置实例**，记录落 `<项目>/.qoder/agents/_primary.md` 头部 `skin=…` 与 `<项目>/.ai/BOOTSTRAP.md` |
+
+第 12 问为什么留待定就不装：皮肤决定每个新会话起手的那副脾气，选错了天天带着错脾气说话，
+所以它和双仓五题同纪——**没拍板不替团长选默认**。它不进实例是因为 doctor 的 config-instance
+只认模板那套叶子键，加键即红；而渲染器产物的头部本来就记着 `skin=` 和两枚指纹，
+记录的家已经有了，不必再造一个键。
 
 ## 双仓库五题（紧随其后）
 
@@ -39,6 +45,10 @@
 - `handoff/` 八槽 ＋ 规范与模板
 - `docs/adr/` ＋ `GLOSSARY.md` 骨架
 - 两份边界件：`push-policy` 与 `dual-repo`
+- 人格层腿一（第 12 问拍了板才有）：`render-roles.py bootstrap` 产出的 8 份角色件
+  （主 AI 人格＝`<项目>/.qoder/agents/_primary.md`）＋ `<项目>/.coding/host-programs.json`
+  ＋ `<项目>/.ai/BOOTSTRAP.md` 说明卡。
+  渲染一律走那条唯一口，`init-project.py` 里不写第二份渲染逻辑（测例逐条钉着）。
 
 已存在的一律**不覆盖**。
 
@@ -46,3 +56,6 @@
 
 在目标仓跑一次康娜自证：不打斜杠命令，直接说「现在到哪了」，应能读到 `fleet status` 并按康娜回报。
 项目仓 `AGENTS.md` 里写「默认入口＝康娜（`gold` 方法）」，别写旧称呼。
+人格层另量一把：新会话应能说出它走的是哪条腿、皮肤记在哪（`_primary.md` 头部或说明卡），
+只复述脾气文字不算过——判据见同技能 `default-entry.md`「人格层激活」的验收三条。
+第 12 问留了待定的仓，这里应老实报「腿一未装」并走现读那条腿，不许拿默认皮肤冒充拍板。

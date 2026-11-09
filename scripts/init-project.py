@@ -2,8 +2,9 @@
 # -*- coding: utf-8 -*-
 """kai-mode 装到别的项目：QA 初始化
 ==================================
-一串问答 → 生成 `<目标仓>/.ai/kai-mode.project.json`（schema 5 实例）＋ 铺两个组件
-（`handoff/` 交接与角色沟通面、`docs/` 长期正本面）。
+一串问答 → 生成 `<目标仓>/.ai/kai-mode.project.json`（schema 5 实例）＋ 铺组件
+（`handoff/` 交接与角色沟通面、`docs/` 长期正本面；人格层角色件不在这里渲染，只调
+`render-roles.py bootstrap` 那条唯一渲染口，本脚本不写第二份渲染逻辑）。
 
 用法：
   python scripts/init-project.py --repo <目标仓>              # 逐题问（每題有默认，回车即默认）
@@ -11,10 +12,11 @@
   python scripts/init-project.py --repo <目标仓> --answers a.json   # 机器填（CI/批处理）
   python scripts/init-project.py --repo <目标仓> --dry-run     # 只打印结果不写盘
 
-十一问 ＋ 双仓五题（顺序固定，缺一不可）：
+十二问 ＋ 双仓五题（顺序固定，缺一不可）：
   1 项目名 2 票源 3 仓库 slug 4 交接目录 5 想法目录 6 ADR 目录
-  7 规则目录 8 宿主 9 收尾门命令 10 想法池汇总票号 11 推送边界
+  7 规则目录 8 宿主 9 收尾门命令 10 想法池汇总票号 11 推送边界 12 皮肤
   其后 Q1–Q5 双仓五题 ＋ 发布库 slug（回车一律落「待定」，不替用户选默认值）
+  第 12 问留「待定」⇒ 不装人格层角色件，只点名缺件：皮肤没拍板就不替你选一套冒充拍板。
 """
 
 from __future__ import annotations
@@ -110,19 +112,23 @@ def build_answers(repo: str, a, yes: bool) -> dict:
             return json.load(f)
     auto_slug = guess_slug(repo)
     return {
-        "project": ask("1/10 项目名", os.path.basename(os.path.abspath(repo)), yes),
-        "ticket_source": ask("2/10 票源（github / none）", "github", yes),
-        "repo_slug": ask("3/10 仓库 slug（owner/name，none 可留空）", auto_slug, yes),
-        "handoff_dir": ask("4/10 交接目录", "handoff", yes),
-        "ideas_dir": ask("5/10 想法目录", "ideas", yes),
-        "adr_dir": ask("6/10 ADR 目录", "docs/adr", yes),
-        "rules_dir": ask("7/10 规则目录", ".ai/rules", yes),
-        "host": ask("8/10 宿主（qoder / codex / opencode / claude / copilot / cursor）— 回车＝本机当前宿主，不确定就填你实际在用的那一个", "", yes),
-        "finish_gate": ask("9/10 收尾门命令（本项目没有就回车留 null，别抄别仓的门名）",
+        "project": ask("1/12 项目名", os.path.basename(os.path.abspath(repo)), yes),
+        "ticket_source": ask("2/12 票源（github / none）", "github", yes),
+        "repo_slug": ask("3/12 仓库 slug（owner/name，none 可留空）", auto_slug, yes),
+        "handoff_dir": ask("4/12 交接目录", "handoff", yes),
+        "ideas_dir": ask("5/12 想法目录", "ideas", yes),
+        "adr_dir": ask("6/12 ADR 目录", "docs/adr", yes),
+        "rules_dir": ask("7/12 规则目录", ".ai/rules", yes),
+        "host": ask("8/12 宿主（qoder / codex / opencode / claude / copilot / cursor）— 回车＝本机当前宿主，不确定就填你实际在用的那一个", "", yes),
+        "finish_gate": ask("9/12 收尾门命令（本项目没有就回车留 null，别抄别仓的门名）",
                            "", yes),
-        "boom_summary_ticket": ask("10/11 想法池汇总票号（可留空）", "", yes),
-        "push_policy": ask("11/11 推送边界（默认：工作区留本地；发布/项目仓才推送，且由用户推）",
+        "boom_summary_ticket": ask("10/12 想法池汇总票号（可留空）", "", yes),
+        "push_policy": ask("11/12 推送边界（默认：工作区留本地；发布/项目仓才推送，且由用户推）",
                            "workspace-local", yes),
+        # 第 12 问＝人格层皮肤。回车一律「待定」＝不装：皮肤是团长的取舍，没拍板就不替她选，
+        # 选错了会让每个新会话都带着错的脾气说话。答案不进配置实例，记录的家是角色件头部。
+        "persona_skin": ask("12/12 主 AI 人格皮肤（generic / guild）回车＝待定＝本次不装角色件",
+                             TBD, yes),
         # 双仓库开发规范的五题。规范明写「用户没拍板的一律记待定，不许替用户选默认值」，
         # 所以回车一律落「待定」，推荐值只写在提示里给用户参考。
         "q1_topology": ask("Q1/5 双仓还是单仓（推荐双仓；纯内部工具可单仓）回车＝待定",
@@ -419,6 +425,42 @@ def gen_docs(repo: str, ans: dict, layout: dict) -> list:
     return done
 
 
+def gen_roles(repo: str, ans: dict, dry_run: bool = False) -> list:
+    """装人格层腿一：调 `render-roles.py bootstrap` 产出角色件＋宿主映射表＋说明卡。
+
+    渲染与枚举的正本一律住在 render-roles.py：这里**不复制一份合法值表**（那是第二个家，
+    扩档必漂），只负责两件事——没拍板就不装并点名，拍了板就把渲染器自己的读数原样透传。
+    皮肤不进配置实例：它的记录家是角色件头部那行 `skin=…`（doctor 的 config-instance
+    只认模板那 32 个叶子键，加键即红）。
+    """
+    verb = "将跳过" if dry_run else "未装"
+    skin = str(ans.get("persona_skin") or "").strip()
+    host = str(ans.get("host") or "").strip()
+    if skin in ("", TBD):
+        print(f"人格层腿一{verb}：皮肤未拍板（本次＝空或「待定」）。"
+              "不替你选一套冒充拍板——拍板后重跑本步即可产出角色件。")
+        return []
+    if host in ("", TBD):
+        print(f"人格层腿一{verb}：宿主未记牢（第 8 问留空＝「本机当前宿主」，"
+              "这句话脚本读不出来，不猜）。补法：填实际宿主后重跑本步。")
+        return []
+    cmd = [sys.executable, os.path.join(ROOT, "scripts", "render-roles.py"),
+           "bootstrap", "--project", repo, "--host", host, "--skin", skin]
+    if dry_run:
+        cmd.append("--dry-run")
+    p = subprocess.run(cmd, capture_output=True, text=True,
+                       encoding="utf-8", errors="replace")
+    out = (p.stdout or "").strip()
+    if p.returncode != 0:
+        # 合法取值由 argparse 自己报，这里不另写一份清单
+        print(f"人格层腿一{verb}：bootstrap rc={p.returncode}；"
+              f"{(p.stderr.strip() or out or '无输出')[:240]}")
+        return []
+    if out:
+        print(out)  # 件数与落点只由渲染器的 stdout 生成，手抄一份就会漂
+    return [f"人格层角色件（{host}／{skin}）"]
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="kai-mode 装到别的项目：QA 初始化")
     ap.add_argument("--repo", required=True, help="目标仓根")
@@ -512,6 +554,7 @@ def main() -> int:
         print(f"  push_policy = {pp}（{'已有，不覆盖' if exists else '已铺骨架'}）")
 
     if a.dry_run:
+        gen_roles(repo, ans, dry_run=True)  # 预演走渲染器自己的 --dry-run，零写盘
         print("\n（dry-run，未写盘）")
         return 0
 
@@ -522,6 +565,7 @@ def main() -> int:
         + gen_dual_repo(repo, ans, layout)
         + gen_handoff(repo, ans, layout)
         + gen_docs(repo, ans, layout)
+        + gen_roles(repo, ans)
     )
 
     print(f"\n已写 {os.path.relpath(out, repo)}（{len(files)} 个组件文件）")
@@ -531,6 +575,9 @@ def main() -> int:
     print("  2) 补记录面：paths.audit_dir / module_cards / dashboard 填本仓实有落点，没有的留 null（读取端如实报缺件，不猜路径）")
     print("  3) 跑 python <kai-mode 仓>/scripts/doctor.py 确认本仓绿；在目标仓跑一次康娜自证")
     print("  4) 在项目 CLAUDE.md / AGENTS.md 写上「默认入口＝康娜」，见 set-kai-mode 第 3 步")
+    print("  5) 人格层：上面若打过「皮肤未拍板」或「宿主未记牢」，腿一就没装。拍板后可单独补跑")
+    print("     python <kai-mode 仓>/scripts/render-roles.py bootstrap --project <项目根> --host <宿主> --skin <皮肤>")
+    print("     两条腿都取不到时新会话按普通会话处理并登记 persona-source-unreachable（不报错、不编人格）")
     return 0
 
 
