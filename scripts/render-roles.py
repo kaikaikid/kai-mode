@@ -235,7 +235,7 @@ def cmd_bootstrap(args: argparse.Namespace) -> int:
         if args.dry_run:
             print("dry-run：未写盘")
         print("下一步：把说明卡的内容落进该项目的 AGENTS.md / 开局指令，"
-              "或直接让那个 AI 读 .ai/roles/BOOTSTRAP.md。")
+              f"或直接让那个 AI 读 {card_path}。")
     return 0
 
 

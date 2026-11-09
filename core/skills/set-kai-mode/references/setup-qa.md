@@ -13,11 +13,11 @@
 | 5 | 想法目录 | `ideas` | `paths.ideas_dir` |
 | 6 | ADR 目录 | `docs/adr` | `registry.adrs.dir` |
 | 7 | 规则目录 | `.ai/rules` | `registry.rules.dir` |
-| 8 | 宿主 | 回车＝本机当前宿主（不设默认偏置） | `host.adapter`；另喂 bootstrap 的 `--host` |
+| 8 | 宿主 | **空**（脚本不探测本机宿主；留空＝不写该键，人格层腿一随之跳过） | `host.adapter`；另喂 bootstrap 的 `--host` |
 | 9 | 收尾门命令（本项目没有就留空＝null） | 空 | `gates.finish_cmd` |
 | 10 | 想法池汇总票号 | 空 | `issue.boom_summary_ticket` |
 | 11 | 推送边界 | 工作区留本地；发布／项目仓才推送且由用户推 | `<项目>/.ai/push-policy.md` |
-| 12 | 主 AI 人格皮肤（generic / guild） | **回车＝待定＝本次不装角色件** | 喂 bootstrap 的 `--skin`；**不进配置实例**，记录落 `<项目>/.qoder/agents/_primary.md` 头部 `skin=…` 与 `<项目>/.ai/BOOTSTRAP.md` |
+| 12 | 主 AI 人格皮肤（generic / guild） | **回车＝待定＝本次不装角色件** | 喂 bootstrap 的 `--skin`；**不进配置实例**，记录落角色件头部 `skin=…` 与 `<项目>/.ai/BOOTSTRAP.md`（角色目录随宿主，见下） |
 
 第 12 问为什么留待定就不装：皮肤决定每个新会话起手的那副脾气，选错了天天带着错脾气说话，
 所以它和双仓五题同纪——**没拍板不替团长选默认**。它不进实例是因为 doctor 的 config-instance
@@ -45,12 +45,20 @@
 - `handoff/` 八槽 ＋ 规范与模板
 - `docs/adr/` ＋ `GLOSSARY.md` 骨架
 - 两份边界件：`push-policy` 与 `dual-repo`
-- 人格层腿一（第 12 问拍了板才有）：`render-roles.py bootstrap` 产出的 8 份角色件
-  （主 AI 人格＝`<项目>/.qoder/agents/_primary.md`）＋ `<项目>/.coding/host-programs.json`
-  ＋ `<项目>/.ai/BOOTSTRAP.md` 说明卡。
+- 人格层腿一（**第 8 问宿主与第 12 问皮肤都拍了板才有**，缺一个就跳过并点名）：
+  `render-roles.py bootstrap` 产出 8 份角色件（主 AI 人格＝`_primary`）＋
+  `<项目>/.coding/host-programs.json` ＋ `<项目>/.ai/BOOTSTRAP.md` 说明卡。
+  **角色目录随宿主变**，别写死：`adapters/role-hosts.json` 的 `dest_dir` 是那张表的机器面
+  （qoder＝`.qoder/agents`、claude＝`.claude/agents`、copilot＝`.github/agents`、
+  cursor＝`.cursor/agents`、codex 与 opencode＝`.ai/roles`）。说明卡路径不随宿主变。
   渲染一律走那条唯一口，`init-project.py` 里不写第二份渲染逻辑（测例逐条钉着）。
 
-已存在的一律**不覆盖**。
+**覆盖口径分两档，别一句「都不覆盖」糊过去**：
+
+- 上面前三类骨架件（handoff／ADR／GLOSSARY／两份边界件）：已存在**不覆盖**。
+- 人格层三件**会覆盖**：角色件先备份到同目录 `.backups/<时间戳>/` 再覆盖，内容相同则记 same 不动；
+  宿主映射表与说明卡**直接覆盖、不备份**（它们是纯派生物，正本在框架仓，重跑即回正）。
+  ⇒ 手改过角色件的人注意：改动会被下次 bootstrap 盖掉，备份在那儿但说明卡不留旧版。
 
 ## 装完的下一步
 

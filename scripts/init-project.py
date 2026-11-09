@@ -119,7 +119,7 @@ def build_answers(repo: str, a, yes: bool) -> dict:
         "ideas_dir": ask("5/12 想法目录", "ideas", yes),
         "adr_dir": ask("6/12 ADR 目录", "docs/adr", yes),
         "rules_dir": ask("7/12 规则目录", ".ai/rules", yes),
-        "host": ask("8/12 宿主（qoder / codex / opencode / claude / copilot / cursor）— 回车＝本机当前宿主，不确定就填你实际在用的那一个", "", yes),
+        "host": ask("8/12 宿主（qoder / codex / opencode / claude / copilot / cursor）— 脚本不探测本机宿主，请填你实际在用的那一个；留空＝不写该键，人格层角色件本次不装", "", yes),
         "finish_gate": ask("9/12 收尾门命令（本项目没有就回车留 null，别抄别仓的门名）",
                            "", yes),
         "boom_summary_ticket": ask("10/12 想法池汇总票号（可留空）", "", yes),

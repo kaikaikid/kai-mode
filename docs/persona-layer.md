@@ -2,6 +2,11 @@
 
 > 三层分工：**canon**＝职责四块（宿主中立，逐字共用）· **skin**＝名字/身份/性格 · **persona**＝人格分层与记忆接口。
 > 正本住 `roles/persona/<role>.json`，校验器 `scripts/persona.py`，机器门 `doctor.py` 的 `persona-layer`。
+>
+> **别和「人格层激活」混为一谈**：装配技能里那节（`core/skills/set-kai-mode/references/default-entry.md`）
+> 管的是**把 canon＋skin 渲染成会话提示词**这件装配动作，口语里也简称「人格层」；
+> 本文件讲的是**第三层 persona 块本身**（成长与记忆接口）。当前渲染器只拼 canon＋skin，
+> **persona 块暂不进渲染**（`scripts/rolelib.py` 的 `render_body` 不含它），留给未来记忆系统接。
 
 ## 为什么单开一层
 
