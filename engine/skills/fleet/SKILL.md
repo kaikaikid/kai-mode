@@ -76,6 +76,7 @@ compatibility: Host-agnostic; host must be able to spawn subagents
 | 审查 | `code-review`（只读子代理按 Standards／Spec 双轴读实际 diff） |
 | 连续失败 | `diagnosing-bugs`（两轮还不过先造反馈环，不盲改） |
 | 术语与决策记录 | `domain-modeling`（涉及新概念或长期结构时） |
+| 已有 spec 和票、想一把跑完 | `implement-spec`（上游原版，不开 run）；分流判据：装了 kai-mode 的仓，并发施工与发货归本件的一条 run 制 |
 
 ## 任务卡与审查卡
 
