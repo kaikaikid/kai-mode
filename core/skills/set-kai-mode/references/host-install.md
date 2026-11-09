@@ -23,7 +23,13 @@ python $S apply --profile core                # 正本 → 库 → 各家链接�
 - **来源标签**：`apply` 给每条在 `library.json` 里写/补 `source{kind,repo,path}`（仓的 GitHub remote 与
   正本在仓内的目录）——Magpie 资源库页按它分「哪个仓／哪个文件夹」，缺了就落「本机」。
   仓没有 GitHub remote 就不贴（不猜出处），`check` 只报 warn 不判红。
-- **手动件**（如 `harness-audit`）不进档位；需要时单独 `install:manual` 装。
+- **手动件**（如 `harness-audit`）不进档位，`apply` 缺省不碰它们；但 `check` 的量程**含**它们
+  （状态列写作「手动件·漂移」）——库里装着、各家在读，档位不收不等于可以盲着不看（#18 实测：
+  正本改口径两天后库仍是旧版而门全绿）。要按绿：`apply --include-manual`。
+- **落点面认两种形态**：链接指回本库，或本机库指针档（`~/.kai-mode-library`）指本库＋副本 SKILL.md
+  带 zh 生成器标记（`build-skills-zh.py` 把宿主那份铺成实体档，只留内层子目录是链接）。
+  实体副本逐文件比正文，SKILL.md 剥掉生成注释与 `name:` 行后须等值。一家消费端都没认出时判 warn
+  并写明「未覆盖」，不许用一句「三面全绿」盖过去。
 - **安装面与开发件分开**：只装技能运行件；`tests/`、`__pycache__`、`.pytest_cache`、`*.pyc` 不装。
 
 ## 加一个新技能

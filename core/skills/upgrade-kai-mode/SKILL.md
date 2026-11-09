@@ -71,7 +71,7 @@ PY
 | 面 | 怎么读 | 判「已是最新」 |
 |---|---|---|
 | 源仓版本 | 源仓 `VERSION` ＋ `git -C <源仓> log -1 --format=%H` | 与回执 `source_commit` 相同 |
-| 内容漂移 | `python <库根>/skills/set-kai-mode/scripts/magpie-sync.py check --json` | `drift` 为空 |
+| 内容漂移 | `python <库根>/skills/set-kai-mode/scripts/magpie-sync.py check --json` | `drifted` 为空 **且** `coverage.faces_covered` 为真（落点面 0 家＝那一面没量，不许当已通过） |
 | 同名冲突 | 同上 `conflicts[]` | 为空 |
 | 项目配置实例 | `<项目仓>/.ai/kai-mode.project.json` 的 `schema` | 等于模板 schema |
 | 装配面 | 钩子 command、默认入口段（比法见第 7 步表） | 与模板逐字相同 |

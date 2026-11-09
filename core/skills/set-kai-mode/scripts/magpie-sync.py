@@ -12,14 +12,21 @@
 没有 registry.json 的老根目录回落内置默认清单（照旧工作，不报错退出）。
 
 用法：
-    python magpie-sync.py check              # 只读：漂移表；有漂移 exit 1
+    python magpie-sync.py check              # 只读：漂移表（含名册外手动件）；有漂移 exit 1
     python magpie-sync.py apply              # 回写：正本 → 库 → 落点链接 → 注册档
     python magpie-sync.py apply --dry-run    # 只报将写哪些字节，盘上不动
+    python magpie-sync.py apply --include-manual   # 连手动件（如 harness-audit）一起覆盖
     python magpie-sync.py --selftest         # 临时假库假落点跑一遍（不动真库）
 
-三面判据（全部现算，不靠印象）：
-  · 内容面 正本目录逐文件 SHA-256 == 库副本逐文件（缺件/多件都算漂移）
-  · 落点面 凡已把 anchor（`gold`）链到本库的宿主家目录，必须同样有该条且解引用回库
+三面判据（全部现算，不靠印象；每条都要自报覆盖面）：
+  · 内容面 正本目录逐文件 SHA-256 == 库副本逐文件（缺件/多件都算漂移）。
+    档位（install:auto）之外还量注册表里 install:manual 的手动件——它们在名册外、apply 不覆盖，
+    库里装着、各家在读，正本一改就悄悄落后（#18 实测落后两天而门全绿）。手动件漂移只报不自动修，
+    修法＝`apply --include-manual`。
+  · 落点面 本库的消费端家目录（认两种形态：① 任一直接子项是指向本库的链接；② 本机库指针档指本库
+    且任一副本的 SKILL.md 带 zh 生成器标记）必须每条都在；实体副本还逐文件比正文
+    （SKILL.md 剥生成注释与 `name:` 行后等值，其余字节等值）。一家消费端都认不出时判 warn 并写明
+    「未校验」，不许用它凑「三面全绿」。
   · 注册面 `library.json` 的 `skills[]` 有条目，且每个铺了 anchor 的 `applied[*].skills` 含该名；
     条目另带 `source`（`kind`／`repo`／`path`）——Magpie 资源库页按它分组，缺了就落「本机」（只报 warn 不判红）
 
@@ -49,6 +56,8 @@ ANCHOR = "gold"  # 库位与落点面都沿这条既有条目反查（康娜的�
 LIBRARY_ENV = "KAI_MAGPIE_LIBRARY"
 # 无符号链接的宿主（Windows 复制安装）靠这个指针文件反查中央库；apply 成功时写入 ~。
 LIBRARY_POINTER = ".kai-mode-library"
+# zh 生成器（build-skills-zh.py）写在宿主副本 SKILL.md 里的「改它没用」注释；落点面靠它认出实体副本家。
+ZH_MARKER = "build-skills-zh.py"
 # 项目技能落点缺省（registry.skills 的模板缺省值）：只在项目配置实例
 # 不在／没写 registry.skills 时回落用；实例给了就以实例为准（一个语义一个家）。
 PROJECT_CONFIG = os.path.join(".ai", "kai-mode.project.json")
@@ -595,6 +604,14 @@ def sha256(path: str) -> str:
     return h.hexdigest()
 
 
+def read_text(path: str) -> str:
+    try:
+        with open(path, encoding="utf-8", errors="replace") as f:
+            return f.read()
+    except OSError:
+        return ""
+
+
 CACHE_DIRS = ("__pycache__", ".pytest_cache")
 PAYLOAD_LAYOUT_REL = os.path.join("manifests", "package-layout.json")
 PAYLOAD_DEFAULT = {
@@ -841,7 +858,7 @@ def retire_legacy(library: str, home: str | None = None, dry: bool = False) -> t
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%f")
     retired_root = os.path.join(library_root(library), RETIRED_DIR, stamp)
     moved, unlinked, skipped = [], [], []
-    faces = find_faces(library, home)
+    faces = find_faces(library, home)  # 退役摘链用宽口径：漏摘比多扫几家更糟
     for old, new in LEGACY_ALIASES.items():
         old_dir = os.path.join(library, old)
         old_real = os.path.realpath(old_dir)
@@ -939,19 +956,117 @@ def find_library(home: str | None = None) -> str | None:
     return None
 
 
+def _under_library(path: str, library_real: str) -> bool:
+    """path 解引用后是否落在本库内（含库本身的下级目录）。"""
+    try:
+        real = os.path.realpath(path)
+    except OSError:
+        return False
+    return real == library_real or real.startswith(library_real + os.sep)
+
+
+def _home_pointer(home: str) -> str:
+    """读 `<家>/.kai-mode-library`（apply 成功时写的库指针档，无链接宿主靠它反查）。"""
+    ptr = os.path.join(home, LIBRARY_POINTER)
+    try:
+        return open(ptr, encoding="utf-8").read().strip()
+    except OSError:
+        return ""
+
+
 def find_faces(library: str, home: str | None = None) -> list:
-    """落点面＝凡把 anchor 链到本库的那些 `<家>/skills` 目录。"""
+    """落点面＝本库的消费端 `<家>/skills` 目录，认两种形态：
+      ① 任一直接子项是指向本库的符号链接（Linux/macOS 与 Windows 混合安装）；
+      ② `<家>/.kai-mode-library` 指本库，且任一子项的 SKILL.md 带 zh 生成器标记
+        （Windows 纯复制安装：zh 生成器把 SKILL.md 铺成实体档，只有内层子目录还是链接）。
+    老判据只认形态 ① 且只看 anchor 一枚（`<家>/skills/gold` 必须是链）——跑过 zh 生成的机器上
+    它是实体目录 ⇒ 落点面恒 0 家，那一面等于没量（#18）。"""
     home = home or os.path.expanduser("~")
     if not os.path.isdir(home):
         return []
-    lib_anchor = os.path.realpath(os.path.join(library, ANCHOR))
+    lib_real = os.path.realpath(library)
+    pointer_ok = bool(_home_pointer(home)) and os.path.realpath(_home_pointer(home)) == lib_real
     faces = []
     for entry in sorted(os.listdir(home)):
         sdir = os.path.join(home, entry, "skills")
-        link = os.path.join(sdir, ANCHOR)
-        if os.path.isdir(sdir) and os.path.islink(link) and os.path.realpath(link) == lib_anchor:
+        if not os.path.isdir(sdir):
+            continue
+        linked = copied = False
+        for child in sorted(os.listdir(sdir)):
+            p = os.path.join(sdir, child)
+            if not linked and os.path.islink(p) and _under_library(p, lib_real):
+                linked = True
+            if linked:
+                break
+            if not copied and pointer_ok:
+                md = os.path.join(p, "SKILL.md")
+                if os.path.isfile(md):
+                    try:
+                        with open(md, encoding="utf-8", errors="replace") as f:
+                            copied = ZH_MARKER in f.read()
+                    except OSError:
+                        continue
+        if linked or copied:
             faces.append(sdir)
     return faces
+
+
+def find_kai_faces(library: str, home: str | None = None) -> list:
+    """消费端里真装了 kai-mode 的那几家（判据＝有 anchor 条目）。
+    只从库里拿别的技能的宿主家不归这里——给它们建链或判缺失都是越界。"""
+    return [f for f in find_faces(library, home) if os.path.lexists(os.path.join(f, ANCHOR))]
+
+
+def strip_generated(text: str) -> str:
+    """宿主副本与库正文比之前的归一：去掉 zh 生成注释行与 frontmatter 的 `name:` 行
+    （中文名本地化只改这两处，正文一字不改——见 build-skills-zh.py 的产物说明）。"""
+    return "\n".join(l for l in text.splitlines()
+                     if ZH_MARKER not in l and not l.startswith("name: "))
+
+
+def face_entry_state(entry: str, src_dir: str, rules: dict | None = None) -> tuple:
+    """一条落点（`<家>/skills/<名>`）对库的样子：link／copy-ok／copy-drift／absent／foreign。
+    detail 只在不一致时给。链接指向库内＝天然等值；实体副本逐文件比，SKILL.md 走归一后等值。"""
+    if not os.path.lexists(entry):
+        return "absent", ""
+    if os.path.islink(entry):
+        return ("link", "") if _under_library(entry, os.path.realpath(src_dir)) else ("foreign", "链接没指回本库")
+    if not os.path.isdir(entry):
+        return "foreign", "不是目录也不是链接"
+    a = payload_files(src_dir, rules)
+    bad = []
+    for rel, src in sorted(a.items()):
+        dst = os.path.join(entry, *rel.split("/"))
+        if not os.path.isfile(dst):
+            bad.append(f"{rel}（缺）")
+            continue
+        if rel.endswith(".md"):
+            same = strip_generated(read_text(src)) == strip_generated(read_text(dst))
+        else:
+            same = sha256(src) == sha256(dst)
+        if not same:
+            bad.append(rel)
+    if bad:
+        return "copy-drift", f"{len(bad)} 件与库不符：{'、'.join(bad[:3])}"
+    return "copy-ok", ""
+
+
+def manual_plan(root: str) -> dict:
+    """注册表里 install=="manual" 的条目（档位不收、apply 缺省不碰，但库里装着、各家在读）。
+    没有注册表（老根目录回落 FAMILIES）⇒ 空集，check 会打「名册外=无」。"""
+    data, err = read_skill_registry(root)
+    if err or not data:
+        return {}
+    out = {}
+    for entry in data.get("skills") or []:
+        if not isinstance(entry, dict) or entry.get("install") != "manual":
+            continue
+        name = entry.get("name")
+        if not name:
+            continue
+        out[name] = {"source": entry.get("source") or default_source(name, root),
+                     "path": entry.get("path") or os.path.join("skills", name)}
+    return out
 
 
 def registry_path(library: str) -> str:
@@ -969,17 +1084,26 @@ def read_registry(library: str):
         return None, f"注册档读不出：{path}（{exc}）"
 
 
-def check(root: str, library: str, home: str | None = None, plan: dict | None = None) -> tuple:
+def check(root: str, library: str, home: str | None = None, plan: dict | None = None,
+          with_manual: bool = True) -> tuple:
     rows, drifted = [], False
     faces = find_faces(library, home)
+    # 消费端 ≠ 一定装了 kai-mode：判「该不该在位」的家＝装了 anchor 的那几家。
+    kai_faces = find_kai_faces(library, home)
     data, reg_err = read_registry(library)
     plan = plan if plan is not None else install_plan(root)
     rules = payload_rules(root)
-    for name in plan:
-        src, dst = family_src(root, name, plan), os.path.join(library, name)
+    manual = manual_plan(root) if with_manual else {}
+    roster = dict(plan)
+    for name, info in manual.items():
+        roster.setdefault(name, info)
+    for name in roster:
+        is_manual = name not in plan
+        tag = "手动件·" if is_manual else ""
+        src, dst = family_src(root, name, roster), os.path.join(library, name)
         if not os.path.isdir(src):
-            tried = "、".join(os.path.join(root, r) for r in family_candidates(name, plan, root))
-            rows.append((name, "正本缺失", f"试过：{tried}", src, "red"))
+            tried = "、".join(os.path.join(root, r) for r in family_candidates(name, roster, root))
+            rows.append((name, tag + "正本缺失", f"试过：{tried}", src, "red"))
             drifted = True
             continue
         a = payload_files(src, rules)
@@ -995,16 +1119,41 @@ def check(root: str, library: str, home: str | None = None, plan: dict | None = 
             status, detail, kind = "库内多件", f"多出 {extra}", "warn"
         else:
             status, detail, kind = "一致", f"{len(a)} 件逐字相同", "ok"
+        if is_manual and kind == "red":
+            detail += "（名册外：档位不收它，`apply --include-manual` 才覆盖）"
         if kind == "red":
             drifted = True
-        rows.append((name, status, detail, "", kind))
+        rows.append((name, tag + status, detail, "", kind))
         for p in diff:
             rows.append((f"    · {p}", "内容不符", sha256(a[p])[:12] + " ↔ " + sha256(b[p])[:12], "", "red"))
-    for name in plan:
-        absent = [f for f in faces if not os.path.lexists(os.path.join(f, name))]
-        if absent:
+    for name in roster:
+        absent, off = [], []
+        tag = "手动件·" if name in manual else ""
+        for f in kai_faces:
+            state, detail = face_entry_state(os.path.join(f, name), os.path.join(library, name), rules)
+            if state == "absent":
+                absent.append(f)
+            elif state in ("copy-drift", "foreign"):
+                off.append(f"{f}（{detail or state}）")
+        if absent and name in manual:
+            # 手动件本就是按家选择性安装：没装不等于漂移，只登记几家没有
+            rows.append((name, "手动件·未装", f"{len(absent)}/{len(kai_faces)} 家没装（手动件，不算漂移）",
+                         ";".join(absent), "warn"))
+        elif absent:
             drifted = True
-            rows.append((name, "落点缺失", f"{len(faces) - len(absent)}/{len(faces)} 家", ";".join(absent), "red"))
+            rows.append((name, "落点缺失", f"{len(kai_faces) - len(absent)}/{len(kai_faces)} 家",
+                         ";".join(absent), "red"))
+        if off:
+            drifted = True
+            rows.append((name, tag + "落点内容漂", f"{len(off)}/{len(kai_faces)} 家实体副本与库不符",
+                         ";".join(off), "red"))
+    if faces:
+        rows.append(("落点面", "覆盖面", f"{len(faces)} 家指回本库，其中 {len(kai_faces)} 家装了 anchor "
+                                         f"⇒ 落点判据只量这 {len(kai_faces)} 家", "", "info"))
+    if not kai_faces:
+        rows.append(("落点面", "未覆盖",
+                     f"{home or os.path.expanduser('~')} 下认不出装了 anchor 的消费端家目录 ⇒ 落点面没量，"
+                     f"这里的「绿」只含内容面与注册面", "", "warn"))
     if reg_err:
         drifted = True
         rows.append(("注册档", "读不出", reg_err, "", "red"))
@@ -1018,7 +1167,7 @@ def check(root: str, library: str, home: str | None = None, plan: dict | None = 
             elif not (reg.get(name) or {}).get("source"):
                 # 只报不判红：仓本来没有 GitHub remote 时就该没有标签，判红会让 apply 把整包回滚
                 rows.append((name, "缺来源标签", "资源库页把它落在「本机」；跑 apply 会自动补", "", "warn"))
-    return rows, drifted, len(faces)
+    return rows, drifted, len(kai_faces)
 
 
 def conflict_rows(rows: list, plan: dict) -> list:
@@ -1139,8 +1288,10 @@ def patch_registry(library: str, names, dry: bool = False, sources: dict | None 
     return added
 
 
-def link_faces(library: str, names, home: str | None = None, dry: bool = False):
-    faces = find_faces(library, home)
+def link_faces(library: str, names, home: str | None = None, dry: bool = False,
+               rules: dict | None = None):
+    # 只在装了 anchor 的消费端建链：别宿主从同一个库拿别的技能，给它铺 kai-mode 件是越界。
+    faces = find_kai_faces(library, home)
     made, failed = [], []
     for name in names:
         target = os.path.join(library, name)
@@ -1149,7 +1300,12 @@ def link_faces(library: str, names, home: str | None = None, dry: bool = False):
             if os.path.islink(link):
                 continue
             if os.path.lexists(link):
-                failed.append(f"{link}（已存在实体目录，不覆盖）")
+                # 实体副本是 zh 生成器／Windows 复制安装的正常形态：内容与库等值就算已就位，
+                # 不该被报成「已存在实体目录，不覆盖」的落点失败（11-09 实测：那样会把 26 条全报红）。
+                state, detail = face_entry_state(link, target, rules)
+                if state in ("copy-ok", "link"):
+                    continue
+                failed.append(f"{link}（已存在实体目录，不覆盖；{state}：{detail}）")
                 continue
             if dry:
                 made.append(link)
@@ -1165,17 +1321,25 @@ def link_faces(library: str, names, home: str | None = None, dry: bool = False):
 
 def apply(root: str, library: str, dry: bool, home: str | None = None,
           plan: dict | None = None, profile: str | None = None, retire: bool = False,
-          skip: set | None = None, retire_names_list: set | None = None) -> int:
+          skip: set | None = None, retire_names_list: set | None = None,
+          include_manual: bool = False) -> int:
     plan = plan if plan is not None else install_plan(root, profile)
+    manual = manual_plan(root) if include_manual else {}
+    roster = dict(plan)
+    for name, info in manual.items():
+        roster.setdefault(name, info)
     skip_names = {str(n).strip() for n in (skip or []) if str(n).strip()}
-    unknown = sorted(skip_names - set(plan))
+    unknown = sorted(skip_names - set(roster))
     if unknown:
         print(f"  跳过名单里有不在安装面的名字（忽略）：{'、'.join(unknown)}")
-    targets = [n for n in plan if n not in skip_names]
-    rows, drifted, nfaces = check(root, library, home, plan)
-    print(f"正本根={root}  库={library}  档位={profile or 'full'}  落点面={nfaces} 家  "
+    targets = [n for n in roster if n not in skip_names]
+    rows, drifted, nfaces = check(root, library, home, roster, with_manual=include_manual)
+    n_manual = len([n for n in roster if n not in plan])
+    print(f"正本根={root}  库={library}  档位={profile or 'full'}  "
+          f"覆盖面：内容面 {len(roster)} 枚（档位 {len(roster) - n_manual}＋名册外手动 {n_manual}）  "
+          f"落点面={nfaces} 家  "
           f"写前漂移={'有' if drifted else '无'}")
-    for name in sorted(skip_names & set(plan)):
+    for name in sorted(skip_names & set(roster)):
         print(f"  保留现有 {name}（--skip：用户选择不去覆盖）")
     had_library = os.path.isdir(library)
     backup = None if dry else backup_library(library)
@@ -1186,10 +1350,10 @@ def apply(root: str, library: str, dry: bool, home: str | None = None,
     pruned = []
     try:
         for name in targets:
-            written += copy_family(root, library, name, dry, plan)
+            written += copy_family(root, library, name, dry, roster)
             if not dry:
                 pruned += [f"{name}/{rel}" for rel in prune_payload_excluded(library, name, rules)]
-        sources = {n: s for n, s in ((n, skill_source(root, n, plan)) for n in targets) if s}
+        sources = {n: s for n, s in ((n, skill_source(root, n, roster)) for n in targets) if s}
         if dry:
             try:
                 added = patch_registry(library, list(targets), dry=True, sources=sources)
@@ -1197,12 +1361,14 @@ def apply(root: str, library: str, dry: bool, home: str | None = None,
                 print(f"  注册档预演被自证挡下：{exc}")
         else:
             added = patch_registry(library, list(targets), sources=sources)
-        made, failed = link_faces(library, list(targets), home, dry)
+        made, failed = link_faces(library, list(targets), home, dry, rules)
         if not dry:
-            hashes = {name: tree_digest(family_src(root, name, plan), rules) for name in targets}
+            # 装机回执只记档位成员：手动件按家选择性安装，记进去会让回执与档位清单对不上
+            marker_names = [n for n in targets if n in plan]
+            hashes = {name: tree_digest(family_src(root, name, roster), rules) for name in marker_names}
             marker = write_source_marker(
-                library, root, len(targets), profile=profile or marked_profile(library),
-                skill_names=list(targets), hashes=hashes, source_commit=source_commit(root))
+                library, root, len(marker_names), profile=profile or marked_profile(library),
+                skill_names=marker_names, hashes=hashes, source_commit=source_commit(root))
     except BaseException as exc:
         if backup and restore_library(library, backup):
             print(f"  apply 失败，已从备份还原：{backup}")
@@ -1246,14 +1412,27 @@ def apply(root: str, library: str, dry: bool, home: str | None = None,
                 print(f"  退役跳过 {x}")
         print("（dry-run：盘上未改动）")
         return 0
-    _rows, drifted2, _n = check(root, library, home, {n: plan[n] for n in targets})
-    if drifted2:
+    _rows, _drift_all, post_faces = check(root, library, home,
+                                          {n: roster[n] for n in targets}, with_manual=include_manual)
+    reds = [r for r in _rows if r[4] == "red"]
+    # 分层判绿：库层（内容面＋注册面）与落点链归本脚本；宿主实体副本落后归 zh 生成器
+    # （build-skills-zh.py）。拿后者拖回滚＝写库这件事被别的工具的执行档期卡死（#18 实测撞过）。
+    stale_copies = [r for r in reds if "落点内容漂" in str(r[1])]
+    blocking = [r for r in reds if r not in stale_copies]
+    if blocking:
         if backup and restore_library(library, backup):
             print(f"回写后复量仍有漂移，已从备份还原：{backup}")
         else:
             print("回写后复量仍有漂移（无备份可还原）")
+        for r in blocking[:6]:
+            print(f"  拦项 {r[0]} | {r[1]} | {r[2]}")
         return 1
-    print("回写后复量：三面全绿")
+    if stale_copies:
+        print(f"  落点有 {len(stale_copies)} 条实体副本落后于库：那层归 zh 生成器，跑 "
+              f"`python <magpie>/scripts/build-skills-zh.py --apply` 重铺（不阻塞本次回写）")
+    print(f"回写后复量：内容面 {len(targets)} 枚全绿"
+          + (f"；落点面 {post_faces} 家" + ("全绿" if not stale_copies else "见上")
+             if post_faces else "；落点面 0 家＝未校验（消费端一家都没认出）"))
     # 无符号链接的宿主（Windows 复制安装）写指针，供 doctor/find_library 反查；
     # 文件在 ~ 下、不属仓库，写失败不判红。
     try:
@@ -1560,6 +1739,68 @@ def selftest() -> int:
         for name in ("manual-x", "none-x"):
             if name in reg_names:
                 fails.append(f"注册档多了非 auto 条目 {name}")
+        # —— #18 判据失明一：名册外手动件（install:manual）——
+        # 老判据把这类整类丢掉 ⇒ 库里装着、各家在读，正本一改就悄悄落后而门全绿（实测落后两天）。
+        man_lib = os.path.join(reg_library, "manual-x")
+        os.makedirs(man_lib, exist_ok=True)
+        with open(os.path.join(man_lib, "SKILL.md"), "w", encoding="utf-8") as f:
+            f.write("---\nname: manual-x\n---\n# 库内旧版（手动件漂移预置）\n")
+        rows_m, drift_m, _nm = check(reg_root, reg_library, home)
+        if not any(r[1] == "手动件·漂移" for r in rows_m):
+            fails.append("手动件在库里被写旧，check 仍没报「手动件·漂移」（名册外一类还是不被量）")
+        if not drift_m:
+            fails.append("手动件漂移没把判据翻成红（尺响了但不拦）")
+        rows_plain, drift_plain, _np = check(reg_root, reg_library, home, with_manual=False)
+        if any(str(r[1]).startswith("手动件·") for r in rows_plain):
+            fails.append("with_manual=False 仍报手动件（apply 的复量会被名册外的旧副本拖去回滚）")
+        if drift_plain:
+            fails.append("with_manual=False 时该家不该有红：" +
+                         "、".join(r[0] for r in rows_plain if r[4] == "red"))
+        # 可达绿路：--include-manual 才覆盖它，跑完判据该转绿
+        if apply(reg_root, reg_library, dry=False, home=home, include_manual=True) != 0:
+            fails.append("apply --include-manual 没收敛（手动件按不到绿）")
+        if sha256(os.path.join(man_lib, "SKILL.md")) != sha256(
+                os.path.join(reg_root, "skills", "manual-x", "SKILL.md")):
+            fails.append("apply --include-manual 后库内手动件仍不等于正本")
+        if not os.path.lexists(os.path.join(reg_face, "manual-x")):
+            fails.append("apply --include-manual 后没给手动件建落点链接")
+        # —— #18 判据失明二：zh 生成器的实体副本家——
+        # 老判据要求 `<家>/skills/gold` 必须是指向库的链接；跑过 build-skills-zh 的机器上它是实体目录
+        # ⇒ 落点面恒 0 家，那一面等于没量。现在两种形态都认，副本还逐文件比正文。
+        home2 = os.path.join(tmp, "home2")
+        face2 = os.path.join(home2, ".copyagent", "skills")
+        os.makedirs(os.path.join(face2, ANCHOR))
+        with open(os.path.join(home2, LIBRARY_POINTER), "w", encoding="utf-8") as f:
+            f.write(os.path.abspath(reg_library) + "\n")
+        for nm in (ANCHOR, "auto-x", "manual-x"):
+            d = os.path.join(face2, nm)
+            os.makedirs(d, exist_ok=True)
+            body = read_text(os.path.join(reg_library, nm, "SKILL.md")).split("---", 2)[-1]
+            with open(os.path.join(d, "SKILL.md"), "w", encoding="utf-8") as f:
+                f.write(f"---\nname: {nm}（副本名）\n---\n"
+                        f"<!-- 本文件由 {ZH_MARKER} 生成，改它没用 -->{body}")
+        copy_md = os.path.join(face2, ANCHOR, "SKILL.md")
+        if len(find_faces(reg_library, home2)) != 1:
+            fails.append("zh 实体副本家没被认成消费端（落点面在这台仍会恒 0 家）")
+        _r2, d2, n2 = check(reg_root, reg_library, home2)
+        if n2 != 1 or d2:
+            fails.append(f"副本与库等值时应 1 家全绿，读到 {n2} 家 drifted={d2}")
+        with open(copy_md, "w", encoding="utf-8") as f:
+            f.write(f"---\nname: {ANCHOR}（副本名）\n---\n"
+                    f"<!-- 本文件由 {ZH_MARKER} 生成，改它没用 -->\n# 落后的旧正文\n")
+        rows_copy, dcopy, _nc = check(reg_root, reg_library, home2)
+        if not any(r[1] == "落点内容漂" for r in rows_copy) or not dcopy:
+            fails.append("宿主实体副本落后于库却没报「落点内容漂」（这面量了但抓不住）")
+        # 一家消费端都没有 ⇒ 不许拿「绿」盖过去，要如实写「未覆盖」
+        home3 = os.path.join(tmp, "home3", ".noagent", "skills")
+        os.makedirs(home3)
+        rows0, d0, n0 = check(reg_root, reg_library, os.path.join(tmp, "home3"))
+        if n0 != 0:
+            fails.append(f"空家应 0 家，读到 {n0}")
+        if not any(r[1] == "未覆盖" and r[4] == "warn" for r in rows0):
+            fails.append("落点面 0 家时没登记「未覆盖」warn（三面全绿的措辞会骗人）")
+        if d0:
+            fails.append("0 家本身不该判红（干净机器上没有宿主）")
         # 来源标签：Magpie 资源库页按 `source.repo`＋`source.path` 的父目录分组，没有它就落「本机」。
         # 有 GitHub remote ⇒ 新条目带标签、既有缺标签的条目要被补上；没有 remote ⇒ 一律不贴（不猜出处）。
         if any(s.get("source") for s in reg_after["skills"]):
@@ -1662,6 +1903,8 @@ def main() -> int:
     ap.add_argument("--json", action="store_true", help="check 输出机器可读的漂移/冲突表")
     ap.add_argument("--skip", default=None,
                     help="apply 时跳过的技能名（逗号分隔）：初始化时用户选「保留现有」的那几个")
+    ap.add_argument("--include-manual", action="store_true",
+                    help="apply 时连注册表里 install:manual 的名册外技能一起覆盖（缺省不碰：档位不含它们）")
     ap.add_argument("--selftest", action="store_true")
     a = ap.parse_args()
     if a.selftest:
@@ -1683,25 +1926,35 @@ def main() -> int:
         return 2
     if a.mode == "check":
         rows, drifted, nfaces = check(root, library, plan=plan)
+        n_manual = len([n for n in manual_plan(root) if n not in plan])
+        n_roster = len(plan) + n_manual
+        n_warn = len([r for r in rows if r[4] == "warn"])
+        cover = (f"覆盖面：内容面 {n_roster} 枚（档位 {len(plan)}＋名册外手动 {n_manual}）"
+                 f"｜落点面 {nfaces} 家（装了 anchor 的消费端）" + ("＝未校验" if not nfaces else ""))
         if a.json:
             conflicts = conflict_rows(rows, plan)
             print(json.dumps({
                 "root": root, "library": library, "profile": profile or "full",
                 "faces": nfaces, "drifted": drifted,
+                "coverage": {"roster": n_roster, "auto": len(plan), "manual": n_manual,
+                             "faces": nfaces, "faces_covered": bool(nfaces)},
                 "conflicts": conflicts,
                 "rows": [{"name": r[0], "status": r[1], "detail": r[2], "kind": r[4]}
                          for r in rows],
             }, ensure_ascii=False, indent=2))
             return 1 if drifted else 0
-        print(f"正本根={root}  库={library}  档位={profile or 'full'}  落点面={nfaces} 家")
+        print(f"正本根={root}  库={library}  档位={profile or 'full'}  {cover}")
         for r in rows:
             print("  ", " | ".join(str(c) for c in r).rstrip(" |"))
-        print("CHECK", "漂移" if drifted else "全绿")
+        print("CHECK", "漂移" if drifted else "全绿",
+              f"（{n_roster} 枚／{nfaces} 家／warn {n_warn} 条"
+              + ("；落点面没量，绿只覆盖内容面与注册面" if not nfaces else "") + "）")
         return 1 if drifted else 0
     skip = {s.strip() for s in (a.skip or "").split(",") if s.strip()}
     return apply(root, library, a.dry_run, plan=plan, profile=profile,
                  retire=a.retire_legacy, skip=skip,
-                 retire_names_list={x.strip() for x in (a.retire or "").split(",") if x.strip()})
+                 retire_names_list={x.strip() for x in (a.retire or "").split(",") if x.strip()},
+                 include_manual=a.include_manual)
 
 
 if __name__ == "__main__":
