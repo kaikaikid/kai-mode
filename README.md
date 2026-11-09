@@ -1,6 +1,6 @@
 # kai-mode —— 酒馆冒险团与执行内核
 
-> **状态：0.40.3（2026-11-09 装机尺自报覆盖面：`check` 的绿带枚数与家数，名册外 `install:manual` 件进内容面、落点面认 zh 实体副本并逐文件比正文，认不出家判「未覆盖」不再蒙一句全绿；implement-spec 那段无正本口径收回 fleet 方法表／method-pointers 指针，中央库退回上游原版；详见 [`CHANGELOG.md`](CHANGELOG.md)）。**
+> **状态：0.41.0（2026-11-09 装机尺自报覆盖面：`check` 的绿带枚数与家数，名册外 `install:manual` 件进内容面、落点面认 zh 实体副本并逐文件比正文，认不出家判「未覆盖」不再蒙一句全绿；implement-spec 那段无正本口径收回 fleet 方法表／method-pointers 指针，中央库退回上游原版；详见 [`CHANGELOG.md`](CHANGELOG.md)）。**
 > `kai-mode` → `staff`；角色实例的入口必须属于当前宿主（优先原生子代理，宿主本身就是命令行工具时可用它自己的进程）；通用方法不再 fork，按名用宿主中央库原版；
 > 详见 [`CHANGELOG.md`](CHANGELOG.md) 与 [`docs/method-pointers.md`](docs/method-pointers.md)）。**
 >
