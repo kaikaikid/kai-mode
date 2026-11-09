@@ -1,6 +1,6 @@
 # kai-mode —— 酒馆冒险团与执行内核
 
-> **状态：0.40.2（2026-11-09 人格层装配闭合：第 3 步补「人格层激活」（指令档只放指针、不复述人格文字）；`init-project.py` 第 12 问＋`gen_roles()` 让初始化真能装角色件，宿主与皮肤都拍板才装、留待定不替团长选；软约束能力边界落册——指令到达≠AI 开工照做，实测主动照做 0/2，不许写成「装好即自动带人格」；独立审查修六处口径错（覆盖口径、宿主相关落点、Q8 不探测宿主、渲染器打印错路径等）；详见 [`CHANGELOG.md`](CHANGELOG.md)）。**
+> **状态：0.40.3（2026-11-09 装机尺自报覆盖面：`check` 的绿带枚数与家数，名册外 `install:manual` 件进内容面、落点面认 zh 实体副本并逐文件比正文，认不出家判「未覆盖」不再蒙一句全绿；implement-spec 那段无正本口径收回 fleet 方法表／method-pointers 指针，中央库退回上游原版；详见 [`CHANGELOG.md`](CHANGELOG.md)）。**
 > `kai-mode` → `staff`；角色实例的入口必须属于当前宿主（优先原生子代理，宿主本身就是命令行工具时可用它自己的进程）；通用方法不再 fork，按名用宿主中央库原版；
 > 详见 [`CHANGELOG.md`](CHANGELOG.md) 与 [`docs/method-pointers.md`](docs/method-pointers.md)）。**
 >
