@@ -147,12 +147,20 @@ def can_spawn(run: dict[str, Any], task: dict[str, Any], root: Path | None = Non
     return True, "ok"
 
 
-def clamp_workers(requested: int, run: dict[str, Any]) -> tuple[int, bool]:
-    """Worker≤Crew 钳制：Worker（单任务可拆数，≤TASK_MAX_WORKERS）不突破 Crew。
-    返回 (实际可派数, 是否被钳制)；被钳制一方记 `worker_clamped` 事件。"""
+def clamp_workers(requested: int, run: dict[str, Any], active_sessions: int = 0) -> dict[str, Any]:
+    """Worker 钳制（W1.1 接线版）：实际可派 = min(worker_count, worker_limit≤8,
+    crew_limit - active_sessions)。返回完整钳制证据，供 claim 记 `worker_clamped` 事件。
+    requested<=0 时视为未请求（旧任务），effective=0、clamped=False。"""
     from . import TASK_MAX_WORKERS
-    want = max(1, min(TASK_MAX_WORKERS, int(requested or 1)))
-    crew_limit = int(run.get("crew_limit") or FLEET_MAX_CREW)
-    crew_limit = max(1, min(FLEET_MAX_CREW, crew_limit))
-    allowed = min(want, crew_limit)
-    return allowed, allowed < want
+    req = int(requested or 0)
+    if req <= 0:
+        return {"requested": 0, "effective": 0, "clamped": False,
+                "worker_limit": TASK_MAX_WORKERS,
+                "crew_limit": int(run.get("crew_limit") or FLEET_MAX_CREW),
+                "active_sessions": active_sessions}
+    crew_limit = max(1, min(FLEET_MAX_CREW, int(run.get("crew_limit") or FLEET_MAX_CREW)))
+    crew_free = max(0, crew_limit - int(active_sessions or 0))
+    effective = max(0, min(req, TASK_MAX_WORKERS, crew_free))
+    return {"requested": req, "effective": effective, "clamped": effective < req,
+            "worker_limit": TASK_MAX_WORKERS, "crew_limit": crew_limit,
+            "active_sessions": int(active_sessions or 0)}

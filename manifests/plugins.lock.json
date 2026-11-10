@@ -31,7 +31,7 @@
     },
     "engine": {
       "version": "0.6.0",
-      "digest": "6f06244f96938ccd356cd1906bb03a1c615a5df5210af4befd20ba83f44f4d47",
+      "digest": "dabfb27b69e98f584bb4e399ecd596e54be53e1106b18a26119164e41f4149ec",
       "skills": {
         "fleet": "0.9.0",
         "pk": "0.1.1"

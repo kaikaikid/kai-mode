@@ -17,7 +17,8 @@
 | `fleet accept\|return\|reopen <run> <task>` | 验收／打回／撤销 |
 | `fleet resume <run>` | 从 state.json 续跑 |
 | `fleet status [--html]` | 看板（在做／在等／已完成） |
-| `fleet context <run>` | Context Manifest：任务/门/预算/事件清单（与 resume／status 同源；Token 用量未采集） |
+| `fleet context <run>` | Context Manifest：任务/门/预算/事件/追踪清单（与 resume／status 同源） |
+| `fleet usage <run> '<json>'` | 追加宿主回传 usage（source/model_ref/input_tokens/output_tokens/at）并累计 used_tokens |
 | `fleet dirty [--json]` / `park` / `unpark` | 主树脏件分类与可逆收起 |
 | `fleet stop <run>` / `fleet gc [--all]` | 停 run／清已收尾资源 |
 | `fleet doctor` | 状态与 git 对账 |

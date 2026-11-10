@@ -42,7 +42,8 @@ export PATH="$PWD/engine/bin:$PATH"
 | 开团（工程别名 `fleet warp <issue> [--ships 1-3] [--tasks f.json]`） | 自动批门 + 施工，**不发货**（停在验收门） |
 | 速推（工程别名 `fleet jump <issue> [--ships 1-3]`） | 加急 + 自动验收发货，唯一有发货权的全自动入口 |
 | `fleet status [--html]` | 看板 |
-| `fleet context <run>` | Context Manifest（任务/门/预算/事件的上下文清单；Token 用量未采集） |
+| `fleet context <run>` | Context Manifest（任务/门/预算/事件/追踪清单；Token 未回传时如实标未采集） |
+| `fleet usage <run> '<json>'` | 追加宿主回传的 usage 行并累计 `used_tokens`（不估算） |
 | `fleet dirty [--json]` / `park` / `unpark` | 主树脏件分类与可逆收起 |
 | `fleet doctor` | 状态与 git 对账 |
 | `fleet gc [--all]` | 清理已收尾资源 |

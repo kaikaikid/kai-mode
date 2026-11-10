@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
@@ -212,12 +213,18 @@ def test_block_command_sets_reason_and_rejects_unknown(tmp_path: Path):
 
 
 def test_clamp_workers_never_exceeds_crew():
-    allowed, clamped = scheduler.clamp_workers(8, {"crew_limit": 5})
-    assert (allowed, clamped) == (5, True)
-    allowed, clamped = scheduler.clamp_workers(3, {"crew_limit": 5})
-    assert (allowed, clamped) == (3, False)
-    allowed, clamped = scheduler.clamp_workers(99, {"crew_limit": 1})
-    assert (allowed, clamped) == (1, True)
+    r = scheduler.clamp_workers(8, {"crew_limit": 5})
+    assert (r["effective"], r["clamped"]) == (5, True)
+    r = scheduler.clamp_workers(3, {"crew_limit": 5})
+    assert (r["effective"], r["clamped"]) == (3, False)
+    r = scheduler.clamp_workers(99, {"crew_limit": 1})
+    assert (r["effective"], r["clamped"]) == (1, True)
+    # crew 满员：free=0 → effective=0
+    r = scheduler.clamp_workers(3, {"crew_limit": 5}, active_sessions=5)
+    assert (r["effective"], r["clamped"]) == (0, True)
+    # 旧任务（worker_count 未请求）
+    r = scheduler.clamp_workers(0, {"crew_limit": 5})
+    assert r["requested"] == 0 and r["clamped"] is False
 
 
 def test_stop_cancelled_then_closed_and_late_tasks_kept(tmp_path: Path):
@@ -296,3 +303,188 @@ def test_report_secret_is_quarantined(tmp_path: Path):
         encoding="utf-8")
     assert "sk-abcdefghijklmnopqrstuvwx" not in persisted
     assert any(e.get("kind") == "secret_detected" for e in read_state(tmp_path)["events"])
+
+
+# ------------------------------------------------------------------
+# W1.1 Worker 钳制接线
+
+
+def test_plan_keeps_old_tasks_without_worker_count(tmp_path: Path):
+    write_run(tmp_path, phase="planning")
+    tf = tmp_path / "tasks.json"
+    tf.write_text(json.dumps({"tasks": [{"id": "t1", "title": "t1"}]}), encoding="utf-8")
+    cli(tmp_path, "plan", "r-w", "--file", str(tf))
+    t = read_state(tmp_path)["tasks"][0]
+    assert t.get("worker_count", 0) == 0  # 旧任务：0，不参与钳制
+
+
+def test_claim_worker_clamped_records_event(tmp_path: Path):
+    # worker_count=8、crew_limit=5：钳到 ≤5 且记事件（含 requested/effective/limits/at）
+    tasks = review_state(task_status="pending")
+    tasks[0]["worker_count"] = 8
+    write_run(tmp_path, tasks=tasks, crew_limit=5)
+    s = read_state(tmp_path)
+    s["gates"] = {"g0": "approved", "g1": "skipped", "g2": "pending"}
+    s.pop("integrity", None)
+    (tmp_path / ".coding" / "runs" / "r-w" / "state.json").write_text(
+        json.dumps(s, ensure_ascii=False), encoding="utf-8")
+    out = json.loads(cli(tmp_path, "claim", "r-w", "t1").stdout)
+    assert out["task_id"] == "t1"
+    evs = read_state(tmp_path)["events"]
+    wc = next((e for e in evs if e.get("kind") == "worker_clamped"), None)
+    assert wc, "worker_clamped 事件必须落盘"
+    assert wc["requested"] == 8
+    assert wc["effective"] <= 5
+    assert wc["worker_limit"] == 8 and wc["crew_limit"] == 5
+    assert "at" in wc
+    assert read_state(tmp_path)["tasks"][0]["worker_effective"] <= 5
+
+
+def test_claim_worker_respects_crew_free(tmp_path: Path):
+    # crew_limit=5 且已有 4 个活跃会话：free=1，worker_count=3 → effective=1
+    tasks = review_state(task_status="pending")
+    tasks[0]["worker_count"] = 3
+    write_run(tmp_path, tasks=tasks, crew_limit=5)
+    s = read_state(tmp_path)
+    s["gates"] = {"g0": "approved", "g1": "skipped", "g2": "pending"}
+    # 造 4 个其他 run 的 running 会话占位
+    others = []
+    for i in range(4):
+        rid = f"r-other{i}"
+        write_run(tmp_path, run_id=rid, tasks=[])
+        o = read_state(tmp_path, run_id=rid)
+        o["fleet_id"] = "host-1"
+        o["tasks"] = [{"id": f"x{i}", "status": "running", "touchset": [f"x{i}.py"],
+                       "session_id": f"so-{i}", "attempts": 0}]
+        o["sessions"] = [{"id": f"so-{i}", "task_id": f"x{i}", "status": "running",
+                          "mode": "native", "pid": None}]
+        o.pop("integrity", None)
+        (tmp_path / ".coding" / "runs" / rid / "state.json").write_text(
+            json.dumps(o, ensure_ascii=False), encoding="utf-8")
+        others.append(rid)
+    s.pop("integrity", None)
+    (tmp_path / ".coding" / "runs" / "r-w" / "state.json").write_text(
+        json.dumps(s, ensure_ascii=False), encoding="utf-8")
+    cli(tmp_path, "claim", "r-w", "t1")
+    wc = next((e for e in read_state(tmp_path)["events"] if e.get("kind") == "worker_clamped"), None)
+    assert wc is not None and wc["effective"] == 1, wc
+
+
+# ------------------------------------------------------------------
+# W1.2 自动超时
+
+
+def _write_running_session(tmp_path: Path, started_ago_s: float, timeout_min: int | None):
+    tasks = review_state(task_status="running")
+    tasks[0]["session_id"] = "s-t"
+    write_run(tmp_path, tasks=tasks)
+    s = read_state(tmp_path)
+    s["sessions"] = [{"id": "s-t", "task_id": "t1", "adapter": "native", "mode": "native",
+                      "status": "running", "pid": None,
+                      "started_at": time.time() - started_ago_s}]
+    s.pop("integrity", None)
+    (tmp_path / ".coding" / "runs" / "r-w" / "state.json").write_text(
+        json.dumps(s, ensure_ascii=False), encoding="utf-8")
+    if timeout_min is not None:
+        (tmp_path / ".coding" / "config.json").write_text(
+            json.dumps({"timeout_minutes": timeout_min}), encoding="utf-8")
+
+
+def test_timeout_marks_failed_and_events(tmp_path: Path):
+    _write_running_session(tmp_path, started_ago_s=7200, timeout_min=1)
+    r = cli(tmp_path, "claim", "r-w", "t1", expect=1)
+    assert "timed out" in (r.stdout + r.stderr) or "task t1 is failed" in (r.stdout + r.stderr)
+    s = read_state(tmp_path)
+    assert s["tasks"][0]["status"] == "failed"
+    assert s["tasks"][0]["blocked_reason"] == "timeout"
+    assert s["sessions"][0]["status"] == "timeout"
+    assert any(e.get("kind") == "session_timeout" for e in s["events"])
+
+
+def test_late_report_ignored_after_timeout(tmp_path: Path):
+    _write_running_session(tmp_path, started_ago_s=7200, timeout_min=1)
+    cli(tmp_path, "claim", "r-w", "t1", expect=1)  # 触发超时判定
+    sdir = tmp_path / ".coding" / "runs" / "r-w" / "sessions" / "s-t"
+    sdir.mkdir(parents=True, exist_ok=True)
+    (sdir / "report.json").write_text(json.dumps({"result": "done", "files_changed": [],
+                                                  "verification": [], "open_questions": [],
+                                                  "notes": "late"}), encoding="utf-8")
+    r = cli(tmp_path, "report", "r-w", "t1", expect=1)
+    assert "late report ignored" in (r.stdout + r.stderr) or "has no session" in (r.stdout + r.stderr)
+    s = read_state(tmp_path)
+    assert s["tasks"][0]["status"] == "failed"  # 迟到结果不改状态
+    assert any(e.get("kind") == "late_result_ignored" for e in s["events"])
+
+
+def test_no_timeout_config_keeps_manual_path(tmp_path: Path):
+    _write_running_session(tmp_path, started_ago_s=999999, timeout_min=None)
+    out = json.loads(cli(tmp_path, "claim", "r-w", "t1").stdout)  # 幂等重放，不超时
+    assert out["task_id"] == "t1"
+    s = read_state(tmp_path)
+    assert s["tasks"][0]["status"] == "running"
+    assert not any(e.get("kind") == "session_timeout" for e in s.get("events", []))
+
+
+# ------------------------------------------------------------------
+# W2.1 trace / W2.2 账单
+
+
+def test_trace_ids_chain_session_and_review(tmp_path: Path):
+    write_run(tmp_path, tasks=review_state(task_status="pending"))
+    s = read_state(tmp_path)
+    s["gates"] = {"g0": "approved", "g1": "skipped", "g2": "pending"}
+    s.pop("integrity", None)
+    (tmp_path / ".coding" / "runs" / "r-w" / "state.json").write_text(
+        json.dumps(s, ensure_ascii=False), encoding="utf-8")
+    cli(tmp_path, "claim", "r-w", "t1")
+    s = read_state(tmp_path)
+    assert s.get("trace_id") and s.get("run_span_id")
+    assert s.get("trace_supported") is False  # 宿主无真实 tracing，不假造
+    sess = s["sessions"][-1]
+    assert sess.get("span_id") and sess.get("parent_span_id") == s["run_span_id"]
+    assert any(sp.get("kind") == "session" and sp.get("span_id") == sess["span_id"]
+               for sp in s.get("spans", []))
+
+
+def test_usage_ledger_accumulates_and_context_reports(tmp_path: Path):
+    write_run(tmp_path, tasks=review_state(task_status="accepted"))
+    cli(tmp_path, "usage", "r-w",
+        json.dumps({"source": "worker", "model_ref": "m1", "input_tokens": 10,
+                    "output_tokens": 5, "task_id": "t1"}))
+    cli(tmp_path, "usage", "r-w",
+        json.dumps({"source": "reviewer", "model_ref": "m1", "input_tokens": 20,
+                    "output_tokens": 0}))
+    s = read_state(tmp_path)
+    assert s["budget"]["used_tokens"] == 35
+    assert len(s["usage_log"]) == 2
+    m = json.loads(cli(tmp_path, "context", "r-w").stdout)
+    assert m["budget"]["used_tokens"] == 35
+    assert m["budget"]["token_usage_collected"] is True
+    assert m["budget"]["usage_by_source"] == {"worker": 15, "reviewer": 20}
+    assert m["trace_id"] == s["trace_id"]
+
+
+def test_usage_rejects_missing_fields(tmp_path: Path):
+    write_run(tmp_path)
+    r = cli(tmp_path, "usage", "r-w", json.dumps({"source": "worker"}), expect=1)
+    assert "missing required field" in (r.stdout + r.stderr)
+
+
+# ------------------------------------------------------------------
+# W3.1 脱敏扩口
+
+
+def test_record_event_redacts_secret_fields():
+    from engine.coding import state as _st
+    state: dict = {}
+    _st.record_event(state, "task_blocked", task_id="t1",
+                     reason="leaked sk-abcdefghijklmnop1234")
+    assert state["events"][0]["reason"] == "[redacted:api_key_sk]"
+    assert state["events"][1]["kind"] == "secret_detected"
+
+
+def test_claim_blocks_after_timeout(tmp_path: Path):
+    _write_running_session(tmp_path, started_ago_s=7200, timeout_min=1)
+    cli(tmp_path, "claim", "r-w", "t1", expect=1)
+    r = cli(tmp_path, "claim", "r-w", "t1", expect=1)
+    assert "timed out" in (r.stdout + r.stderr) or "task t1 is failed" in (r.stdout + r.stderr)

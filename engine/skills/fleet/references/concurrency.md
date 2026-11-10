@@ -9,9 +9,9 @@
 | Worker（单任务可拆子任务） | 不主动拆 | 8 | — | 每张任务独立计 |
 
 - Crew 与 Worker 不是同一种计数：Crew＝run 内同时活跃的子会话上限；Worker＝单张任务
-  可拆的执行单元上限。设计规则是 Worker 不突破 Crew（`min(worker 上限, crew_limit)`）。
-  **该钳制当前预留、未接线**：内核无任务拆分数入口，`clamp_workers` 是带测试的纯函数、
-  无生产调用方，也无 `worker_clamped` 事件写入方（见 `docs/schema.md` 未实现清单）。
+  可拆的执行单元上限。Worker 不突破 Crew：`plan` 任务图可带 `worker_count`（缺省 0＝
+  旧任务不参与），`claim` 按 `min(worker_count, worker_limit≤8, crew_limit−active_sessions)`
+  钳制，超钳记 `worker_clamped` 事件（requested／effective／limits），不静默放行；旧任务不回填。
 - 并发是天花板，不是目标：默认 0 个子代理，康娜能直接做完的不派；派之前报「几个、为什么、上限几」。
   机械／单一活 ≤1 个，标准施工 ≤3 个；只有真实并行、互不重叠的子问题才并行。
 

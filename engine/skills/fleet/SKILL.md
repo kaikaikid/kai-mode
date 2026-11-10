@@ -158,9 +158,13 @@ touchset 重叠且串行依赖时，默认合成一个 task、多 AC；不要按
 - 用户没显式指定时，先问一次「用速推吗？」，不自行决定。
 - 并发节制、槽位、`--ships`／`--crew`／`--fleet` 的用法见
   [`references/concurrency.md`](references/concurrency.md)。
-- **Crew / Worker 口径**：Crew＝run 内同时活跃的施工子会话上限（≤5），Worker＝单张任务可拆的子任务上限（≤8）；
-  设计规则是 Worker 不突破 Crew（`min(worker 上限, crew_limit)`）。**该钳制当前预留、未接线**
-  （无任务拆分数入口，无 `worker_clamped` 写入方），现状见 `docs/schema.md` 未实现清单。
+- **Crew / Worker 口径**：Crew＝run 内同时活跃的施工子会话上限（≤5），Worker＝单张任务可拆的子任务上限（≤8）。
+  Worker 不突破 Crew：`plan` 可带 `worker_count`（缺省 0＝旧任务），`claim` 按
+  `min(worker_count, worker_limit≤8, crew_limit−active_sessions)` 钳制，超钳记
+  `worker_clamped` 事件（requested／effective／limits），不静默放行；旧任务不回填。
+- **自动超时**：`.coding/config.json` 配 `timeout_minutes`（缺省关闭，保持人工路径）后，
+  `claim`／`report` 判 running session 超时：session 标 `timeout`、task 转 failed（原因码 `timeout`）、
+  记 `session_timeout` 事件；迟到报告只留 `late_result_ignored` 诊断事件，不复活任务、不自动重派。
 
 ## 失败处理
 

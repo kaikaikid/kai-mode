@@ -71,6 +71,41 @@ def _coding_config(root: "Path") -> dict[str, Any]:
     return cfg
 
 
+def _timeout_minutes(cfg: dict[str, Any]) -> int:
+    """自动超时配置：`.coding/config.json` 的 `timeout_minutes`；0/缺省 = 关闭（保持人工路径）。"""
+    try:
+        return max(0, int(cfg.get("timeout_minutes") or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _check_timeouts(s: dict[str, Any], root: Path) -> None:
+    """按配置判 running session 超时（W1.2）：超时 → task 转 failed＋`session_timeout` 事件＋
+    `timeout` 原因码；不自动重派（有副作用操作留人工）。无配置则不启用、不偷偷生效。"""
+    minutes = _timeout_minutes(_coding_config(root))
+    if minutes <= 0:
+        return
+    limit = minutes * 60
+    for sess in s.get("sessions", []):
+        if sess.get("status") != "running":
+            continue
+        started = float(sess.get("started_at") or 0)
+        if not started or (time.time() - started) < limit:
+            continue
+        t = next((x for x in s.get("tasks", []) if x.get("id") == sess.get("task_id")), None)
+        sess["status"] = "timeout"
+        sess["timed_out_at"] = time.time()
+        st.record_event(s, "session_timeout", session_id=sess.get("id"),
+                        task_id=sess.get("task_id"), at=sess["timed_out_at"],
+                        timeout_minutes=minutes)
+        if t is not None and t.get("status") == "running":
+            t["status"] = "failed"
+            st.set_blocked_reason(t, "timeout")
+            # 保留 t["session_id"]：迟到报告要靠它定位 session，走 late_result_ignored 分支；
+            # 任务已 failed，claim 的幂等重放只认 running，不会被复用。
+            s["resume"]["next_action"] = f"task {t['id']} session timeout; needs a human"
+
+
 ISSUE_RE = re.compile(r"https?://github\.com/[\w.-]+/[\w.-]+/issues/(\d+)|(?<![\w#])#(\d+)")
 
 
@@ -447,6 +482,8 @@ def cmd_plan(args: argparse.Namespace) -> None:
                 "blocked_reason": None,
                 "blocked_at": None,
                 "return_locked": False,
+                # W1.1：可选 worker_count（缺省 0 = 旧任务，不改行为）。
+                "worker_count": int(t.get("worker_count", 0) or 0),
             })
         s["tasks"] = norm
         s["touchset"] = sorted({p for t in norm for p in t.get("touchset", [])})
@@ -534,6 +571,8 @@ def cmd_claim(args: argparse.Namespace) -> None:
             _err(f"run is terminal ({s['phase']}); claim rejected")
         if s.get("phase") == "queued":
             _err("run is queued; wait for a free slot")
+        _check_timeouts(s, root)  # 超时先落账，超时任务不再可 claim
+        _save(s)  # 落账必须持久化：后面的路径都可能提前 return / _err
         t = _task(s, args.task_id)
 
         sid = t.get("session_id")
@@ -545,6 +584,9 @@ def cmd_claim(args: argparse.Namespace) -> None:
             if mode != "native":
                 _err(f"task {t['id']} is already running under a {mode} session ({sid}); "
                      f"use `fleet report {s['run_id']} {t['id']}`")
+            if sess.get("status") == "timeout":
+                _save(s)
+                _err(f"task {t['id']} session timed out; task failed (needs a human)")
             print(json.dumps(_claim_card(s, t, sess), ensure_ascii=False, indent=2))
             return
 
@@ -562,6 +604,26 @@ def cmd_claim(args: argparse.Namespace) -> None:
         ok, why = scheduler.can_spawn(s, t, root)
         if not ok:
             _err(f"cannot claim: {why}")
+        # W1.1：Worker 钳制接线——claim 前按 min(worker_count, worker_limit≤8,
+        # crew_limit - active_sessions) 钳制；超钳记 `worker_clamped` 事件，不静默放行。
+        wc = int(t.get("worker_count", 0) or 0)
+        if wc > 0:
+            active = scheduler.slot_usage(root, fleet_id=s.get("fleet_id"))["sessions"]
+            clamp = scheduler.clamp_workers(wc, s, active_sessions=active)
+            if clamp["clamped"]:
+                st.record_event(s, "worker_clamped", task_id=t["id"],
+                                requested=clamp["requested"],
+                                effective=clamp["effective"],
+                                worker_limit=clamp["worker_limit"],
+                                crew_limit=clamp["crew_limit"],
+                                active_sessions=clamp["active_sessions"],
+                                at=time.time())
+            t["worker_effective"] = clamp["effective"]
+
+        # W1.1/W2.1 的落账（事件 + span）已写进 s：随后面的 _save(s) 一起持久化。
+        # W2.1：trace——run 创建时带 trace_id；session 记 span_id＋parent_span_id=run_span_id。
+        # 宿主不提供真实 tracing 时 trace_supported=false，不假造链。
+        span = st.new_span(s, kind="session", task_id=t["id"])
 
         sid = _new_sid()
         sess = {
@@ -571,6 +633,8 @@ def cmd_claim(args: argparse.Namespace) -> None:
             "pid": None,
             "started_at": time.time(),
             "status": "running",
+            "span_id": span["span_id"],
+            "parent_span_id": span["parent_span_id"],
             # 幂等重放时复用同一基线，任务卡才能一模一样。
             "diff_base": _diff_base(s),
         }
@@ -649,6 +713,14 @@ def cmd_report(args: argparse.Namespace) -> None:
         sess = next((x for x in s.get("sessions", []) if x["id"] == sid), None)
         if not sess:
             _err("session record missing")
+        # 迟到结果：session 已被超时判定（task failed）——只留诊断事件，不改状态、不收报告。
+        if sess.get("status") == "timeout":
+            st.record_event(s, "late_result_ignored", session_id=sid,
+                            task_id=t["id"], at=time.time(),
+                            note="session timed out; late output kept as diagnostics only")
+            _save(s)
+            _err(f"session {sid} timed out; task {t['id']} is failed, late report ignored "
+                 f"(diagnostics kept in the session dir)")
         sdir = _session_dir(s["run_id"], sid)
     # report_path 由 claim 卡给出（绝对路径），优先用它；state 里 sessions 也可能有 session_dir
     rp = Path(sdir) / "report.json"
@@ -812,17 +884,20 @@ def cmd_verdict(args: argparse.Namespace) -> None:
         if t.get("status") != "review":
             _err(f"task {t['id']} is {t.get('status')}, not review")
         sid = _new_sid()
+        span = st.new_span(s, kind="review", task_id=t["id"], verdict=verdict)
         t["review"] = {
             "verdict": verdict,
             "defects": defects,
             "reason": reason,
             "session": sid,
+            "span_id": span["span_id"],
         }
         t["session_id"] = sid
         s.setdefault("sessions", []).append({
             "id": sid, "task_id": t["id"], "adapter": "native-review",
             "pid": None, "started_at": time.time(), "status": "finished",
             "role": "reviewer", "mode": "native",
+            "span_id": span["span_id"], "parent_span_id": span["parent_span_id"],
             # 只读声明：报告入口据此拒收任何改动（ADR-0033 D7）。不靠宿主工具白名单。
             "read_only": True,
         })
@@ -975,8 +1050,11 @@ def cmd_confirm(args: argparse.Namespace) -> None:
             return
         h["status"] = args.decision
         h["at"] = time.time()
+        span = st.new_span(s, kind="handoff", handoff_id=h["id"])
+        h["span_id"] = span["span_id"]
+        h["parent_span_id"] = span["parent_span_id"]
         st.record_event(s, "handoff_confirmed", handoff_id=h["id"],
-                        status=args.decision)
+                        status=args.decision, span_id=span["span_id"])
         _save(s)
         print(json.dumps({"handoff_id": h["id"], "status": h["status"]},
                          ensure_ascii=False))
@@ -1001,6 +1079,7 @@ def cmd_resume(args: argparse.Namespace) -> None:
 
 def cmd_status(args: argparse.Namespace) -> None:
     root = _root()
+    # 自动超时判定走各自命令的锁（claim/report 在自身锁内判定并落账）。
     runs = st.list_runs(root)
     if args.html:
         _write_board(runs, root)
@@ -1079,8 +1158,7 @@ def cmd_gc(args: argparse.Namespace) -> None:
 
 def cmd_context(args: argparse.Namespace) -> None:
     """Context Manifest：本次 run 的上下文组装清单（P4 落地部分）。
-    与 `resume`／`status` 同源（都读 state.json），不虚构 Token 数：
-    `used_tokens` 当前无写入方，原样输出 0 并标 `token_usage_collected=false`。"""
+    与 `resume`／`status` 同源（都读 state.json）；trace/账本原样输出，不虚构 Token 数。"""
     root = _root()
     with st.lock(root):
         s = st.load(args.run_id, root)
@@ -1089,6 +1167,8 @@ def cmd_context(args: argparse.Namespace) -> None:
         "run_id": s["run_id"],
         "schema_version": s.get("schema_version"),
         "phase": s.get("phase"),
+        "trace_id": s.get("trace_id"),
+        "trace_supported": bool(s.get("trace_supported", False)),
         "tasks": [{
             "id": t.get("id"),
             "status": t.get("status"),
@@ -1100,11 +1180,61 @@ def cmd_context(args: argparse.Namespace) -> None:
         "budget": {
             "max_tokens": budget.get("max_tokens"),
             "used_tokens": budget.get("used_tokens", 0),
-            "token_usage_collected": False,  # 无写入方，如实标未采集
+            # W2.2：按 usage_log 有没有真实回传定，不再硬标 False。
+            "token_usage_collected": bool(s.get("usage_log")),
+            "usage_by_source": _usage_by_source(s),
         },
+        "spans": s.get("spans", []),
         "events": s.get("events", []),
     }
     print(json.dumps(manifest, ensure_ascii=False, indent=2))
+
+
+def _usage_by_source(s: dict[str, Any]) -> dict[str, int]:
+    """账本按 source 聚合（task/run/role 维度都在明细行里，取合计只按 source）。"""
+    out: dict[str, int] = {}
+    for row in s.get("usage_log", []) or []:
+        src = str(row.get("source", "unknown"))
+        out[src] = out.get(src, 0) + int(row.get("input_tokens", 0) or 0) \
+            + int(row.get("output_tokens", 0) or 0)
+    return out
+
+
+def cmd_usage(args: argparse.Namespace) -> None:
+    """W2.2 Token 账单：宿主回传 usage 追加账本并累计 used_tokens；
+    不回传不编数。usage JSON：{source: worker|reviewer|planner, model_ref,
+    input_tokens, output_tokens, at}；task_id 可选。拒绝缺字段，不估算。"""
+    root = _root()
+    try:
+        usage = json.loads(args.usage_json)
+    except Exception as e:
+        _err(f"usage JSON not parseable: {e}")
+    if not isinstance(usage, dict):
+        _err("usage must be a JSON object")
+    for key in ("source", "model_ref", "input_tokens", "output_tokens"):
+        if key not in usage:
+            _err(f"usage missing required field: {key}")
+    if usage.get("source") not in {"worker", "reviewer", "planner"}:
+        _err("usage.source must be worker|reviewer|planner")
+    row = {
+        "source": usage["source"],
+        "model_ref": str(usage["model_ref"]),
+        "input_tokens": int(usage.get("input_tokens") or 0),
+        "output_tokens": int(usage.get("output_tokens") or 0),
+        "at": float(usage.get("at") or time.time()),
+        "task_id": usage.get("task_id"),
+    }
+    with st.lock(root):
+        s = st.load(args.run_id, root)
+        s.setdefault("usage_log", []).append(row)
+        total = sum(int(r.get("input_tokens", 0) or 0) + int(r.get("output_tokens", 0) or 0)
+                    for r in s["usage_log"])
+        s.setdefault("budget", {})["used_tokens"] = total
+        s["budget"]["token_usage_collected"] = True
+        _save(s)
+    print(json.dumps({"run_id": s["run_id"], "used_tokens": total,
+                      "usage_by_source": _usage_by_source(s),
+                      "rows": len(s["usage_log"])}, ensure_ascii=False))
 
 
 def cmd_doctor(args: argparse.Namespace) -> None:
@@ -1305,6 +1435,13 @@ def build_parser() -> argparse.ArgumentParser:
     cx = sub.add_parser("context", help="print the Context Manifest for a run")
     cx.add_argument("run_id")
     cx.set_defaults(func=cmd_context)
+
+    ug = sub.add_parser("usage", help="append a host-reported usage row and accumulate used_tokens")
+    ug.add_argument("run_id")
+    ug.add_argument("usage_json",
+                    help='{"source": "worker|reviewer|planner", "model_ref": "...", '
+                         '"input_tokens": N, "output_tokens": N, "at": epoch, "task_id": optional}')
+    ug.set_defaults(func=cmd_usage)
 
     wp = sub.add_parser("warp", help="autopilot run: warp mode (no ship)")
     wp.add_argument("--fleet", default=None, help="fleet id; slots are per-fleet")

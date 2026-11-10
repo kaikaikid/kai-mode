@@ -147,11 +147,79 @@ def migrate(state: dict[str, Any]) -> dict[str, Any]:
         state["events"] = []
     if "closed_at" not in state:
         state["closed_at"] = None
+    # W2.1 trace：run 级 trace_id/run_span_id；无真实 tracing 能力标 false，不假造链。
+    if "trace_id" not in state:
+        state["trace_id"] = new_trace_id()
+    if "run_span_id" not in state:
+        state["run_span_id"] = new_span_id()
+    if "trace_supported" not in state:
+        state["trace_supported"] = False
     state["schema_version"] = SCHEMA_VERSION
     return state
 
 
+def new_trace_id() -> str:
+    """run 级 trace_id：8 位时间戳前缀 + 8 位随机后缀。"""
+    suffix = "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(8))
+    return f"tr-{int(time.time()):x}{suffix}"
+
+
+def new_span_id() -> str:
+    """span_id：6 位随机后缀。"""
+    return "sp-" + "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(6))
+
+
+def new_span(state: dict[str, Any], kind: str, **fields: Any) -> dict[str, Any]:
+    """登记一个 span：session/审查/交接各一个，parent 一律是 run 的 run_span_id。
+    只记元数据与引用，不存推理或密钥。宿主不提供真实 tracing 时 run 标
+    `trace_supported=false`，不假造链。"""
+    span = {"span_id": new_span_id(),
+            "parent_span_id": state.get("run_span_id"),
+            "kind": kind,
+            "at": time.time(),
+            **fields}
+    state.setdefault("spans", []).append(span)
+    return span
+
+
+def _safe_str(value: Any) -> str | None:
+    """脱敏守卫：命中密钥/令牌形状的字段整值以模式名替代，不落原文（W3.1）。
+    幂等键、哈希、原因码这类机器字符串误伤面极小，全量扫。"""
+    if not isinstance(value, str):
+        return None
+    hits = scan_secrets(value)
+    if hits:
+        return f"[redacted:{','.join(hits)}]"
+    return value
+
+
 def record_event(state: dict[str, Any], kind: str, **fields: Any) -> dict[str, Any]:
+    """往 run 写一条事件（只追加，不改任务状态）。字符串字段全过脱敏守卫，
+    命中密钥形状的以 `[redacted:<模式名>]` 替代，不回显原文。"""
+    ev = {"kind": kind, "at": time.time()}
+    redacted_hits: list[str] = []
+    for k, v in fields.items():
+        if isinstance(v, str):
+            hits = scan_secrets(v)
+            if hits:
+                ev[k] = f"[redacted:{','.join(hits)}]"
+                redacted_hits.extend(hits)
+                continue
+        elif isinstance(v, list):
+            red = [_safe_str(x) or x for x in v]
+            if any(isinstance(x, str) and x.startswith("[redacted:") for x in red):
+                ev[k] = red
+                redacted_hits.append("event_field")
+                continue
+        ev[k] = v
+    state.setdefault("events", []).append(ev)
+    if redacted_hits:
+        state["events"].append({
+            "kind": "secret_detected", "at": time.time(),
+            "patterns": sorted(set(redacted_hits)),
+            "note": "event field redacted before persistence",
+        })
+    return ev
     """往 run 写一条事件（只追加，不改任务状态）。kind 建议用事件名，如
     `handoff_confirmed` / `cancel_late` / `secret_detected`。"""
     ev = {"kind": kind, "at": time.time(), **fields}
