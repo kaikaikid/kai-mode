@@ -4,15 +4,15 @@
 
 | 命令 | 作用 |
 |---|---|
-| `fleet warp <任务> [--ships 1-3] [--no-auto]`（酒馆名**开团**） | 开团：开工到验收门（不发货） |
-| `fleet jump <任务> [--ships 1-3] [--no-auto]`（酒馆名**速推**） | 速推：加急 ＋ 自动验收发货 |
+| 开团 `fleet warp <任务> [--ships 1-3] [--no-auto]`（工程别名，正文只说**开团**） | 开工到验收门（不发货） |
+| 速推 `fleet jump <任务> [--ships 1-3] [--no-auto]`（工程别名，正文只说**速推**） | 加急 ＋ 自动验收发货 |
 | `fleet auto <run>` | 无人值守循环：claim → report → 审查 → verdict，不等人敲命令 |
 | `fleet status [--html]` | 现在有哪些 run、到哪一步 |
 | `fleet resume <run>` | 从断点续跑 |
 | `fleet dirty [--json]` | 主树脏件分类 |
 | `fleet park [-m 理由]` | 收起无关产品改动（可逆） |
 | `fleet unpark [ref] [--list]` | 放回收起的改动 |
-| `fleet gate <run> <g0\|g1\|g2> approve` | 手动批门点（**开团** `warp` 停在验收门时用它发货） |
+| `fleet gate <run> <g0\|g1\|g2> approve` | 手动批门点（开团停在验收门时用它发货） |
 | `fleet gc [--all]` | 清理已收尾的 worktree 与分支 |
 | `fleet doctor` | 状态与 git 对账 |
 | `gh issue create --repo <owner/name> ...` | 开票，**必须显式带 `--repo`** |

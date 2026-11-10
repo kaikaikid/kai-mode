@@ -14,7 +14,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from . import auto, dirty, scheduler, state as st, worktree
+from . import TASK_SCHEMA_VERSION, auto, dirty, scheduler, state as st, worktree
 
 
 # ---------------------------------------------------------------------------
@@ -171,12 +171,24 @@ def advance(s: dict[str, Any], root: "Path | None" = None) -> None:
         elif phase == "blocked":
             # 救场出口：review inconclusive / rework 后任务仍有可继续的活 → 回 delegating
             # 让 drive 接手；任务全终态（真 blocked）或 ship 失败的 run 不在此复活。
-            if any(t.get("status") in {"pending", "ready", "running", "review", "returned"} for t in tasks):
+            # return_locked 的任务不算「可继续的活」：第三次 return 锁死的只留人工路。
+            if any(t.get("status") in {"pending", "ready", "running", "review"} or
+                    (t.get("status") == "returned" and not t.get("return_locked"))
+                    for t in tasks):
                 s["phase"] = "delegating"
             elif tasks and all(t.get("status") in {"accepted", "abandoned"} for t in tasks):
                 # 全验收后才被卡 blocked 的 run（验收发生在 blocked 期间）：回 reviewing
                 # 走常规 reviewing→closing 推进，ship 才有触发点。
                 s["phase"] = "reviewing"
+        elif phase == "cancelled":
+            # CANCELLED→CLOSED：取消后的确认落档。live session 已被 cmd_stop 清掉；
+            # 这里只在「无在途任务、无运行中会话」时落档 closed_at，不复活、不逆转。
+            live = [x["id"] for x in s.get("sessions", []) if x.get("status") == "running"]
+            busy = any(t.get("status") in {"pending", "ready", "running", "review", "returned"}
+                       for t in tasks)
+            if not live and not busy and not s.get("closed_at"):
+                import time as _t
+                s["closed_at"] = _t.strftime("%Y-%m-%dT%H:%M:%S")
 
         if s.get("phase") == before:
             break
@@ -205,6 +217,8 @@ def advance(s: dict[str, Any], root: "Path | None" = None) -> None:
             else:
                 s["phase"] = "blocked"
                 s["resume"]["next_action"] = f"ship failed: {msg}"
+                st.set_blocked_reason(s, "ship_failed")
+                st.record_event(s, "ship_failed", message=msg[:200])
         else:
             s["resume"]["next_action"] = "construction done; no ship right — ship via gold or `fleet gate <run> g2 approve`"
 
@@ -416,6 +430,9 @@ def cmd_plan(args: argparse.Namespace) -> None:
         norm = []
         for i, t in enumerate(tasks, 1):
             norm.append({
+                # Task 显式版本：创建时锁定 TASK_SCHEMA_VERSION，运行中不静默升级
+                # （旧任务按锁定版本执行；升版只追加——见 docs/schema.md）。
+                "schema_version": TASK_SCHEMA_VERSION,
                 "id": t.get("id") or f"t{i}",
                 "title": t.get("title") or f"task {i}",
                 "brief": t.get("brief", ""),
@@ -427,6 +444,9 @@ def cmd_plan(args: argparse.Namespace) -> None:
                 "status": "pending",
                 "attempts": 0,
                 "session_id": None,
+                "blocked_reason": None,
+                "blocked_at": None,
+                "return_locked": False,
             })
         s["tasks"] = norm
         s["touchset"] = sorted({p for t in norm for p in t.get("touchset", [])})
@@ -472,6 +492,8 @@ def cmd_gate(args: argparse.Namespace) -> None:
             if not ok:
                 s["phase"] = "blocked"
                 s["resume"]["next_action"] = f"ship failed: {msg}"
+                st.set_blocked_reason(s, "ship_failed")
+                st.record_event(s, "ship_failed", message=msg[:200])
                 _save(s)
                 _err(f"ship failed, run blocked: {msg}")
             s["gates"]["g2"] = "approved"
@@ -589,6 +611,28 @@ def cmd_release(args: argparse.Namespace) -> None:
         print(json.dumps({"task_id": t["id"], "session": sid, "mode": mode,
                           "task_status": t["status"], "session_status": sess["status"]},
                          ensure_ascii=False, indent=2))
+
+
+def cmd_block(args: argparse.Namespace) -> None:
+    """人工/主会话把任务标 blocked：原因码必须在 docs/schema.md 码表里（set_blocked_reason 守门）。
+    超时、缺件这类内核判不了的原因走这里——只记录，不自动重开。"""
+    root = _root()
+    with st.lock(root):
+        s = st.load(args.run_id, root)
+        t = _task(s, args.task_id)
+        if t.get("status") in {"accepted", "abandoned"}:
+            _err(f"task {t['id']} is terminal ({t.get('status')}); states kept, record an event instead")
+        try:
+            st.set_blocked_reason(t, args.reason)
+        except ValueError as e:
+            _err(str(e))
+        t["status"] = "blocked"
+        t["session_id"] = None
+        st.record_event(s, "task_blocked", task_id=t["id"], reason=args.reason)
+        advance(s, root)
+        _save(s)
+        print(json.dumps({"task_id": t["id"], "status": "blocked",
+                          "blocked_reason": t["blocked_reason"]}, ensure_ascii=False))
 
 
 def cmd_report(args: argparse.Namespace) -> None:
@@ -724,6 +768,19 @@ def cmd_verdict(args: argparse.Namespace) -> None:
         _err(f"verdict file not parseable: {e}")
     if not isinstance(rep, dict):
         _err("verdict file must be a JSON object")
+    # interop：审计算子可按 Receipt/Envelope 信封投递（role_id 必为 reviewer）——
+    # 信封严格模式：未声明字段、fact 缺 evidence_refs、非 reviewer verdict 一律拒收。
+    # 先拆信封再判三态：信封的 verdict 是对象，直接进 set 会 TypeError。
+    if "role_id" in rep or "schema_version" in rep or "idempotency_key" in rep:
+        problems = st.validate_receipt(rep)
+        if problems:
+            _err("receipt rejected: " + "; ".join(problems[:5]))
+        v = rep.get("verdict") or {}
+        if isinstance(v, dict):
+            rep = {"verdict": v.get("value", "accept"),
+                   "defects": v.get("defects", []),
+                   "reason": v.get("reason", ""),
+                   "deferred_items": v.get("deferred_items", [])}
     verdict = rep.get("verdict")
     if verdict not in {"accept", "return", "defer"}:
         _err(f"invalid verdict: {verdict!r} (expected accept/return/defer)")
@@ -783,6 +840,11 @@ def cmd_verdict(args: argparse.Namespace) -> None:
             t["defects"] = "; ".join(defects) if defects else reason
             if t["attempts"] >= 3:
                 t["status"] = "blocked"
+                # 第三次 return：锁死，不再自动重开；只留人工 reopen / 拆分重派的路。
+                t["return_locked"] = True
+                st.set_blocked_reason(t, "return_limit")
+                st.record_event(s, "return_limit_blocked", task_id=t["id"],
+                                attempts=t["attempts"])
             s["resume"]["next_action"] = f"rework {t['id']}"
         advance(s, root)
         _save(s)
@@ -818,6 +880,10 @@ def cmd_return(args: argparse.Namespace) -> None:
         t["defects"] = args.defects or ""
         if t["attempts"] >= 3:
             t["status"] = "blocked"
+            t["return_locked"] = True
+            st.set_blocked_reason(t, "return_limit")
+            st.record_event(s, "return_limit_blocked", task_id=t["id"],
+                            attempts=t["attempts"])
         s["resume"]["next_action"] = f"rework {t['id']}"
         _save(s)
         print(f"returned {t['id']} attempts={t['attempts']} status={t['status']}")
@@ -828,6 +894,12 @@ def cmd_reopen(args: argparse.Namespace) -> None:
     with st.lock(root):
         s = st.load(args.run_id, root)
         t = _task(s, args.task_id)
+        # 第三次 return 锁死的任务：不自动重开；人工 reopen 显式解锁才可再派。
+        if t.get("return_locked"):
+            print(json.dumps({"task_id": t["id"], "return_locked": True,
+                              "hint": "blocked by 3rd return; reopen needs human approval"},
+                             ensure_ascii=False))
+            return
         t["status"] = "pending"
         s["resume"]["last_accepted"] = None
         if s["phase"] in {"reviewing", "closing"}:
@@ -851,10 +923,41 @@ def cmd_stop(args: argparse.Namespace) -> None:
                 _kill_tree(pid)
                 killed.append(str(pid))
             sess["status"] = "stopped"
+        # 迟到取消：已经在终态的任务不受影响，只记事件，不逆转。
+        late = [t["id"] for t in s.get("tasks", [])
+                if t.get("status") in {"accepted", "abandoned"}]
+        if late:
+            st.record_event(s, "cancel_late", task_ids=late,
+                            note="stop arrived after terminal; states kept")
         s["phase"] = "cancelled"
         s["resume"]["next_action"] = "stopped" + (f" (killed pids: {','.join(killed)})" if killed else "")
         _save(s)
         print(f"stopped {s['run_id']}" + (f"; killed pids {','.join(killed)}" if killed else ""))
+
+
+def cmd_confirm(args: argparse.Namespace) -> None:
+    """交接确认：handoff 状态 accepted|rejected|needs_clarification，责任转移记事件。
+    重复确认同一 handoff 幂等：状态不变，只回显。"""
+    root = _root()
+    with st.lock(root):
+        s = st.load(args.run_id, root)
+        hs = s.setdefault("handoffs", [])
+        h = next((x for x in hs if x.get("id") == args.handoff_id), None)
+        if h is None:
+            h = {"id": args.handoff_id, "status": "pending",
+                 "from": None, "to": None, "at": None}
+            hs.append(h)
+        if h.get("status") == args.decision:
+            print(json.dumps({"handoff_id": h["id"], "status": h["status"],
+                              "idempotent": True}, ensure_ascii=False))
+            return
+        h["status"] = args.decision
+        h["at"] = time.time()
+        st.record_event(s, "handoff_confirmed", handoff_id=h["id"],
+                        status=args.decision)
+        _save(s)
+        print(json.dumps({"handoff_id": h["id"], "status": h["status"]},
+                         ensure_ascii=False))
 
 
 def cmd_resume(args: argparse.Namespace) -> None:
@@ -1079,6 +1182,15 @@ def build_parser() -> argparse.ArgumentParser:
     rl.add_argument("task_id")
     rl.set_defaults(func=cmd_release)
 
+    bl = sub.add_parser("block", help="mark a task blocked with a reason code (see docs/schema.md)")
+    bl.add_argument("run_id")
+    bl.add_argument("task_id")
+    bl.add_argument("--reason", required=True,
+                    help="one of return_limit|auto_fail_limit|read_only_violation|"
+                         "merge_conflict|ship_failed|timeout|cancel_late|"
+                         "worker_clamped|missing_capability")
+    bl.set_defaults(func=cmd_block)
+
     rp = sub.add_parser("report", help="collect a host-native subagent report")
     rp.add_argument("run_id")
     rp.add_argument("task_id")
@@ -1114,6 +1226,12 @@ def build_parser() -> argparse.ArgumentParser:
     stp = sub.add_parser("stop", help="stop a run, keep its state")
     stp.add_argument("run_id")
     stp.set_defaults(func=cmd_stop)
+
+    cf = sub.add_parser("confirm", help="confirm a handoff (accepted/rejected/needs_clarification)")
+    cf.add_argument("run_id")
+    cf.add_argument("handoff_id")
+    cf.add_argument("decision", choices=["accepted", "rejected", "needs_clarification"])
+    cf.set_defaults(func=cmd_confirm)
 
     rs = sub.add_parser("resume", help="resume a run from state.json")
     rs.add_argument("run_id")

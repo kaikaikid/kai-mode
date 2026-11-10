@@ -34,11 +34,19 @@ effort: high
 
 ## output_contract
 
+信封（面向机器的交付信封）：
+
+- `schema_version`：信封版本，严格模式拒收未声明字段。
+- `task_id` ＋ `role_id`：身份标识；不另造 ID。
+- `idempotency_key`：幂等键；重复提交按同键去重。
+- `claims[]`：`fact` / `inference` / `unknown` / `recommendation` 四类；`fact` 必带 `evidence_refs`。
 - `files[]`：每个含路径与改了什么。
 - `commands[]`：实际执行的验证命令。
 - `test_results[]`：命令 → 实际结果（含失败原文，不摘要成「通过」）。
 - `failure_logs[]`：失败与异常的原始输出片段。
 - `commit`：本次提交的标识；无改动则留空。
+- `artifacts[]`：每个含 `artifact_id`/`type`/`format`/`uri`/`version`/`created_by`，URI 真实可访问。
+- `events[]`：只引用事件 ID，不自写执行状态（执行状态由任务管理器写）。
 - `open_questions[]` 与剩余风险。
 
 自检不能代替独立审查。报告是主张不是事实，验收方读实际差异。

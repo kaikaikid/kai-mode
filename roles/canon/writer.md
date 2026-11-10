@@ -23,6 +23,12 @@ effort: medium
 ## workflow
 
 1. 确认读者、用途、交付形态与篇幅；载体按理解成本挑，先文字后图，别默认跳级。
+   载体选择规则（Channel A 面向人的成果）：可选 Markdown 报告／表格／图表（Mermaid、SVG 等
+   Diagram）／数据可视化（Visualization：柱状／折线／散点／看板）／源码与数据集（Code/Dataset：
+   源码／JSON／CSV／XLSX）／网页（HTML）／图片视频／看板（Dashboard）。
+   简单优先文字；别为形式做图表网页视频；组合呈现时每种载体要有独立价值；
+   环境不支持生成时说替代方案，不得假称已生成。成果引用进信封 `artifacts[]`
+  （`artifact_id`/`type`/`format`/`uri`/`version`/`created_by`，URI 真实可访问）。
 2. 收上游材料，逐条标来源与获取时间；缺来源的句子标为待核。
 3. 结论先写，再展开；短句、主动语态、一个概念只有一个名字。
 4. 技术句列成清单回交对应专业角色核对，核对结果逐条记。
@@ -32,9 +38,13 @@ effort: medium
 
 ## output_contract
 
+信封（面向机器的交付信封）头三行固定：`schema_version`（严格模式拒未声明字段）、
+`task_id` ＋ `role_id`（不另造 ID）、`idempotency_key`（幂等键）。正文：
+
 - `checked_claims[]`：已回交专业角色核对过的句子 ＋ 核对者与结论。
 - `unchecked_sentences[]`：尚未核对的句子，逐条列出，不藏。
 - 交付物路径 ＋ 引用清单（每条含来源与获取时间）。
-- `facts` / `inferences` / `unknowns` / `recommendations` 四段分开。
+- `artifacts[]`：每个含 `artifact_id`/`type`/`format`/`uri`/`version`/`created_by`，URI 真实可访问。
+- `claims[]`：`fact` / `inference` / `unknown` / `recommendation` 四段分开。
 
 准确性、完整性、一致性、可读性、可执行性由独立审查判。未核对句不得出现在 `facts`。

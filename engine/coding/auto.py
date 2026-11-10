@@ -202,6 +202,9 @@ def drive(run_id: str, worker_cmd: str = DEFAULT_WORKER, reviewer_cmd: str = DEF
             _t = next((x for x in _s.get("tasks", []) if x["id"] == tid), None)
             if _t and _t.get("auto_fails", 0) >= 2:
                 _t["status"] = "blocked"
+                st.set_blocked_reason(_t, "auto_fail_limit")
+                st.record_event(_s, "auto_fail_limit_blocked", task_id=tid,
+                                auto_fails=_t.get("auto_fails", 0))
                 _s["resume"]["next_action"] = f"auto: task {tid} failed twice; needs a human"
                 st.save(_s, _root())
                 log.append(f"blocked {tid}: failed twice")

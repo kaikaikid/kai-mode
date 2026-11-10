@@ -36,6 +36,9 @@ effort: medium
 
 ## output_contract
 
+信封（面向机器的交付信封）头三行固定：`schema_version`（严格模式拒未声明字段）、
+`task_id` ＋ `role_id`（不另造 ID）、`idempotency_key`（幂等键）。记录字段：
+
 - `source`：候选来自哪个任务、哪条证据。
 - `version`：写入后的版本标识。
 - `conflicts_with[]`：冲突条目并列保留，标明处置。

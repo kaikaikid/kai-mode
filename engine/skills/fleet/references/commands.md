@@ -20,7 +20,7 @@
 | `fleet dirty [--json]` / `park` / `unpark` | 主树脏件分类与可逆收起 |
 | `fleet stop <run>` / `fleet gc [--all]` | 停 run／清已收尾资源 |
 | `fleet doctor` | 状态与 git 对账 |
-| `fleet warp <issue> [--ships 1-3] [--tasks f.json] [--no-auto]`（酒馆名**开团**） | 开团：自动批门 ＋ 施工，**不发货**（停在验收门） |
-| `fleet jump <issue> [--ships 1-3] [--no-auto]`（酒馆名**速推**） | 速推：加急 ＋ 自动验收发货 |
+| 开团 `fleet warp <issue> [--ships 1-3] [--tasks f.json] [--no-auto]`（工程别名） | 自动批门 ＋ 施工，**不发货**（停在验收门） |
+| 速推 `fleet jump <issue> [--ships 1-3] [--no-auto]`（工程别名） | 加急 ＋ 自动验收发货 |
 | `fleet auto <run> [--worker-cmd ...] [--reviewer-cmd ...]` | 无人值守循环：claim → 派子会话 → report → 审查 → verdict |
 | `fleet assimilate <branch> --approve` | 吞并外部分支（必须显式 `--approve`） |

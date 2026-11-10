@@ -31,10 +31,13 @@ metadata:
 4. 出问题清单：编号、严重度（BLOCKER／MAJOR／MINOR／INFO）、位置、证据、整改建议。
 5. 标准必须在看结果之前定；看完再改标准＝无效审查。
 
-## 交什么
+## 交什么（信封头三行固定：`schema_version`／`task_id` ＋ `role_id`／`idempotency_key`）
 
-- `verdict`：`PASS` / `CONDITIONAL_PASS` / `FAIL` / `NEEDS_INFO`
-- `blockers[]`、`conditions[]`（仅条件通过时）
+- `verdict`：三态——`accept`（过） / `return`（返工） / `defer`（技术已过，只把要用户拍板的事挂起，
+  必须带 `deferred_items`，每条含 `question`/`reason`/`priority`）。
+  旧值 `PASS` / `CONDITIONAL_PASS` / `FAIL` / `NEEDS_INFO` 禁用。
+- `defects[]`（旧称问题清单／blockers）：每条含严重度（BLOCKER／MAJOR／MINOR／INFO）、位置、证据、整改建议。
+- `claims[]`：论断按 `fact`/`inference`/`unknown`/`recommendation` 分类，`fact` 必带 `evidence_refs`。
 - 未覆盖范围与不确定性
 
 ## 不做什么

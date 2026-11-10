@@ -145,3 +145,14 @@ def can_spawn(run: dict[str, Any], task: dict[str, Any], root: Path | None = Non
     if slot_usage(root, fleet_id=run.get("fleet_id"))["sessions"] >= crew_limit:
         return False, "fleet crew limit reached"
     return True, "ok"
+
+
+def clamp_workers(requested: int, run: dict[str, Any]) -> tuple[int, bool]:
+    """Worker≤Crew 钳制：Worker（单任务可拆数，≤TASK_MAX_WORKERS）不突破 Crew。
+    返回 (实际可派数, 是否被钳制)；被钳制一方记 `worker_clamped` 事件。"""
+    from . import TASK_MAX_WORKERS
+    want = max(1, min(TASK_MAX_WORKERS, int(requested or 1)))
+    crew_limit = int(run.get("crew_limit") or FLEET_MAX_CREW)
+    crew_limit = max(1, min(FLEET_MAX_CREW, crew_limit))
+    allowed = min(want, crew_limit)
+    return allowed, allowed < want

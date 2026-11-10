@@ -12,7 +12,11 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator
 
-from . import SCHEMA_VERSION
+from . import (
+    BLOCKED_REASON_CODES,
+    RECEIPT_SCHEMA_VERSION,
+    SCHEMA_VERSION,
+)
 
 TERMINAL_PHASES = {"done", "cancelled", "failed"}
 ACTIVE_PHASES = {"planning", "design", "delegating", "reviewing", "closing"}
@@ -137,8 +141,75 @@ def migrate(state: dict[str, Any]) -> dict[str, Any]:
         state["crew_limit"] = 5
     if "ships" not in state:
         state["ships"] = []
+    # -> v3: events 拨款（交接确认、钳制、取消迟到都记事件）；旧 run 空表起步，不回填。
+    if "events" not in state:
+        state["events"] = []
+    if "closed_at" not in state:
+        state["closed_at"] = None
     state["schema_version"] = SCHEMA_VERSION
     return state
+
+
+def record_event(state: dict[str, Any], kind: str, **fields: Any) -> dict[str, Any]:
+    """往 run 写一条事件（只追加，不改任务状态）。kind 建议用事件名，如
+    `worker_clamped` / `handoff_confirmed` / `cancel_late`。"""
+    ev = {"kind": kind, "at": time.time(), **fields}
+    state.setdefault("events", []).append(ev)
+    return ev
+
+
+def set_blocked_reason(task_or_run: dict[str, Any], reason: str) -> dict[str, Any]:
+    """BLOCKED 原因码守门：不在 docs/schema.md 码表里的原因拒收。"""
+    if reason not in BLOCKED_REASON_CODES:
+        raise ValueError(f"unknown blocked reason: {reason!r} "
+                         f"(see docs/schema.md, got {sorted(BLOCKED_REASON_CODES)})")
+    task_or_run["blocked_reason"] = reason
+    task_or_run["blocked_at"] = time.time()
+    return task_or_run
+
+
+def validate_receipt(receipt: dict[str, Any]) -> list[str]:
+    """Receipt/Envelope 严格模式校验：返回问题列表（空 = 通过）。
+    拒收：缺必需键、claims 缺 kind、fact 缺 evidence_refs、verdict 非三态、
+    verdict 非 reviewer、未声明字段。"""
+    problems: list[str] = []
+    if not isinstance(receipt, dict):
+        return ["receipt must be an object"]
+    allowed = {
+        "schema_version", "task_id", "role_id", "idempotency_key",
+        "claims", "evidence_refs", "artifacts", "verdict", "defects",
+        "deferred_items", "owner_deferred", "handoff", "events", "blocked_reason",
+    }
+    for key in receipt:
+        if key not in allowed:
+            problems.append(f"undeclared field: {key}")
+    for key in ("schema_version", "task_id", "role_id", "idempotency_key"):
+        if key not in receipt:
+            problems.append(f"missing required field: {key}")
+    claims = receipt.get("claims", [])
+    if isinstance(claims, list):
+        for i, claim in enumerate(claims):
+            if not isinstance(claim, dict) or claim.get("kind") not in {
+                    "fact", "inference", "unknown", "recommendation"}:
+                problems.append(f"claims[{i}]: need kind fact|inference|unknown|recommendation")
+                continue
+            if claim["kind"] == "fact" and not claim.get("evidence_refs"):
+                problems.append(f"claims[{i}]: fact must carry evidence_refs")
+    v = receipt.get("verdict")
+    if v is not None:
+        if not isinstance(v, dict) or v.get("value") not in {"accept", "return", "defer"}:
+            problems.append("verdict.value must be accept|return|defer")
+        elif receipt.get("role_id") != "reviewer":
+            problems.append("verdict: only role_id=reviewer may carry a verdict")
+        if isinstance(v, dict) and v.get("value") == "defer" and not v.get("deferred_items"):
+            problems.append("verdict=defer must carry deferred_items")
+    arts = receipt.get("artifacts", [])
+    if isinstance(arts, list):
+        need = {"artifact_id", "type", "format", "uri", "version", "created_by"}
+        for i, a in enumerate(arts):
+            if not isinstance(a, dict) or not need <= set(a):
+                problems.append(f"artifacts[{i}]: need {sorted(need)}")
+    return problems
 
 
 def list_runs(root: Path | None = None) -> list[dict[str, Any]]:

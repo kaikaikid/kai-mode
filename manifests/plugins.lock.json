@@ -11,7 +11,7 @@
     },
     "core": {
       "version": "1.4.0",
-      "digest": "77df880a406cda7adbdeb6932bafe1303c0bdfce6ebd2dc7e90894cde83868fd",
+      "digest": "5520076d135b6dd0d497f42420d86a6a06b09a4cb1d53c952997740fe2429917",
       "skills": {
         "gold": "0.8.0",
         "harness-audit": "0.2.1",
@@ -31,7 +31,7 @@
     },
     "engine": {
       "version": "0.6.0",
-      "digest": "a96b642d50ca58ccd15dc525beb44bfbe3c9d47c232457f0529ee908f5df17bd",
+      "digest": "993d4aa7846c3b650423bfe0cd8e4857579ac6ae5a999bdcde51e86894da0ce5",
       "skills": {
         "fleet": "0.9.0",
         "pk": "0.1.1"
@@ -54,7 +54,7 @@
     },
     "studio": {
       "version": "1.1.0",
-      "digest": "649c916136b2b394a6335c27aec179b73e36615233a21e616cc0378364db32af",
+      "digest": "81ebc892fa65ddd89cc32bf540fdc8bc0db78faf7ef0ced5b7433a3df6503e96",
       "skills": {
         "director": "2.0.0",
         "final-review": "2.0.0",
