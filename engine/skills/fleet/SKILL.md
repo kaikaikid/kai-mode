@@ -159,7 +159,8 @@ touchset 重叠且串行依赖时，默认合成一个 task、多 AC；不要按
 - 并发节制、槽位、`--ships`／`--crew`／`--fleet` 的用法见
   [`references/concurrency.md`](references/concurrency.md)。
 - **Crew / Worker 口径**：Crew＝run 内同时活跃的施工子会话上限（≤5），Worker＝单张任务可拆的子任务上限（≤8）；
-  Worker 不突破 Crew，按 `min(worker 上限, crew_limit)` 钳制，超限记事件不静默放行。
+  设计规则是 Worker 不突破 Crew（`min(worker 上限, crew_limit)`）。**该钳制当前预留、未接线**
+  （无任务拆分数入口，无 `worker_clamped` 写入方），现状见 `docs/schema.md` 未实现清单。
 
 ## 失败处理
 

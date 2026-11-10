@@ -8,7 +8,7 @@
 
 | 实体 | 代码键 | 当前版本 | 定义位置 |
 |---|---|---|---|
-| Run | `state["schema_version"]` | 2 | `engine/coding/__init__.py`（`SCHEMA_VERSION`） |
+| Run | `state["schema_version"]` | 3 | `engine/coding/__init__.py`（`SCHEMA_VERSION`） |
 | Task | `task["schema_version"]` | 1 | `engine/coding/__init__.py`（`TASK_SCHEMA_VERSION`） |
 | Artifact | `artifact["schema_version"]` | 1 | 同上（`ARTIFACT_SCHEMA_VERSION`） |
 | Receipt（Envelope） | `receipt["schema_version"]` | 1 | 同上（`RECEIPT_SCHEMA_VERSION`） |
@@ -85,10 +85,9 @@ Agent 侧的开始／结束／阻塞只作事件引用（`events[]`），不自�
 | `read_only_violation` | 只读会话在树上留了改动 |
 | `merge_conflict` | 自动 rebase 后仍冲突 |
 | `ship_failed` | 收尾门红／push 被拒 |
-| `timeout` | 子代理超时（重派一次后仍超时） |
+| `timeout` | **人工**：`fleet block --reason timeout`（内核无计时器，自动超时检测未实现，见下未实现清单） |
 | `cancel_late` | 取消请求到达时任务已在终态（迟到取消，只记录不逆转） |
-| `worker_clamped` | Worker 数被 crew_limit 钳制（记事件，不阻塞） |
-| `missing_capability` | 宿主起不了子代理等缺件 |
+| `missing_capability` | **人工**：`fleet block --reason missing_capability`（宿主起不了子代理等缺件） |
 
 ## CANCELLED→CLOSED
 
@@ -104,12 +103,16 @@ cancelled 的 run 不再有 live session 时视为 closed 候选，由 `fleet gc
 |---|---|
 | task → run | `state.json` 路径 `.coding/runs/<run_id>/` ＋ `fleet <run> <task>` 参数 |
 | session → task | `session.task_id` ＋ `task.session_id` |
-| 事件 → run | `state["events"][]`（`worker_clamped`／`handoff_confirmed`／`cancel_late`／`task_blocked`／`return_limit_blocked`／`auto_fail_limit_blocked`／`ship_failed`） |
+| 事件 → run | `state["events"][]`（`handoff_confirmed`／`cancel_late`／`task_blocked`／`return_limit_blocked`／`return_lock_unlocked`／`auto_fail_limit_blocked`／`ship_failed`） |
 | 交接 → run | `state["handoffs"][]`（`fleet confirm` 三态） |
 | 团长队列 → task | `owner_deferred[].task_id` |
 
 未实现（缺证据，标未验证，不宣称完成）：
 
+- Worker 钳制接线：`clamp_workers` 是带测试的纯函数但无生产调用方（内核无任务拆分数入口），
+  无 `worker_clamped` 事件写入方；`worker_clamped` 原因码保留在码表供将来接线。三处文档
+  （GLOSSARY／fleet SKILL／concurrency）已如实标「预留、未接线」。
+- 自动超时检测：内核无计时器，`timeout` 只走 `fleet block` 人工标记。
 - `trace_id`／`span_id` 全链路透传：当前无写入方，预留键名，待实现。
 - Token 来源标注与注入账单：`run.budget = {max_tokens, used_tokens}` 已有槽位，
   但 `used_tokens` 当前无写入方（`grep used_tokens engine/` 只有两处初始化 0）；账单待实现。

@@ -770,17 +770,20 @@ def cmd_verdict(args: argparse.Namespace) -> None:
         _err("verdict file must be a JSON object")
     # interop：审计算子可按 Receipt/Envelope 信封投递（role_id 必为 reviewer）——
     # 信封严格模式：未声明字段、fact 缺 evidence_refs、非 reviewer verdict 一律拒收。
-    # 先拆信封再判三态：信封的 verdict 是对象，直接进 set 会 TypeError。
+    # 信封路径缺 verdict 一律拒收：不默认 accept，也不让非 reviewer 信封经此落账
+    # （validate_receipt 已拒非 reviewer 带 verdict；缺 verdict 在这里直接拦）。
     if "role_id" in rep or "schema_version" in rep or "idempotency_key" in rep:
         problems = st.validate_receipt(rep)
+        v = rep.get("verdict")
+        if not isinstance(v, dict):
+            problems.append("envelope must carry a verdict object "
+                            "{value: accept|return|defer, ...}")
         if problems:
             _err("receipt rejected: " + "; ".join(problems[:5]))
-        v = rep.get("verdict") or {}
-        if isinstance(v, dict):
-            rep = {"verdict": v.get("value", "accept"),
-                   "defects": v.get("defects", []),
-                   "reason": v.get("reason", ""),
-                   "deferred_items": v.get("deferred_items", [])}
+        rep = {"verdict": v.get("value"),
+               "defects": v.get("defects", []),
+               "reason": v.get("reason", ""),
+               "deferred_items": v.get("deferred_items", [])}
     verdict = rep.get("verdict")
     if verdict not in {"accept", "return", "defer"}:
         _err(f"invalid verdict: {verdict!r} (expected accept/return/defer)")
@@ -894,12 +897,21 @@ def cmd_reopen(args: argparse.Namespace) -> None:
     with st.lock(root):
         s = st.load(args.run_id, root)
         t = _task(s, args.task_id)
-        # 第三次 return 锁死的任务：不自动重开；人工 reopen 显式解锁才可再派。
+        # 第三次 return 锁死的任务不自动重开；显式人工解锁走 --unlock：
+        # 清 return_locked 与 blocked 原因码、回 pending，记事件留痕。
         if t.get("return_locked"):
-            print(json.dumps({"task_id": t["id"], "return_locked": True,
-                              "hint": "blocked by 3rd return; reopen needs human approval"},
-                             ensure_ascii=False))
-            return
+            if not getattr(args, "unlock", False):
+                print(json.dumps({"task_id": t["id"], "return_locked": True,
+                                  "hint": "blocked by 3rd return; unlock explicitly "
+                                          "with `fleet reopen <run> <task> --unlock` "
+                                          "(human decision), or re-plan the task"},
+                                 ensure_ascii=False))
+                return
+            t["return_locked"] = False
+            t["blocked_reason"] = None
+            t["blocked_at"] = None
+            st.record_event(s, "return_lock_unlocked", task_id=t["id"],
+                            unlocked_at=time.time())
         t["status"] = "pending"
         s["resume"]["last_accepted"] = None
         if s["phase"] in {"reviewing", "closing"}:
@@ -1221,6 +1233,8 @@ def build_parser() -> argparse.ArgumentParser:
     ro = sub.add_parser("reopen", help="reopen an accepted task")
     ro.add_argument("run_id")
     ro.add_argument("task_id")
+    ro.add_argument("--unlock", action="store_true",
+                    help="explicitly clear the 3rd-return lock (human decision); records an event")
     ro.set_defaults(func=cmd_reopen)
 
     stp = sub.add_parser("stop", help="stop a run, keep its state")

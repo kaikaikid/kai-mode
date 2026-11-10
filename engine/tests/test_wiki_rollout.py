@@ -114,9 +114,19 @@ def test_return_locked_reopen_needs_human(tmp_path: Path):
     vf = tmp_path / "v.json"
     vf.write_text(json.dumps({"verdict": "return", "defects": ["x"]}), encoding="utf-8")
     cli(tmp_path, "verdict", "r-w", "t1", "--file", str(vf))
-    out = cli(tmp_path, "reopen", "r-w", "t1").stdout
-    assert "return_locked" in out
+    # 无 --unlock：拒绝并给显式出路
+    out = json.loads(cli(tmp_path, "reopen", "r-w", "t1").stdout)
+    assert out["return_locked"] is True
+    assert "--unlock" in out["hint"]
     assert read_state(tmp_path)["tasks"][0]["status"] == "blocked"
+    # --unlock：显式人工解锁，回 pending，清锁与原因码，记事件
+    out2 = cli(tmp_path, "reopen", "r-w", "t1", "--unlock").stdout
+    assert "reopened t1" in out2
+    t = read_state(tmp_path)["tasks"][0]
+    assert t["status"] == "pending"
+    assert t["return_locked"] is False
+    assert t["blocked_reason"] is None
+    assert any(e.get("kind") == "return_lock_unlocked" for e in read_state(tmp_path)["events"])
 
 
 def test_set_blocked_reason_rejects_unknown_code():
@@ -158,6 +168,18 @@ def test_receipt_strict_mode(tmp_path: Path):
     vf.write_text(json.dumps(bad3), encoding="utf-8")
     r = cli(tmp_path, "verdict", "r-w", "t1", "--file", str(vf), expect=1)
     assert "only role_id=reviewer" in (r.stdout + r.stderr)
+
+    # 5. 信封缺 verdict 一律拒收（不默认 accept）
+    write_run(tmp_path, tasks=review_state())
+    bad4 = {"schema_version": 1, "task_id": "t1", "role_id": "reviewer",
+            "idempotency_key": "k1",
+            "claims": [{"kind": "fact", "text": "x",
+                        "evidence_refs": ["engine/tests/test_wiki_rollout.py:1"]}],
+            "artifacts": []}
+    vf.write_text(json.dumps(bad4), encoding="utf-8")
+    r = cli(tmp_path, "verdict", "r-w", "t1", "--file", str(vf), expect=1)
+    assert "must carry a verdict" in (r.stdout + r.stderr)
+    assert read_state(tmp_path)["tasks"][0]["status"] == "review"
 
 
 def test_confirm_handoff_three_states_and_idempotent(tmp_path: Path):
