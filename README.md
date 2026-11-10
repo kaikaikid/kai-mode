@@ -48,7 +48,7 @@ kai-mode 是「一句话需求 → 判断 → 票 → run → 施工 → 审查 
               └─ 要做成一件有验收标准的事
                     → 开票（目标/AC/允许/禁止/验证）
                     → 清场（dirty 分类；无关产品改动 park 成可逆 stash）
-                    → fleet warp（酒馆名 开团：自动批门 → 宿主子代理施工 → 门卫只读审查）
+                    → 开团（工程别名 fleet warp：自动批门 → 宿主子代理施工 → 门卫只读审查）
                     → 发货（merge → 收尾门 → push → 关票）
                     → 三行白话回报
 ```
@@ -97,7 +97,7 @@ CHANGELOG.md  版本变更记录
 1. 项目根写 `.ai/kai-mode.project.json`（从 `templates/` 复制），填运行时**发现方式**与收尾门；机器绝对路径不入库。
 2. `/set-kai-mode` 装 `gold`、`staff`、`fleet` 与自有方法件 `pk`；通用方法不随装，按名用宿主中央库原版；按 `core`／`full` 档位（`manifests/install-profiles.json`），缺件如实登记。
 3. 在项目 `CLAUDE.md` / `AGENTS.md` 写「默认入口＝康娜」，见 set-kai-mode 第 3 步。
-4. 用一件真事走通「康娜 → 开票 → `/warp`（开团）或 `/jump`（速推）→ 发货」做自证。
+4. 用一件真事走通「康娜 → 开票 → 开团或速推（工程别名 `/warp`、`/jump`）→ 发货」做自证。
 5. 项目专用路径、票号、job id 只进项目配置与本机文件，不进本仓技能正文。
 
 ## 加一个技能（四步）

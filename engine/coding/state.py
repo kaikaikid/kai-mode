@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import random
+import re
 import string
 import time
 from contextlib import contextmanager
@@ -152,10 +153,30 @@ def migrate(state: dict[str, Any]) -> dict[str, Any]:
 
 def record_event(state: dict[str, Any], kind: str, **fields: Any) -> dict[str, Any]:
     """往 run 写一条事件（只追加，不改任务状态）。kind 建议用事件名，如
-    `worker_clamped` / `handoff_confirmed` / `cancel_late`。"""
+    `handoff_confirmed` / `cancel_late` / `secret_detected`。"""
     ev = {"kind": kind, "at": time.time(), **fields}
     state.setdefault("events", []).append(ev)
     return ev
+
+
+# 密钥/令牌形状（脱敏扫描用）：只认常见前缀与 PEM 头，误杀面保持窄。
+_SECRET_PATTERNS = (
+    ("api_key_sk", re.compile(r"sk-[A-Za-z0-9_-]{16,}")),
+    ("github_token", re.compile(r"\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{20,}\b|github_pat_[A-Za-z0-9_]{20,}")),
+    ("aws_access_key", re.compile(r"\bAKIA[0-9A-Z]{16}\b")),
+    ("chatops_token", re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{10,}\b")),
+    ("private_key", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")),
+)
+
+
+def scan_secrets(text: str) -> list[str]:
+    """扫文本里的密钥/令牌形状，返回命中的模式名（去重）。只做形状匹配，
+    不外传内容。空文本返回空表。"""
+    hits = []
+    for name, pat in _SECRET_PATTERNS:
+        if pat.search(text or ""):
+            hits.append(name)
+    return hits
 
 
 def set_blocked_reason(task_or_run: dict[str, Any], reason: str) -> dict[str, Any]:

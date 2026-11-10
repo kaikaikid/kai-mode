@@ -62,7 +62,7 @@ V1 岗位体系下线后没有定时轮巡，也没有 60 分钟唤醒定时器�
 
 - 在项目 `CLAUDE.md` / `AGENTS.md` 末尾写一段「默认入口＝康娜」；
 - 用户按需起会话；会话里不打斜杠命令时，读 `gold` 技能执行；
-- 施工由 `fleet warp`/`fleet jump` 派宿主原生子代理，不靠宿主定时任务。
+- 施工由开团／速推（工程别名 `fleet warp`／`fleet jump`）派宿主原生子代理，不靠宿主定时任务。
 
 **全局级的落法（2026-11-09 本机 CN 构建实测）**：Desktop 的全局指令文件 `~/.qoder-cn/AGENTS.md`
 整份由 magpie 生成（`<!-- magpie:begin/end -->` 包着），**不可手改**——改它要走 magpie 那份

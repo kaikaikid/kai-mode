@@ -250,3 +250,49 @@ def test_blocked_run_does_not_revive_return_locked(tmp_path: Path):
         json.dumps(s, ensure_ascii=False), encoding="utf-8")
     cli(tmp_path, "resume", "r-w")
     assert read_state(tmp_path)["phase"] == "blocked"
+
+
+def test_context_manifest_same_source_and_no_fake_tokens(tmp_path: Path):
+    write_run(tmp_path, tasks=review_state(task_status="pending"))
+    s = read_state(tmp_path)
+    s["budget"] = {"max_tokens": 200000, "used_tokens": 0}
+    s["events"] = [{"kind": "handoff_confirmed", "at": 1.0}]
+    s.pop("integrity", None)
+    (tmp_path / ".coding" / "runs" / "r-w" / "state.json").write_text(
+        json.dumps(s, ensure_ascii=False), encoding="utf-8")
+    m = json.loads(cli(tmp_path, "context", "r-w").stdout)
+    assert m["run_id"] == "r-w"
+    assert m["schema_version"] == st.SCHEMA_VERSION
+    assert [t["id"] for t in m["tasks"]] == ["t1"]
+    assert m["gates"] == {"g0": "approved", "g1": "skipped", "g2": "pending"}
+    assert m["budget"]["max_tokens"] == 200000
+    assert m["budget"]["used_tokens"] == 0
+    assert m["budget"]["token_usage_collected"] is False
+    assert m["events"][0]["kind"] == "handoff_confirmed"
+
+
+def test_report_secret_is_quarantined(tmp_path: Path):
+    tasks = review_state(task_status="running")
+    tasks[0]["session_id"] = "s-1"
+    write_run(tmp_path, tasks=tasks)
+    s = read_state(tmp_path)
+    s["sessions"] = [{"id": "s-1", "task_id": "t1", "adapter": "native",
+                      "mode": "native", "status": "running", "pid": None}]
+    s.pop("integrity", None)
+    (tmp_path / ".coding" / "runs" / "r-w" / "state.json").write_text(
+        json.dumps(s, ensure_ascii=False), encoding="utf-8")
+    sdir = tmp_path / ".coding" / "runs" / "r-w" / "sessions" / "s-1"
+    sdir.mkdir(parents=True)
+    raw = {"result": "done", "files_changed": [],
+           "verification": ["cmd -> ok"], "open_questions": [],
+           "notes": "token=sk-abcdefghijklmnopqrstuvwx"}
+    (sdir / "report.json").write_text(json.dumps(raw), encoding="utf-8")
+    out = json.loads(cli(tmp_path, "report", "r-w", "t1").stdout)
+    assert out["result"] == "partial"
+    assert "quarantined" in out["notes"]
+    assert "api_key_sk" in out["notes"]  # 只报模式名，不回显密钥内容
+    assert "sk-abcdefghijklmnopqrstuvwx" not in out["notes"]
+    persisted = (tmp_path / ".coding" / "runs" / "r-w" / "sessions" / "t1.report.json").read_text(
+        encoding="utf-8")
+    assert "sk-abcdefghijklmnopqrstuvwx" not in persisted
+    assert any(e.get("kind") == "secret_detected" for e in read_state(tmp_path)["events"])

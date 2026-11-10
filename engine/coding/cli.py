@@ -669,6 +669,13 @@ def cmd_report(args: argparse.Namespace) -> None:
     if not isinstance(report, dict) or "result" not in report:
         report = {"result": "partial", "files_changed": [], "verification": [],
                   "open_questions": [], "notes": "native report missing 'result' field"}
+    # 脱敏：报告里出现密钥/令牌形状 → 原文整份拒收、不落盘，只留脱敏回执 + 事件。
+    secret_hits = st.scan_secrets(json.dumps(report, ensure_ascii=False))
+    if secret_hits:
+        report = {"result": "partial", "files_changed": [], "verification": [],
+                  "open_questions": [],
+                  "notes": "report quarantined: secret-like content detected "
+                           f"({', '.join(secret_hits)}); raw report not persisted"}
     report_path = _report_path(args.run_id, args.task_id)
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -708,6 +715,9 @@ def cmd_report(args: argparse.Namespace) -> None:
         sess = next((x for x in s.get("sessions", []) if x["id"] == t.get("session_id")), None)
         if sess:
             sess["status"] = "finished"
+        if secret_hits:
+            st.record_event(s, "secret_detected", task_id=t["id"], patterns=secret_hits,
+                            note="report quarantined before persistence")
         t["status"] = "review"
         s["resume"]["next_action"] = f"review {t['id']}"
         _save(s)
@@ -1067,6 +1077,36 @@ def cmd_gc(args: argparse.Namespace) -> None:
     print(json.dumps({"removed": removed}, ensure_ascii=False))
 
 
+def cmd_context(args: argparse.Namespace) -> None:
+    """Context Manifest：本次 run 的上下文组装清单（P4 落地部分）。
+    与 `resume`／`status` 同源（都读 state.json），不虚构 Token 数：
+    `used_tokens` 当前无写入方，原样输出 0 并标 `token_usage_collected=false`。"""
+    root = _root()
+    with st.lock(root):
+        s = st.load(args.run_id, root)
+    budget = s.get("budget") or {}
+    manifest = {
+        "run_id": s["run_id"],
+        "schema_version": s.get("schema_version"),
+        "phase": s.get("phase"),
+        "tasks": [{
+            "id": t.get("id"),
+            "status": t.get("status"),
+            "attempts": t.get("attempts", 0),
+            "touchset": list(t.get("touchset", [])),
+            "ac": list(t.get("ac", [])),
+        } for t in s.get("tasks", [])],
+        "gates": s.get("gates", {}),
+        "budget": {
+            "max_tokens": budget.get("max_tokens"),
+            "used_tokens": budget.get("used_tokens", 0),
+            "token_usage_collected": False,  # 无写入方，如实标未采集
+        },
+        "events": s.get("events", []),
+    }
+    print(json.dumps(manifest, ensure_ascii=False, indent=2))
+
+
 def cmd_doctor(args: argparse.Namespace) -> None:
     root = _root()
     problems = []
@@ -1261,6 +1301,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     d = sub.add_parser("doctor", help="reconcile state with git")
     d.set_defaults(func=cmd_doctor)
+
+    cx = sub.add_parser("context", help="print the Context Manifest for a run")
+    cx.add_argument("run_id")
+    cx.set_defaults(func=cmd_context)
 
     wp = sub.add_parser("warp", help="autopilot run: warp mode (no ship)")
     wp.add_argument("--fleet", default=None, help="fleet id; slots are per-fleet")

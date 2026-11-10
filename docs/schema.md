@@ -82,11 +82,11 @@ Agent 侧的开始／结束／阻塞只作事件引用（`events[]`），不自�
 |---|---|
 | `return_limit` | 第三次 return（attempts ≥ 3，此后 `return_locked=true` 不自动重开） |
 | `auto_fail_limit` | `fleet auto` 同一任务失败 2 次 |
-| `read_only_violation` | 只读会话在树上留了改动 |
-| `merge_conflict` | 自动 rebase 后仍冲突 |
-| `ship_failed` | 收尾门红／push 被拒 |
+| `read_only_violation` | **人工**：`fleet block --reason read_only_violation`。只读会话留改动时 `fleet report` 自动把任务转 `returned`（不带此码）；作为 blocked 原因码当前无自动写入方 |
+| `merge_conflict` | **人工**：`fleet block --reason merge_conflict`，无自动写入方。**与 `ship_failed` 的分工**：自动 rebase 一次仍冲突时，内核落账走 `ship_failed`（merge→收尾门→push 链上的失败都归它）；`merge_conflict` 单留给「冲突本身需要人裁决」的人工标记，不与 ship_failed 重复计 |
+| `ship_failed` | 收尾门红／push 被拒（含自动 rebase 后仍冲突；有自动写入方） |
 | `timeout` | **人工**：`fleet block --reason timeout`（内核无计时器，自动超时检测未实现，见下未实现清单） |
-| `cancel_late` | 取消请求到达时任务已在终态（迟到取消，只记录不逆转） |
+| `cancel_late` | **人工**：`fleet block --reason cancel_late`。`fleet stop` 对已终态任务自动记 `cancel_late` **事件**（有写入方）；作为 blocked 原因码无自动写入方（终态任务本就不逆转，不需要自动码） |
 | `missing_capability` | **人工**：`fleet block --reason missing_capability`（宿主起不了子代理等缺件） |
 
 ## CANCELLED→CLOSED
@@ -103,9 +103,15 @@ cancelled 的 run 不再有 live session 时视为 closed 候选，由 `fleet gc
 |---|---|
 | task → run | `state.json` 路径 `.coding/runs/<run_id>/` ＋ `fleet <run> <task>` 参数 |
 | session → task | `session.task_id` ＋ `task.session_id` |
-| 事件 → run | `state["events"][]`（`handoff_confirmed`／`cancel_late`／`task_blocked`／`return_limit_blocked`／`return_lock_unlocked`／`auto_fail_limit_blocked`／`ship_failed`） |
+| 事件 → run | `state["events"][]`（`handoff_confirmed`／`cancel_late`／`task_blocked`／`return_limit_blocked`／`return_lock_unlocked`／`auto_fail_limit_blocked`／`ship_failed`／`secret_detected`） |
 | 交接 → run | `state["handoffs"][]`（`fleet confirm` 三态） |
 | 团长队列 → task | `owner_deferred[].task_id` |
+| 上下文清单 → run | `fleet context <run>`（与 `resume`／`status` 同源） |
+
+脱敏（已实现部分）：`fleet report` 收子代理报告时扫密钥/令牌形状
+（`sk-…`／`ghp_…`／`AKIA…`／`xox?-…`／PEM 私钥头，见 `state.scan_secrets`），
+命中即**整份拒收原文**、不落盘，只留脱敏回执（`result=partial`）并记 `secret_detected` 事件。
+覆盖范围仅 `fleet report` 入口；其他写入路径未扫（见下）。
 
 未实现（缺证据，标未验证，不宣称完成）：
 
@@ -113,17 +119,13 @@ cancelled 的 run 不再有 live session 时视为 closed 候选，由 `fleet gc
   无 `worker_clamped` 事件写入方；`worker_clamped` 原因码保留在码表供将来接线。三处文档
   （GLOSSARY／fleet SKILL／concurrency）已如实标「预留、未接线」。
 - 自动超时检测：内核无计时器，`timeout` 只走 `fleet block` 人工标记。
-- `trace_id`／`span_id` 全链路透传：当前无写入方，预留键名，待实现。
-- Token 来源标注与注入账单：`run.budget = {max_tokens, used_tokens}` 已有槽位，
-  但 `used_tokens` 当前无写入方（`grep used_tokens engine/` 只有两处初始化 0）；账单待实现。
-- 脱敏：规则是 state.json／session 报告不得含密钥（密钥只走环境变量与 Vault），
-  但强制扫描与拒收当前无实现；待实现。
-- Context Manifest（上下文组装清单）：预留形状
-  `{run_id, schema_version, tasks[], gates, budget, events[]}`，
-  与 `fleet resume`／`status` 输出同源；独立 `fleet context` 命令待实现。
-
-## 固定案例与 COM（未实现，如实标记）
-
-- 固定评估案例集：待建。建成后每例含输入任务图、期望终态、回归断言，进 `engine/tests/`。
-- COM（大白话能力考）：只考康娜——验收形态是给 coordinator 角色的转述抽查，
-  七个专业角色考专业直述，不考小白话。题库与评分器待建，不虚构通过数。
+- `trace_id`／`span_id` 全链路透传：当前无采集方、无写入方，预留键名，不假造。
+- Token 来源标注与注入账单：**形状已定、数据未采集**——
+  `budget = {max_tokens, used_tokens, token_usage_collected}`；`fleet context` 输出
+  `used_tokens=0` ＋ `token_usage_collected=false`，不虚构数字。将来每笔调用记
+  `{source: worker|reviewer|planner, model_ref, input_tokens, output_tokens, at}`，
+  由宿主命令回传；当前无回传方，`used_tokens` 恒 0。
+- 脱敏未覆盖路径：`state.json` 直写、session 目录里子代理自己写的原始 `report.json`
+  （拒收只保证不复制进 `sessions/<task>.report.json`，原文件仍在 session 目录，需人工清理）、
+  事件字段；未做全量拦截。
+- 固定评估案例集与 COM 题库：见 `docs/eval-cases.md`，文档基线已建、**未执行**，无通过数。

@@ -1,6 +1,6 @@
 # 执行内核（fleet）
 
-> 无人值守：`fleet jump "<任务>" --tasks f.json`（酒馆名**速推**）一条命令跑完
+> 无人值守：速推（工程别名 `fleet jump "<任务>" --tasks f.json`）一条命令跑完
 > claim → 宿主子会话 → report → 审查 → verdict → 发货。宿主命令从
 > `.coding/config.json` 的 `worker_cmd` / `reviewer_cmd`（或同名环境变量）读（如 `claude -p {brief} ...`），不配则如实报缺件。
 
@@ -36,12 +36,13 @@ export PATH="$PWD/engine/bin:$PATH"
 | `fleet release <run> <task>` | 释放原生占位，任务回 pending |
 | `fleet report <run> <task>` | 读子代理报告并对账 diff |
 | `fleet review <run> <task>` | 输出审查卡（只读子代理执行） |
-| `fleet verdict <run> <task> --file <path>` | 写回审查裁决（accept/return） |
+| `fleet verdict <run> <task> --file <path>` | 写回审查裁决（accept/return/defer） |
 | `fleet accept\|return\|reopen <run> <task>` | 验收 |
 | `fleet resume <run>` | 从 state.json 续跑 |
-| `fleet warp <issue> [--ships 1-3] [--tasks f.json]`（酒馆名**开团**） | 开团：自动批门 + 施工，**不发货**（停在验收门） |
-| `fleet jump <issue> [--ships 1-3]`（酒馆名**速推**） | 速推：加急 + 自动验收发货，唯一有发货权的全自动入口 |
+| 开团（工程别名 `fleet warp <issue> [--ships 1-3] [--tasks f.json]`） | 自动批门 + 施工，**不发货**（停在验收门） |
+| 速推（工程别名 `fleet jump <issue> [--ships 1-3]`） | 加急 + 自动验收发货，唯一有发货权的全自动入口 |
 | `fleet status [--html]` | 看板 |
+| `fleet context <run>` | Context Manifest（任务/门/预算/事件的上下文清单；Token 用量未采集） |
 | `fleet dirty [--json]` / `park` / `unpark` | 主树脏件分类与可逆收起 |
 | `fleet doctor` | 状态与 git 对账 |
 | `fleet gc [--all]` | 清理已收尾资源 |
@@ -62,7 +63,7 @@ export PATH="$PWD/engine/bin:$PATH"
 全部在 `.coding/runs/<run-id>/state.json`，脚本原子写。中断后 `fleet resume` 从
 `resume.last_accepted` / `next_action` 接着跑。
 
-## 开团（酒馆名；工程标识 `fleet warp`）
+## 开团（工程别名 `fleet warp`，只作兼容）
 
 `fleet warp <issue> [--tasks f.json]`：
 
