@@ -501,6 +501,30 @@ def test_usage_rejects_missing_fields(tmp_path: Path):
     assert "missing required field" in (r.stdout + r.stderr)
 
 
+def test_usage_rejects_non_numeric_and_clamps_negative(tmp_path: Path):
+    write_run(tmp_path, tasks=review_state(task_status="accepted"))
+    # 非数字 tokens：拒收，不落账
+    r = cli(tmp_path, "usage", "r-w",
+            json.dumps({"source": "worker", "model_ref": "m",
+                        "input_tokens": "many", "output_tokens": 1}), expect=1)
+    assert "must be an integer" in (r.stdout + r.stderr)
+    # 非数字 at：拒收
+    r = cli(tmp_path, "usage", "r-w",
+            json.dumps({"source": "worker", "model_ref": "m",
+                        "input_tokens": 1, "output_tokens": 1, "at": "now"}), expect=1)
+    assert "usage.at must be a number" in (r.stdout + r.stderr)
+    # 负值钳到 0：used_tokens 不下降
+    cli(tmp_path, "usage", "r-w",
+        json.dumps({"source": "worker", "model_ref": "m",
+                    "input_tokens": 10, "output_tokens": 0}))
+    before = read_state(tmp_path)["budget"]["used_tokens"]
+    out = json.loads(cli(tmp_path, "usage", "r-w",
+                         json.dumps({"source": "worker", "model_ref": "m",
+                                     "input_tokens": -100, "output_tokens": -5})).stdout)
+    assert out["used_tokens"] == before >= 10
+    assert read_state(tmp_path)["usage_log"][-1]["input_tokens"] == 0
+
+
 # ------------------------------------------------------------------
 # W3.1 脱敏扩口
 

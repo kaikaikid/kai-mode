@@ -1199,7 +1199,7 @@ def cmd_context(args: argparse.Namespace) -> None:
 
 
 def _usage_by_source(s: dict[str, Any]) -> dict[str, int]:
-    """账本按 source 聚合（task/run/role 维度都在明细行里，取合计只按 source）。"""
+    """账本按 source 聚合；明细行带 task_id 供将来按 task/role 再聚合（当前不提供）。"""
     out: dict[str, int] = {}
     for row in s.get("usage_log", []) or []:
         src = str(row.get("source", "unknown"))
@@ -1208,10 +1208,19 @@ def _usage_by_source(s: dict[str, Any]) -> dict[str, int]:
     return out
 
 
+def _usage_int(value: Any, field: str) -> int:
+    """token 计数：非数字拒收；负数钳到 0（used_tokens 不许因负输入下降）。"""
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        _err(f"usage.{field} must be an integer, got {value!r}")
+    return max(0, n)
+
+
 def cmd_usage(args: argparse.Namespace) -> None:
     """W2.2 Token 账单：宿主回传 usage 追加账本并累计 used_tokens；
     不回传不编数。usage JSON：{source: worker|reviewer|planner, model_ref,
-    input_tokens, output_tokens, at}；task_id 可选。拒绝缺字段，不估算。"""
+    input_tokens, output_tokens, at}；task_id 可选。拒绝缺字段/非数字，不估算。"""
     root = _root()
     try:
         usage = json.loads(args.usage_json)
@@ -1224,19 +1233,23 @@ def cmd_usage(args: argparse.Namespace) -> None:
             _err(f"usage missing required field: {key}")
     if usage.get("source") not in {"worker", "reviewer", "planner"}:
         _err("usage.source must be worker|reviewer|planner")
+    try:
+        at = float(usage.get("at") or time.time())
+    except (TypeError, ValueError):
+        _err(f"usage.at must be a number, got {usage.get('at')!r}")
     row = {
         "source": usage["source"],
         "model_ref": str(usage["model_ref"]),
-        "input_tokens": int(usage.get("input_tokens") or 0),
-        "output_tokens": int(usage.get("output_tokens") or 0),
-        "at": float(usage.get("at") or time.time()),
+        "input_tokens": _usage_int(usage.get("input_tokens"), "input_tokens"),
+        "output_tokens": _usage_int(usage.get("output_tokens"), "output_tokens"),
+        "at": at,
         "task_id": usage.get("task_id"),
     }
     with st.lock(root):
         s = st.load(args.run_id, root)
         s.setdefault("usage_log", []).append(row)
-        total = sum(int(r.get("input_tokens", 0) or 0) + int(r.get("output_tokens", 0) or 0)
-                    for r in s["usage_log"])
+        total = max(0, sum(int(r.get("input_tokens", 0) or 0) + int(r.get("output_tokens", 0) or 0)
+                            for r in s["usage_log"]))
         s.setdefault("budget", {})["used_tokens"] = total
         s["budget"]["token_usage_collected"] = True
         _save(s)
