@@ -255,11 +255,6 @@ def record_event(state: dict[str, Any], kind: str, **fields: Any) -> dict[str, A
             "note": "event field redacted before persistence",
         })
     return ev
-    """往 run 写一条事件（只追加，不改任务状态）。kind 建议用事件名，如
-    `handoff_confirmed` / `cancel_late` / `secret_detected`。"""
-    ev = {"kind": kind, "at": time.time(), **fields}
-    state.setdefault("events", []).append(ev)
-    return ev
 
 
 # 密钥/令牌形状（脱敏扫描用）：只认常见前缀与 PEM 头，误杀面保持窄。
