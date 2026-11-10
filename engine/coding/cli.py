@@ -172,6 +172,10 @@ def _ship(s: dict[str, Any], root: "Path") -> tuple[bool, str]:
 
 def advance(s: dict[str, Any], root: "Path | None" = None) -> None:
     """按设计里的 phase 推进条件推进；只做确定性判断。循环到稳定。"""
+    # W1.2：所有推进入口（gate/accept/verdict/resume）先判超时；只碰 running session，
+    # 把 state 交给调用方的 _save 落盘。
+    if root is not None:
+        _check_timeouts(s, root)
     # 没有 UI 任务时 G1 自动跳过（G1 只在碰可见 UI 时才有意义）
     if s.get("tasks") and not _has_ui(s) and s.get("gates", {}).get("g1") == "pending":
         s["gates"]["g1"] = "skipped"

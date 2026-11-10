@@ -416,6 +416,15 @@ def test_late_report_ignored_after_timeout(tmp_path: Path):
     assert any(e.get("kind") == "late_result_ignored" for e in s["events"])
 
 
+def test_advance_path_checks_timeout_on_resume(tmp_path: Path):
+    # resume 走 advance：超时在推进入口也落账（不只 claim/report）
+    _write_running_session(tmp_path, started_ago_s=7200, timeout_min=1)
+    cli(tmp_path, "resume", "r-w")
+    s = read_state(tmp_path)
+    assert s["tasks"][0]["status"] == "failed"
+    assert any(e.get("kind") == "session_timeout" for e in s["events"])
+
+
 def test_no_timeout_config_keeps_manual_path(tmp_path: Path):
     _write_running_session(tmp_path, started_ago_s=999999, timeout_min=None)
     out = json.loads(cli(tmp_path, "claim", "r-w", "t1").stdout)  # 幂等重放，不超时
