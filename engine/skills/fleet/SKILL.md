@@ -163,7 +163,8 @@ touchset 重叠且串行依赖时，默认合成一个 task、多 AC；不要按
   `min(worker_count, worker_limit≤8, crew_limit−active_sessions)` 钳制，超钳记
   `worker_clamped` 事件（requested／effective／limits），不静默放行；旧任务不回填。
 - **自动超时**：`.coding/config.json` 配 `timeout_minutes`（缺省关闭，保持人工路径）后，
-  `claim`／`report` 判 running session 超时：session 标 `timeout`、task 转 failed（原因码 `timeout`）、
+  `claim`／`report`／`advance` 判 running session 超时（report 在迟到分支前判，覆盖
+  「claim 后长跑直接交报告」）：session 标 `timeout`、task 转 failed（原因码 `timeout`）、
   记 `session_timeout` 事件；迟到报告只留 `late_result_ignored` 诊断事件，不复活任务、不自动重派。
 
 ## 失败处理

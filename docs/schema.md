@@ -81,8 +81,9 @@ Agent 侧的开始／结束／阻塞只作事件引用（`events[]`），不自�
   超出记 `worker_clamped` 事件（`requested`／`effective`／`worker_limit`／`crew_limit`／`active_sessions`／`at`），
   并把 `worker_effective` 写回任务。
 - 自动超时：`.coding/config.json` 的 `timeout_minutes`（0/缺省＝关闭，保持人工路径）。
-  `claim`／幂等 `claim` 判定 running session：超时 → session `timeout`、task `failed`、
-  原因码 `timeout`、事件 `session_timeout`；迟到报告 → `late_result_ignored` 事件，
+  实际调用点三个：`claim`（含幂等重放前）、`report`（持锁起始、迟到分支之前）、
+  `advance`（gate/accept/verdict/resume 都经它）。判定 running session：超时 → session `timeout`、
+  task `failed`、原因码 `timeout`、事件 `session_timeout`；迟到报告 → `late_result_ignored` 事件，
   不改状态、不自动重派。`status` 只读展示，不落账。
 
 ## BLOCKED 原因码
@@ -96,7 +97,7 @@ Agent 侧的开始／结束／阻塞只作事件引用（`events[]`），不自�
 | `read_only_violation` | **人工**：`fleet block --reason read_only_violation`。只读会话留改动时 `fleet report` 自动把任务转 `returned`（不带此码）；作为 blocked 原因码当前无自动写入方 |
 | `merge_conflict` | **人工**：`fleet block --reason merge_conflict`，无自动写入方。**与 `ship_failed` 的分工**：自动 rebase 一次仍冲突时，内核落账走 `ship_failed`（merge→收尾门→push 链上的失败都归它）；`merge_conflict` 单留给「冲突本身需要人裁决」的人工标记，不与 ship_failed 重复计 |
 | `ship_failed` | 收尾门红／push 被拒（含自动 rebase 后仍冲突；有自动写入方） |
-| `timeout` | **自动**（配置 `timeout_minutes` 后由 `claim`／`report` 判定：`session_timeout` 事件 + task failed）＋ **人工兜底** `fleet block --reason timeout`；未配置时只走人工 |
+| `timeout` | **自动**（配置 `timeout_minutes` 后由 `claim`／`report`／`advance` 判定：`session_timeout` 事件 + task failed）＋ **人工兜底** `fleet block --reason timeout`；未配置时只走人工 |
 | `cancel_late` | **人工**：`fleet block --reason cancel_late`。`fleet stop` 对已终态任务自动记 `cancel_late` **事件**（有写入方）；作为 blocked 原因码无自动写入方（终态任务本就不逆转，不需要自动码） |
 | `missing_capability` | **人工**：`fleet block --reason missing_capability`（宿主起不了子代理等缺件） |
 

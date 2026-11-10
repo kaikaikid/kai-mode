@@ -710,6 +710,10 @@ def cmd_report(args: argparse.Namespace) -> None:
         s = st.load(args.run_id, root)
         if s.get("phase") in st.TERMINAL_PHASES:
             _err(f"run is terminal ({s['phase']}); report rejected")
+        # W1.2（M-1）：report 是「claim 后子代理长跑、直接回报告」的正常路径，
+        # 必须先判超时并落账，再走迟到分支——否则超时只在 claim/advance 才生效。
+        _check_timeouts(s, root)
+        _save(s)
         t = _task(s, args.task_id)
         sid = t.get("session_id")
         if not sid:

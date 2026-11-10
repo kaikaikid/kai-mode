@@ -416,6 +416,28 @@ def test_late_report_ignored_after_timeout(tmp_path: Path):
     assert any(e.get("kind") == "late_result_ignored" for e in s["events"])
 
 
+def test_report_first_path_detects_timeout(tmp_path: Path):
+    """M-1：claim 后子代理长跑、中间无 claim/advance，直接 fleet report 也必须判超时。"""
+    _write_running_session(tmp_path, started_ago_s=7200, timeout_min=1)
+    sdir = tmp_path / ".coding" / "runs" / "r-w" / "sessions" / "s-t"
+    sdir.mkdir(parents=True, exist_ok=True)
+    (sdir / "report.json").write_text(json.dumps({"result": "done", "files_changed": [],
+                                                  "verification": [], "open_questions": [],
+                                                  "notes": "late"}), encoding="utf-8")
+    r = cli(tmp_path, "report", "r-w", "t1", expect=1)  # 超时后的报告＝迟到
+    out = r.stdout + r.stderr
+    assert "timed out" in out or "late report ignored" in out
+    s = read_state(tmp_path)
+    assert s["tasks"][0]["status"] == "failed"
+    assert s["tasks"][0]["blocked_reason"] == "timeout"
+    assert s["sessions"][0]["status"] == "timeout"
+    kinds = [e.get("kind") for e in s["events"]]
+    assert "session_timeout" in kinds
+    assert "late_result_ignored" in kinds
+    # 迟到结果不改状态：仍是 failed（没有转 review/finished）
+    assert s["sessions"][0]["status"] == "timeout"
+
+
 def test_advance_path_checks_timeout_on_resume(tmp_path: Path):
     # resume 走 advance：超时在推进入口也落账（不只 claim/report）
     _write_running_session(tmp_path, started_ago_s=7200, timeout_min=1)
