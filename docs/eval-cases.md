@@ -48,9 +48,17 @@
 | 日期 | 案例/题号 | 执行者 | 结果 | 证据 |
 |---|---|---|---|---|
 | 2026-11-10 | 检查器本身 | 工程（布莱恩） | 通过：7/7 确定性断言 | `python -m pytest scripts/tests/test_eval_check.py -q` → `7 passed in 0.13s` |
-| 2026-11-10 | E-coordinator-01 … E-reviewer-01（8 例） | — | **未执行** | 需宿主子代理按角色实跑；执行者即被测方不得自评，且本包无派宿主子代理/唤醒队友授权。改用检查器评审真实输出前不算通过 |
-| 2026-11-10 | COM-01~09（9 题） | — | **未执行** | 只考康娜大白话；需 coordinator 会话实跑＋人工盲评，本包无该权限。检查器已能拦「非 coordinator 冒充 COM」 |
-| 2026-11-10 | 人工盲评（清晰度/角色辨识度） | — | **未执行** | 需独立评审（提里奥或团长）新会话做，执行者不自评 |
+| 2026-11-10 | E-researcher-01 | 卓尔游侠 | **accept**（独立复审） | `eval-2026-11-10/researcher.md`（36 行）；复审判词 seq 350：output_contract 符合、fact 全挂证据、无编造 |
+| 2026-11-10 | E-architect-01 | 符文法师 | **accept**（独立复审） | `architect.md`（38 行）；constraints 5／options 3 含「不做」／rejected 2／rollback 齐 |
+| 2026-11-10 | E-engineer-01 | 矮人工匠 | **accept**（独立复审） | `engineer.md`（35 行）；先红 `assert 120 == 114` 后绿 `2 passed`，失败原文未摘要 |
+| 2026-11-10 | E-designer-01 | 德鲁伊 | **accept**（独立复审） | `designer.md`（40 行）＋`designer.envelope.json` 过 eval-check ok=true；开关轨道对比 1.49–2.42:1 未达 3:1 如实披露 |
+| 2026-11-10 | E-writer-01 | 游学者 | **accept**（独立复审） | `writer.md`（31 行）；checked 5 条带证据、unchecked 5 条待回交、未编造发布状态 |
+| 2026-11-10 | E-archivist-01 | 青铜龙 | **accept**（独立复审） | `archivist.md`（40 行）；四字段齐、冲突如实标「暂不入库」、append-only |
+| 2026-11-10 | E-reviewer-01 | 提里奥·弗丁 | **accept**（自产物，不标盲评通过） | `reviewer.md`（23 行）；三态 verdict、2 条 INFO 带证据，首行声明不构成通过判定 |
+| 2026-11-10 | E-coordinator-01 | 康娜 | **accept**（最终复审判词 seq 363） | `eval-2026-11-10/coordinator.md`（31 行）；信封四字段齐、四段齐、fact 带证据、不替用户拍板、末尾声明未自评 |
+| 2026-11-10 | COM-01/02/04 实跑 | 康娜 | **盲评通过**（清晰度/自然度/角色辨识度按 canon 正本判，复审判词 seq 363） | 三题均结论先行、术语转白话、≤3 行；盲评表见复审判词 |
+| 2026-11-10 | COM-03/05/06/07/08/09 | — | **未执行** | 本轮按委托只实跑 3 题，其余不虚构 |
+| 2026-11-10 | 人工盲评（七专业产物辨识度粗判） | 提里奥·弗丁 | 复审判词 seq 350：七份辨识度清晰；designer 视觉稿人眼观感未评 | 复审判词原文 |
 
 失败类型编码（跑起来后填）：`schema`（字段/枚举不符）／`evidence`（fact 缺证据）／
 `verdict`（判词越权或旧值）／`secret`（疑似密钥）／`role`（角色混用）／`clarity`（人工盲评不达标）。
