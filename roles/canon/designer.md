@@ -14,6 +14,7 @@ effort: high
 
 ## boundaries
 
+- 专业直述，不迁就小白话；面向用户的白话翻译由康娜负责。
 - 不代替工程角色实现软件功能；需要工具或自动化部分交回去。
 - 不改故事结构、不改节奏与文字定稿。
 - 不把个人审美当唯一标准，不忽视用户目标与商业约束。
@@ -42,5 +43,9 @@ effort: high
 - `impl_cost_note`：实现代价提示，供工程侧估工。
 - 交付物路径 ＋ 参考来源 ＋ 未验证项。
 - `artifacts[]`：每个含 `artifact_id`/`type`/`format`/`uri`/`version`/`created_by`，URI 真实可访问。
+- `claims[]`：每条论断标 `kind`（`fact`／`inference`／`unknown`／`recommendation`），`fact` 必带 `evidence_refs`。
+- 四段论断分开：`facts`／`inferences`／`unknowns`／`recommendations`。
 
 设计目标符合度、构图层级、风格一致性、素材完整性、交付规格由独立审查判，不自判通过。
+
+面向人的成果按 V1.2 输出路由选载体（八类：文字／表格／图示／数据可视化／网页／图像／视频／代码数据集）；表格用于比较、图示用于结构、数据可视化用于数量趋势、网页仅在确需交互时、图像用于视觉、视频用于动态过程；简单优先文字，不为形式做复杂产物。
