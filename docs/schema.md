@@ -122,11 +122,13 @@ cancelled 的 run 不再有 live session 时视为 closed 候选，由 `fleet gc
 | trace 链 | run 创建带 `trace_id` ＋ `run_span_id`；session／审查／交接各记 `span_id` ＋ `parent_span_id`＝`run_span_id`（`state["spans"][]`）。**`trace_supported=false`**：内核生成并串联 ID，但宿主无真实 tracing 采集，不假造外部链路 |
 | Token 账单 | `fleet usage <run> '<json>'` 追加 `usage_log[]` 并累计 `budget.used_tokens`；`fleet context` 输出 `usage_by_source` 聚合。无回传时 `token_usage_collected=false`、`used_tokens=0`，不估算 |
 
-脱敏（已实现）：`scan_secrets`（`sk-…`／`ghp_…`／`AKIA…`／`xox?-…`／PEM 私钥头）用于三路：
-① `fleet report` 收报告命中即整份拒收、不落盘，只留脱敏回执；
-② `record_event` 事件字段命中即整值替换为 `[redacted:<模式名>]` 并追加 `secret_detected`；
-③ `fleet report` 的持久化副本即 ①，原文不进 `sessions/<task>.report.json`。
-回执只报模式名，不回显内容。
+脱敏（已实现，两条入口、三层覆盖）：
+- 入口①：`fleet report` 收报告命中即整份拒收、不落盘，只留脱敏回执（原文不进 `sessions/<task>.report.json`）。
+- 入口②：`record_event` 事件字段命中即整值替换为 `[redacted:<模式名>]`。
+- 兜底：`st.save` 序列化前递归扫**所有** state 字段（verdict reason/defects、plan brief/ac、
+  handoff、owner_deferred、usage_log 等），命中整值替换，并在保存前追加 `secret_detected` 事件，
+  再算完整性签名。即所有经 `fleet` 命令写 state.json 的路径都被覆盖。
+回执只报模式名，不回显内容。扫描形状：`sk-…`／`ghp_…`／`AKIA…`／`xox?-…`／PEM 私钥头（`state.scan_secrets`）。
 
 ## 未实现（缺证据，标未验证，不宣称完成）
 

@@ -514,6 +514,55 @@ def test_record_event_redacts_secret_fields():
     assert state["events"][1]["kind"] == "secret_detected"
 
 
+# ------------------------------------------------------------------
+# M-2：state 写入统一守卫（plan / verdict / handoff 三路）
+
+SECRET = "sk-abcdefghijklmnop1234"
+
+
+def test_save_guard_redacts_plan_fields(tmp_path: Path):
+    write_run(tmp_path, phase="planning")
+    tf = tmp_path / "tasks.json"
+    tf.write_text(json.dumps({"tasks": [{"id": "t1", "title": "t1",
+                                         "brief": f"use {SECRET}",
+                                         "ac": [f"token {SECRET}"]}]}), encoding="utf-8")
+    cli(tmp_path, "plan", "r-w", "--file", str(tf))
+    s = read_state(tmp_path)
+    t = s["tasks"][0]
+    assert SECRET not in json.dumps(s, ensure_ascii=False)
+    assert t["brief"] == "[redacted:api_key_sk]"
+    assert t["ac"] == ["[redacted:api_key_sk]"]
+    assert any(e.get("kind") == "secret_detected" for e in s["events"])
+
+
+def test_save_guard_redacts_verdict_reason(tmp_path: Path):
+    write_run(tmp_path, tasks=review_state())
+    vf = tmp_path / "v.json"
+    vf.write_text(json.dumps({"verdict": "return", "reason": f"leak {SECRET}",
+                              "defects": [f"defect {SECRET}"]}), encoding="utf-8")
+    cli(tmp_path, "verdict", "r-w", "t1", "--file", str(vf))
+    s = read_state(tmp_path)
+    assert SECRET not in json.dumps(s, ensure_ascii=False)
+    assert s["tasks"][0]["review"]["reason"] == "[redacted:api_key_sk]"
+    assert any(e.get("kind") == "secret_detected" for e in s["events"])
+
+
+def test_save_guard_redacts_handoff_fields(tmp_path: Path):
+    write_run(tmp_path)
+    s = read_state(tmp_path)
+    s["handoffs"] = [{"id": "h-old", "status": "pending",
+                      "note": f"carry {SECRET}"}]
+    s.pop("integrity", None)
+    (tmp_path / ".coding" / "runs" / "r-w" / "state.json").write_text(
+        json.dumps(s, ensure_ascii=False), encoding="utf-8")
+    # 任一写 state 的命令都会经过 save 守卫；用 confirm 触发
+    cli(tmp_path, "confirm", "r-w", "h1", "accepted")
+    s2 = read_state(tmp_path)
+    assert SECRET not in json.dumps(s2, ensure_ascii=False)
+    assert s2["handoffs"][0]["note"] == "[redacted:api_key_sk]"
+    assert any(e.get("kind") == "secret_detected" for e in s2["events"])
+
+
 def test_claim_blocks_after_timeout(tmp_path: Path):
     _write_running_session(tmp_path, started_ago_s=7200, timeout_min=1)
     cli(tmp_path, "claim", "r-w", "t1", expect=1)

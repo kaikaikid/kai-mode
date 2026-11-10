@@ -102,7 +102,42 @@ def _state_digest(state: dict[str, Any]) -> str:
     ).hexdigest()
 
 
+def _redact_inplace(node: Any, hits: set[str], skip: set[str] | None = None) -> Any:
+    """递归把命中密钥形状的字符串整值替换为 `[redacted:<模式名>]`，模式名收集进 hits。
+    dict 的 skip 键整枝跳过（如 integrity，哈希字面量不参与）。"""
+    if isinstance(node, str):
+        found = scan_secrets(node)
+        if found:
+            hits.update(found)
+            return f"[redacted:{','.join(found)}]"
+        return node
+    if isinstance(node, list):
+        return [_redact_inplace(x, hits, skip) for x in node]
+    if isinstance(node, dict):
+        out = {}
+        for k, v in node.items():
+            if skip and k in skip:
+                out[k] = v
+                continue
+            out[k] = _redact_inplace(v, hits, skip)
+        return out
+    return node
+
+
 def save(state: dict[str, Any], root: Path | None = None) -> None:
+    # W3.1（M-2）：state 写入统一守卫——所有命令写进 state.json 的字段都过密钥扫描
+    # （verdict reason/defects、plan brief/ac、handoff、owner_deferred 等），
+    # 命中整值替换并追加 secret_detected 事件；保存前做，签名叫在脱敏后才算。
+    hits: set[str] = set()
+    redacted = _redact_inplace(state, hits, skip={"integrity"})
+    if hits:
+        redacted.setdefault("events", []).append({
+            "kind": "secret_detected", "at": time.time(),
+            "patterns": sorted(hits),
+            "note": "state field redacted at save",
+        })
+    state.clear()
+    state.update(redacted)
     state["schema_version"] = SCHEMA_VERSION
     state["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
     # 完整性签名（方案 A，防呆不防对抗）：控制面外的直写（如工人用绝对路径改
