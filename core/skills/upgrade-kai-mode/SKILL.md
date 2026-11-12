@@ -194,7 +194,7 @@ python <源仓>/scripts/check-instance.py --repo <项目仓>
 
 ## 第 9 步 · 升级回执
 
-写进项目配置 `paths.handoff_dir` 当日日报的「要你拍」段，九格：
+写进项目配置 `paths.handoff_dir` 当日日报的「待排版」段，九格：
 
 | 格 | 内容 |
 |---|---|
