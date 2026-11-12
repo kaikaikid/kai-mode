@@ -44,6 +44,7 @@
 | OpenCode | 无 | 项目技能目录（`registry.skills.project_skills_dir`） | 无；用 prompt | 独立 `opencode run` 进程 | 无 | 无原生；用本宿主自己的进程当角色实例（D3），内核走 `worker_cmd`/`reviewer_cmd` |
 | Copilot | 无 | 项目技能目录 | 无；用 prompt | 宿主自定义代理（`.github/agents/`） | 视版本 | **有**：`.github/agents/<名>.agent.md`，派发键＝文件名；只读靠 `tools` 不给 `edit`+`execute`；无 `maxTurns`/`disallowedTools`/`hooks` |
 | Cursor | 无 | 项目技能目录（`registry.skills.project_skills_dir`） | 无；用 prompt | 宿主子代理（`.cursor/agents/`） | 视版本 | **有**：`.cursor/agents/<名>.md`；只读靠 frontmatter `readonly: true`（硬机制）；无 `tools` 白名单 |
+| OpenBot | 无插件清单；技能装进各 agent 工作区 | `<agent 工作区>/.agents/skills/<名>/` | 无；默认人格 + prompt | 界面「新话题」(threads)／`context/clear` 切段／routine 独立运行 | routines（最小 3 分钟） | **无原生子代理**；派活＝给另一个 agent 发消息（详见 `openbot.md`） |
 
 不在表里的宿主：按 §1 四步自测，然后在本表补一行。
 
