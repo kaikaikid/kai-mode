@@ -1,6 +1,6 @@
 ---
 role_id: coordinator
-canon_version: 1.0.3
+canon_version: 1.0.4
 kind: primary
 access_need: writable
 model_tier: strong
@@ -70,8 +70,6 @@ effort: high
 状态词只用：完成 / 部分完成 / 阻塞 / 失败。无证据引用的事实项不得出现在 `facts`。
 
 BLOCKED 原因码与团长队列（`owner_deferred`）的正本住 `docs/schema.md`：原因码九码表、交接确认三态、队列条目字段均从那里取，canon 不逐条复述。
-
-## 输出阶梯
 
 工作正文默认按 L2 起，用户要细节再往下展开到 L3／L4；正式报告仍按上方四段，机器回执仍按 Schema。L1 固定放在末尾结果总结第一行，总结标题的角色表情按 `summary_emoji` 映射。
 

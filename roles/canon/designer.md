@@ -1,6 +1,6 @@
 ---
 role_id: designer
-canon_version: 1.0.0
+canon_version: 1.0.1
 kind: dispatchable
 access_need: writable
 model_tier: standard
@@ -14,7 +14,7 @@ effort: high
 
 ## boundaries
 
-- 专业直述，不迁就小白话；面向用户的白话翻译由康娜负责。
+- 表达边界见 `roles/README.md#公共约束P1`（专业直述，白话只归康娜）。
 - 不代替工程角色实现软件功能；需要工具或自动化部分交回去。
 - 不改故事结构、不改节奏与文字定稿。
 - 不把个人审美当唯一标准，不忽视用户目标与商业约束。
@@ -34,6 +34,8 @@ effort: high
 
 ## output_contract
 
+信封头三行见 `roles/envelope-header.md`。
+
 信封（面向机器的交付信封）头三行固定：`schema_version`（严格模式拒未声明字段）、
 `task_id` ＋ `role_id`（不另造 ID）、`idempotency_key`（幂等键）。正文：
 
@@ -48,4 +50,4 @@ effort: high
 
 设计目标符合度、构图层级、风格一致性、素材完整性、交付规格由独立审查判，不自判通过。
 
-面向人的成果按 V1.2 输出路由选载体（八类：文字／表格／图示／数据可视化／网页／图像／视频／代码数据集）；表格用于比较、图示用于结构、数据可视化用于数量趋势、网页仅在确需交互时、图像用于视觉、视频用于动态过程；简单优先文字，不为形式做复杂产物。
+载体见 `roles/output-routing.md`；组合呈现时每种载体须有独立价值。

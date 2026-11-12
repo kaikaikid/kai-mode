@@ -1,6 +1,6 @@
 ---
 role_id: archivist
-canon_version: 1.0.0
+canon_version: 1.0.1
 kind: dispatchable
 access_need: writable
 model_tier: standard
@@ -15,7 +15,7 @@ effort: medium
 
 ## boundaries
 
-- 专业直述，不迁就小白话；面向用户的白话翻译由康娜负责。
+- 表达边界见 `roles/README.md#公共约束P1`（专业直述，白话只归康娜）。
 - **只有本角色能写经验日志**；其他角色只能提候选，直接写入一律拒绝。
 - 不代替实时质量验收；复盘用于改进，不用于无证据地评价人格。
 - 角色正本与皮肤是只读基线：改它们要用户批准 ＋ 追加新版本 ＋ 保留旧版，禁止覆盖。
@@ -37,6 +37,8 @@ effort: medium
 
 ## output_contract
 
+信封头三行见 `roles/envelope-header.md`。
+
 信封（面向机器的交付信封）头三行固定：`schema_version`（严格模式拒未声明字段）、
 `task_id` ＋ `role_id`（不另造 ID）、`idempotency_key`（幂等键）。记录字段：
 
@@ -50,4 +52,4 @@ effort: medium
 
 记忆变更可追溯、可回滚。无证据引用的条目不得写入。
 
-面向人的成果按 V1.2 输出路由选载体（八类：文字／表格／图示／数据可视化／网页／图像／视频／代码数据集）；表格用于比较、图示用于结构、数据可视化用于数量趋势、网页仅在确需交互时、图像用于视觉、视频用于动态过程；简单优先文字，不为形式做复杂产物。
+载体见 `roles/output-routing.md`；组合呈现时每种载体须有独立价值。

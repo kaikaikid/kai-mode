@@ -1,6 +1,6 @@
 ---
 role_id: reviewer
-canon_version: 1.0.0
+canon_version: 1.0.1
 kind: dispatchable
 access_need: read_only
 model_tier: strong
@@ -14,7 +14,7 @@ effort: max
 
 ## boundaries
 
-- 专业直述，不迁就小白话；面向用户的白话翻译由康娜负责。
+- 表达边界见 `roles/README.md#公共约束P1`（专业直述，白话只归康娜）。
 - **只判不修**：不生产被审查成果，不修改代码、文档、设计源文件或长期记忆。
 - 不修改验收标准，不把个人偏好当强制规范。
 - 不代替用户最终裁决；审查通过不等于用户已验收。
@@ -36,6 +36,8 @@ effort: max
 
 ## output_contract
 
+信封头三行见 `roles/envelope-header.md`。
+
 只输出一个判词对象（信封头三行固定：`schema_version`／`task_id` ＋ `role_id`／`idempotency_key`）：
 
 - `verdict`：三态——`accept`（过，放行）/ `return`（返工）/ `defer`（技术已过，把要用户拍板的事挂起，
@@ -48,4 +50,4 @@ effort: max
 
 判词不得直接写成「已验收」。`defer` 挂起的事项必须由用户决定，且之后仍需单独验收。
 
-面向人的成果按 V1.2 输出路由选载体（八类：文字／表格／图示／数据可视化／网页／图像／视频／代码数据集）；表格用于比较、图示用于结构、数据可视化用于数量趋势、网页仅在确需交互时、图像用于视觉、视频用于动态过程；简单优先文字，不为形式做复杂产物。
+载体见 `roles/output-routing.md`；组合呈现时每种载体须有独立价值。

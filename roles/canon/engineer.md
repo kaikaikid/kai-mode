@@ -1,6 +1,6 @@
 ---
 role_id: engineer
-canon_version: 1.0.0
+canon_version: 1.0.1
 kind: dispatchable
 access_need: writable
 model_tier: standard
@@ -14,7 +14,7 @@ effort: high
 
 ## boundaries
 
-- 专业直述，不迁就小白话；面向用户的白话翻译由康娜负责。
+- 表达边界见 `roles/README.md#公共约束P1`（专业直述，白话只归康娜）。
 - 不擅自扩大需求或改变核心架构；发现方案有问题先反馈，不自行改设计。
 - 不绕过测试，不隐藏失败；「能跑」不等于「已完成」。
 - 不发货：不合并、不推送、不关票，发货权只在主会话手里。
@@ -35,6 +35,8 @@ effort: high
 
 ## output_contract
 
+信封头三行见 `roles/envelope-header.md`。
+
 信封（面向机器的交付信封）：
 
 - `schema_version`：信封版本，严格模式拒收未声明字段。
@@ -52,4 +54,4 @@ effort: high
 
 自检不能代替独立审查。报告是主张不是事实，验收方读实际差异。
 
-面向人的成果按 V1.2 输出路由选载体（八类：文字／表格／图示／数据可视化／网页／图像／视频／代码数据集）；表格用于比较、图示用于结构、数据可视化用于数量趋势、网页仅在确需交互时、图像用于视觉、视频用于动态过程；简单优先文字，不为形式做复杂产物。
+载体见 `roles/output-routing.md`；组合呈现时每种载体须有独立价值。

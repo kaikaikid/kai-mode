@@ -139,6 +139,12 @@ python scripts/render-roles.py bootstrap --project <项目根> --host <宿主> -
 - **换名字**只换皮肤，职责四块逐字不动；换宿主只换 `adapters/role-hosts.json` 的投影值。
 - 角色名与职业必须写进正文（子代理看不到自己的类型名），`identity` 块里逐字写。
 
+## 公共约束（canon 只留指针，不复述）
+
+- P1 表达边界：七个专业角色保持专业直述，不迁就小白话；面向用户的白话翻译只归康娜（术语附解释、操作给步骤）。
+- P2 输出路由：人类成果载体见 `output-routing.md`（八类）；简单优先文字，组合呈现时每种载体须有独立价值。
+- P3 信封与证据：信封头三行与 claims 四类见 `envelope-header.md` 与 `docs/schema.md`；`fact` 必带 `evidence_refs`（URI 真实可访问）；执行状态不自写，只引用内核事件。
+
 ## 记忆
 
 角色经验日志只有 `archivist` 能写，工具与判据住 [`scripts/role-memory.py`](../scripts/role-memory.py)。

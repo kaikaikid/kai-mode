@@ -155,12 +155,16 @@ def test_ac02_hand_edit_is_healed_by_rerender(tmp_path):
 def test_ac02_canon_bump_changes_fingerprint_immediately(repo_copy):
     """正本升版：现读与渲染结果同时变，指纹跟着变——不需要任何巡检来告知。"""
     before = rl.render_prompt(repo_copy, "reviewer", "generic")
-    assert "canon_version=1.0.0" in before
+    import re as _re
+    m = _re.search(r"canon_version=(\d+)\.(\d+)\.(\d+)", before)
+    assert m, before[:200]
+    major, minor, patch = map(int, m.groups())
+    bumped = f"{major}.{minor}.{patch + 1}"
     p = repo_copy / "roles" / "canon" / "reviewer.md"
-    p.write_text(p.read_text(encoding="utf-8").replace(
-        "canon_version: 1.0.0", "canon_version: 1.1.0"), encoding="utf-8")
+    p.write_text(_re.sub(r"canon_version: \d+\.\d+\.\d+", f"canon_version: {bumped}",
+                         p.read_text(encoding="utf-8"), count=1), encoding="utf-8")
     after = rl.render_prompt(repo_copy, "reviewer", "generic")
-    assert "canon_version=1.1.0" in after and after != before
+    assert f"canon_version={bumped}" in after and after != before
     rendered = rl.render_all(repo_copy, "qoder", "generic")["reviewer.md"]
     assert _body_of(rendered) == after, "渲染路径没跟着正本走"
 
@@ -271,9 +275,14 @@ def test_prompt_equals_body_of_rendered_file():
 def test_prompt_tracks_canon_without_any_file(repo_copy):
     """现读路径不依赖任何落地文件：改正本，下一次 prompt 就是新的。"""
     before = rl.render_prompt(repo_copy, "reviewer", "generic")
+    import re as _re2
+    m2 = _re2.search(r"canon_version=(\d+)\.(\d+)\.(\d+)", before)
+    assert m2, before[:200]
+    major2, minor2, patch2 = map(int, m2.groups())
+    bumped2 = f"{major2}.{minor2}.{patch2 + 1}"
     p = repo_copy / "roles" / "canon" / "reviewer.md"
-    p.write_text(p.read_text(encoding="utf-8").replace(
-        "canon_version: 1.0.0", "canon_version: 1.1.0"), encoding="utf-8")
+    p.write_text(_re2.sub(r"canon_version: \d+\.\d+\.\d+", f"canon_version: {bumped2}",
+                          p.read_text(encoding="utf-8"), count=1), encoding="utf-8")
     assert rl.render_prompt(repo_copy, "reviewer", "generic") != before
 
 

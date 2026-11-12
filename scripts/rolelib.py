@@ -22,6 +22,9 @@ CANON_BLOCKS = ("mission", "boundaries", "workflow", "output_contract")
 META_KEYS = ("role_id", "canon_version", "kind", "access_need", "model_tier", "effort")
 SKIN_KEYS = ("name", "identity", "personality")
 SKINS = ("generic", "guild")
+INPUT_CONTRACT_REL = "roles/input-contract.md"
+OUTPUT_ROUTING_REL = "roles/output-routing.md"
+ENVELOPE_HEADER_REL = "roles/envelope-header.md"
 ACCESS = ("read_only", "writable")
 KINDS = ("primary", "dispatchable")
 # 主 AI 人格：默认对话激活的就是它，不渲染成可派发的子代理定义。
@@ -238,16 +241,37 @@ def role_frontmatter(host_cfg: dict, canon: dict, entry: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
+def load_input_contract(root: Path) -> str:
+    """输入契约唯一家：roles/input-contract.md。渲染器逐字前置，不复述第二遍。"""
+    p = Path(root) / INPUT_CONTRACT_REL
+    if not p.is_file():
+        raise RoleError(f"缺输入契约：{INPUT_CONTRACT_REL}")
+    text = p.read_text(encoding="utf-8").strip()
+    if not text:
+        raise RoleError(f"输入契约是空的：{INPUT_CONTRACT_REL}")
+    return text
+
+
 def render_body(canon: dict, skin_meta: dict, entry: dict, skin_name: str) -> str:
-    """角色正文（无 frontmatter）：指纹 ＋ identity ＋ personality ＋ 正本四块逐字。
+    """角色正文（无 frontmatter）：指纹 ＋ 输入契约 ＋ identity ＋ personality ＋ 正本四块逐字。
 
     「派发时现读」这条路用它：每次现算，永远跟正本同步，不需要重渲染任何文件。
+    输入块只走这里前置，不在各 canon 里复述八遍。
     """
     meta = canon["meta"]
-    return "\n".join([
+    root = canon["path"].parents[2]
+    try:
+        input_block = load_input_contract(root)
+    except RoleError:
+        input_block = ""
+    parts = [
         fingerprint(meta, canon["sha256"], skin_name,
                     skin_meta.get("skin_version", ""), entry_sha256(entry)),
         "",
+    ]
+    if input_block:
+        parts += [input_block, ""]
+    parts += [
         "## identity",
         entry["identity"].strip(),
         "",
@@ -255,7 +279,8 @@ def render_body(canon: dict, skin_meta: dict, entry: dict, skin_name: str) -> st
         entry["personality"].strip(),
         "",
         canon["body"].lstrip("\n").rstrip("\n"),
-    ]) + "\n"
+    ]
+    return "\n".join(parts) + "\n"
 
 
 def render_prompt(root: Path, role_id: str, skin: str) -> str:
@@ -396,6 +421,22 @@ def validate(root: Path) -> list[str]:
             if str(e.get("name", "")) and str(e.get("name")) not in str(e.get("identity", "")):
                 bad.append(f"{rel} {rid} identity 里没写出名字「{e['name']}」"
                            f"（子代理看不到自己的类型名，必须写进正文）")
+
+    for contract_rel in (INPUT_CONTRACT_REL, OUTPUT_ROUTING_REL, ENVELOPE_HEADER_REL):
+        p = Path(root) / contract_rel
+        if not p.is_file():
+            bad.append(f"缺唯一家文件：{contract_rel}")
+        elif not p.read_text(encoding="utf-8").strip():
+            bad.append(f"唯一家文件是空的：{contract_rel}")
+    try:
+        _guild = load_skin(root, "guild")
+        _emojis = [str((_guild.get("roles") or {}).get(r, {}).get("summary_emoji", "")) for r in ROLE_IDS]
+        if any(not x.strip() for x in _emojis):
+            bad.append("roles/skins/guild.json summary_emoji 缺项（八角色须齐全）")
+        elif len(set(_emojis)) != len(_emojis):
+            bad.append("roles/skins/guild.json summary_emoji 不唯一（八角色须各不相同）")
+    except (RoleError, OSError, ValueError) as e:
+        bad.append(str(e))
 
     try:
         hosts = load_hosts(root)
