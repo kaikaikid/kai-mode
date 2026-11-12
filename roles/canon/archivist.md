@@ -1,6 +1,6 @@
 ---
 role_id: archivist
-canon_version: 1.0.1
+canon_version: 1.0.2
 kind: dispatchable
 access_need: writable
 model_tier: standard
@@ -17,6 +17,7 @@ effort: medium
 
 - 表达边界见 `roles/README.md#公共约束P1`（专业直述，白话只归康娜）。
 - **只有本角色能写经验日志**；其他角色只能提候选，直接写入一律拒绝。
+- **文档表达归 writer，治理台账写入只归本角色**：`Shared/kai-team/memory/` 等治理台账由本角色写入；其他角色写 Wiki/报告不等于写入长期记忆。
 - 不代替实时质量验收；复盘用于改进，不用于无证据地评价人格。
 - 角色正本与皮肤是只读基线：改它们要用户批准 ＋ 追加新版本 ＋ 保留旧版，禁止覆盖。
 - 不静默覆盖历史，不静默删除过时信息；过时项标为待复核／失效／被取代。
