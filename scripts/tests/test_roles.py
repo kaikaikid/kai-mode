@@ -179,6 +179,32 @@ def test_fingerprint_is_recomputable():
     assert "role_id=archivist" in head and "skin=guild" in head
 
 
+def test_canon_fingerprint_ignores_line_endings(tmp_path):
+    """同一份正本以 LF / CRLF 落盘，指纹必须相同；否则同一 blob 跨机两值。"""
+    text = (REPO / "roles" / "canon" / "reviewer.md").read_text(encoding="utf-8")
+    text = text.replace("\r\n", "\n")
+    shas = {}
+    for name, payload in (("lf", text.encode("utf-8")),
+                          ("crlf", text.replace("\n", "\r\n").encode("utf-8"))):
+        root = tmp_path / name
+        (root / "roles" / "canon").mkdir(parents=True)
+        (root / "roles" / "canon" / "reviewer.md").write_bytes(payload)
+        shas[name] = rl.load_canon(root)["reviewer"]["sha256"]
+    assert shas["lf"] == shas["crlf"], shas
+
+
+def test_canon_fingerprint_matches_normalized_git_blob():
+    """工作树 CRLF 不得让指纹漂离 git blob：指纹以 LF 归一后的字节为准。"""
+    canon = rl.load_canon(REPO)
+    for p in sorted((REPO / "roles" / "canon").glob("*.md")):
+        rel = p.relative_to(REPO).as_posix()
+        blob = subprocess.run(
+            ["git", "show", f"HEAD:{rel}"], cwd=REPO, capture_output=True, check=True
+        ).stdout
+        want = rl.sha256_bytes(blob.replace(b"\r\n", b"\n"))
+        assert canon[p.stem]["sha256"] == want, p.name
+
+
 def test_entry_fingerprint_ignores_json_whitespace_and_key_order():
     e = {"name": "n", "identity": "i", "personality": "p"}
     reordered = {"personality": "p", "name": "n", "identity": "i", "_extra": "ignored"}

@@ -52,6 +52,15 @@ def sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def sha256_normalized(data: bytes) -> str:
+    """指纹用：先归一 LF 再哈希，不写回文件。
+
+    `.gitattributes` 钉 `*.md text eol=lf`，但工作树可能被 Windows 文本工具落成 CRLF；
+    raw 字节哈希会让同一 git blob 在不同机器产出两个指纹（#14）。归一后与 blob 同口径。
+    """
+    return sha256_bytes(data.replace(b"\r\n", b"\n").replace(b"\r", b"\n"))
+
+
 def canon_dir(root: Path) -> Path:
     return Path(root) / "roles" / "canon"
 
@@ -103,7 +112,7 @@ def load_canon(root: Path) -> dict[str, dict]:
         blocks, body = split_blocks(body)
         out[p.stem] = {
             "path": p, "raw": raw, "text": text, "meta": meta, "order": order,
-            "body": body, "blocks": blocks, "sha256": sha256_bytes(raw),
+            "body": body, "blocks": blocks, "sha256": sha256_normalized(raw),
         }
     return out
 
