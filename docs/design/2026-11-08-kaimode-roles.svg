@@ -1,16 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="740" viewBox="0 0 1280 740"
      role="img" aria-labelledby="kaimode-roles-title kaimode-roles-desc"
      font-family="Segoe UI, PingFang SC, sans-serif">
-  <title id="kaimode-roles-title">角色层与技能地图（8 份角色正本 · 6 插件 26 技能）</title>
-  <desc id="kaimode-roles-desc">左侧为酒馆冒险团角色层：主 AI 人格、角色模板 canon、皮肤 skins、同一个组装点、角色实例与宿主派生物；右侧为六插件十九技能清单与武器集认领关系。</desc>
+  <title id="kaimode-roles-title">角色层与技能地图（v0.39.0 历史快照 · 8 份角色正本 / 7 个可派发角色 · 6 插件 19 技能）</title>
+  <desc id="kaimode-roles-desc">左侧为酒馆冒险团角色层：主 AI 人格、角色模板 canon、皮肤 skins、同一个组装点、可派发角色实例与宿主派生物；右侧为 v0.39.0 当时的六插件十九技能清单与武器集认领关系。数字均为该版本历史快照，不是现行清单；现行以 plugin-check 与 manifests/plugins.lock.json 为准（2026-11-14 为 6 插件 33 技能）。</desc>
   <defs>
     <marker id="kmro-ar" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
       <path d="M0,0 L10,4 L0,8 z" fill="#475569"/>
     </marker>
   </defs>
 
-  <text x="44" y="46" font-size="23" font-weight="bold" fill="#0f172a">角色层与技能地图（v0.39.0 · 8 份角色正本 · 6 插件 26 技能）</text>
-  <text x="44" y="72" font-size="13" fill="#64748b">角色是子代理，不是常驻会话；派活规则唯一家是 engine/skills/fleet/SKILL.md</text>
+  <text x="44" y="46" font-size="23" font-weight="bold" fill="#0f172a">角色层与技能地图（v0.39.0 历史快照 · 8 份角色正本 / 7 个可派发角色 · 6 插件 19 技能）</text>
+  <text x="44" y="72" font-size="13" fill="#64748b">角色正本 8 份含常驻主代理康娜，可派发角色 7 个；派活规则唯一家是 engine/skills/fleet/SKILL.md</text>
 
   <text x="44" y="118" font-size="15" font-weight="bold" fill="#312e81">角色层（酒馆冒险团）</text>
 
@@ -67,7 +67,7 @@
   </g>
 
   <!-- 右侧技能地图 -->
-  <text x="640" y="118" font-size="15" font-weight="bold" fill="#1e3a8a">技能地图（6 插件 / 26 技能）</text>
+  <text x="640" y="118" font-size="15" font-weight="bold" fill="#1e3a8a">技能地图（v0.39.0 当时：6 插件 / 19 技能）</text>
 
   <g font-size="11">
     <rect x="640" y="136" width="600" height="64" rx="8" fill="#eef2ff" stroke="#4f46e5" stroke-width="1.4"/>
@@ -100,6 +100,6 @@
   <text x="656" y="630" font-size="11" fill="#6d28d9">producer → 康娜 · lead-writer / marketing → writer</text>
   <text x="656" y="650" font-size="11" fill="#6d28d9">lead-artist / director → designer · final-review → reviewer</text>
 
-  <text x="640" y="700" font-size="10.5" fill="#64748b">清单唯一事实源：.claude-plugin/marketplace.json</text>
-  <text x="640" y="716" font-size="10.5" fill="#64748b">安装档位 core（7）/ full（19）住 manifests/install-profiles.json</text>
+  <text x="640" y="700" font-size="10.5" fill="#64748b">本图为 v0.39.0 历史快照；现行清单唯一事实源：.claude-plugin/marketplace.json（2026-11-14：6 插件 33 技能）</text>
+  <text x="640" y="716" font-size="10.5" fill="#64748b">安装档位 core（7）/ full（19）住 manifests/install-profiles.json；该档位数亦为 v0.39.0 读数</text>
 </svg>
