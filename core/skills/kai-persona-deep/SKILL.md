@@ -60,7 +60,7 @@ python scripts/render-roles.py depth --role coordinator
 
 ## 要加新的 depth 内容
 
-1. 写 `roles/persona/<role_id>.json` 的 `depth` 块，五个段位齐：`three_layers` / `soft_spot` / `bond` / `voice` / `growth`。
+1. 写 `roles/persona/<role_id>.json` 的 `depth` 块，五个段位齐：`three_layers` / `stakes` / `bond` / `voice` / `growth`。
 2. `depth_version` 用 `x.y.z`；`layer` 写「按需层」；`scope` 里必须写明「不进 system prompt」。
 3. 升 `persona_version`，跑框架自检——深度层的形状门和「不许内联进默认渲染」的门都在那儿。
 4. 重导出角色层派生登记，让指纹对上。

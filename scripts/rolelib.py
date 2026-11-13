@@ -311,15 +311,20 @@ def load_summary_slots(root: Path) -> dict:
     return data
 
 
-def summary_slot_block(root: Path, role_id: str) -> str:
-    """本角色的总结措辞：从唯一家现读，渲染时随体例一并前置。"""
+def summary_slot_block(root: Path, role_id: str, emoji: str = "") -> str:
+    """本角色的总结措辞：从唯一家现读，渲染时随体例一并前置。
+
+    `emoji` 是本角色自己的表情（来自皮肤的 summary_emoji）——必须渲进去，
+    不能留占位符：角色看不到自己该写哪个表情。
+    """
     data = load_summary_slots(root)
     e = (data.get("roles") or {})[role_id]
     src = e.get("slot_sources") or {}
+    head = f"{emoji} " if emoji else ""
     lines = [
         "## 你的总结措辞",
         "",
-        f"- 标题：`## <角色表情> {e['title']}｜只看这里`",
+        f"- 标题：`## {head}{e['title']}｜只看这里`",
         f"- 第一行（本次结论）：`{e['done']}：` —— 取自：{src.get('done', '')}",
         f"- 第二行（未完成项）：`{e['open']}：` —— 取自：{src.get('open', '')}",
         f"- 第三行（待用户决定）：`{e['ask']}：` —— 取自：{src.get('ask', '')}",
@@ -349,11 +354,11 @@ def render_body(canon: dict, skin_meta: dict, entry: dict, skin_name: str) -> st
     ]
     if input_block:
         parts += [input_block, ""]
-    try:
-        conv = load_summary_convention(root)
-        parts += [conv, "", summary_slot_block(root, meta["role_id"]), ""]
-    except RoleError:
-        conv = ""
+    # 失败关闭：体例与措辞表缺了就抛，不静默产出「没有总结体例」的提示词——
+    # 体例恒在常驻层是设计，不是可选装饰。
+    conv = load_summary_convention(root)
+    parts += [conv, "",
+              summary_slot_block(root, meta["role_id"], entry.get("summary_emoji", "")), ""]
     parts += [
         "## identity",
         entry["identity"].strip(),
@@ -536,6 +541,9 @@ def validate(root: Path) -> list[str]:
             for k in SKIN_KEYS:
                 if not str(e.get(k, "")).strip():
                     bad.append(f"{rel} {rid} 缺 {k}")
+            if not str(e.get("summary_emoji", "")).strip():
+                bad.append(f"{rel} {rid} 缺 summary_emoji"
+                           f"（标题要渲本角色自己的表情，不能留占位符）")
             if str(e.get("name", "")) and str(e.get("name")) not in str(e.get("identity", "")):
                 bad.append(f"{rel} {rid} identity 里没写出名字「{e['name']}」"
                            f"（子代理看不到自己的类型名，必须写进正文）")

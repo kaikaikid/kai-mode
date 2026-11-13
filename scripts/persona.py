@@ -117,6 +117,18 @@ def _depth_errors(rid: str, depth) -> list[str]:
     if nbytes > DEPTH_MAX_BYTES:
         errs.append(f"{rid} depth 正文超上限（{nbytes} > {DEPTH_MAX_BYTES} 字节）"
                     f"——按需层不许悄悄长成常驻层")
+    # 宿主专有词：用 canon 同一把尺（rolelib.HOST_TOKENS）。尺住一处，这里只引用。
+    try:
+        import sys as _sys
+        _sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import rolelib as _rl
+        for k in DEPTH_SECTIONS:
+            body = str(depth.get(k) or "")
+            for tok in _rl.HOST_TOKENS:
+                if tok in body:
+                    errs.append(f"{rid} depth.{k} 含宿主专有词「{tok}」（该住 adapters/）")
+    except Exception as e:  # 尺读不到就不猜，放过但不留假绿
+        errs.append(f"{rid} depth 的宿主词检查跑不起来：{e}")
     return errs
 
 

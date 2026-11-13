@@ -1858,6 +1858,43 @@ def chk_depth_publish(root: str, ms):
     return "ok", out[:300]
 
 
+def chk_summary_derived(root: str, ms):
+    """派生体例检查：安装面里出现的总结措辞必须与 summary-slots.json 的 coordinator 条目一致。
+
+    gold 的「回报」段与 eval-cases 的期望行会写到总结措辞。它们是派生件——
+    措辞改了这里必须跟着改，否则评测期望会悄悄漂。退役标签一律零命中。
+    """
+    import json as _json
+    sp = os.path.join(root, "roles", "summary-slots.json")
+    if not os.path.isfile(sp):
+        return "skip", "没有 roles/summary-slots.json"
+    try:
+        data = _json.loads(open(sp, encoding="utf-8").read())
+    except Exception as e:
+        return "fail", f"summary-slots.json 读不出来：{e}"
+    entry = (data.get("roles") or {}).get("coordinator") or {}
+    marks = [str(entry.get(k) or "").strip() for k in ("done", "open", "ask")]
+    if not all(marks):
+        return "fail", "summary-slots.json 缺 coordinator 的槽位标记词"
+    bad = []
+    for rel in ("core/skills/gold/SKILL.md", "docs/eval-cases.md"):
+        p = os.path.join(root, *rel.split("/"))
+        if not os.path.isfile(p):
+            bad.append(f"{rel}：文件不在")
+            continue
+        with open(p, encoding="utf-8") as fh:
+            t = fh.read()
+        for retired in ("结果总结｜只看这里", "待拍板：无"):
+            if retired in t:
+                bad.append(f"{rel}：仍有退役标签「{retired}」")
+        for m in marks:
+            if m not in t:
+                bad.append(f"{rel}：缺 coordinator 现行标记词「{m}」（措辞变了要同步）")
+    if bad:
+        return "fail", "派生体例漂移： " + "；".join(bad[:6])
+    return "ok", "gold 与 eval-cases 的总结措辞跟 summary-slots.json 一致，退役标签零命中"
+
+
 def chk_role_canon(root: str, ms):
     """角色正本契约：八份正本 × 两套皮肤 × 六家宿主；换皮肤只换 identity/personality。"""
     from pathlib import Path as _P
@@ -2255,6 +2292,7 @@ CHECKS = (
     ("role-registry", "registry 与正本一致（profession/role v1）", chk_role_registry),
     ("persona-layer", "人格层契约（原初内核只读 / ego 只放引用 / 记忆走 archivist）", chk_persona),
     ("depth-publish", "深度层投影（安装面资源与 persona 正本逐字一致）", chk_depth_publish),
+    ("summary-derived", "派生体例（gold／eval-cases 的总结措辞跟唯一家一致）", chk_summary_derived),
     ("handoff-slots", "交接文档分类（槽位/命名/归位）", chk_handoff),
     ("skill-spec", "技能格式对齐 Agent Skills 1.2", chk_skill_spec),
     ("command-surface", "技能声明的命令在自己工具面里", chk_command_surface),

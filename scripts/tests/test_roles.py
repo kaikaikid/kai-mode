@@ -32,10 +32,17 @@ rl = _load_rolelib()
 
 @pytest.fixture()
 def repo_copy(tmp_path):
-    """把角色面拷进假仓：变异只动副本。"""
+    """把角色面拷进假仓：变异只动副本。
+
+    渲染路径要的唯一家文件也得拷进来——渲染器是失败关闭的（体例或措辞表缺了
+    就抛，不静默产出「没有总结体例」的提示词），假仓少文件就不是真仓了。
+    """
     (tmp_path / "roles").mkdir()
     shutil.copytree(REPO / "roles" / "canon", tmp_path / "roles" / "canon")
     shutil.copytree(REPO / "roles" / "skins", tmp_path / "roles" / "skins")
+    for name in ("input-contract.md", "output-routing.md", "envelope-header.md",
+                 "summary-convention.md", "summary-slots.json"):
+        shutil.copy2(REPO / "roles" / name, tmp_path / "roles" / name)
     (tmp_path / "adapters").mkdir()
     shutil.copy2(REPO / "adapters" / "role-hosts.json", tmp_path / "adapters" / "role-hosts.json")
     return tmp_path
@@ -499,3 +506,27 @@ def test_mutation_fixture_is_not_a_noop(repo_copy):
     p.write_text(p.read_text(encoding="utf-8") + "\n多一行。\n", encoding="utf-8")
     after = rl.load_canon(repo_copy)["engineer"]["sha256"]
     assert before != after
+
+
+# ── 总结体例：失败关闭 + 表情实渲 ──────────────────────────────────────────
+def test_render_fails_closed_without_summary_convention(repo_copy):
+    """体例缺失必须抛，不能静默产出「没有总结体例」的提示词。"""
+    (repo_copy / "roles" / "summary-convention.md").unlink()
+    with pytest.raises(rl.RoleError):
+        rl.render_prompt(repo_copy, "reviewer", "guild")
+
+
+def test_render_fails_closed_without_summary_slots(repo_copy):
+    """措辞表缺失同样抛——体例与措辞都是常驻层的必件。"""
+    (repo_copy / "roles" / "summary-slots.json").unlink()
+    with pytest.raises(rl.RoleError):
+        rl.render_prompt(repo_copy, "reviewer", "guild")
+
+
+def test_summary_title_carries_the_role_own_emoji(repo_copy):
+    """标题要渲本角色自己的表情，不能留占位符——角色看不到自己该写哪个表情。"""
+    out = rl.render_prompt(repo_copy, "reviewer", "guild")
+    emoji = rl.load_skin(repo_copy, "guild")["roles"]["reviewer"]["summary_emoji"]
+    title_line = next(l for l in out.splitlines() if l.startswith("- 标题："))
+    assert emoji in title_line, f"标题行里没有本角色的表情：{title_line}"
+    assert "<角色表情>" not in title_line, f"标题行还留着占位符：{title_line}"
