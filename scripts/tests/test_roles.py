@@ -619,7 +619,7 @@ def test_summary_derived_gate_catches_single_eval_row_drift(repo_copy):
     p = repo_copy / "docs" / "eval-cases.md"
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text("| COM-01 | x | 办妥什么、欠着什么、要你拍板什么 |\n"
-                 "| COM-05 | y | 搞定／还欠着／等你拍板 |\n", encoding="utf-8")
+                 "| COM-05 | y | 搞定~搞定~／还欠着／等你拍板 |\n", encoding="utf-8")
     assert _summary_derived_status(repo_copy) == "fail"
 
 
@@ -664,7 +664,7 @@ def test_summary_derived_gate_catches_retired_family_variant(repo_copy):
     """退役标签的同族变体（「待拍板：」而非精确串「待拍板：无」）也要判红。"""
     p = repo_copy / "core" / "skills" / "gold" / "SKILL.md"
     p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text("```markdown\n## 💰 一句话交差｜只看这里\n搞定：x\n还欠着：y\n"
+    p.write_text("```markdown\n## 💰 一句话交差\n搞定~搞定~：x\n还欠着：y\n"
                  "等你拍板：z\n```\n\n待拍板：<事项>\n", encoding="utf-8")
     assert _summary_derived_status(repo_copy) == "fail"
 
@@ -673,7 +673,7 @@ def test_summary_derived_gate_catches_markers_in_an_unsanctioned_file(repo_copy)
     """白名单外的文件里出现标记词要判红——否则会悄悄长出第二个家。"""
     p = repo_copy / "core" / "skills" / "gold" / "references" / "drift.md"
     p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text("搞定：随手写的\n", encoding="utf-8")
+    p.write_text("搞定~搞定~：随手写的\n", encoding="utf-8")
     assert _summary_derived_status(repo_copy) == "fail"
 
 
@@ -694,22 +694,22 @@ def _write_gold(repo_copy, body):
     p.write_text(body, encoding="utf-8")
 
 
-GOOD_TMPL = ("```markdown\n## 💰 一句话交差｜只看这里\n搞定：<结果>\n"
+GOOD_TMPL = ("```markdown\n## 💰 一句话交差\n搞定~搞定~：<结果>\n"
              "还欠着：<差什么>\n等你拍板：<事项>\n```\n")
 
 
 def test_summary_derived_gate_is_not_masked_by_another_fence(repo_copy):
     """真模板漂移时，另开一个围栏块塞标记词不能把它盖住（N-a）。"""
     _write_gold(repo_copy,
-                "```markdown\n## 💰 一句话交差｜只看这里\n办妥：<结果>\n"
+                "```markdown\n## 💰 一句话交差\n办妥：<结果>\n"
                 "还欠着：<差什么>\n等你拍板：<事项>\n```\n\n"
-                "```markdown\n搞定：x\n还欠着：y\n等你拍板：z\n```\n")
+                "```markdown\n搞定~搞定~：x\n还欠着：y\n等你拍板：z\n```\n")
     assert _summary_derived_status(repo_copy) == "fail"
 
 
 def test_summary_derived_gate_tolerates_list_bullets(repo_copy):
     """模板行加个列表符是纯排版，不该误报（N-c）。"""
     _write_gold(repo_copy,
-                "```markdown\n## 💰 一句话交差｜只看这里\n- 搞定：<结果>\n"
+                "```markdown\n## 💰 一句话交差\n- 搞定~搞定~：<结果>\n"
                 "- 还欠着：<差什么>\n- 等你拍板：<事项>\n```\n")
     assert _summary_derived_status(repo_copy) == "ok"

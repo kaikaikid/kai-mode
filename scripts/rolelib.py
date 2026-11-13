@@ -346,7 +346,7 @@ def summary_slot_block(root: Path, role_id: str, emoji: str = "") -> str:
     lines = [
         "## 我的总结措辞",
         "",
-        f"- 标题：`## {head}{e['title']}｜只看这里`",
+        f"- 标题：`## {head}{e['title']}`",
         f"- 第一行（本次结论）：`{e['done']}：` —— 取自：{src.get('done', '')}",
         f"- 第二行（未完成项）：`{e['open']}：` —— 取自：{src.get('open', '')}",
         f"- 第三行（待用户决定）：`{e['ask']}：` —— 取自：{src.get('ask', '')}",
