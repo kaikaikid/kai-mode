@@ -2,6 +2,13 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.42.0 — 2026-11-14
+
+- **武器集落地（studio 6 把新增，总数 12）**：`design-critique`／`design-handoff`／`prototype-demo`／`alt-text` 归泰兰德（canon 1.2.0），`accessibility-audit`／`security-review-desk` 归提里奥（canon 1.3.0）；`final-review` 2.2.0 加无障碍／安全两类镜头。旧 Cloudflare `security-audit` 退役归档（恢复路径见 `Shared/kai-team/archive/2026-11-13-retired-security-audit/README.md`），2026-11-05 市场卡片归档留历史对照。
+- **6 把武器经使用者真实冒烟**：泰兰德与提里奥各按 `## 交什么` 跑真实素材（手册首页／SVG／设计文档／本仓脚本），6 把全可上；据实测缺陷小修 5 份 SKILL.md——`accessibility-audit` 补「不是验收判词」模板阻断、截图改为「无工具时用 DOM 快照／计算色替代」、补 DOM 顺序≠主任务路径提示；`design-critique` 补证据行；`design-handoff` 漂移表加「建议」列、加「实现代价」行；`prototype-demo` 加「宿主不能改视口则标未测」降级；`alt-text` 把「现有 alt」改为「现有替代文本（alt／aria-label／title+desc）」。
+- **速推编排进正本**：`gold` 接预检卡（任务清单／AC 摘要／红线风险／最多五问，每题带默认，回完一次全程不再零散问）与默认决策表（`Shared/kai-team/decision-defaults.md` 为常见取舍唯一家）；OpenBot 侧速推内自动推当前工作分支（kai-mode→main、Kai-vass→dev），推非工作分支／打 tag／发版／force-push／改写历史仍须团长点头。
+- **装机面**：`plugin-check --bump` 刷版本锁（studio v1.1.0，6 插件／33 技能／0 红）、`magpie-sync apply` 回写中央库（内容面 32 枚／落点面 8 家全绿）、`doctor.py` 36 项绿 35／红 0／跳过 1。
+
 ## 0.41.0 — 2026-11-09
 
 - **号改记**：0.40.3（提交 `7dd95f9`）作废，同一批改动改按 minor 记——`check` 的输出契约变了
