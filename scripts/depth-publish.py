@@ -63,6 +63,29 @@ def check(root: Path) -> list:
     for p in sorted(dest.glob("*.md")) if dest.is_dir() else []:
         if p.stem not in want:
             problems.append(f"多出投影件：{p.relative_to(root)}（正本里没有这个角色的 depth）")
+    problems.extend(_dispatch_gate(root))
+    return problems
+
+
+def _dispatch_gate(root: Path) -> list:
+    """分发门：skill body 只放取用口，不放 depth 正文。
+
+    深度材料随技能发布时，技能正文必须还是「怎么取」的说明，不是材料本身——
+    否则材料就多了一个家（技能正文），且会被读进常驻上下文。
+    """
+    import persona as persona_lib
+    skill = Path(root) / "core" / "skills" / "kai-persona-deep" / "SKILL.md"
+    if not skill.is_file():
+        return [f"缺技能正文：{skill.relative_to(root)}"]
+    body = skill.read_text(encoding="utf-8")
+    problems = []
+    for rid in rolelib.ROLE_IDS:
+        depth = (persona_lib.load(Path(root), rid) or {}).get("depth") or {}
+        for k in persona_lib.DEPTH_SECTIONS:
+            frag = str(depth.get(k) or "").strip()
+            if frag and frag[:24] in body:
+                problems.append(f"技能正文内联了 {rid}.depth.{k}"
+                                f"（分发门：skill body 只放取用口，不放正文）")
     return problems
 
 
