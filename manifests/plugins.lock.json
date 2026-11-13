@@ -11,13 +11,13 @@
     },
     "core": {
       "version": "1.4.0",
-      "digest": "340a3a4a1b0dfe8bc1647f127e930f333a30a1b80307f7c65e8989121de2066f",
+      "digest": "09c14dc9a0518ef29a109ff776091940eae8d86b49babe4427742d6cb58ec9f2",
       "skills": {
-        "gold": "0.8.0",
+        "gold": "0.9.0",
         "harness-audit": "0.2.1",
         "kai-handoff": "0.3.6",
         "kai-persona-deep": "0.2.0",
-        "principles": "1.0.0",
+        "principles": "1.1.0",
         "set-kai-mode": "7.0.0",
         "staff": "4.2.0",
         "upgrade-kai-mode": "0.2.1",
@@ -55,14 +55,20 @@
     },
     "studio": {
       "version": "1.1.0",
-      "digest": "81ebc892fa65ddd89cc32bf540fdc8bc0db78faf7ef0ced5b7433a3df6503e96",
+      "digest": "539f1421ca61e07a8e11fa1ebc1e88e0c9cdfed1207fe5bf44c154e48cc5fd40",
       "skills": {
+        "accessibility-audit": "1.0.0",
+        "alt-text": "1.0.0",
+        "design-critique": "1.0.0",
+        "design-handoff": "1.0.0",
         "director": "2.0.0",
-        "final-review": "2.0.0",
+        "final-review": "2.2.0",
         "lead-artist": "2.0.0",
         "lead-writer": "2.0.0",
         "marketing": "2.0.0",
-        "producer": "2.0.0"
+        "producer": "2.0.0",
+        "prototype-demo": "1.0.0",
+        "security-review-desk": "1.0.0"
       }
     }
   }

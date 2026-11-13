@@ -31,7 +31,9 @@ OUT = ROOT / "manual" / "assets" / "skills-data.js"
 SELF_COMMAND_SKILLS = {
     "gold",
     "卓尔游侠", "符文法师", "矮人工匠", "德鲁伊", "游学者", "青铜龙", "圣骑士",
-    "producer", "lead-writer", "lead-artist", "director", "final-review", "marketing",
+    "producer", "lead-writer", "lead-artist", "director",
+    "design-critique", "design-handoff", "prototype-demo", "alt-text", "accessibility-audit", "security-review-desk",
+    "final-review", "marketing",
 }
 
 GROUP_BY_PLUGIN = {

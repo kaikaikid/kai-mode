@@ -15,10 +15,16 @@
 | `lead-writer` | 剧本文案 | 游学者周卓（writer） | `/writer`、说「写稿」「剧本」「文案」 |
 | `lead-artist` | 视觉成稿 | 泰兰德·语风（designer） | `/artist`、说「画」「风格板」「配色」 |
 | `director` | 分镜成片 | 泰兰德·语风（designer） | `/director`、说「分镜」「剪辑」「成片」 |
+| `design-critique` | 设计评审 | 泰兰德·语风（designer） | `/critique`、说「评审这个界面」「先改哪里」 |
+| `design-handoff` | 交付规格 | 泰兰德·语风（designer） | `/handoff`、说「交接规格」「开发照着建」 |
+| `prototype-demo` | 可点原型 | 泰兰德·语风（designer） | `/proto`、说「做个能点的原型」「点击演示」 |
+| `alt-text` | 替代文本 | 泰兰德·语风（designer） | `/alt`、说「替代文本」「alt 怎么写」 |
+| `accessibility-audit` | 无障碍审计 | 提里奥·弗丁（reviewer） | `/a11y`、说「无障碍审计」「WCAG 审查」 |
+| `security-review-desk` | 安全审查 | 提里奥·弗丁（reviewer） | `/security`、说「安全审查」「安全审计」「威胁建模」 |
 | `final-review` | 交付终审 | 提里奥·弗丁（reviewer） | `/review`、说「终审」「验收」 |
 | `marketing` | 物料投放 | 游学者周卓（writer） | `/marketing`、说「宣发」「投放」 |
 
-一个角色可以有多把武器（泰兰德两把、周卓两把）；一把武器只归一个角色。
+一个角色可以有多把武器（泰兰德六把、提里奥三把、周卓两把）；一把武器只归一个角色。
 需要新干法时加一把武器，不改角色。
 
 ## 三件共用的事

@@ -34,6 +34,16 @@ window.KAI_SKILLS = [
     "group": "酒馆冒险团与安装",
     "plugin": "酒馆冒险团与安装",
     "pluginId": "core",
+    "skill": "kai-persona-deep",
+    "oneLine": "取深度人格层：角色扮演、或对方问个人向的问题（来历、关系、软肋、成长线）时，把角色的 depth 块读出来再接话， 别只靠常驻层那一小段性格硬撑。",
+    "trigger": "「演一段」「你个人怎么样」「你怕什么」「我们认识多久了」，或需要角色进入某段具体关系/处境",
+    "command": "",
+    "version": "0.2.0"
+  },
+  {
+    "group": "酒馆冒险团与安装",
+    "plugin": "酒馆冒险团与安装",
+    "pluginId": "core",
     "skill": "principles",
     "oneLine": "七条原则合集：一次一问、只问可见与红线、能测就别问、一个语义一个家、缺件登记、仪式随规模、输出挑载体。",
     "trigger": "自动带入",
@@ -184,6 +194,46 @@ window.KAI_SKILLS = [
     "group": "武器集",
     "plugin": "武器集",
     "pluginId": "studio",
+    "skill": "accessibility-audit",
+    "oneLine": "武器｜无障碍审计：按 WCAG 2.2 逐条带证据审页面，出严重度与修法，不出合规声明。",
+    "trigger": "/a11y；说「无障碍审计」「WCAG 审查」",
+    "command": "/accessibility-audit",
+    "version": "1.0.0"
+  },
+  {
+    "group": "武器集",
+    "plugin": "武器集",
+    "pluginId": "studio",
+    "skill": "alt-text",
+    "oneLine": "武器｜替代文本：按图片用途写可直接复制的 alt 文本，含装饰图与图表规则。",
+    "trigger": "/alt；说「替代文本」「alt 怎么写」",
+    "command": "/alt-text",
+    "version": "1.0.0"
+  },
+  {
+    "group": "武器集",
+    "plugin": "武器集",
+    "pluginId": "studio",
+    "skill": "design-critique",
+    "oneLine": "武器｜设计评审：按任务给界面排出优先级的可执行改法，只出清单不动文件。",
+    "trigger": "/critique；说「评审这个界面」「先改哪里」",
+    "command": "/design-critique",
+    "version": "1.0.0"
+  },
+  {
+    "group": "武器集",
+    "plugin": "武器集",
+    "pluginId": "studio",
+    "skill": "design-handoff",
+    "oneLine": "武器｜交付规格：把设计稿写成开发不用猜就能建的规格，并列出偏离设计系统的数值。",
+    "trigger": "/handoff；说「交接规格」「开发照着建」",
+    "command": "/design-handoff",
+    "version": "1.0.0"
+  },
+  {
+    "group": "武器集",
+    "plugin": "武器集",
+    "pluginId": "studio",
     "skill": "director",
     "oneLine": "武器｜分镜成片：分镜、节奏、声音、成片。",
     "trigger": "/director；说「分镜」「剪辑」「成片」",
@@ -195,10 +245,10 @@ window.KAI_SKILLS = [
     "plugin": "武器集",
     "pluginId": "studio",
     "skill": "final-review",
-    "oneLine": "武器｜交付终审：独立验收，只判不修，出 pass/fail。",
+    "oneLine": "武器｜交付终审：独立验收，只判不修，出 accept/return/defer。",
     "trigger": "/review；说「终审」「验收」",
     "command": "/final-review",
-    "version": "2.0.0"
+    "version": "2.2.0"
   },
   {
     "group": "武器集",
@@ -239,6 +289,26 @@ window.KAI_SKILLS = [
     "trigger": "/producer；说「立项」「排期」",
     "command": "/producer",
     "version": "2.0.0"
+  },
+  {
+    "group": "武器集",
+    "plugin": "武器集",
+    "pluginId": "studio",
+    "skill": "prototype-demo",
+    "oneLine": "武器｜可点原型：把想法做成 2–5 屏可点击静态原型，附点击路径证据与发布门槛。",
+    "trigger": "/proto；说「做个能点的原型」「点击演示」",
+    "command": "/prototype-demo",
+    "version": "1.0.0"
+  },
+  {
+    "group": "武器集",
+    "plugin": "武器集",
+    "pluginId": "studio",
+    "skill": "security-review-desk",
+    "oneLine": "武器｜安全审查：从入口与信任边界找具体风险，按影响排序，每条给代码证据与最小修法。",
+    "trigger": "/security；说「安全审查」「安全审计」「威胁建模」",
+    "command": "/security-review-desk",
+    "version": "1.0.0"
   },
   {
     "group": "执行内核",

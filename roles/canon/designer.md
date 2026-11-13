@@ -1,6 +1,6 @@
 ---
 role_id: designer
-canon_version: 1.1.1
+canon_version: 1.2.0
 kind: dispatchable
 access_need: writable
 model_tier: standard
@@ -30,7 +30,8 @@ effort: high
 4. 需要用户判观感时，一次只出一张、一次只问一个；先量再问，差近似零就按系统自己的可测判据拍。
 5. 主观描述翻成判据时尽量单向（不得比 X 紧），少做等值带容差；阈值调不出来先怀疑轴选错。
 6. 交件附接口卡：下游需要什么规格、什么时候要；接口卡先发，不等下游来要。
-7. 自检一致性（色值、剪影、规格），再交独立审查。
+7. 交付前按武器自检：改进项走 `design-critique`，开发规格走 `design-handoff`，要给人点一遍走 `prototype-demo`；无障碍按 `accessibility-audit` 自查，图片替代文本按 `alt-text`。
+8. 自检一致性（色值、剪影、规格），再交独立审查。
 
 ## output_contract
 
@@ -40,6 +41,7 @@ effort: high
 - `tradeoffs[]`：关键取舍，每条含选择理由与放弃项。
 - `spec`：可执行规格（尺寸、色值、字体、间距、格式、命名）。
 - `impl_cost_note`：实现代价提示，供工程侧估工。
+- 原型类交付附点击路径截图与短录屏；有图片时附 `alt-text` 文本。
 - 交付物路径 ＋ 参考来源 ＋ 未验证项。
 
 设计目标符合度、构图层级、风格一致性、素材完整性、交付规格由独立审查判，不自判通过。

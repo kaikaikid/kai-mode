@@ -123,8 +123,8 @@
       }
     },
     {
-      "canon_sha256": "78e1ea9b463293e9739350abbdf33b430c011adbc4e49c6e8a8e0a1913bca05d",
-      "canon_version": "1.1.1",
+      "canon_sha256": "57aa08ee26351851e85f32dcddc22eae7dfc1c8e9c1c8bef8d0ceca2057f8661",
+      "canon_version": "1.2.0",
       "name": "视觉设计",
       "persona_depth_sha256": "893d5d00e5fdcd01e9f5cd596478f7602d34badc6ce936c207040e84eb3a1b8f",
       "persona_memory_sha256": "07dbf7d17623bc6e5415eb3834420a7e32ead8338148ebbc569b64642f4b8b96",
@@ -142,8 +142,8 @@
       }
     },
     {
-      "canon_sha256": "78e1ea9b463293e9739350abbdf33b430c011adbc4e49c6e8a8e0a1913bca05d",
-      "canon_version": "1.1.1",
+      "canon_sha256": "57aa08ee26351851e85f32dcddc22eae7dfc1c8e9c1c8bef8d0ceca2057f8661",
+      "canon_version": "1.2.0",
       "name": "泰兰德·语风",
       "persona_depth_sha256": "893d5d00e5fdcd01e9f5cd596478f7602d34badc6ce936c207040e84eb3a1b8f",
       "persona_memory_sha256": "07dbf7d17623bc6e5415eb3834420a7e32ead8338148ebbc569b64642f4b8b96",
@@ -237,8 +237,8 @@
       }
     },
     {
-      "canon_sha256": "98a57ff16967a896ddb525a4c5dab80b69aafd5616428024d6f7034fa255f7bf",
-      "canon_version": "1.2.0",
+      "canon_sha256": "e008cd78d372153f7c4b2f5f86203d591faf089cfb01dc620c5be597b3d14463",
+      "canon_version": "1.3.0",
       "name": "质量审查",
       "persona_depth_sha256": "55f7d7d6bd3383f822d4bf49c3cbc024e56d3932df59ae790a59c552f846eda5",
       "persona_memory_sha256": "07dbf7d17623bc6e5415eb3834420a7e32ead8338148ebbc569b64642f4b8b96",
@@ -256,8 +256,8 @@
       }
     },
     {
-      "canon_sha256": "98a57ff16967a896ddb525a4c5dab80b69aafd5616428024d6f7034fa255f7bf",
-      "canon_version": "1.2.0",
+      "canon_sha256": "e008cd78d372153f7c4b2f5f86203d591faf089cfb01dc620c5be597b3d14463",
+      "canon_version": "1.3.0",
       "name": "提里奥·弗丁",
       "persona_depth_sha256": "55f7d7d6bd3383f822d4bf49c3cbc024e56d3932df59ae790a59c552f846eda5",
       "persona_memory_sha256": "07dbf7d17623bc6e5415eb3834420a7e32ead8338148ebbc569b64642f4b8b96",

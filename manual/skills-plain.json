@@ -63,8 +63,32 @@
     "oneLine": "武器｜分镜成片：分镜、节奏、声音、成片。",
     "trigger": "/director；说「分镜」「剪辑」「成片」"
   },
+  "design-critique": {
+    "oneLine": "武器｜设计评审：按任务给界面排出优先级的可执行改法，只出清单不动文件。",
+    "trigger": "/critique；说「评审这个界面」「先改哪里」"
+  },
+  "design-handoff": {
+    "oneLine": "武器｜交付规格：把设计稿写成开发不用猜就能建的规格，并列出偏离设计系统的数值。",
+    "trigger": "/handoff；说「交接规格」「开发照着建」"
+  },
+  "prototype-demo": {
+    "oneLine": "武器｜可点原型：把想法做成 2–5 屏可点击静态原型，附点击路径证据与发布门槛。",
+    "trigger": "/proto；说「做个能点的原型」「点击演示」"
+  },
+  "alt-text": {
+    "oneLine": "武器｜替代文本：按图片用途写可直接复制的 alt 文本，含装饰图与图表规则。",
+    "trigger": "/alt；说「替代文本」「alt 怎么写」"
+  },
+  "accessibility-audit": {
+    "oneLine": "武器｜无障碍审计：按 WCAG 2.2 逐条带证据审页面，出严重度与修法，不出合规声明。",
+    "trigger": "/a11y；说「无障碍审计」「WCAG 审查」"
+  },
+  "security-review-desk": {
+    "oneLine": "武器｜安全审查：从入口与信任边界找具体风险，按影响排序，每条给代码证据与最小修法。",
+    "trigger": "/security；说「安全审查」「安全审计」「威胁建模」"
+  },
   "final-review": {
-    "oneLine": "武器｜交付终审：独立验收，只判不修，出 pass/fail。",
+    "oneLine": "武器｜交付终审：独立验收，只判不修，出 accept/return/defer。",
     "trigger": "/review；说「终审」「验收」"
   },
   "marketing": {

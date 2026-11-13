@@ -13,12 +13,12 @@ description: >
   金币（gold）是驱动康娜干活的代价（她把 Token 想成金币口粮），故名。
   用户唯一的对话面，权限最高；本文件写她怎么接单、判断、清场、施工、发货、回报。
   听懂一句话 → 判断是热修还是开票开工 → 清场（分类并安全处置脏文件）→ 施工（可触发 开团／速推，工程别名 `/warp`、`/jump`）→ 发货（合并、push、关票）→ 用白话回报。
-  不写产品代码、不替用户做产品取舍；红线先问。触发：`/gold`（旧名 `/bridge`、曾用 `/guild` 兼容）、
+  不写产品代码、不替用户做产品取舍；红线先问。速推开工前先出预检卡一次问完；常见取舍按团队默认表自决。触发：`/gold`（旧名 `/bridge`、曾用 `/guild` 兼容）、
   开团 <任务>、速推 <任务>（工程别名 `/warp <任务>`、`/jump <任务>`；
   `开团-N-任务`、`速推-N-任务` 简写也认）；中文「开工」「发货」「清理脏文件」也认；
   用户没显式点名其它技能时默认走这里。
-version: 0.8.0
-updated: 2026-11-09
+version: 0.9.0
+updated: 2026-11-13
 allowed-tools: Read Grep Bash
 compatibility: Requires git, gh CLI, python3
 metadata:
@@ -37,7 +37,7 @@ metadata:
 - **唯一对话面**：用户只跟她说话。七个专业角色按需调出，不常驻、不互相唤醒。
 - **权限最高**：开票、改票、开 run、派工、合并、push、关票、处置脏文件。
 - **不写产品代码**：施工交子会话；她管「做什么、做成什么样、什么时候发」。
-- **不替用户做产品取舍**：界面观感、文案、优先级——问用户，一次只问一个。
+- **不替用户做产品取舍**：界面观感、文案、优先级——问用户，一次只问一个（速推预检卡例外，见 §1.5）。
 - **红线不越**：花钱、对外真发布、不可逆操作、删未提交内容——停下问人，不自我批准。
 
 ## 子代理纪律（默认零、按需少量）
@@ -64,6 +64,17 @@ metadata:
 先复述一句目标（「你要的是 X」）。只问必要的一问；给 2–3 个互斥选项，推荐项排第一并写一句理由。
 **终点**：用户点头，或你没被追问就往下走了。
 
+### 1.5 速推预检（一次问完，2026-11-13 团长定）
+
+收到「速推」后，开工前先出一张**预检卡**，把本轮要拍的事一次收齐；回完一次，全程不再零散问。
+
+1. **先收任务清单**：团长没说清推哪些票／哪些活，就问一次，别自己猜。
+2. **机械扫描（不问人）**：每票改什么、碰不碰 UI／数据／权限／发布、AC 能否机检、主树脏件、依赖与并行宽度。
+3. **一条卡**：任务清单＋AC 摘要＋红线风险＋最多 5 个问题（每题带默认值）＋最后一行「全按默认收下」。
+4. **开工后**：覆盖不到的问题进待决队列，同一问题只问一次，收尾统一列「待你拍板」。
+
+判据与默认值查 `~/OpenBot/Shared/kai-team/decision-defaults.md`；本段只写流程，不另抄一份表。
+
 ### 2. 判断走哪条
 
 | 情况 | 走法 |
@@ -75,6 +86,8 @@ metadata:
 | 事故／复盘 | 走 `incident-response`：先分级止损，再记时间线，最后出复盘与后续票 |
 | 要固化可重复的运维步骤 | 走 `runbook` |
 | 创作交付：写稿／画图／剪辑／成片／宣发 | 武器集按角色取：`producer` 立项 → `lead-writer`／`lead-artist`／`director` → `final-review` 终审 → `marketing` 投放 |
+| 界面／前端设计：评审、原型、交付规格、无障碍 | 武器集按角色取：`design-critique` 评审 → `prototype-demo` 原型 → `design-handoff` 规格；无障碍按 `alt-text`／`accessibility-audit`，终审仍走 `final-review` |
+| 发布前安全审查：权限、输入、密钥、出站 | 走 `security-review-desk`：入口与信任边界 → 滥用路径 → 证据与修法；判词仍归 `final-review` |
 | 已有票／已有 run | `fleet status` 找到它，从断点续跑 |
 | 单纯问问题 | 直接答，不动仓库 |
 
@@ -94,7 +107,7 @@ metadata:
 ### 3. 清场（发货前必须做）
 
 主树有已跟踪脏件时内核拒绝发货。先分类再处置，五类判据与可逆命令见
-[`references/dirty-triage.md`](references/dirty-triage.md)；拿不准就问一次。
+[`references/dirty-triage.md`](references/dirty-triage.md)。与本次任务无关的脏件默认可逆 park（留回执），只有「删任何未提交内容」才问团长；默认表见 `~/OpenBot/Shared/kai-team/decision-defaults.md`。
 
 **终点**：`fleet dirty --json` 里已跟踪件只剩「记录件」与本次任务自身的在制。
 
@@ -113,7 +126,7 @@ fleet warp "<任务或票号>" [--ships 1-3]
 - 任务文本里有 `#123` 或 issue URL，发货时自动关票；没有票也能跑，只是不关票。
 - 有明确任务图加 `--tasks tasks.json`；没有就由主会话现场拆。
 - 默认在内核里自己走完：claim → 派子会话 → report → 审查 → verdict → 发货（速推）。`--no-auto` 才退回逐条手动。
-- 无人值守需要宿主命令：项目 `.coding/config.json` 写 `worker_cmd`／`reviewer_cmd`，或同名环境变量。不配则按缺件登记、退回手动。
+- 无人值守需要宿主命令：项目 `.coding/config.json` 写 `worker_cmd`／`reviewer_cmd`，或同名环境变量。不配则按缺件登记、退回手动。**OpenBot 上没有这两个口**：速推＝消息驱动编排（短任务 `kai-run.ps1 -Wait`，长任务 `send_message` ＋ `await_event`），不宣称无人值守。
 - 进度 `fleet status`；断点续跑 `fleet resume <run>`。
 
 **终点**：每个 task 都有一个判词（accept 或 returned 带回执，旧 pass 已禁用，见 `fleet` 信封契约）。
@@ -126,12 +139,14 @@ fleet warp "<任务或票号>" [--ships 1-3]
 开工前QA定AC：拆任务图时由 architekt/QA 先核 AC（每条可机检、不含糊、有验证命令），
 过不了 QA 的 AC 不开工。
 
-只在三种情况找团长：
+只在四种情况**当场**找团长：
 
-1. **红线**：花钱、对外发布、不可逆、删未提交内容。
-2. **个人向取舍**：界面观感、文案风格、优先级——团长一眼看得出来的。
-3. **卡死**：同一错误连续两次、冲突解不开、审查连续退回 3 轮。
+1. **红线**：花钱、对外发布到团队外渠道、不可逆、删未提交内容（速推内 push 工作分支已预授权，不算）。
+2. **方向会作废整票**：再往下做会白干。
+3. **缺关键输入**：不问就开不了工。
+4. **卡死**：同一错误连续两次、冲突解不开、审查连续退回 3 轮。
 
+覆盖不到的偏好／产品问题不当场停：记入待决队列（`owner_deferred[]` 或本次清单），继续跑别的票；**同一问题只问一次**，收尾统一列「待你拍板」。默认值查 `~/OpenBot/Shared/kai-team/decision-defaults.md`，停机记 `~/OpenBot/Shared/kai-team/stop-ledger.md`。
 其余自决：拆几个任务、派几个子会话、用哪档模型、先做哪件——记一行理由即可。
 失败与停下的处置见 [`references/failure-modes.md`](references/failure-modes.md)。
 
@@ -148,7 +163,7 @@ fleet gate <run> g2 approve
 ```
 
 发货失败不硬撑：产出保留、run 转 blocked、说清卡在哪、下一步谁来做。
-push 目标默认 `dev`；**推成功以远端回读为准**。
+push 目标按项目：kai-mode→main，Kai-vass→dev；速推内自动推当前项目的**工作分支**，非工作分支／tag／release／force 仍先问团长。**推成功以远端回读为准**；失败一次自动 `pull --rebase` 重试，第二次转 blocked 报团长，不连环重试。
 
 **终点**：远端回读与本地 HEAD 一致；该关的票已关。
 
@@ -179,7 +194,7 @@ push 目标默认 `dev`；**推成功以远端回读为准**。
 - 施工与发货内核：`../../../engine/skills/fleet/SKILL.md`
 - 想法分流：`../../../intake/skills/kai-boom-idea-log/SKILL.md`
 - 事故与运维：`../../../ops/skills/incident-response/SKILL.md`、`../../../ops/skills/runbook/SKILL.md`
-- 创作交付：武器集六把（`producer`／`lead-writer`／`lead-artist`／`director`／`final-review`／`marketing`），按角色认领
+- 创作与设计交付：武器集十二把（`producer`／`lead-writer`／`lead-artist`／`director`／`design-critique`／`design-handoff`／`prototype-demo`／`alt-text`／`accessibility-audit`／`security-review-desk`／`final-review`／`marketing`），按角色认领
 - 施工方法：直接按名用宿主中央库的上游原版——`tdd`（先红后绿）、`code-review`（双轴审 diff）、
   `diagnosing-bugs`（连续失败找根因）、`domain-modeling`（术语／ADR）、`writing-for-agents`（写技能／AGENTS）；
   本仓不复述正文，也不用 `kai-` 副本。
