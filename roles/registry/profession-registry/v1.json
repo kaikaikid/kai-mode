@@ -41,9 +41,9 @@
       }
     },
     {
-      "canon_sha256": "5e6416125056f1b8b7c7c79e5a843c1b3888c01040ca0016165121515eb1f46b",
-      "canon_version": "1.1.0",
-      "persona_depth_sha256": "51d9590d8f1b6879122aed64b5400189ba33fd249e4e6a3b84fc12d0ab67d85b",
+      "canon_sha256": "cb2b0a5931e73dc232123dfcf179c15fb485d8397a3eace22b0710aca444f075",
+      "canon_version": "1.1.1",
+      "persona_depth_sha256": "d7298c4cfea1a06c81e2fb4f1010b9060a0d670dcfb20786234f8e66d71aef38",
       "persona_memory_sha256": "07dbf7d17623bc6e5415eb3834420a7e32ead8338148ebbc569b64642f4b8b96",
       "persona_sha256": "84e37095508e45af5a4605803709259599671bc311aacf16dcb6630cf0f28433",
       "profession_id": "coordinator",
@@ -82,7 +82,7 @@
       "profession_name": "工程开发",
       "skin_sha256": "48bea5c4ce24afc744b741a2c5d868fd11b3c902f32c95d1d862a2de3d760c93",
       "skin_version": "1.0.1",
-      "summary_slots_sha256": "b0c29142c80e5850e7cfbbfcbb5bf538e60a622a1143e836f184c8ab45ccd7b4",
+      "summary_slots_sha256": "040582c867e226f458e924f2e9d5da91498945698035dcb1d2e897b28b9de7c0",
       "team": {
         "status": "pending",
         "team_id": null

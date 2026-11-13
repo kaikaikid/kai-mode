@@ -2016,7 +2016,8 @@ def chk_summary_derived(root: str, ms):
     # 反向扫描：三个标记词只许出现在唯一家与两份受准派生件里；别处出现即第二个家。
     sanctioned = {"core/skills/gold/SKILL.md", "docs/eval-cases.md"}
     generated = "core/skills/kai-persona-deep/resources"   # 由 persona depth 生成的投影，不算拷贝
-    for tree in ("core", "docs"):
+    home = "roles/summary-slots.json"                      # 唯一家自身
+    for tree in ("core", "docs", "roles"):
         base = os.path.join(root, *tree.split("/"))
         for dirpath, _dirs, files in os.walk(base):
             rel_dir = os.path.relpath(dirpath, root).replace("\\", "/")
@@ -2026,7 +2027,7 @@ def chk_summary_derived(root: str, ms):
                 if not fn.endswith(".md"):
                     continue
                 rel = f"{rel_dir}/{fn}"
-                if rel in sanctioned:
+                if rel in sanctioned or rel == home:
                     continue
                 fp = os.path.join(dirpath, fn)
                 try:

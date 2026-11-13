@@ -39,7 +39,7 @@
       "role_id": "architect",
       "skin": "guild",
       "skin_sha256": "6382e1de7c605caf4c61d81cc1e08ad1bfcb4410285c78825dbce627b03277c4",
-      "skin_version": "1.1.0",
+      "skin_version": "1.1.1",
       "summary_slots_sha256": "5ddbcf73891aedc410a5434f8c9911916886ed217d7c7367b3690f23eb35f99f",
       "team": {
         "status": "pending",
@@ -77,7 +77,7 @@
       "role_id": "archivist",
       "skin": "guild",
       "skin_sha256": "5cc773b480e083b0c20bedddd2b5dc5518c8a05163b956dae4532e8abe07fbd9",
-      "skin_version": "1.1.0",
+      "skin_version": "1.1.1",
       "summary_slots_sha256": "d610b62818fd684c2eee26503f12278889bfa55bf547b4e1a399abbbcaa08a8d",
       "team": {
         "status": "pending",
@@ -85,10 +85,10 @@
       }
     },
     {
-      "canon_sha256": "5e6416125056f1b8b7c7c79e5a843c1b3888c01040ca0016165121515eb1f46b",
-      "canon_version": "1.1.0",
+      "canon_sha256": "cb2b0a5931e73dc232123dfcf179c15fb485d8397a3eace22b0710aca444f075",
+      "canon_version": "1.1.1",
       "name": "协调调度",
-      "persona_depth_sha256": "51d9590d8f1b6879122aed64b5400189ba33fd249e4e6a3b84fc12d0ab67d85b",
+      "persona_depth_sha256": "d7298c4cfea1a06c81e2fb4f1010b9060a0d670dcfb20786234f8e66d71aef38",
       "persona_memory_sha256": "07dbf7d17623bc6e5415eb3834420a7e32ead8338148ebbc569b64642f4b8b96",
       "persona_sha256": "84e37095508e45af5a4605803709259599671bc311aacf16dcb6630cf0f28433",
       "profession_id": "coordinator",
@@ -104,18 +104,18 @@
       }
     },
     {
-      "canon_sha256": "5e6416125056f1b8b7c7c79e5a843c1b3888c01040ca0016165121515eb1f46b",
-      "canon_version": "1.1.0",
+      "canon_sha256": "cb2b0a5931e73dc232123dfcf179c15fb485d8397a3eace22b0710aca444f075",
+      "canon_version": "1.1.1",
       "name": "康娜",
-      "persona_depth_sha256": "51d9590d8f1b6879122aed64b5400189ba33fd249e4e6a3b84fc12d0ab67d85b",
+      "persona_depth_sha256": "d7298c4cfea1a06c81e2fb4f1010b9060a0d670dcfb20786234f8e66d71aef38",
       "persona_memory_sha256": "07dbf7d17623bc6e5415eb3834420a7e32ead8338148ebbc569b64642f4b8b96",
       "persona_sha256": "84e37095508e45af5a4605803709259599671bc311aacf16dcb6630cf0f28433",
       "profession_id": "coordinator",
       "profession_name": "协调调度",
       "role_id": "coordinator",
       "skin": "guild",
-      "skin_sha256": "4635fecc1eb0c0eeb0f068e33320a0597405b6a28d73abbb1d7411c03f057f73",
-      "skin_version": "1.1.0",
+      "skin_sha256": "ad41c245900864b0c3d81ca60d51a2b39d5d9167c071274298ac4211f016bd6a",
+      "skin_version": "1.1.1",
       "summary_slots_sha256": "c94e85b9bc9579c3d4442b3af087760acecbe564904c8c2562082ee4d3fbed21",
       "team": {
         "status": "pending",
@@ -153,7 +153,7 @@
       "role_id": "designer",
       "skin": "guild",
       "skin_sha256": "69237ec02bfe55d7519bcc124c4382400d518abd406f2b3bac110eae06082d9a",
-      "skin_version": "1.1.0",
+      "skin_version": "1.1.1",
       "summary_slots_sha256": "84b1bc178b8df9d4eeee665e4b0c3eb39cedf3089e0d4fee314010fcba18d55b",
       "team": {
         "status": "pending",
@@ -173,7 +173,7 @@
       "skin": "generic",
       "skin_sha256": "48bea5c4ce24afc744b741a2c5d868fd11b3c902f32c95d1d862a2de3d760c93",
       "skin_version": "1.0.1",
-      "summary_slots_sha256": "b0c29142c80e5850e7cfbbfcbb5bf538e60a622a1143e836f184c8ab45ccd7b4",
+      "summary_slots_sha256": "040582c867e226f458e924f2e9d5da91498945698035dcb1d2e897b28b9de7c0",
       "team": {
         "status": "pending",
         "team_id": null
@@ -191,8 +191,8 @@
       "role_id": "engineer",
       "skin": "guild",
       "skin_sha256": "9435079e773dda14b5264f9b491b831cb4d8340c031c1876ae5fd1ca419fc407",
-      "skin_version": "1.1.0",
-      "summary_slots_sha256": "b0c29142c80e5850e7cfbbfcbb5bf538e60a622a1143e836f184c8ab45ccd7b4",
+      "skin_version": "1.1.1",
+      "summary_slots_sha256": "040582c867e226f458e924f2e9d5da91498945698035dcb1d2e897b28b9de7c0",
       "team": {
         "status": "pending",
         "team_id": null
@@ -229,7 +229,7 @@
       "role_id": "researcher",
       "skin": "guild",
       "skin_sha256": "fc31bb5da4b9c2c79883176d1853e21e149134320a492465cf57e0799926ee06",
-      "skin_version": "1.1.0",
+      "skin_version": "1.1.1",
       "summary_slots_sha256": "9279809220cc5017fe7aa342767edf1b64f80664cbe889b17f1b2e76f61298bc",
       "team": {
         "status": "pending",
@@ -267,7 +267,7 @@
       "role_id": "reviewer",
       "skin": "guild",
       "skin_sha256": "dbdff677d3c69b126ef6258f8d927adae85c8294f125c5ee841f9af8e58da3fa",
-      "skin_version": "1.1.0",
+      "skin_version": "1.1.1",
       "summary_slots_sha256": "8770c74bf382762c309e568d5bc50567b52c0a864f28a6237e982a38af8d779e",
       "team": {
         "status": "pending",
@@ -305,7 +305,7 @@
       "role_id": "writer",
       "skin": "guild",
       "skin_sha256": "e1ffd78ede805c712779d702b81960cb419c3e99e3e3164ecf320aa3029e44d1",
-      "skin_version": "1.1.0",
+      "skin_version": "1.1.1",
       "summary_slots_sha256": "4742191cdf920964785a4eba9ba1f4bf87e5bdde263ee257b143e623df743bd1",
       "team": {
         "status": "pending",
