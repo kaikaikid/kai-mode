@@ -18,6 +18,7 @@
       "profession_name": "架构分析",
       "skin_sha256": "cf618a8afcdb0cefa7cd2191b3874a405ead14110094ba9bec79996d73f1d599",
       "skin_version": "1.0.1",
+      "summary_slots_sha256": "5ddbcf73891aedc410a5434f8c9911916886ed217d7c7367b3690f23eb35f99f",
       "team": {
         "status": "pending",
         "team_id": null
@@ -33,6 +34,7 @@
       "profession_name": "知识管理",
       "skin_sha256": "02acb7b977407c7efd261305bb0bafb5aeb8a63132eea6f9f3b4d42b859ec0da",
       "skin_version": "1.0.1",
+      "summary_slots_sha256": "d610b62818fd684c2eee26503f12278889bfa55bf547b4e1a399abbbcaa08a8d",
       "team": {
         "status": "pending",
         "team_id": null
@@ -48,6 +50,7 @@
       "profession_name": "协调调度",
       "skin_sha256": "2a0b470608aea796eaad81fbf9bffc993323830778a9897f2a3580c83bcc0825",
       "skin_version": "1.0.1",
+      "summary_slots_sha256": "c94e85b9bc9579c3d4442b3af087760acecbe564904c8c2562082ee4d3fbed21",
       "team": {
         "status": "pending",
         "team_id": null
@@ -63,6 +66,7 @@
       "profession_name": "视觉设计",
       "skin_sha256": "cd77e10619656b3491bf01da7111a75fed5bd14b0271bcdb4287eaf8dec33a78",
       "skin_version": "1.0.1",
+      "summary_slots_sha256": "84b1bc178b8df9d4eeee665e4b0c3eb39cedf3089e0d4fee314010fcba18d55b",
       "team": {
         "status": "pending",
         "team_id": null
@@ -78,6 +82,7 @@
       "profession_name": "工程开发",
       "skin_sha256": "48bea5c4ce24afc744b741a2c5d868fd11b3c902f32c95d1d862a2de3d760c93",
       "skin_version": "1.0.1",
+      "summary_slots_sha256": "b0c29142c80e5850e7cfbbfcbb5bf538e60a622a1143e836f184c8ab45ccd7b4",
       "team": {
         "status": "pending",
         "team_id": null
@@ -93,6 +98,7 @@
       "profession_name": "情报调研",
       "skin_sha256": "d8981b55fe11539e49f03cf84d34bfb0c8777210ebae2591970c1486101f7413",
       "skin_version": "1.0.1",
+      "summary_slots_sha256": "2d3c91bf1eaf0c28cd9c61afb853b6d9f92c96b32aec2e35690b96186c080ae9",
       "team": {
         "status": "pending",
         "team_id": null
@@ -108,6 +114,7 @@
       "profession_name": "质量审查",
       "skin_sha256": "7e9f93c8ab354e163aea498336a5c657c0152fa25a157cc996a9879e973ef9d0",
       "skin_version": "1.0.1",
+      "summary_slots_sha256": "8770c74bf382762c309e568d5bc50567b52c0a864f28a6237e982a38af8d779e",
       "team": {
         "status": "pending",
         "team_id": null
@@ -123,6 +130,7 @@
       "profession_name": "文档写作",
       "skin_sha256": "15feb010aefa6f936f36a19333e450806725a87d671f5c4c25a7290a48f5709c",
       "skin_version": "1.0.1",
+      "summary_slots_sha256": "4742191cdf920964785a4eba9ba1f4bf87e5bdde263ee257b143e623df743bd1",
       "team": {
         "status": "pending",
         "team_id": null

@@ -27,7 +27,8 @@ OUTPUT_ROUTING_REL = "roles/output-routing.md"
 ENVELOPE_HEADER_REL = "roles/envelope-header.md"
 SUMMARY_CONVENTION_REL = "roles/summary-convention.md"
 SUMMARY_SLOTS_REL = "roles/summary-slots.json"
-SUMMARY_SLOT_KEYS = ("title", "done", "open", "ask", "none")
+SUMMARY_SLOT_KEYS = ("title", "done", "open", "ask", "none", "tone_cap")
+SUMMARY_SLOT_SOURCE_KEYS = ("done", "open", "ask")
 ACCESS = ("read_only", "writable")
 KINDS = ("primary", "dispatchable")
 # 主 AI 人格：默认对话激活的就是它，不渲染成可派发的子代理定义。
@@ -297,7 +298,12 @@ def load_summary_slots(root: Path) -> dict:
                 raise RoleError(f"{SUMMARY_SLOTS_REL}: {rid} 缺 {k}")
             vals.append(v)
         if len(set(vals)) != len(vals):
-            raise RoleError(f"{SUMMARY_SLOTS_REL}: {rid} 的五个措辞有重复（槽位必须互不相同）")
+            raise RoleError(f"{SUMMARY_SLOTS_REL}: {rid} 的措辞有重复（槽位必须互不相同）")
+        src = e.get("slot_sources") or {}
+        for k in SUMMARY_SLOT_SOURCE_KEYS:
+            if not str(src.get(k) or "").strip():
+                raise RoleError(f"{SUMMARY_SLOTS_REL}: {rid} 缺 slot_sources.{k}"
+                                f"（每个槽位该装什么要绑到本角色自己的机器面字段）")
     titles = [str((roles.get(rid) or {}).get("title") or "").strip() for rid in ROLE_IDS]
     if len(set(titles)) != len(titles):
         raise RoleError(f"{SUMMARY_SLOTS_REL}: 八角色的 title 有重复"
@@ -309,16 +315,19 @@ def summary_slot_block(root: Path, role_id: str) -> str:
     """本角色的总结措辞：从唯一家现读，渲染时随体例一并前置。"""
     data = load_summary_slots(root)
     e = (data.get("roles") or {})[role_id]
-    return "\n".join([
+    src = e.get("slot_sources") or {}
+    lines = [
         "## 你的总结措辞",
         "",
         f"- 标题：`## <角色表情> {e['title']}｜只看这里`",
-        f"- 第一行（本次结论）：`{e['done']}：`",
-        f"- 第二行（未完成项）：`{e['open']}：`",
-        f"- 第三行（待用户决定）：`{e['ask']}：`",
+        f"- 第一行（本次结论）：`{e['done']}：` —— 取自：{src.get('done', '')}",
+        f"- 第二行（未完成项）：`{e['open']}：` —— 取自：{src.get('open', '')}",
+        f"- 第三行（待用户决定）：`{e['ask']}：` —— 取自：{src.get('ask', '')}",
         f"- 没有要用户决定的事时：`{e['ask']}：{e['none']}`",
+        f"- 人味上限：{e.get('tone_cap', '')}",
         "",
-    ])
+    ]
+    return "\n".join(lines)
 
 
 def render_body(canon: dict, skin_meta: dict, entry: dict, skin_name: str) -> str:

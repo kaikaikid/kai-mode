@@ -61,6 +61,9 @@ def build_registries(root: Path) -> dict[str, dict]:
     canon = rolelib.load_canon(root)
     skins = {name: rolelib.load_skin(root, name) for name in rolelib.SKINS}
     personas = {rid: persona_lib.load(root, rid) for rid in rolelib.ROLE_IDS}
+    slots = json.loads(
+        (Path(root) / "roles" / "summary-slots.json").read_text(encoding="utf-8"))
+    slots_roles = slots.get("roles") or {}
 
     def common(rid: str, skin_name: str) -> dict:
         skin = skins[skin_name]
@@ -76,6 +79,7 @@ def build_registries(root: Path) -> dict[str, dict]:
             "persona_sha256": persona_lib.fingerprint(p),
             "persona_memory_sha256": _sha_json(p["memory"]),
             "persona_depth_sha256": _sha_json(p.get("depth")),
+            "summary_slots_sha256": _sha_json(slots_roles.get(rid)),
             "team": dict(TEAM_PLACEHOLDER),
         }
 
