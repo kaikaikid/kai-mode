@@ -336,33 +336,36 @@ def summary_slot_block(root: Path, role_id: str, emoji: str = "") -> str:
 
 
 def render_body(canon: dict, skin_meta: dict, entry: dict, skin_name: str) -> str:
-    """角色正文（无 frontmatter）：指纹 ＋ 输入契约 ＋ identity ＋ personality ＋ 正本四块逐字。
+    """角色正文（无 frontmatter）：指纹 ＋ identity ＋ personality ＋ 输入契约 ＋ 总结体例 ＋ 措辞 ＋ 正本四块逐字。
 
     「派发时现读」这条路用它：每次现算，永远跟正本同步，不需要重渲染任何文件。
     输入块只走这里前置，不在各 canon 里复述八遍。
+    人格（identity/personality）排在契约条文前——先让模型代入「我是谁、我什么脾气」，
+    再读规则；顺序对自述式人格的代入感有实测影响。
     """
     meta = canon["meta"]
     root = canon["path"].parents[2]
     # 失败关闭：输入契约与总结体例都是常驻层必件，缺了就抛，不静默降级成
     # 「没有输入契约／没有总结体例」的提示词。两者缺失都由 validate() 兜住。
     input_block = load_input_contract(root)
+    # 失败关闭：体例与措辞表缺了就抛，不静默产出「没有总结体例」的提示词——
+    # 体例恒在常驻层是设计，不是可选装饰。
+    conv = load_summary_convention(root)
     parts = [
         fingerprint(meta, canon["sha256"], skin_name,
                     skin_meta.get("skin_version", ""), entry_sha256(entry)),
         "",
-    ]
-    parts += [input_block, ""]
-    # 失败关闭：体例与措辞表缺了就抛，不静默产出「没有总结体例」的提示词——
-    # 体例恒在常驻层是设计，不是可选装饰。
-    conv = load_summary_convention(root)
-    parts += [conv, "",
-              summary_slot_block(root, meta["role_id"], entry.get("summary_emoji", "")), ""]
-    parts += [
         "## identity",
         entry["identity"].strip(),
         "",
         "## personality",
         entry["personality"].strip(),
+        "",
+        input_block,
+        "",
+        conv,
+        "",
+        summary_slot_block(root, meta["role_id"], entry.get("summary_emoji", "")),
         "",
         canon["body"].lstrip("\n").rstrip("\n"),
     ]
