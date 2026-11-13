@@ -1690,6 +1690,91 @@ def _load_rolelib(root: str):
     return mod
 
 
+def _load_registry_export(root: str):
+    """按路径加载 scripts/export-role-registry.py；registry 门与导出命令共用同一份。"""
+    import importlib.util
+    p = os.path.join(root, "scripts", "export-role-registry.py")
+    if not os.path.isfile(p):
+        return None
+    spec = importlib.util.spec_from_file_location("_kai_registry_export", p)
+    if spec is None or spec.loader is None:
+        return None
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _first_registry_diff(want, got, path="root"):
+    """首个差异的可读路径；用于点名哪份文件/哪条/哪个字段漂了。"""
+    if type(want) is not type(got):
+        return f"{path} 类型 {type(got).__name__} ≠ 期望 {type(want).__name__}"
+    if isinstance(want, dict):
+        missing = sorted(set(want) - set(got))
+        extra = sorted(set(got) - set(want))
+        if missing:
+            return f"{path} 缺字段 {missing[0]!r}"
+        if extra:
+            return f"{path} 多字段 {extra[0]!r}"
+        for k in want:
+            d = _first_registry_diff(want[k], got[k], f"{path}.{k}")
+            if d:
+                return d
+        return None
+    if isinstance(want, list):
+        if len(want) != len(got):
+            return f"{path} 条数 {len(got)} ≠ 期望 {len(want)}"
+        key = next((k for k in ("role_id", "profession_id")
+                    if all(isinstance(x, dict) and k in x for x in want + got)), None)
+        if key:
+            def _key(x):
+                base = str(x[key])
+                return f"{base}:{x['skin']}" if "skin" in x else base
+            wm = {_key(x): x for x in want}
+            gm = {_key(x): x for x in got}
+            for k in sorted(set(wm) | set(gm)):
+                if k not in gm:
+                    return f"{path} 缺 {k}"
+                if k not in wm:
+                    return f"{path} 多 {k}"
+                d = _first_registry_diff(wm[k], gm[k], f"{path}[{k}]")
+                if d:
+                    return d
+            return None
+        for i, (a, b) in enumerate(zip(want, got)):
+            d = _first_registry_diff(a, b, f"{path}[{i}]")
+            if d:
+                return d
+        return None
+    return None if want == got else f"{path} 期望 {want!r} 实际 {got!r}"
+
+
+def chk_role_registry(root: str, ms):
+    """registry 与正本一致：canon/skin/persona 任一漂移或手改 registry 都红。"""
+    from pathlib import Path as _P
+    mod = _load_registry_export(root)
+    if mod is None:
+        return "skip", "没有 scripts/export-role-registry.py（registry 导出未接入）"
+    if not os.path.isdir(os.path.join(root, "roles", "registry")):
+        return "fail", "registry 未导出：缺 roles/registry/"
+    try:
+        expected = mod.build_registries(_P(root))
+    except Exception as exc:
+        return "fail", f"registry 重建失败：{exc!r}"
+    for rel, want in sorted(expected.items()):
+        p = os.path.join(root, "roles", "registry", *rel.split("/"))
+        if not os.path.isfile(p):
+            return "fail", f"registry 未导出：缺 {rel}"
+        try:
+            with open(p, encoding="utf-8") as f:
+                got = json.load(f)
+        except Exception as exc:
+            return "fail", f"{rel} 不是合法 JSON：{exc}"
+        if got != want:
+            return "fail", (f"registry 与正本不一致：{rel} → "
+                            f"{_first_registry_diff(want, got)}；手改或未重导出")
+    return "ok", "2 份 registry 与 8 份正本/皮肤/persona 一致"
+
+
 def chk_persona(root: str, ms):
     """人格层契约：八份 persona；原初内核只读、ego 只放引用、记忆只走 archivist。"""
     from pathlib import Path as _P
@@ -2101,6 +2186,7 @@ CHECKS = (
     ("decoupling-gate", "解耦门（项目硬路径零残留）", chk_decoupling),
     ("host-neutral", "宿主专有 token 不进正本", chk_host_neutral),
     ("role-canon", "角色正本契约（八角色 × 双皮 × 六宿主）", chk_role_canon),
+    ("role-registry", "registry 与正本一致（profession/role v1）", chk_role_registry),
     ("persona-layer", "人格层契约（原初内核只读 / ego 只放引用 / 记忆走 archivist）", chk_persona),
     ("handoff-slots", "交接文档分类（槽位/命名/归位）", chk_handoff),
     ("skill-spec", "技能格式对齐 Agent Skills 1.2", chk_skill_spec),

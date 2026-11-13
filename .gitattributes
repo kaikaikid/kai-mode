@@ -10,3 +10,5 @@
 *.json text eol=lf
 *.yml text eol=lf
 *.yaml text eol=lf
+# 角色层只读派生登记：生成物，缺省折叠 diff；手改也会被 doctor 的 role-registry 门判红。
+roles/registry/** linguist-generated=true
