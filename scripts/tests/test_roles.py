@@ -45,6 +45,14 @@ def repo_copy(tmp_path):
         shutil.copy2(REPO / "roles" / name, tmp_path / "roles" / name)
     (tmp_path / "adapters").mkdir()
     shutil.copy2(REPO / "adapters" / "role-hosts.json", tmp_path / "adapters" / "role-hosts.json")
+    # 派生体例门要看的两个落点也得在，否则假仓里门只会报「文件不在」
+    (tmp_path / "docs").mkdir()
+    shutil.copy2(REPO / "docs" / "eval-cases.md", tmp_path / "docs" / "eval-cases.md")
+    gold_dir = tmp_path / "core" / "skills" / "gold"
+    (gold_dir / "references").mkdir(parents=True)
+    shutil.copy2(REPO / "core" / "skills" / "gold" / "SKILL.md", gold_dir / "SKILL.md")
+    shutil.copy2(REPO / "core" / "skills" / "gold" / "references" / "commands.md",
+                 gold_dir / "references" / "commands.md")
     return tmp_path
 
 
@@ -638,3 +646,30 @@ def test_emoji_derived_gate_catches_skin_emoji_change(repo_copy):
     doctor = _load_doctor()
     status, msg = doctor.chk_emoji_derivation(str(repo_copy), None)
     assert status == "fail", msg
+
+
+def _write_gold(repo_copy, body):
+    p = repo_copy / "core" / "skills" / "gold" / "SKILL.md"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(body, encoding="utf-8")
+
+
+GOOD_TMPL = ("```markdown\n## 💰 一句话交差｜只看这里\n搞定：<结果>\n"
+             "还欠着：<差什么>\n等你拍板：<事项>\n```\n")
+
+
+def test_summary_derived_gate_is_not_masked_by_another_fence(repo_copy):
+    """真模板漂移时，另开一个围栏块塞标记词不能把它盖住（N-a）。"""
+    _write_gold(repo_copy,
+                "```markdown\n## 💰 一句话交差｜只看这里\n办妥：<结果>\n"
+                "还欠着：<差什么>\n等你拍板：<事项>\n```\n\n"
+                "```markdown\n搞定：x\n还欠着：y\n等你拍板：z\n```\n")
+    assert _summary_derived_status(repo_copy) == "fail"
+
+
+def test_summary_derived_gate_tolerates_list_bullets(repo_copy):
+    """模板行加个列表符是纯排版，不该误报（N-c）。"""
+    _write_gold(repo_copy,
+                "```markdown\n## 💰 一句话交差｜只看这里\n- 搞定：<结果>\n"
+                "- 还欠着：<差什么>\n- 等你拍板：<事项>\n```\n")
+    assert _summary_derived_status(repo_copy) == "ok"

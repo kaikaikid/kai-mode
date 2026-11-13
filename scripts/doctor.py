@@ -1858,16 +1858,35 @@ def chk_depth_publish(root: str, ms):
     return "ok", out[:300]
 
 
-def _fenced_lines(text: str) -> list:
-    """取围栏代码块里的行（总结模板块）。"""
-    out, inside = [], False
+def _fenced_blocks(text: str) -> list:
+    """把围栏代码块拆成「块」——每块一组行。判模板块要按块判，不能把所有围栏行混在一起。"""
+    blocks, cur = [], None
     for line in text.splitlines():
         if line.strip().startswith("```"):
-            inside = not inside
+            if cur is None:
+                cur = []
+            else:
+                blocks.append(cur)
+                cur = None
             continue
-        if inside:
-            out.append(line)
-    return out
+        if cur is not None:
+            cur.append(line)
+    if cur:
+        blocks.append(cur)
+    return blocks
+
+
+def _fenced_lines(text: str) -> list:
+    """兼容包装：所有围栏行拉平。⚠ 判「那个模板块」不要用它，用 _fenced_blocks。"""
+    return [l for b in _fenced_blocks(text) for l in b]
+
+
+def _norm_fence_line(line: str) -> str:
+    """去掉排版噪声（列表符／引用符／缩进），让「- 搞定：x」也算以「搞定：」开头。"""
+    s = line.strip()
+    while s[:1] in ("-", "*", "+", ">"):
+        s = s[1:].lstrip()
+    return s
 
 
 # 退役的总结标签「家族」——不只两串精确串，同族变体也算退役：
@@ -1925,14 +1944,32 @@ def chk_summary_derived(root: str, ms):
     if os.path.isfile(gold):
         with open(gold, encoding="utf-8") as fh:
             text = fh.read()
-        fenced = _fenced_lines(text)
+        blocks = _fenced_blocks(text)
         head = f"## {emoji} {title}" if emoji else f"## {title}"
-        if not any(l.strip().startswith(head) for l in fenced):
-            bad.append(f"gold/SKILL.md：模板块里没有标题行「{head}」")
-        for k in ("done", "open", "ask"):
-            if not any(l.strip().startswith(f"{marks[k]}：") for l in fenced):
-                bad.append(f"gold/SKILL.md：模板块里没有以「{marks[k]}：」开头的行"
-                           f"（措辞漂移了，散文里出现不算）")
+        # 用标题行锚定「那个模板块」——不能搜「任一围栏行」，否则一个无关围栏块
+        # 就能把真模板的漂移盖住（实测 N-a）。
+        tmpl, tmpl_i = None, -1
+        for i, b in enumerate(blocks):
+            if any(_norm_fence_line(l).startswith("## ") for l in b):
+                tmpl, tmpl_i = b, i
+                break
+        if tmpl is None:
+            bad.append("gold/SKILL.md：找不到总结模板块（应以标题行「## <表情> <动作短语>」锚定）")
+        else:
+            if not any(_norm_fence_line(l).startswith(head) for l in tmpl):
+                bad.append(f"gold/SKILL.md：模板块里没有标题行「{head}」")
+            for k in ("done", "open", "ask"):
+                if not any(_norm_fence_line(l).startswith(f"{marks[k]}：") for l in tmpl):
+                    bad.append(f"gold/SKILL.md：模板块里没有以「{marks[k]}：」开头的行"
+                               f"（措辞漂移了；另一个围栏块里有也不算）")
+            for i, b in enumerate(blocks):
+                if i == tmpl_i:
+                    continue
+                for k in ("done", "open", "ask"):
+                    if any(marks[k] in l for l in b):
+                        bad.append(f"gold/SKILL.md：第 {i + 1} 个围栏块携带了标记词"
+                                   f"「{marks[k]}」——只有总结模板块可以带它")
+                        break
         hit = RETIRED_SUMMARY_RE.search(text)
         if hit:
             bad.append(f"gold/SKILL.md：仍有退役标签「{hit.group(0)}」")
