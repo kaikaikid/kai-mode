@@ -39,7 +39,7 @@
       "role_id": "architect",
       "skin": "guild",
       "skin_sha256": "63c28b142b9e196be6a8f2da22a389930c03897a6f8bd818285f049a416ca2c3",
-      "skin_version": "1.3.0",
+      "skin_version": "1.4.0",
       "summary_slots_sha256": "5ddbcf73891aedc410a5434f8c9911916886ed217d7c7367b3690f23eb35f99f",
       "team": {
         "status": "pending",
@@ -76,8 +76,8 @@
       "profession_name": "知识管理",
       "role_id": "archivist",
       "skin": "guild",
-      "skin_sha256": "7c1c1818f8dcc490ba0ceb8b65cf7950447219b8f29c60dbf7e6f2294157eb46",
-      "skin_version": "1.3.0",
+      "skin_sha256": "e4850fe61d905afd1065abdfa61817cffad3d12be179ad11b1b50f27d757a08e",
+      "skin_version": "1.4.0",
       "summary_slots_sha256": "d610b62818fd684c2eee26503f12278889bfa55bf547b4e1a399abbbcaa08a8d",
       "team": {
         "status": "pending",
@@ -115,7 +115,7 @@
       "role_id": "coordinator",
       "skin": "guild",
       "skin_sha256": "13e24c7753fc4f73d82cba122060dfb93122a0525e5123ee7d399f4f2750d0ae",
-      "skin_version": "1.3.0",
+      "skin_version": "1.4.0",
       "summary_slots_sha256": "c94e85b9bc9579c3d4442b3af087760acecbe564904c8c2562082ee4d3fbed21",
       "team": {
         "status": "pending",
@@ -153,7 +153,7 @@
       "role_id": "designer",
       "skin": "guild",
       "skin_sha256": "29798d8fb7f84253d1597a5c71b860340fd894c6064ca6519a7bf1e1d5fb86d5",
-      "skin_version": "1.3.0",
+      "skin_version": "1.4.0",
       "summary_slots_sha256": "84b1bc178b8df9d4eeee665e4b0c3eb39cedf3089e0d4fee314010fcba18d55b",
       "team": {
         "status": "pending",
@@ -190,8 +190,8 @@
       "profession_name": "工程开发",
       "role_id": "engineer",
       "skin": "guild",
-      "skin_sha256": "c0d4a7eef96cfc6a14c20598bab5b2839c1d9533692d728b49fcb93c7e4fae47",
-      "skin_version": "1.3.0",
+      "skin_sha256": "1617f1395122a2680e451128f0ff5ef2c9cdbd2828d7cc6c6e823c647a9fa8e9",
+      "skin_version": "1.4.0",
       "summary_slots_sha256": "040582c867e226f458e924f2e9d5da91498945698035dcb1d2e897b28b9de7c0",
       "team": {
         "status": "pending",
@@ -229,7 +229,7 @@
       "role_id": "researcher",
       "skin": "guild",
       "skin_sha256": "d0b4f447c1779d5830ffb3f2f85f8f72c88705a3b22d496338d405ef938c417e",
-      "skin_version": "1.3.0",
+      "skin_version": "1.4.0",
       "summary_slots_sha256": "9279809220cc5017fe7aa342767edf1b64f80664cbe889b17f1b2e76f61298bc",
       "team": {
         "status": "pending",
@@ -266,8 +266,8 @@
       "profession_name": "质量审查",
       "role_id": "reviewer",
       "skin": "guild",
-      "skin_sha256": "d705cc93f084cddc668ee2bea660c7558273da653e79ccd9984c15cef0ed1de4",
-      "skin_version": "1.3.0",
+      "skin_sha256": "e41dd29816b30169b080e51a2b051a51f2647dc130b20a4605a75e3094b96add",
+      "skin_version": "1.4.0",
       "summary_slots_sha256": "8770c74bf382762c309e568d5bc50567b52c0a864f28a6237e982a38af8d779e",
       "team": {
         "status": "pending",
@@ -305,7 +305,7 @@
       "role_id": "writer",
       "skin": "guild",
       "skin_sha256": "d18ac589413058be7aa49d2d7ed1ef2ee86c823f91c62d1f478acc1f095f9c65",
-      "skin_version": "1.3.0",
+      "skin_version": "1.4.0",
       "summary_slots_sha256": "4742191cdf920964785a4eba9ba1f4bf87e5bdde263ee257b143e623df743bd1",
       "team": {
         "status": "pending",
