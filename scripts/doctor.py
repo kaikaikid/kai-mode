@@ -1870,6 +1870,22 @@ def _fenced_lines(text: str) -> list:
     return out
 
 
+# 退役的总结标签「家族」——不只两串精确串，同族变体也算退役：
+# 「待拍板：无」／「待拍板（无则写…）」／「做完了：」／「还差什么：」／旧标题式。
+# 「等你拍板：」是现行措辞，不算；日报的「待拍板」段与正文里的「待拍板项」是另一件东西，排除。
+RETIRED_SUMMARY_RE = re.compile(
+    r"结果总结｜只看这里"
+    r"|结果总结规则"
+    r"|(?<!等)待拍板(?![」项])"
+    r"|(?<!等)做完了："
+    r"|(?<!等)还差什么："
+    r"|要你拍(?!板)"
+    r"|不用你管"
+)
+# 真正的表情（不含 → ≤ 这类箭头与数学符号）
+EMOJI_RE = re.compile("[☀-➿⬀-⯿️🀀-🫿]")
+
+
 def chk_summary_derived(root: str, ms):
     """派生体例检查：安装面里出现的总结措辞必须与 summary-slots.json 的 coordinator 条目一致。
 
@@ -1917,9 +1933,9 @@ def chk_summary_derived(root: str, ms):
             if not any(l.strip().startswith(f"{marks[k]}：") for l in fenced):
                 bad.append(f"gold/SKILL.md：模板块里没有以「{marks[k]}：」开头的行"
                            f"（措辞漂移了，散文里出现不算）")
-        for retired in ("结果总结｜只看这里", "待拍板：无"):
-            if retired in text:
-                bad.append(f"gold/SKILL.md：仍有退役标签「{retired}」")
+        hit = RETIRED_SUMMARY_RE.search(text)
+        if hit:
+            bad.append(f"gold/SKILL.md：仍有退役标签「{hit.group(0)}」")
     else:
         bad.append("gold/SKILL.md：文件不在")
 
@@ -1927,9 +1943,9 @@ def chk_summary_derived(root: str, ms):
     if os.path.isfile(cmds):
         with open(cmds, encoding="utf-8") as fh:
             text = fh.read()
-        for retired in ("结果总结｜只看这里", "待拍板：无"):
-            if retired in text:
-                bad.append(f"gold/references/commands.md：仍有退役标签「{retired}」")
+        hit = RETIRED_SUMMARY_RE.search(text)
+        if hit:
+            bad.append(f"gold/references/commands.md：仍有退役标签「{hit.group(0)}」")
         for k in ("done", "open", "ask"):
             if marks[k] in text:
                 bad.append(f"gold/references/commands.md：硬编码了 coordinator 的标记词"
@@ -1954,15 +1970,86 @@ def chk_summary_derived(root: str, ms):
                     bad.append(f"eval-cases.md：{tag} 行里缺现行标记词「{marks[k]}」")
             if tag == "COM-05" and title not in row:
                 bad.append(f"eval-cases.md：{tag} 行里缺现行标题动作短语「{title}」")
-            for retired in ("结果总结｜只看这里", "待拍板：无"):
-                if retired in row:
-                    bad.append(f"eval-cases.md：{tag} 行仍有退役标签「{retired}」")
+            hit = RETIRED_SUMMARY_RE.search(row)
+            if hit:
+                bad.append(f"eval-cases.md：{tag} 行仍有退役标签「{hit.group(0)}」")
     else:
         bad.append("eval-cases.md：文件不在")
 
+    # 反向扫描：三个标记词只许出现在唯一家与两份受准派生件里；别处出现即第二个家。
+    sanctioned = {"core/skills/gold/SKILL.md", "docs/eval-cases.md"}
+    generated = "core/skills/kai-persona-deep/resources"   # 由 persona depth 生成的投影，不算拷贝
+    for tree in ("core", "docs"):
+        base = os.path.join(root, *tree.split("/"))
+        for dirpath, _dirs, files in os.walk(base):
+            rel_dir = os.path.relpath(dirpath, root).replace("\\", "/")
+            if rel_dir.startswith(generated):
+                continue
+            for fn in files:
+                if not fn.endswith(".md"):
+                    continue
+                rel = f"{rel_dir}/{fn}"
+                if rel in sanctioned:
+                    continue
+                fp = os.path.join(dirpath, fn)
+                try:
+                    body = open(fp, encoding="utf-8").read()
+                except OSError:
+                    continue
+                for k in ("done", "open", "ask"):
+                    if marks[k] and marks[k] in body:
+                        bad.append(f"{rel}：出现了 coordinator 的槽位标记词「{marks[k]}」"
+                                   f"——只有唯一家与受准派生件可以带它")
+                        break
     if bad:
         return "fail", "派生体例漂移： " + "；".join(bad[:6])
     return "ok", "gold 模板／commands／eval-cases 都跟 summary-slots.json 逐位一致，退役标签零命中"
+
+
+def chk_emoji_derivation(root: str, ms):
+    """表情派生门：正本里出现的表情，必须是该角色皮肤 summary_emoji 的值。
+
+    表情的唯一家是皮肤（roles/skins/<skin>.json 的 summary_emoji）；正本里
+    硬抄一个字面量，就是皮肤与正本两份家——皮肤改了表情，正本会悄悄漂。
+    这道门把「正本里的表情」钉成「从皮肤派生的值」。
+
+    另：通用皮与酒馆皮对同一角色的表情必须一致——不一致说明「表情属于角色
+    还是属于皮主题」没定，属于要团长裁的口径问题，这里按现状锁死并报出来。
+    """
+    import json as _json
+    from pathlib import Path as _P
+    bad = []
+    skins = {}
+    for skin in ("generic", "guild"):
+        fp = os.path.join(root, "roles", "skins", f"{skin}.json")
+        if not os.path.isfile(fp):
+            return "skip", f"没有 roles/skins/{skin}.json"
+        try:
+            skins[skin] = _json.loads(open(fp, encoding="utf-8").read())
+        except Exception as e:
+            return "fail", f"{skin}.json 读不出来：{e}"
+    roles = sorted(skins["guild"].get("roles") or {})
+    for rid in roles:
+        vals = {s: str((skins[s].get("roles") or {}).get(rid, {}).get("summary_emoji") or "")
+                for s in skins}
+        if len(set(vals.values())) != 1:
+            bad.append(f"{rid}：两皮表情不一致（{vals}）——表情属于角色还是皮主题，未定")
+            continue
+        mine = next(iter(vals.values()))
+        if not mine:
+            continue
+        canon_p = os.path.join(root, "roles", "canon", f"{rid}.md")
+        if not os.path.isfile(canon_p):
+            continue
+        body = open(canon_p, encoding="utf-8").read()
+        for hit in EMOJI_RE.findall(body):
+            if hit != mine:
+                bad.append(f"{rid}.md：正本里出现表情「{hit}」，但皮肤 summary_emoji 是「{mine}」"
+                           f"——表情的唯一家是皮肤，正本只该引用它")
+                break
+    if bad:
+        return "fail", "表情派生漂移： " + "；".join(bad[:6])
+    return "ok", "正本里的表情都等于皮肤的 summary_emoji，两皮逐角色一致"
 
 
 def chk_slot_binding(root: str, ms):
@@ -2410,6 +2497,7 @@ CHECKS = (
     ("depth-publish", "深度层投影（安装面资源与 persona 正本逐字一致）", chk_depth_publish),
     ("summary-derived", "派生体例（gold／eval-cases 的总结措辞跟唯一家一致）", chk_summary_derived),
     ("slot-binding", "槽位绑定（点名的机器面字段还活着）", chk_slot_binding),
+    ("emoji-derived", "表情派生（正本里的表情来自皮肤 summary_emoji）", chk_emoji_derivation),
     ("handoff-slots", "交接文档分类（槽位/命名/归位）", chk_handoff),
     ("skill-spec", "技能格式对齐 Agent Skills 1.2", chk_skill_spec),
     ("command-surface", "技能声明的命令在自己工具面里", chk_command_surface),

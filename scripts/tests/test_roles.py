@@ -590,3 +590,51 @@ def test_slot_binding_gate_is_green_on_real_repo():
     doctor = _load_doctor()
     status, msg = doctor.chk_slot_binding(str(REPO), None)
     assert status == "ok", msg
+
+
+# ── 变异实测钉住：这些漂移必须被判红 ──────────────────────────────────────
+def _slots_write(repo_copy, mutate):
+    p = repo_copy / "roles" / "summary-slots.json"
+    data = json.loads(p.read_text(encoding="utf-8"))
+    mutate(data)
+    p.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def test_summary_derived_gate_catches_title_drift(repo_copy):
+    """唯一家的标题动作短语改了要判红（title 也在比对集里）。"""
+    _slots_write(repo_copy, lambda d: d["roles"]["coordinator"].__setitem__("title", "两个字交差"))
+    assert _summary_derived_status(repo_copy) == "fail"
+
+
+def test_summary_derived_gate_catches_none_drift(repo_copy):
+    """唯一家的「无待决」写法改了要判红（none 也在比对集里）。"""
+    _slots_write(repo_copy, lambda d: d["roles"]["coordinator"].__setitem__("none", "没你事"))
+    assert _summary_derived_status(repo_copy) == "fail"
+
+
+def test_summary_derived_gate_catches_retired_family_variant(repo_copy):
+    """退役标签的同族变体（「待拍板：」而非精确串「待拍板：无」）也要判红。"""
+    p = repo_copy / "core" / "skills" / "gold" / "SKILL.md"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text("```markdown\n## 💰 一句话交差｜只看这里\n搞定：x\n还欠着：y\n"
+                 "等你拍板：z\n```\n\n待拍板：<事项>\n", encoding="utf-8")
+    assert _summary_derived_status(repo_copy) == "fail"
+
+
+def test_summary_derived_gate_catches_markers_in_an_unsanctioned_file(repo_copy):
+    """白名单外的文件里出现标记词要判红——否则会悄悄长出第二个家。"""
+    p = repo_copy / "core" / "skills" / "gold" / "references" / "drift.md"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text("搞定：随手写的\n", encoding="utf-8")
+    assert _summary_derived_status(repo_copy) == "fail"
+
+
+def test_emoji_derived_gate_catches_skin_emoji_change(repo_copy):
+    """皮肤的表情改了，正本里硬抄的字面量就漂了——门必须红。"""
+    p = repo_copy / "roles" / "skins" / "guild.json"
+    data = json.loads(p.read_text(encoding="utf-8"))
+    data["roles"]["coordinator"]["summary_emoji"] = "🪙"
+    p.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    doctor = _load_doctor()
+    status, msg = doctor.chk_emoji_derivation(str(repo_copy), None)
+    assert status == "fail", msg
