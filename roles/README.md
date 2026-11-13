@@ -101,6 +101,20 @@ effort: high
 2. **深度层不许内联进常驻层。** doctor 的 `persona-layer` 门逐个皮肤比对默认渲染结果，
    depth 正文混进去即红。常驻层膨胀是最难回收的那种——它每轮都在。
 
+### 常驻层的排列顺序（组装点 `rolelib.render_body()`）
+
+`指纹 → identity → personality → 输入契约 → 总结体例 → 本角色措辞 → 四块正本`
+
+人格排在规则前面，是有意的：**先让模型代入「我是谁、我什么脾气」，再让它念规则。**
+顺序反过来（先契约后人格）读起来像一份说明书，不像一个人在做自我介绍。
+改这个顺序要连 `roles/input-contract.md` 里那句「渲染器在……逐字前置本块」一起改。
+
+**人格自述一律第一人称。** `identity`／`personality` 用角色自己的口吻写自己
+（「我是铜须，矮人工匠……我不合并、不推送、不关票」），不用「你是铜须，你负责……」的
+合同口吻——子代理读到的是自己的设定，写成第二人称等于让它对着镜子念别人的说明书。
+八个角色的 `identity_core.identity`（原初内核）与 guild 皮肤的 `identity` 是同一句话的两份家，
+**必须逐字一致**：doctor 的 `persona-layer` 门会比对，只改一边即红。
+
 `depth` 块的形状由 `scripts/persona.py` 守着（`depth_version`、五个段位齐、
 `scope` 必须写明「不进 system prompt」、正文不超 `DEPTH_MAX_BYTES`、不含宿主专有词）。
 没接入＝不红，可逐步接；接入了就得合规。

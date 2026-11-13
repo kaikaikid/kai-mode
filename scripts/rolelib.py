@@ -322,7 +322,7 @@ def summary_slot_block(root: Path, role_id: str, emoji: str = "") -> str:
     src = e.get("slot_sources") or {}
     head = f"{emoji} " if emoji else ""
     lines = [
-        "## 你的总结措辞",
+        "## 我的总结措辞",
         "",
         f"- 标题：`## {head}{e['title']}｜只看这里`",
         f"- 第一行（本次结论）：`{e['done']}：` —— 取自：{src.get('done', '')}",

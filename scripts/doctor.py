@@ -1789,6 +1789,23 @@ def chk_persona(root: str, ms):
     errs = _p.validate(_P(root))
     if errs:
         return "fail", "人格层不合契约： " + "；".join(errs[:6])
+    # 原初内核是身份正文的只读基线：identity_core.identity 必须与 guild 皮肤逐字一致。
+    # 两份家只许一起动（团长批准＋版本递增），静默只改一边即红。
+    try:
+        import rolelib as _rl0
+        guild = _rl0.load_skin(_P(root), "guild")
+        kern_errs = []
+        for rid in _p.ROLE_IDS:
+            core = (_p.load(_P(root), rid) or {}).get("identity_core") or {}
+            face = str(((guild.get("roles") or {}).get(rid) or {}).get("identity", ""))
+            if str(core.get("identity", "")) != face:
+                kern_errs.append(rid)
+        if kern_errs:
+            return "fail", ("原初内核与 guild 皮肤身份分叉（" + "、".join(kern_errs)
+                             + "）：identity_core.identity 是该身份的只读基线，"
+                               "两边必须逐字一致；改要团长批准＋版本递增，一起动")
+    except Exception as e:
+        return "fail", f"内核-皮肤一致性门跑不起来： {e}"
     # 深度人格层是按需层：默认渲染（render_prompt / render_primary）不得内联 depth 正文。
     # 这条门拦的是「有人改渲染器把 depth 又塞回 system prompt」——那样常驻层会重新膨胀。
     try:
