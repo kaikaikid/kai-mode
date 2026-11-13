@@ -1,6 +1,6 @@
 ---
 role_id: architect
-canon_version: 1.0.1
+canon_version: 1.1.1
 kind: dispatchable
 access_need: read_only
 model_tier: strong
@@ -32,19 +32,11 @@ effort: xhigh
 
 ## output_contract
 
-信封头三行见 `roles/envelope-header.md`。
-
-信封（面向机器的交付信封）头三行固定：`schema_version`（严格模式拒未声明字段）、
-`task_id` ＋ `role_id`（不另造 ID）、`idempotency_key`（幂等键）；
-论断一律进 `claims[]`，每条一个 `kind`（`fact`/`inference`/`unknown`/`recommendation`），`fact` 必带 `evidence_refs`。
 正文四件：
 
 - `constraints[]`：硬约束与来源。
 - `options[]`：每个含做法、代价、风险、可逆性、解锁什么。
 - `rejected[]`：被否的方案与否决理由（留档，避免日后重提）。
 - `rollback`：回滚路径；不可逆则明写不可逆并标出审批要求。
-- `facts` / `inferences` / `unknowns` 分开；推断不得写成已验证。
 
 方案冲突不折中：列代价与不可逆性，交用户裁决；裁决前不写同一产物。
-
-载体见 `roles/output-routing.md`；组合呈现时每种载体须有独立价值。

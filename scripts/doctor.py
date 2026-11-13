@@ -1855,6 +1855,73 @@ def chk_persona(root: str, ms):
                   f"记忆走 archivist（外部存储）{tail}")
 
 
+def chk_spec_shared(root: str, ms):
+    """共享契约一个家：canon 不许抄共享块，渲染必须四块都在且顺序正确。
+
+    机器面规格（信封头三行、claims 四类、载体八类、状态词）现在住共享块，
+    由渲染器逐字前置。canon 里若还抄一份，就是第二个可写家——八份各抄一遍
+    必然漂；抄之前那句「见 roles/xxx.md」更是死指针（子代理没有读仓的工具）。
+    """
+    from pathlib import Path as _P
+    cdir = os.path.join(root, "roles", "canon")
+    if not os.path.isdir(cdir):
+        return "skip", "没有 roles/canon/（角色层未接入）"
+    sys.path.insert(0, os.path.join(root, "scripts"))
+    try:
+        import rolelib as _rl
+    except Exception as e:
+        return "fail", f"scripts/rolelib.py 不可导入：{e}"
+    errs = []
+    # (1) canon 不许抄共享块内容，也不许留死指针
+    banned = (
+        "`schema_version`", "`idempotency_key`", "`fact` 必带 `evidence_refs`",
+        "Writing（文字）", "Video（视频）",
+        "状态词只用：完成 / 部分完成 / 阻塞 / 失败",
+        "roles/envelope-header.md", "roles/output-routing.md",
+    )
+    for rid in _rl.ROLE_IDS:
+        p = _P(root) / "roles" / "canon" / f"{rid}.md"
+        if not p.is_file():
+            errs.append(f"{rid} 缺正本")
+            continue
+        text = p.read_text(encoding="utf-8")
+        for b in banned:
+            if b in text:
+                errs.append(f"roles/canon/{rid}.md 抄了共享块内容「{b}」"
+                            f"（规格只有共享块一个家）")
+    # (2) 渲染：四块共享契约都在，且顺序正确
+    heads = (
+        ("## 输入契约", _rl.load_input_contract(_P(root))),
+        ("## 信封规格", _rl.load_envelope_spec(_P(root))),
+        ("## 载体路由", _rl.load_output_routing(_P(root))),
+        ("## 总结体例", _rl.load_summary_convention(_P(root))),
+    )
+    for rid in _rl.ROLE_IDS:
+        for sk in _rl.SKINS:
+            try:
+                rendered = _rl.render_prompt(_P(root), rid, sk)
+            except Exception as e:
+                errs.append(f"{rid}/{sk} 渲染失败：{e}")
+                continue
+            pos = []
+            for head, block in heads:
+                if block not in rendered:
+                    errs.append(f"{rid}/{sk} 渲染里缺共享块「{head}」")
+                    pos.append(-1)
+                    continue
+                pos.append(rendered.index(block))
+            if pos[0] < 0:
+                continue
+            if rendered.find("## identity") > pos[0]:
+                errs.append(f"{rid}/{sk} 的 identity 排在共享契约之后（人格应在前）")
+            if any(pos[i] >= pos[i + 1] for i in range(len(pos) - 1)):
+                errs.append(f"{rid}/{sk} 共享块顺序不对（应按 输入契约→信封规格→载体路由→总结体例）")
+    if errs:
+        return "fail", "共享契约一个家不过： " + "；".join(errs[:6])
+    return "ok", (f"canon 零抄写（{len(_rl.ROLE_IDS)} 份）；"
+                  f"四块共享契约在 {len(_rl.ROLE_IDS)}×{len(_rl.SKINS)} 份渲染里齐全且顺序正确")
+
+
 def chk_depth_publish(root: str, ms):
     """深度人格层 → 安装面技能资源：投影必须与 persona 正本逐字一致。
 
@@ -2549,6 +2616,7 @@ CHECKS = (
     ("role-canon", "角色正本契约（八角色 × 双皮 × 六宿主）", chk_role_canon),
     ("role-registry", "registry 与正本一致（profession/role v1）", chk_role_registry),
     ("persona-layer", "人格层契约（原初内核只读 / ego 只放引用 / 记忆走 archivist）", chk_persona),
+    ("spec-shared", "共享契约一个家（canon 零抄写 / 四块共享块齐全有序）", chk_spec_shared),
     ("depth-publish", "深度层投影（安装面资源与 persona 正本逐字一致）", chk_depth_publish),
     ("summary-derived", "派生体例（gold／eval-cases 的总结措辞跟唯一家一致）", chk_summary_derived),
     ("slot-binding", "槽位绑定（点名的机器面字段还活着）", chk_slot_binding),

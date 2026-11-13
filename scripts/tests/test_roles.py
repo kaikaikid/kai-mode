@@ -538,6 +538,46 @@ def test_render_fails_closed_without_input_contract(repo_copy):
         rl.render_prompt(repo_copy, "reviewer", "guild")
 
 
+def test_render_fails_closed_without_envelope_spec(repo_copy):
+    """信封规格缺失同样抛——机器面规格是常驻层必件，缺了不静默降级。"""
+    (repo_copy / "roles" / "envelope-header.md").unlink()
+    with pytest.raises(rl.RoleError):
+        rl.render_prompt(repo_copy, "reviewer", "guild")
+
+
+def test_render_fails_closed_without_output_routing(repo_copy):
+    """载体路由缺失同样抛——八类载体清单只有这一个家。"""
+    (repo_copy / "roles" / "output-routing.md").unlink()
+    with pytest.raises(rl.RoleError):
+        rl.render_prompt(repo_copy, "reviewer", "guild")
+
+
+def test_shared_blocks_present_in_order_and_canon_never_copies_them():
+    """共享契约一个家：四块齐全、顺序正确；canon 不许再抄一份。
+
+    对应 doctor 的 spec-shared 门；这里在测例层再钉一次，变异测试有两条腿。
+    """
+    banned = ("`schema_version`", "`idempotency_key`", "`fact` 必带 `evidence_refs`",
+              "Writing（文字）", "Video（视频）",
+              "状态词只用：完成 / 部分完成 / 阻塞 / 失败",
+              "roles/envelope-header.md", "roles/output-routing.md")
+    for rid in rl.ROLE_IDS:
+        text = (REPO / "roles" / "canon" / f"{rid}.md").read_text(encoding="utf-8")
+        for b in banned:
+            assert b not in text, f"roles/canon/{rid}.md 抄了共享块内容「{b}」"
+        for sk in rl.SKINS:
+            out = rl.render_prompt(REPO, rid, sk)
+            i_id = out.index("## identity")
+            blocks = [
+                out.index(rl.load_input_contract(REPO)),
+                out.index(rl.load_envelope_spec(REPO)),
+                out.index(rl.load_output_routing(REPO)),
+                out.index(rl.load_summary_convention(REPO)),
+            ]
+            assert i_id < blocks[0], f"{rid}/{sk} 人格应排在共享契约前"
+            assert blocks == sorted(blocks), f"{rid}/{sk} 共享块顺序不对"
+
+
 def test_summary_title_carries_the_role_own_emoji(repo_copy):
     """标题要渲本角色自己的表情，不能留占位符——角色看不到自己该写哪个表情。"""
     out = rl.render_prompt(repo_copy, "reviewer", "guild")

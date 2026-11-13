@@ -276,6 +276,28 @@ def load_summary_convention(root: Path) -> str:
     return text
 
 
+def load_envelope_spec(root: Path) -> str:
+    """信封规格唯一家：roles/envelope-header.md。渲染器逐字前置，各角色不复述。"""
+    p = Path(root) / ENVELOPE_HEADER_REL
+    if not p.is_file():
+        raise RoleError(f"缺信封规格：{ENVELOPE_HEADER_REL}")
+    text = p.read_text(encoding="utf-8").strip()
+    if not text:
+        raise RoleError(f"信封规格是空的：{ENVELOPE_HEADER_REL}")
+    return text
+
+
+def load_output_routing(root: Path) -> str:
+    """载体路由唯一家：roles/output-routing.md。渲染器逐字前置，各角色不复述。"""
+    p = Path(root) / OUTPUT_ROUTING_REL
+    if not p.is_file():
+        raise RoleError(f"缺载体路由：{OUTPUT_ROUTING_REL}")
+    text = p.read_text(encoding="utf-8").strip()
+    if not text:
+        raise RoleError(f"载体路由是空的：{OUTPUT_ROUTING_REL}")
+    return text
+
+
 def load_summary_slots(root: Path) -> dict:
     """八角色总结措辞的唯一家：roles/summary-slots.json（数据面，与体例分开住）。"""
     p = Path(root) / SUMMARY_SLOTS_REL
@@ -336,18 +358,20 @@ def summary_slot_block(root: Path, role_id: str, emoji: str = "") -> str:
 
 
 def render_body(canon: dict, skin_meta: dict, entry: dict, skin_name: str) -> str:
-    """角色正文（无 frontmatter）：指纹 ＋ identity ＋ personality ＋ 输入契约 ＋ 总结体例 ＋ 措辞 ＋ 正本四块逐字。
+    """角色正文（无 frontmatter）：指纹 ＋ identity ＋ personality ＋ 四块共享契约 ＋ 正本四块逐字。
 
     「派发时现读」这条路用它：每次现算，永远跟正本同步，不需要重渲染任何文件。
-    输入块只走这里前置，不在各 canon 里复述八遍。
+    共享块只走这里前置，不在各 canon 里复述八遍。
     人格（identity/personality）排在契约条文前——先让模型代入「我是谁、我什么脾气」，
     再读规则；顺序对自述式人格的代入感有实测影响。
     """
     meta = canon["meta"]
     root = canon["path"].parents[2]
-    # 失败关闭：输入契约与总结体例都是常驻层必件，缺了就抛，不静默降级成
-    # 「没有输入契约／没有总结体例」的提示词。两者缺失都由 validate() 兜住。
+    # 失败关闭：契约四块都是常驻层必件，缺了就抛，不静默降级成
+    # 「没有输入契约／没有信封规格」的提示词。缺失由 validate() 兜住。
     input_block = load_input_contract(root)
+    envelope_block = load_envelope_spec(root)
+    routing_block = load_output_routing(root)
     # 失败关闭：体例与措辞表缺了就抛，不静默产出「没有总结体例」的提示词——
     # 体例恒在常驻层是设计，不是可选装饰。
     conv = load_summary_convention(root)
@@ -362,6 +386,10 @@ def render_body(canon: dict, skin_meta: dict, entry: dict, skin_name: str) -> st
         entry["personality"].strip(),
         "",
         input_block,
+        "",
+        envelope_block,
+        "",
+        routing_block,
         "",
         conv,
         "",

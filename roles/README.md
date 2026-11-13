@@ -22,6 +22,8 @@ roles/
   skins/<skin>.json    皮肤：每个角色的 name / identity / personality
   persona/<role_id>.json 人格层：identity_core（只读基线）＋ id/ego/superego/memory ＋ depth（按需层）
   input-contract.md    输入契约唯一家（渲染器逐字前置）
+  envelope-header.md   信封规格唯一家（渲染器逐字前置）
+  output-routing.md    载体路由唯一家（渲染器逐字前置）
   summary-convention.md 总结体例唯一家（渲染器逐字前置）
   summary-slots.json   八角色总结措辞唯一家（数据面）
   registry/            派生登记（生成物；手改即红）
@@ -89,9 +91,14 @@ effort: high
 
 | 层 | 装什么 | 落点 | 怎么进上下文 |
 |---|---|---|---|
-| **常驻层** | 身份（identity／personality）＋四块职责＋输入契约 | `roles/skins/` ＋ `roles/canon/` ＋ `roles/input-contract.md` | **恒在 system prompt**，不许做成指针 |
+| **常驻层** | 身份（identity／personality）＋四块职责＋四块共享契约（输入契约／信封规格／载体路由／总结体例） | `roles/skins/` ＋ `roles/canon/` ＋ `roles/input-contract.md` ＋ `roles/envelope-header.md` ＋ `roles/output-routing.md` ＋ `roles/summary-convention.md` | **恒在 system prompt**，不许做成指针 |
 | **按需层** | 深度人格材料（三层人格散文／在意的／关系／说话习惯／成长线） | `roles/persona/<role_id>.json` 的 `depth` 块 | 显式调 `render-roles.py depth --role <id>` 才产出 |
-| **永不层** | 公文体（英文小标题、信封三行、判据细则）、以及抄了别家的内容 | 不落正本 | 不进上下文 |
+| **永不层** | Schema 逐字段表（信封 JSON 的完整字段定义）、以及抄了别家的内容 | `docs/schema.md` ／ 不落正本 | 不进上下文 |
+
+**四块共享契约必须进上下文，但只许有一个家。** 子代理没有读仓的工具，
+「规格在某文件里」这种指针在提示词里等于不存在——所以共享契约由渲染器逐字前置，
+而 canon 里**不许再抄一份**（doctor 的 `spec-shared` 门会判红）。
+机器面规格（信封头三行、claims 四类、载体八类）住共享块，不住 canon 散文里。
 
 两条硬纪律：
 
@@ -103,11 +110,14 @@ effort: high
 
 ### 常驻层的排列顺序（组装点 `rolelib.render_body()`）
 
-`指纹 → identity → personality → 输入契约 → 总结体例 → 本角色措辞 → 四块正本`
+`指纹 → identity → personality → 输入契约 → 信封规格 → 载体路由 → 总结体例 → 本角色措辞 → 四块正本`
 
 人格排在规则前面，是有意的：**先让模型代入「我是谁、我什么脾气」，再让它念规则。**
 顺序反过来（先契约后人格）读起来像一份说明书，不像一个人在做自我介绍。
-改这个顺序要连 `roles/input-contract.md` 里那句「渲染器在……逐字前置本块」一起改。
+四块共享契约之间也按「先干活的事、后交付的事」排：先说怎么接、怎么装信封，
+再说交什么载体、怎么写总结。
+改这个顺序要连 `roles/input-contract.md`、`roles/envelope-header.md`、
+`roles/output-routing.md` 里那句「渲染器在……逐字前置本块」一起改。
 
 **人格自述一律第一人称。** `identity`／`personality` 用角色自己的口吻写自己
 （「我是铜须，矮人工匠……我不合并、不推送、不关票」），不用「你是铜须，你负责……」的

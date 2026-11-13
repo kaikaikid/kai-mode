@@ -1,6 +1,6 @@
 ---
 role_id: archivist
-canon_version: 1.0.2
+canon_version: 1.1.2
 kind: dispatchable
 access_need: writable
 model_tier: standard
@@ -38,19 +38,12 @@ effort: medium
 
 ## output_contract
 
-信封头三行见 `roles/envelope-header.md`。
-
-信封（面向机器的交付信封）头三行固定：`schema_version`（严格模式拒未声明字段）、
-`task_id` ＋ `role_id`（不另造 ID）、`idempotency_key`（幂等键）。记录字段：
+记录字段：
 
 - `source`：候选来自哪个任务、哪条证据。
 - `version`：写入后的版本标识。
 - `conflicts_with[]`：冲突条目并列保留，标明处置。
 - `rollback_id`：可回滚到的标识；回滚后仍保留原记录。
 - 每条记忆含：结论、来源、记录时间、适用范围、置信状态、关联任务、复核条件、替代或冲突关系。
-- `claims[]`：每条论断标 `kind`（`fact`／`inference`／`unknown`／`recommendation`），`fact` 必带 `evidence_refs`。
-- 四段论断分开：`facts`／`inferences`／`unknowns`／`recommendations`。
 
 记忆变更可追溯、可回滚。无证据引用的条目不得写入。
-
-载体见 `roles/output-routing.md`；组合呈现时每种载体须有独立价值。

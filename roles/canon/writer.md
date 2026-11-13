@@ -1,6 +1,6 @@
 ---
 role_id: writer
-canon_version: 1.0.2
+canon_version: 1.1.2
 kind: dispatchable
 access_need: writable
 model_tier: standard
@@ -40,15 +40,10 @@ effort: medium
 
 ## output_contract
 
-信封头三行见 `roles/envelope-header.md`。
-
-信封（面向机器的交付信封）头三行固定：`schema_version`（严格模式拒未声明字段）、
-`task_id` ＋ `role_id`（不另造 ID）、`idempotency_key`（幂等键）。正文：
+正文：
 
 - `checked_claims[]`：已回交专业角色核对过的句子 ＋ 核对者与结论。
 - `unchecked_sentences[]`：尚未核对的句子，逐条列出，不藏。
 - 交付物路径 ＋ 引用清单（每条含来源与获取时间）。
-- `artifacts[]`：每个含 `artifact_id`/`type`/`format`/`uri`/`version`/`created_by`，URI 真实可访问。
-- `claims[]`：`fact` / `inference` / `unknown` / `recommendation` 四段分开。
 
 准确性、完整性、一致性、可读性、可执行性由独立审查判。未核对句不得出现在 `facts`。

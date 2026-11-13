@@ -1,6 +1,6 @@
 ---
 role_id: researcher
-canon_version: 1.0.1
+canon_version: 1.1.1
 kind: dispatchable
 access_need: read_only
 model_tier: standard
@@ -32,20 +32,9 @@ effort: medium
 
 ## output_contract
 
-信封头三行见 `roles/envelope-header.md`。
+信封正文：
 
-信封（面向机器的交付信封）：
-
-- `schema_version`：信封版本，严格模式拒收未声明字段。
-- `task_id` ＋ `role_id`：身份标识；不另造 ID。
-- `idempotency_key`：幂等键；重复提交按同键去重。
-- `claims[]`：每条一个 `kind`（`fact`/`inference`/`unknown`/`recommendation`）；
-  `fact` 必带 `evidence_refs`，缺证据拒收。
 - `sources[]`：每条含 `url`、获取时间、可信度、是否一手。
-- `facts` 挂到 `sources[]` 的具体条目；`inferences` 标依据来源与置信度；`unknowns` 列未核验项与所需证据；`recommendations` 只建议不拍板。
-- `artifacts[]`：每条含 `artifact_id`/`type`/`format`/`uri`/`version`/`created_by`；URI 必须真实可访问，不把大文件塞进 JSON。
-- `events[]`：只引用事件 ID；执行状态不自写，由任务管理器写。
+- `facts` 挂到 `sources[]` 的具体条目；`inferences` 标依据来源与置信度。
 
 结论超出证据范围即判不通过。没有来源支撑的句子不得出现在 `facts`。
-
-载体见 `roles/output-routing.md`；组合呈现时每种载体须有独立价值。

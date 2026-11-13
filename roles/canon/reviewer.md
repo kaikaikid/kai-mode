@@ -1,6 +1,6 @@
 ---
 role_id: reviewer
-canon_version: 1.1.0
+canon_version: 1.2.0
 kind: dispatchable
 access_need: read_only
 model_tier: strong
@@ -37,18 +37,14 @@ effort: max
 
 ## output_contract
 
-信封头三行见 `roles/envelope-header.md`。
-
-只输出一个判词对象（信封头三行固定：`schema_version`／`task_id` ＋ `role_id`／`idempotency_key`）。面向读者的结果总结属机读面之外的**外层段**，不属于判词对象、不进 `verdict`／`defects[]`／`claims[]`：
+只输出一个判词对象（信封头三行与 `claims[]` 规格见前置块）。面向读者的结果总结属机读面之外的**外层段**，不属于判词对象、不进 `verdict`／`defects[]`／`claims[]`：
 
 - `verdict`：三态——`accept`（过，放行）/ `return`（返工）/ `defer`（技术已过，把要用户拍板的事挂起，
   此时必须带 `deferred_items`，每条含 `question`/`reason`/`priority`）。
   旧值 `PASS` / `CONDITIONAL_PASS` / `FAIL` / `NEEDS_INFO` 禁用。
 - `defects[]`：问题清单，每条含 `severity`：`BLOCKER` / `MAJOR` / `MINOR` / `INFO`，加位置、证据、整改建议。
 - `reason`：判词理由。
-- `claims[]`：论断按 `fact`/`inference`/`unknown`/`recommendation` 分类，`fact` 必带 `evidence_refs`。
+
 - 未覆盖范围与不确定性；需要用户裁决的事项（进 `deferred_items`）；复审要求。
 
 判词不得直接写成「已验收」。`defer` 挂起的事项必须由用户决定，且之后仍需单独验收。
-
-载体见 `roles/output-routing.md`；组合呈现时每种载体须有独立价值。

@@ -9,8 +9,8 @@
   "generator": "export-role-registry",
   "professions": [
     {
-      "canon_sha256": "34ddafc985c6154f3b8a8de143ead29eaf0a15eaca4ea0b12a0f45b5effdd1bb",
-      "canon_version": "1.0.1",
+      "canon_sha256": "d8f6df4b8186e4a66fb3483c3f6d8a0a503d084fedbb279aa1cb4bd99dd8b084",
+      "canon_version": "1.1.1",
       "persona_depth_sha256": "ce73bf583b39955b91b930813cd0d5466e3c747410a429fa2a83e0468c496b4d",
       "persona_memory_sha256": "07dbf7d17623bc6e5415eb3834420a7e32ead8338148ebbc569b64642f4b8b96",
       "persona_sha256": "6555caff7cd0eb9aa7d5b52e16759cc98d871e90f88a751ae8c20e87b0504fac",
@@ -25,8 +25,8 @@
       }
     },
     {
-      "canon_sha256": "539a8f3cc7b716775a6d776a3b887ab14b2393f46cca788b71915eecc791cb55",
-      "canon_version": "1.0.2",
+      "canon_sha256": "72f87578be89c7853a241614d1ece040fa68a80f7be5ccaaea2625c6ced014f8",
+      "canon_version": "1.1.2",
       "persona_depth_sha256": "8526fdbb2bafea42cb0beb713ca8a92bffd7aa1a504fe97799adecb9cab6dcfb",
       "persona_memory_sha256": "07dbf7d17623bc6e5415eb3834420a7e32ead8338148ebbc569b64642f4b8b96",
       "persona_sha256": "8342d1832773c6e7c79f6fdd6b2ea86edf818b38989fc68e17582442ade5cf00",
@@ -41,8 +41,8 @@
       }
     },
     {
-      "canon_sha256": "cb2b0a5931e73dc232123dfcf179c15fb485d8397a3eace22b0710aca444f075",
-      "canon_version": "1.1.1",
+      "canon_sha256": "34b2f0cba28dafc444124579e281701cd2fe83a5ae25917630456d5b8c21fc4e",
+      "canon_version": "1.2.1",
       "persona_depth_sha256": "d7298c4cfea1a06c81e2fb4f1010b9060a0d670dcfb20786234f8e66d71aef38",
       "persona_memory_sha256": "07dbf7d17623bc6e5415eb3834420a7e32ead8338148ebbc569b64642f4b8b96",
       "persona_sha256": "68ed6ceeb4c20771a7b5249dd0ce37e13c127d8a6b01ba5fea2692725b99e13c",
@@ -57,8 +57,8 @@
       }
     },
     {
-      "canon_sha256": "55ffc08da9a0c3b949cf8f54ba41b36a2aeab06eab8c79a29702a3b24b78aefe",
-      "canon_version": "1.0.1",
+      "canon_sha256": "78e1ea9b463293e9739350abbdf33b430c011adbc4e49c6e8a8e0a1913bca05d",
+      "canon_version": "1.1.1",
       "persona_depth_sha256": "f184991785d5e83c83af34879ff578f53a4843972d2275479c44fb48986a6ca6",
       "persona_memory_sha256": "07dbf7d17623bc6e5415eb3834420a7e32ead8338148ebbc569b64642f4b8b96",
       "persona_sha256": "ff631109537c65859dbf9cc56cb9d16e8400ca68b14d82e7fb988182f2dc63df",
@@ -73,8 +73,8 @@
       }
     },
     {
-      "canon_sha256": "da7e35b0c2b328ac379cbd23b5b0a92046e4a9d4c55aa60c093dfc3d98056d3d",
-      "canon_version": "1.0.1",
+      "canon_sha256": "01fa70c5e1b47e3e0d62cadf1bec76eced6a36fd6b90245a87ddbe960d4cf8ab",
+      "canon_version": "1.1.1",
       "persona_depth_sha256": "183742190153723d75685641369761379188ee3ac83e5e53526739d619e49c79",
       "persona_memory_sha256": "07dbf7d17623bc6e5415eb3834420a7e32ead8338148ebbc569b64642f4b8b96",
       "persona_sha256": "640f514a11ed67678b1381bcc784a290254987142270cf6654116cabd4f5bc5f",
@@ -89,8 +89,8 @@
       }
     },
     {
-      "canon_sha256": "94d6e6c6b416646d964469fa91e796d8fe4cf112152ee463bfd36292ab1d53aa",
-      "canon_version": "1.0.1",
+      "canon_sha256": "e3503af5b56ef9710521ec0101f4785cea9f154f97c5f678f8e2a5f5b323bb20",
+      "canon_version": "1.1.1",
       "persona_depth_sha256": "fedef5941b5023603cf06dc904e981ab42d273a996fa5c2a29610bd496d8456a",
       "persona_memory_sha256": "07dbf7d17623bc6e5415eb3834420a7e32ead8338148ebbc569b64642f4b8b96",
       "persona_sha256": "0c99104558a602f5d771a69ddcdc9ccbe93c4f907196ec5f26541c2d21ea4fa4",
@@ -105,8 +105,8 @@
       }
     },
     {
-      "canon_sha256": "3794d88174c55e8fa949a9e8b5f18d993590845b79510f6c703329342dcd1cb1",
-      "canon_version": "1.1.0",
+      "canon_sha256": "98a57ff16967a896ddb525a4c5dab80b69aafd5616428024d6f7034fa255f7bf",
+      "canon_version": "1.2.0",
       "persona_depth_sha256": "78d6b736e5085690da9f5aa062ed7cda288e1ec7184a9bf87edfbd14ff6502f8",
       "persona_memory_sha256": "07dbf7d17623bc6e5415eb3834420a7e32ead8338148ebbc569b64642f4b8b96",
       "persona_sha256": "d8e1267643862f27ec0db3723c0bd7ca170dee8e2bc5ca19f066878b6ef9d9f2",
@@ -121,8 +121,8 @@
       }
     },
     {
-      "canon_sha256": "c0039168075b989450a1d66e0d8b0cb665e14dcfbd3cb16318b6717223dec499",
-      "canon_version": "1.0.2",
+      "canon_sha256": "4c6d809f08ed2d9d98052a1527f7c58279edc28c1a6ed53acf531aab57252d1a",
+      "canon_version": "1.1.2",
       "persona_depth_sha256": "224cd4c9e4fc33a33534d30bcd99f4b8b346fbfa878b2504ba130e2fc9c01a5a",
       "persona_memory_sha256": "07dbf7d17623bc6e5415eb3834420a7e32ead8338148ebbc569b64642f4b8b96",
       "persona_sha256": "476955119f333cd6b49718f21740ba15f8b5fb866f1c583b4e7784b3067a4ac1",

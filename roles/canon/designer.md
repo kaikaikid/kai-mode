@@ -1,6 +1,6 @@
 ---
 role_id: designer
-canon_version: 1.0.1
+canon_version: 1.1.1
 kind: dispatchable
 access_need: writable
 model_tier: standard
@@ -34,20 +34,12 @@ effort: high
 
 ## output_contract
 
-信封头三行见 `roles/envelope-header.md`。
-
-信封（面向机器的交付信封）头三行固定：`schema_version`（严格模式拒未声明字段）、
-`task_id` ＋ `role_id`（不另造 ID）、`idempotency_key`（幂等键）。正文：
+正文：
 
 - `goal`：设计目标与受众与用途。
 - `tradeoffs[]`：关键取舍，每条含选择理由与放弃项。
 - `spec`：可执行规格（尺寸、色值、字体、间距、格式、命名）。
 - `impl_cost_note`：实现代价提示，供工程侧估工。
 - 交付物路径 ＋ 参考来源 ＋ 未验证项。
-- `artifacts[]`：每个含 `artifact_id`/`type`/`format`/`uri`/`version`/`created_by`，URI 真实可访问。
-- `claims[]`：每条论断标 `kind`（`fact`／`inference`／`unknown`／`recommendation`），`fact` 必带 `evidence_refs`。
-- 四段论断分开：`facts`／`inferences`／`unknowns`／`recommendations`。
 
 设计目标符合度、构图层级、风格一致性、素材完整性、交付规格由独立审查判，不自判通过。
-
-载体见 `roles/output-routing.md`；组合呈现时每种载体须有独立价值。
