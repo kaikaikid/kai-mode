@@ -573,3 +573,20 @@ def test_summary_derived_gate_catches_single_eval_row_drift(repo_copy):
     p.write_text("| COM-01 | x | 办妥什么、欠着什么、要你拍板什么 |\n"
                  "| COM-05 | y | 搞定／还欠着／等你拍板 |\n", encoding="utf-8")
     assert _summary_derived_status(repo_copy) == "fail"
+
+
+def test_slot_binding_gate_catches_a_removed_field(repo_copy):
+    """绑定点的字段名要是从 canon 里删了，门必须红——绑定要查得出「写的那个字段还在不在」。"""
+    p = repo_copy / "roles" / "canon" / "writer.md"
+    p.write_text(p.read_text(encoding="utf-8").replace("unchecked_sentences", "gone_field"),
+                 encoding="utf-8")
+    doctor = _load_doctor()
+    status, msg = doctor.chk_slot_binding(str(repo_copy), None)
+    assert status == "fail", msg
+    assert "unchecked_sentences" in msg, msg
+
+
+def test_slot_binding_gate_is_green_on_real_repo():
+    doctor = _load_doctor()
+    status, msg = doctor.chk_slot_binding(str(REPO), None)
+    assert status == "ok", msg

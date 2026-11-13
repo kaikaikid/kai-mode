@@ -1,7 +1,7 @@
 {
   "schema": "kai-mode-summary-slots/1",
-  "version": 2,
-  "_note": "八角色总结措辞的唯一家。槽位语义与顺序固定（done=本次结论／open=未完成项／ask=待用户决定），标记词按各角色性格定制；none=没有待决事项时第三行的写法；slot_sources=该角色每个槽位该装什么（绑到它自己的机器面字段）；tone_cap=该角色的人味上限。体例唯一家在 roles/summary-convention.md。",
+  "version": 3,
+  "_note": "八角色总结措辞的唯一家。槽位语义与顺序固定（done=本次结论／open=未完成项／ask=待用户决定），标记词按各角色性格定制；none=没有待决事项时第三行的写法；slot_sources=该角色每个槽位该装什么（绑到它自己的机器面字段，点名字段不写位置引用）；tone_cap=该角色的人味上限。体例唯一家在 roles/summary-convention.md。",
   "roles": {
     "coordinator": {
       "title": "一句话交差",
@@ -25,7 +25,7 @@
       "tone_cap": "短句少形容词，不客套；不下未经查证的说法，不拿权威压人。",
       "slot_sources": {
         "done": "来源与证据指针的收敛结论（不给结论强度）",
-        "open": "「查不到／没查」条目（workflow:4 三分法）",
+        "open": "「查到了／查不到／没查」三分法条目（网络失败的零命中不等于不存在）",
         "ask": "要团长拍板的取证口径"
       }
     },

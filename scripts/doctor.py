@@ -1875,8 +1875,11 @@ def chk_summary_derived(root: str, ms):
 
     判据是**位置性**的，不��「标记词字面出现过就算」——那会让散文里的「搞定／还欠着／
     等你拍板」把模板本身的漂移盖住（prose 里出现过，模板已经改了，门还是绿的）。
-    - gold：围栏模板块里必须分别有一行以当前三个标记词开头。
-    - eval-cases：COM-01 与 COM-05 两行必须各自含当前三个标记词。
+    - gold/SKILL.md：围栏模板块里必须有一行以「## <表情> <动作短语>」开头，
+      并分别有一行以当前三个槽位标记词开头。
+    - gold/references/commands.md：角色无关的通用表述，不许硬编码康娜的标记词，
+      且必须指向唯一家。
+    - eval-cases.md：COM-01 与 COM-05 **逐行**判，各行各自要含现行标记词。
     退役标签一律零命中。
     """
     import json as _json
@@ -1888,9 +1891,18 @@ def chk_summary_derived(root: str, ms):
     except Exception as e:
         return "fail", f"summary-slots.json 读不出来：{e}"
     entry = (data.get("roles") or {}).get("coordinator") or {}
-    marks = {k: str(entry.get(k) or "").strip() for k in ("done", "open", "ask")}
-    if not all(marks.values()):
-        return "fail", "summary-slots.json 缺 coordinator 的槽位标记词"
+    marks = {k: str(entry.get(k) or "").strip() for k in ("done", "open", "ask", "none")}
+    title = str(entry.get("title") or "").strip()
+    from pathlib import Path as _P
+    emoji = ""
+    try:
+        import rolelib as _rl
+        emoji = str((_rl.load_skin(_P(root), "guild")["roles"]["coordinator"]
+                     .get("summary_emoji") or "")).strip()
+    except Exception as e:
+        return "fail", f"读 coordinator 的 summary_emoji 失败：{e}"
+    if not all(marks.values()) or not title:
+        return "fail", "summary-slots.json 缺 coordinator 的槽位标记词或标题动作短语"
 
     bad = []
     gold = os.path.join(root, "core", "skills", "gold", "SKILL.md")
@@ -1898,15 +1910,34 @@ def chk_summary_derived(root: str, ms):
         with open(gold, encoding="utf-8") as fh:
             text = fh.read()
         fenced = _fenced_lines(text)
-        for k, m in marks.items():
-            if not any(l.strip().startswith(f"{m}：") for l in fenced):
-                bad.append(f"gold/SKILL.md：模板块里没有以「{m}：」开头的行"
+        head = f"## {emoji} {title}" if emoji else f"## {title}"
+        if not any(l.strip().startswith(head) for l in fenced):
+            bad.append(f"gold/SKILL.md：模板块里没有标题行「{head}」")
+        for k in ("done", "open", "ask"):
+            if not any(l.strip().startswith(f"{marks[k]}：") for l in fenced):
+                bad.append(f"gold/SKILL.md：模板块里没有以「{marks[k]}：」开头的行"
                            f"（措辞漂移了，散文里出现不算）")
         for retired in ("结果总结｜只看这里", "待拍板：无"):
             if retired in text:
                 bad.append(f"gold/SKILL.md：仍有退役标签「{retired}」")
     else:
         bad.append("gold/SKILL.md：文件不在")
+
+    cmds = os.path.join(root, "core", "skills", "gold", "references", "commands.md")
+    if os.path.isfile(cmds):
+        with open(cmds, encoding="utf-8") as fh:
+            text = fh.read()
+        for retired in ("结果总结｜只看这里", "待拍板：无"):
+            if retired in text:
+                bad.append(f"gold/references/commands.md：仍有退役标签「{retired}」")
+        for k in ("done", "open", "ask"):
+            if marks[k] in text:
+                bad.append(f"gold/references/commands.md：硬编码了 coordinator 的标记词"
+                           f"「{marks[k]}」——这里应是角色无关表述")
+        if "summary-slots.json" not in text:
+            bad.append("gold/references/commands.md：没指向唯一家 roles/summary-slots.json")
+    else:
+        bad.append("gold/references/commands.md：文件不在")
 
     ev = os.path.join(root, "docs", "eval-cases.md")
     if os.path.isfile(ev):
@@ -1918,9 +1949,11 @@ def chk_summary_derived(root: str, ms):
         # 逐行判：两行各自都要含现行标记词——否则一行对了能盖住另一行漂移。
         for row in rows:
             tag = row.strip().split("|")[1].strip() if "|" in row else "?"
-            for k, m in marks.items():
-                if m not in row:
-                    bad.append(f"eval-cases.md：{tag} 行里缺现行标记词「{m}」")
+            for k in ("done", "open", "ask", "none"):
+                if marks[k] not in row:
+                    bad.append(f"eval-cases.md：{tag} 行里缺现行标记词「{marks[k]}」")
+            if tag == "COM-05" and title not in row:
+                bad.append(f"eval-cases.md：{tag} 行里缺现行标题动作短语「{title}」")
             for retired in ("结果总结｜只看这里", "待拍板：无"):
                 if retired in row:
                     bad.append(f"eval-cases.md：{tag} 行仍有退役标签「{retired}」")
@@ -1929,7 +1962,53 @@ def chk_summary_derived(root: str, ms):
 
     if bad:
         return "fail", "派生体例漂移： " + "；".join(bad[:6])
-    return "ok", "gold 模板与 eval-cases 期望跟 summary-slots.json 逐位一致，退役标签零命中"
+    return "ok", "gold 模板／commands／eval-cases 都跟 summary-slots.json 逐位一致，退役标签零命中"
+
+
+def chk_slot_binding(root: str, ms):
+    """槽位绑定：slot_sources 里点名的机器面字段，必须还活着在该角色 canon 正本里。
+
+    「绑定」光查得出「没写」不够——还要查得出「写的那个字段已经不存在了」。
+    提取 slot_sources 里的 ASCII 标识符（字段名／枚举值），逐个在该角色的
+    canon 正文与皮肤条目里找。找不到即红。
+    """
+    import json as _json
+    import re as _re
+    sp = os.path.join(root, "roles", "summary-slots.json")
+    if not os.path.isfile(sp):
+        return "skip", "没有 roles/summary-slots.json"
+    try:
+        data = _json.loads(open(sp, encoding="utf-8").read())
+    except Exception as e:
+        return "fail", f"summary-slots.json 读不出来：{e}"
+    roles = data.get("roles") or {}
+    if not roles:
+        return "fail", "summary-slots.json 没有 roles"
+
+    ident = _re.compile(r"[A-Za-z_][A-Za-z0-9_]*(?:\[\])?")
+    bad = []
+    checked = 0
+    for rid, entry in sorted(roles.items()):
+        src = (entry or {}).get("slot_sources") or {}
+        canon_p = os.path.join(root, "roles", "canon", f"{rid}.md")
+        if not os.path.isfile(canon_p):
+            bad.append(f"{rid}：缺 canon 正本 {roles/canon}/{rid}.md")
+            continue
+        with open(canon_p, encoding="utf-8") as fh:
+            canon_text = fh.read()
+        haystack = canon_text
+        for k in ("done", "open", "ask"):
+            blob = str(src.get(k) or "")
+            for tok in ident.findall(blob):
+                if len(tok) < 5:
+                    continue
+                checked += 1
+                if tok not in haystack:
+                    bad.append(f"{rid}.slot_sources.{k}：点名的「{tok}」在该角色 canon 正本里"
+                               f"找不到（字段被删或改名了？）")
+    if bad:
+        return "fail", "槽位绑定失效： " + "；".join(bad[:6])
+    return "ok", f"槽位绑定有效：{len(roles)} 个角色的 {checked} 个字段名都能在各自 canon 正本里找到"
 
 
 def chk_role_canon(root: str, ms):
@@ -2330,6 +2409,7 @@ CHECKS = (
     ("persona-layer", "人格层契约（原初内核只读 / ego 只放引用 / 记忆走 archivist）", chk_persona),
     ("depth-publish", "深度层投影（安装面资源与 persona 正本逐字一致）", chk_depth_publish),
     ("summary-derived", "派生体例（gold／eval-cases 的总结措辞跟唯一家一致）", chk_summary_derived),
+    ("slot-binding", "槽位绑定（点名的机器面字段还活着）", chk_slot_binding),
     ("handoff-slots", "交接文档分类（槽位/命名/归位）", chk_handoff),
     ("skill-spec", "技能格式对齐 Agent Skills 1.2", chk_skill_spec),
     ("command-surface", "技能声明的命令在自己工具面里", chk_command_surface),
