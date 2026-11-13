@@ -343,17 +343,15 @@ def render_body(canon: dict, skin_meta: dict, entry: dict, skin_name: str) -> st
     """
     meta = canon["meta"]
     root = canon["path"].parents[2]
-    try:
-        input_block = load_input_contract(root)
-    except RoleError:
-        input_block = ""
+    # 失败关闭：输入契约与总结体例都是常驻层必件，缺了就抛，不静默降级成
+    # 「没有输入契约／没有总结体例」的提示词。两者缺失都由 validate() 兜住。
+    input_block = load_input_contract(root)
     parts = [
         fingerprint(meta, canon["sha256"], skin_name,
                     skin_meta.get("skin_version", ""), entry_sha256(entry)),
         "",
     ]
-    if input_block:
-        parts += [input_block, ""]
+    parts += [input_block, ""]
     # 失败关闭：体例与措辞表缺了就抛，不静默产出「没有总结体例」的提示词——
     # 体例恒在常驻层是设计，不是可选装饰。
     conv = load_summary_convention(root)

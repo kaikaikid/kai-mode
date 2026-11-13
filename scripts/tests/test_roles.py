@@ -523,6 +523,13 @@ def test_render_fails_closed_without_summary_slots(repo_copy):
         rl.render_prompt(repo_copy, "reviewer", "guild")
 
 
+def test_render_fails_closed_without_input_contract(repo_copy):
+    """输入契约缺失同样抛——它写着「每次任务必读，不可跳过」，缺了就不该静默降级。"""
+    (repo_copy / "roles" / "input-contract.md").unlink()
+    with pytest.raises(rl.RoleError):
+        rl.render_prompt(repo_copy, "reviewer", "guild")
+
+
 def test_summary_title_carries_the_role_own_emoji(repo_copy):
     """标题要渲本角色自己的表情，不能留占位符——角色看不到自己该写哪个表情。"""
     out = rl.render_prompt(repo_copy, "reviewer", "guild")
@@ -530,3 +537,39 @@ def test_summary_title_carries_the_role_own_emoji(repo_copy):
     title_line = next(l for l in out.splitlines() if l.startswith("- 标题："))
     assert emoji in title_line, f"标题行里没有本角色的表情：{title_line}"
     assert "<角色表情>" not in title_line, f"标题行还留着占位符：{title_line}"
+
+
+# ── 派生体例门：措辞漂移必须被抓 ──────────────────────────────────────────
+def _load_doctor():
+    if str(SCRIPTS) not in sys.path:
+        sys.path.insert(0, str(SCRIPTS))
+    import doctor
+    return doctor
+
+
+def _summary_derived_status(root):
+    doctor = _load_doctor()
+    status, _msg = doctor.chk_summary_derived(str(root), None)
+    return status
+
+
+def test_summary_derived_gate_is_green_on_real_repo():
+    assert _summary_derived_status(REPO) == "ok"
+
+
+def test_summary_derived_gate_catches_gold_template_drift(repo_copy):
+    """gold 模板里的标记词改了要判红——散文里出现过不算，判据是位置性的。"""
+    p = repo_copy / "core" / "skills" / "gold" / "SKILL.md"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text("```markdown\n办妥：<一句话结果>\n还欠着：<还差什么>\n等你拍板：<事项>\n```\n",
+                 encoding="utf-8")
+    assert _summary_derived_status(repo_copy) == "fail"
+
+
+def test_summary_derived_gate_catches_single_eval_row_drift(repo_copy):
+    """只漂一行也要判红——另一行对了不能盖住它。"""
+    p = repo_copy / "docs" / "eval-cases.md"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text("| COM-01 | x | 办妥什么、欠着什么、要你拍板什么 |\n"
+                 "| COM-05 | y | 搞定／还欠着／等你拍板 |\n", encoding="utf-8")
+    assert _summary_derived_status(repo_copy) == "fail"

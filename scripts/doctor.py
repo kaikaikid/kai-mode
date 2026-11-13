@@ -1858,11 +1858,26 @@ def chk_depth_publish(root: str, ms):
     return "ok", out[:300]
 
 
+def _fenced_lines(text: str) -> list:
+    """取围栏代码块里的行（总结模板块）。"""
+    out, inside = [], False
+    for line in text.splitlines():
+        if line.strip().startswith("```"):
+            inside = not inside
+            continue
+        if inside:
+            out.append(line)
+    return out
+
+
 def chk_summary_derived(root: str, ms):
     """派生体例检查：安装面里出现的总结措辞必须与 summary-slots.json 的 coordinator 条目一致。
 
-    gold 的「回报」段与 eval-cases 的期望行会写到总结措辞。它们是派生件——
-    措辞改了这里必须跟着改，否则评测期望会悄悄漂。退役标签一律零命中。
+    判据是**位置性**的，不��「标记词字面出现过就算」——那会让散文里的「搞定／还欠着／
+    等你拍板」把模板本身的漂移盖住（prose 里出现过，模板已经改了，门还是绿的）。
+    - gold：围栏模板块里必须分别有一行以当前三个标记词开头。
+    - eval-cases：COM-01 与 COM-05 两行必须各自含当前三个标记词。
+    退役标签一律零命中。
     """
     import json as _json
     sp = os.path.join(root, "roles", "summary-slots.json")
@@ -1873,26 +1888,48 @@ def chk_summary_derived(root: str, ms):
     except Exception as e:
         return "fail", f"summary-slots.json 读不出来：{e}"
     entry = (data.get("roles") or {}).get("coordinator") or {}
-    marks = [str(entry.get(k) or "").strip() for k in ("done", "open", "ask")]
-    if not all(marks):
+    marks = {k: str(entry.get(k) or "").strip() for k in ("done", "open", "ask")}
+    if not all(marks.values()):
         return "fail", "summary-slots.json 缺 coordinator 的槽位标记词"
+
     bad = []
-    for rel in ("core/skills/gold/SKILL.md", "docs/eval-cases.md"):
-        p = os.path.join(root, *rel.split("/"))
-        if not os.path.isfile(p):
-            bad.append(f"{rel}：文件不在")
-            continue
-        with open(p, encoding="utf-8") as fh:
-            t = fh.read()
+    gold = os.path.join(root, "core", "skills", "gold", "SKILL.md")
+    if os.path.isfile(gold):
+        with open(gold, encoding="utf-8") as fh:
+            text = fh.read()
+        fenced = _fenced_lines(text)
+        for k, m in marks.items():
+            if not any(l.strip().startswith(f"{m}：") for l in fenced):
+                bad.append(f"gold/SKILL.md：模板块里没有以「{m}：」开头的行"
+                           f"（措辞漂移了，散文里出现不算）")
         for retired in ("结果总结｜只看这里", "待拍板：无"):
-            if retired in t:
-                bad.append(f"{rel}：仍有退役标签「{retired}」")
-        for m in marks:
-            if m not in t:
-                bad.append(f"{rel}：缺 coordinator 现行标记词「{m}」（措辞变了要同步）")
+            if retired in text:
+                bad.append(f"gold/SKILL.md：仍有退役标签「{retired}」")
+    else:
+        bad.append("gold/SKILL.md：文件不在")
+
+    ev = os.path.join(root, "docs", "eval-cases.md")
+    if os.path.isfile(ev):
+        with open(ev, encoding="utf-8") as fh:
+            rows = [l for l in fh.read().splitlines()
+                    if l.strip().startswith("| COM-01") or l.strip().startswith("| COM-05")]
+        if len(rows) != 2:
+            bad.append(f"eval-cases.md：COM-01／COM-05 应各一行，实到 {len(rows)} 行")
+        # 逐行判：两行各自都要含现行标记词——否则一行对了能盖住另一行漂移。
+        for row in rows:
+            tag = row.strip().split("|")[1].strip() if "|" in row else "?"
+            for k, m in marks.items():
+                if m not in row:
+                    bad.append(f"eval-cases.md：{tag} 行里缺现行标记词「{m}」")
+            for retired in ("结果总结｜只看这里", "待拍板：无"):
+                if retired in row:
+                    bad.append(f"eval-cases.md：{tag} 行仍有退役标签「{retired}」")
+    else:
+        bad.append("eval-cases.md：文件不在")
+
     if bad:
         return "fail", "派生体例漂移： " + "；".join(bad[:6])
-    return "ok", "gold 与 eval-cases 的总结措辞跟 summary-slots.json 一致，退役标签零命中"
+    return "ok", "gold 模板与 eval-cases 期望跟 summary-slots.json 逐位一致，退役标签零命中"
 
 
 def chk_role_canon(root: str, ms):
