@@ -25,6 +25,9 @@ SKINS = ("generic", "guild")
 INPUT_CONTRACT_REL = "roles/input-contract.md"
 OUTPUT_ROUTING_REL = "roles/output-routing.md"
 ENVELOPE_HEADER_REL = "roles/envelope-header.md"
+SUMMARY_CONVENTION_REL = "roles/summary-convention.md"
+SUMMARY_SLOTS_REL = "roles/summary-slots.json"
+SUMMARY_SLOT_KEYS = ("title", "done", "open", "ask", "none")
 ACCESS = ("read_only", "writable")
 KINDS = ("primary", "dispatchable")
 # 主 AI 人格：默认对话激活的就是它，不渲染成可派发的子代理定义。
@@ -261,6 +264,63 @@ def load_input_contract(root: Path) -> str:
     return text
 
 
+def load_summary_convention(root: Path) -> str:
+    """总结体例的唯一家：roles/summary-convention.md。渲染器逐字前置，各角色不复述。"""
+    p = Path(root) / SUMMARY_CONVENTION_REL
+    if not p.is_file():
+        raise RoleError(f"缺总结体例：{SUMMARY_CONVENTION_REL}")
+    text = p.read_text(encoding="utf-8").strip()
+    if not text:
+        raise RoleError(f"总结体例是空的：{SUMMARY_CONVENTION_REL}")
+    return text
+
+
+def load_summary_slots(root: Path) -> dict:
+    """八角色总结措辞的唯一家：roles/summary-slots.json（数据面，与体例分开住）。"""
+    p = Path(root) / SUMMARY_SLOTS_REL
+    if not p.is_file():
+        raise RoleError(f"缺总结措辞表：{SUMMARY_SLOTS_REL}")
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except ValueError as e:
+        raise RoleError(f"总结措辞表不是合法 JSON：{e}")
+    roles = data.get("roles") or {}
+    if set(roles) != set(ROLE_IDS):
+        raise RoleError(f"总结措辞表角色集不符：多 {sorted(set(roles) - set(ROLE_IDS))}，"
+                        f"缺 {sorted(set(ROLE_IDS) - set(roles))}")
+    for rid in ROLE_IDS:
+        e = roles.get(rid) or {}
+        vals = []
+        for k in SUMMARY_SLOT_KEYS:
+            v = str(e.get(k) or "").strip()
+            if not v:
+                raise RoleError(f"{SUMMARY_SLOTS_REL}: {rid} 缺 {k}")
+            vals.append(v)
+        if len(set(vals)) != len(vals):
+            raise RoleError(f"{SUMMARY_SLOTS_REL}: {rid} 的五个措辞有重复（槽位必须互不相同）")
+    titles = [str((roles.get(rid) or {}).get("title") or "").strip() for rid in ROLE_IDS]
+    if len(set(titles)) != len(titles):
+        raise RoleError(f"{SUMMARY_SLOTS_REL}: 八角色的 title 有重复"
+                        f"（标记词按 personality 定制，须能认出是八个人）")
+    return data
+
+
+def summary_slot_block(root: Path, role_id: str) -> str:
+    """本角色的总结措辞：从唯一家现读，渲染时随体例一并前置。"""
+    data = load_summary_slots(root)
+    e = (data.get("roles") or {})[role_id]
+    return "\n".join([
+        "## 你的总结措辞",
+        "",
+        f"- 标题：`## <角色表情> {e['title']}｜只看这里`",
+        f"- 第一行（本次结论）：`{e['done']}：`",
+        f"- 第二行（未完成项）：`{e['open']}：`",
+        f"- 第三行（待用户决定）：`{e['ask']}：`",
+        f"- 没有要用户决定的事时：`{e['ask']}：{e['none']}`",
+        "",
+    ])
+
+
 def render_body(canon: dict, skin_meta: dict, entry: dict, skin_name: str) -> str:
     """角色正文（无 frontmatter）：指纹 ＋ 输入契约 ＋ identity ＋ personality ＋ 正本四块逐字。
 
@@ -280,6 +340,11 @@ def render_body(canon: dict, skin_meta: dict, entry: dict, skin_name: str) -> st
     ]
     if input_block:
         parts += [input_block, ""]
+    try:
+        conv = load_summary_convention(root)
+        parts += [conv, "", summary_slot_block(root, meta["role_id"]), ""]
+    except RoleError:
+        conv = ""
     parts += [
         "## identity",
         entry["identity"].strip(),
@@ -335,6 +400,41 @@ def render_primary(root: Path, skin: str) -> str:
         rows.append(f"| {rid} | {e.get('name', '')} | {description_for(e.get('name', ''), canon[rid]['body'])[len(e.get('name','')) + 1:]} "
                     f"| {'只读' if need == 'read_only' else '可写'} |")
     return head + "\n".join(rows) + "\n"
+
+
+def render_depth(root: Path, role_id: str) -> str:
+    """深度人格层（按需层）：从 roles/persona/<role_id>.json 的 depth 块现读现拼。
+
+    这一层**默认不进 system prompt**——只有显式调用本函数才产出。
+    人格本体（identity＋personality＋四块职责）必须留在常驻提示词里；
+    深度材料按需取，理由见 roles/README.md（宿主定义文件开局一次性读入，没有动态 include，
+    只放指针等于开局没人格）。
+    """
+    if role_id not in ROLE_IDS:
+        raise RoleError(f"没有这个角色：{role_id!r}")
+    import sys as _sys
+    _sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import persona as persona_lib
+    data = persona_lib.load(Path(root), role_id)
+    depth = data.get("depth")
+    if not depth:
+        raise RoleError(f"{role_id} 没有 depth 块（深度人格层未接入）")
+    lines = [
+        f"# 深度人格层 · {role_id}",
+        "",
+        f"> depth_version={depth.get('depth_version', '')}｜{depth.get('layer', '')}",
+        f"> 取用口：scripts/render-roles.py depth --role {role_id}",
+        "> 按需载入，不进 system prompt；人格本体仍在常驻层。",
+        "",
+    ]
+    for key in persona_lib.DEPTH_SECTIONS:
+        val = str(depth.get(key) or "").strip()
+        if val:
+            lines += [f"## {key}", val, ""]
+    scope = str(depth.get("scope") or "").strip()
+    if scope:
+        lines += ["> scope：" + scope, ""]
+    return "\n".join(lines)
 
 
 def render_all(root: Path, host: str, skin: str, with_primary: bool = False) -> dict[str, str]:
@@ -431,12 +531,17 @@ def validate(root: Path) -> list[str]:
                 bad.append(f"{rel} {rid} identity 里没写出名字「{e['name']}」"
                            f"（子代理看不到自己的类型名，必须写进正文）")
 
-    for contract_rel in (INPUT_CONTRACT_REL, OUTPUT_ROUTING_REL, ENVELOPE_HEADER_REL):
+    for contract_rel in (INPUT_CONTRACT_REL, OUTPUT_ROUTING_REL, ENVELOPE_HEADER_REL,
+                         SUMMARY_CONVENTION_REL):
         p = Path(root) / contract_rel
         if not p.is_file():
             bad.append(f"缺唯一家文件：{contract_rel}")
         elif not p.read_text(encoding="utf-8").strip():
             bad.append(f"唯一家文件是空的：{contract_rel}")
+    try:
+        load_summary_slots(root)
+    except RoleError as e:
+        bad.append(str(e))
     try:
         _guild = load_skin(root, "guild")
         _emojis = [str((_guild.get("roles") or {}).get(r, {}).get("summary_emoji", "")) for r in ROLE_IDS]

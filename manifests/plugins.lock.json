@@ -11,11 +11,12 @@
     },
     "core": {
       "version": "1.4.0",
-      "digest": "5d4f4aaf444c7e3f686bd1d8c588a5618a9924cda7676d33a72f89c097d6fcc1",
+      "digest": "d7806a7b77e2881c62d95b5432b1f5f3eb8eb387385a46a4197452a91f230ba7",
       "skills": {
         "gold": "0.8.0",
         "harness-audit": "0.2.1",
         "kai-handoff": "0.3.6",
+        "kai-persona-deep": "0.1.0",
         "principles": "1.0.0",
         "set-kai-mode": "7.0.0",
         "staff": "4.2.0",

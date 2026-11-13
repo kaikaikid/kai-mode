@@ -1,6 +1,6 @@
 ---
 role_id: reviewer
-canon_version: 1.0.2
+canon_version: 1.1.0
 kind: dispatchable
 access_need: read_only
 model_tier: strong
@@ -39,7 +39,7 @@ effort: max
 
 信封头三行见 `roles/envelope-header.md`。
 
-只输出一个判词对象（信封头三行固定：`schema_version`／`task_id` ＋ `role_id`／`idempotency_key`）：
+只输出一个判词对象（信封头三行固定：`schema_version`／`task_id` ＋ `role_id`／`idempotency_key`）。面向读者的结果总结属机读面之外的**外层段**，不属于判词对象、不进 `verdict`／`defects[]`／`claims[]`：
 
 - `verdict`：三态——`accept`（过，放行）/ `return`（返工）/ `defer`（技术已过，把要用户拍板的事挂起，
   此时必须带 `deferred_items`，每条含 `question`/`reason`/`priority`）。

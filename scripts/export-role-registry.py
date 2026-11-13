@@ -75,6 +75,7 @@ def build_registries(root: Path) -> dict[str, dict]:
             "skin_sha256": rolelib.entry_sha256(entry),
             "persona_sha256": persona_lib.fingerprint(p),
             "persona_memory_sha256": _sha_json(p["memory"]),
+            "persona_depth_sha256": _sha_json(p.get("depth")),
             "team": dict(TEAM_PLACEHOLDER),
         }
 

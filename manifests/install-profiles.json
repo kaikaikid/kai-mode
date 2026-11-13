@@ -16,7 +16,7 @@
       ]
     },
     "full": {
-      "description": "core ＋ 原则合集 ＋ BOOM 想法池 ＋ 事故与运维 ＋ 武器集六把 ＋ 看板 ＋ 对比分析。",
+      "description": "core ＋ 原则合集 ＋ BOOM 想法池 ＋ 事故与运维 ＋ 武器集六把 ＋ 看板 ＋ 对比分析 ＋ 深度人格层。",
       "skills": [
         "gold",
         "staff",
@@ -25,6 +25,7 @@
         "kai-handoff",
         "fleet",
         "kai-boom-idea-log",
+        "kai-persona-deep",
         "flight-info",
         "incident-response",
         "runbook",

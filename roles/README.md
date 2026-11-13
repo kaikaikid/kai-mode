@@ -20,6 +20,11 @@ roles/
   README.md            本文
   canon/<role_id>.md   八份职责正本（宿主中立，不含任何宿主字段名）
   skins/<skin>.json    皮肤：每个角色的 name / identity / personality
+  persona/<role_id>.json 人格层：identity_core（只读基线）＋ id/ego/superego/memory ＋ depth（按需层）
+  input-contract.md    输入契约唯一家（渲染器逐字前置）
+  summary-convention.md 总结体例唯一家（渲染器逐字前置）
+  summary-slots.json   八角色总结措辞唯一家（数据面）
+  registry/            派生登记（生成物；手改即红）
 ```
 
 `role_id` 是稳定标识，不随皮肤变：`coordinator` `researcher` `architect` `engineer`
@@ -77,6 +82,50 @@ effort: high
 八个 `role_id` 必须齐全，多一个少一个都红。`name` 是宿主侧的选择键；
 **子代理看不到自己的类型名**，所以 `identity` 里必须逐字写出「你是谁、什么职业」，
 不能只靠 `name` 字段（实测读数见 `adapters/qoder.md`「原生子代理」节）。
+
+## 人格三层：常驻／按需／永不
+
+一份角色设定分三层住，层位决定「什么时候进上下文」：
+
+| 层 | 装什么 | 落点 | 怎么进上下文 |
+|---|---|---|---|
+| **常驻层** | 身份（identity／personality）＋四块职责＋输入契约 | `roles/skins/` ＋ `roles/canon/` ＋ `roles/input-contract.md` | **恒在 system prompt**，不许做成指针 |
+| **按需层** | 深度人格材料（三层人格散文／在意的／关系／说话习惯／成长线） | `roles/persona/<role_id>.json` 的 `depth` 块 | 显式调 `render-roles.py depth --role <id>` 才产出 |
+| **永不层** | 公文体（英文小标题、信封三行、判据细则）、以及抄了别家的内容 | 不落正本 | 不进上下文 |
+
+两条硬纪律：
+
+1. **人格本体不许降级成指针。** 宿主定义文件的正文就是系统提示，会话启动一次性读入，
+   没有动态 include；只放指针等于开局没人格（工具白名单没有读工具就永远拿不到），
+   且读进来的内容进对话、会进压缩。
+2. **深度层不许内联进常驻层。** doctor 的 `persona-layer` 门逐个皮肤比对默认渲染结果，
+   depth 正文混进去即红。常驻层膨胀是最难回收的那种——它每轮都在。
+
+`depth` 块的形状由 `scripts/persona.py` 守着（`depth_version`、五个段位齐、
+`scope` 必须写明「不进 system prompt」、正文不超 `DEPTH_MAX_BYTES`、不含宿主专有词）。
+没接入＝不红，可逐步接；接入了就得合规。
+
+**发布路径**：`roles/` 属 repo_only，装机面到不了，所以深度材料另有一份**投影**：
+`core/skills/kai-persona-deep/resources/depth/<role_id>.md`（由 `scripts/depth-publish.py` 现拼生成，
+正文走同一个组装点 `rolelib.render_depth()`）。投影是生成物，手改会被 doctor 的 `depth-publish` 门判红；
+**权威源永远是 persona 的 depth 块**。
+
+## 总结体例：一个家，两份数据
+
+面向读者的结果总结体例**只有一份**，由渲染器逐字前置（跟 `input-contract.md` 同一个先例）：
+
+| 件 | 是什么 | 落点 |
+|---|---|---|
+| 体例 | 槽位语义与顺序、七条红线、禁列字眼、越界字眼、人味上限 | `roles/summary-convention.md` |
+| 措辞 | 八角色各自的标题动作短语与三个槽位标记词 | `roles/summary-slots.json` |
+
+**七份 dispatchable 正本里一份总结体例都不许抄。** 八份近义散文＝八个家且必漂，
+而 doctor 的判据门查不出散文重复——所以走共享块注入，不走正本复制。
+只有 `reviewer` 例外：它的正本写「只输出一个判词对象」，那句必须改成
+「……面向读者的结果总结属机读面之外的**外层段**，不属于判词对象」。
+
+槽位的**语义与顺序固定**（本次结论／未完成项／待用户决定）；**标记词按各角色性格定制**。
+标记词是标签，不是状态词——写执行状态仍只用四词（完成／部分完成／阻塞／失败）。
 
 ## 只有一个组装点，两种落地
 

@@ -16,12 +16,21 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 
 ROLE_IDS = ("coordinator", "researcher", "architect", "engineer",
             "designer", "writer", "archivist", "reviewer")
 REQUIRED_TOP = ("role_id", "persona_version", "identity_core", "id", "ego", "superego", "memory")
 MEMORY_SCOPE = {"task_fact", "preference", "skill", "relationship", "failure_lesson"}
+# 深度人格层（按需）：五个段位。层内长文本不进 system prompt，只在闲聊／深度情境现取。
+DEPTH_SECTIONS = ("three_layers", "stakes", "bond", "voice", "growth")
+DEPTH_LAYER = "按需层"
+# 单角色 depth 正文上限（UTF-8 字节）：按需层不许悄悄长成常驻层。
+# coordinator 实测 4,518 B（1,506 字）；给到 8 KB 留足余量，仍能拦住失控增长。
+DEPTH_MAX_BYTES = 8192
+# ego.refs 单条上限：字符串与对象一律按字符数算（老口径只管对象型，字符串型是洞）。
+EGO_REF_MAX_CHARS = 200
 
 
 def persona_dir(root: Path | str) -> Path:
@@ -70,8 +79,9 @@ def validate(root: Path | str) -> list[str]:
             if not core.get(k):
                 errs.append(f"{rid} identity_core 缺 {k}")
         ego = data.get("ego") or {}
-        if ego.get("refs") and any(isinstance(r, dict) and len(str(r)) > 200 for r in ego["refs"]):
-            errs.append(f"{rid} ego.refs 只放引用，不内联长文本")
+        if ego.get("refs") and any(len(str(r)) > EGO_REF_MAX_CHARS for r in ego["refs"]):
+            errs.append(f"{rid} ego.refs 只放引用，不内联长文本"
+                        f"（每条 ≤{EGO_REF_MAX_CHARS} 字符；字符串型与对象型都算）")
         mem = data.get("memory") or {}
         if mem.get("adapter") != "archivist":
             errs.append(f"{rid} memory.adapter 必须是 archivist（记忆唯一写者）")
@@ -81,6 +91,32 @@ def validate(root: Path | str) -> list[str]:
             errs.append(f"{rid} memory.write_policy 必须是 candidate_only")
         if not set(mem.get("scope") or []) <= MEMORY_SCOPE:
             errs.append(f"{rid} memory.scope 含未知类别")
+        errs.extend(_depth_errors(rid, data.get("depth")))
+    return errs
+
+
+def _depth_errors(rid: str, depth) -> list[str]:
+    """深度人格层（按需）的结构契约。没接入＝不红，接入了就得合规。"""
+    if depth is None:
+        return []
+    if not isinstance(depth, dict):
+        return [f"{rid} depth 不是对象"]
+    errs: list[str] = []
+    if not re.fullmatch(r"\d+\.\d+\.\d+", str(depth.get("depth_version", ""))):
+        errs.append(f"{rid} depth 缺 depth_version（须 x.y.z）")
+    if str(depth.get("layer", "")) != DEPTH_LAYER:
+        errs.append(f"{rid} depth.layer 必须是「{DEPTH_LAYER}」")
+    for k in DEPTH_SECTIONS:
+        if not str(depth.get(k) or "").strip():
+            errs.append(f"{rid} depth 缺 {k}")
+    scope = str(depth.get("scope") or "")
+    if "不进 system prompt" not in scope:
+        errs.append(f"{rid} depth.scope 必须写明「不进 system prompt」")
+    blob = "".join(str(depth.get(k) or "") for k in DEPTH_SECTIONS)
+    nbytes = len(blob.encode("utf-8"))
+    if nbytes > DEPTH_MAX_BYTES:
+        errs.append(f"{rid} depth 正文超上限（{nbytes} > {DEPTH_MAX_BYTES} 字节）"
+                    f"——按需层不许悄悄长成常驻层")
     return errs
 
 

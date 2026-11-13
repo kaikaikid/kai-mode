@@ -12,6 +12,7 @@
       "canon_sha256": "34ddafc985c6154f3b8a8de143ead29eaf0a15eaca4ea0b12a0f45b5effdd1bb",
       "canon_version": "1.0.1",
       "name": "架构分析",
+      "persona_depth_sha256": "2df1051d5916137f912b8bd94cfff4a3446cc4b4d8fcee4268575e611ac2795c",
       "persona_memory_sha256": "07dbf7d17623bc6e5415eb3834420a7e32ead8338148ebbc569b64642f4b8b96",
       "persona_sha256": "1893de97d46f9f7359993f4390c4f817e88f9e114936c5adeee01201240e175e",
       "profession_id": "architect",
@@ -29,6 +30,7 @@
       "canon_sha256": "34ddafc985c6154f3b8a8de143ead29eaf0a15eaca4ea0b12a0f45b5effdd1bb",
       "canon_version": "1.0.1",
       "name": "瑞兹",
+      "persona_depth_sha256": "2df1051d5916137f912b8bd94cfff4a3446cc4b4d8fcee4268575e611ac2795c",
       "persona_memory_sha256": "07dbf7d17623bc6e5415eb3834420a7e32ead8338148ebbc569b64642f4b8b96",
       "persona_sha256": "1893de97d46f9f7359993f4390c4f817e88f9e114936c5adeee01201240e175e",
       "profession_id": "architect",
@@ -36,7 +38,7 @@
       "role_id": "architect",
       "skin": "guild",
       "skin_sha256": "6382e1de7c605caf4c61d81cc1e08ad1bfcb4410285c78825dbce627b03277c4",
-      "skin_version": "1.0.5",
+      "skin_version": "1.1.0",
       "team": {
         "status": "pending",
         "team_id": null
@@ -46,6 +48,7 @@
       "canon_sha256": "539a8f3cc7b716775a6d776a3b887ab14b2393f46cca788b71915eecc791cb55",
       "canon_version": "1.0.2",
       "name": "知识管理",
+      "persona_depth_sha256": "5a3bcd3d3b455e36907ded1dc33fb043d89bf8bef72200e3a44ff1a9f69a0537",
       "persona_memory_sha256": "07dbf7d17623bc6e5415eb3834420a7e32ead8338148ebbc569b64642f4b8b96",
       "persona_sha256": "1e8b5fe2db277b7ed5665f5b8de8af8698d1072b346dcf5d04bff06c576f7565",
       "profession_id": "archivist",
@@ -63,6 +66,7 @@
       "canon_sha256": "539a8f3cc7b716775a6d776a3b887ab14b2393f46cca788b71915eecc791cb55",
       "canon_version": "1.0.2",
       "name": "克罗米",
+      "persona_depth_sha256": "5a3bcd3d3b455e36907ded1dc33fb043d89bf8bef72200e3a44ff1a9f69a0537",
       "persona_memory_sha256": "07dbf7d17623bc6e5415eb3834420a7e32ead8338148ebbc569b64642f4b8b96",
       "persona_sha256": "1e8b5fe2db277b7ed5665f5b8de8af8698d1072b346dcf5d04bff06c576f7565",
       "profession_id": "archivist",
@@ -70,16 +74,17 @@
       "role_id": "archivist",
       "skin": "guild",
       "skin_sha256": "5cc773b480e083b0c20bedddd2b5dc5518c8a05163b956dae4532e8abe07fbd9",
-      "skin_version": "1.0.5",
+      "skin_version": "1.1.0",
       "team": {
         "status": "pending",
         "team_id": null
       }
     },
     {
-      "canon_sha256": "279891e60347ca9aae3019d1e82125cef0696dae7881538168ce5a175ec483ab",
-      "canon_version": "1.0.7",
+      "canon_sha256": "5e6416125056f1b8b7c7c79e5a843c1b3888c01040ca0016165121515eb1f46b",
+      "canon_version": "1.1.0",
       "name": "协调调度",
+      "persona_depth_sha256": "51d9590d8f1b6879122aed64b5400189ba33fd249e4e6a3b84fc12d0ab67d85b",
       "persona_memory_sha256": "07dbf7d17623bc6e5415eb3834420a7e32ead8338148ebbc569b64642f4b8b96",
       "persona_sha256": "84e37095508e45af5a4605803709259599671bc311aacf16dcb6630cf0f28433",
       "profession_id": "coordinator",
@@ -94,17 +99,18 @@
       }
     },
     {
-      "canon_sha256": "279891e60347ca9aae3019d1e82125cef0696dae7881538168ce5a175ec483ab",
-      "canon_version": "1.0.7",
+      "canon_sha256": "5e6416125056f1b8b7c7c79e5a843c1b3888c01040ca0016165121515eb1f46b",
+      "canon_version": "1.1.0",
       "name": "康娜",
+      "persona_depth_sha256": "51d9590d8f1b6879122aed64b5400189ba33fd249e4e6a3b84fc12d0ab67d85b",
       "persona_memory_sha256": "07dbf7d17623bc6e5415eb3834420a7e32ead8338148ebbc569b64642f4b8b96",
       "persona_sha256": "84e37095508e45af5a4605803709259599671bc311aacf16dcb6630cf0f28433",
       "profession_id": "coordinator",
       "profession_name": "协调调度",
       "role_id": "coordinator",
       "skin": "guild",
-      "skin_sha256": "bcce60adb05e1ad2781226ceeec11e64b2b40aea5f674af6c598c58172f72b06",
-      "skin_version": "1.0.5",
+      "skin_sha256": "dd6e0321ded5c209eae91e094c0b1c7f92039c8f883ec542ef37e11385cfc185",
+      "skin_version": "1.1.0",
       "team": {
         "status": "pending",
         "team_id": null
@@ -114,6 +120,7 @@
       "canon_sha256": "55ffc08da9a0c3b949cf8f54ba41b36a2aeab06eab8c79a29702a3b24b78aefe",
       "canon_version": "1.0.1",
       "name": "视觉设计",
+      "persona_depth_sha256": "4584b530e4f037b0abe363f75df882839561e0a20c07e7f4a6b45e5de73b2972",
       "persona_memory_sha256": "07dbf7d17623bc6e5415eb3834420a7e32ead8338148ebbc569b64642f4b8b96",
       "persona_sha256": "a207aec8cdbcb7e56ae32b69644697a0efccdde2042680292809ff3fb562a4e0",
       "profession_id": "designer",
@@ -131,6 +138,7 @@
       "canon_sha256": "55ffc08da9a0c3b949cf8f54ba41b36a2aeab06eab8c79a29702a3b24b78aefe",
       "canon_version": "1.0.1",
       "name": "泰兰德·语风",
+      "persona_depth_sha256": "4584b530e4f037b0abe363f75df882839561e0a20c07e7f4a6b45e5de73b2972",
       "persona_memory_sha256": "07dbf7d17623bc6e5415eb3834420a7e32ead8338148ebbc569b64642f4b8b96",
       "persona_sha256": "a207aec8cdbcb7e56ae32b69644697a0efccdde2042680292809ff3fb562a4e0",
       "profession_id": "designer",
@@ -138,7 +146,7 @@
       "role_id": "designer",
       "skin": "guild",
       "skin_sha256": "69237ec02bfe55d7519bcc124c4382400d518abd406f2b3bac110eae06082d9a",
-      "skin_version": "1.0.5",
+      "skin_version": "1.1.0",
       "team": {
         "status": "pending",
         "team_id": null
@@ -148,6 +156,7 @@
       "canon_sha256": "da7e35b0c2b328ac379cbd23b5b0a92046e4a9d4c55aa60c093dfc3d98056d3d",
       "canon_version": "1.0.1",
       "name": "工程开发",
+      "persona_depth_sha256": "61bce06ddc27524bfe3abb983d3ff6d42f54c00308e07e74695d615a0f8c83f6",
       "persona_memory_sha256": "07dbf7d17623bc6e5415eb3834420a7e32ead8338148ebbc569b64642f4b8b96",
       "persona_sha256": "1c7d7dbb6fbf7c424fc8526841692887ba19253e914c433ed50a4aa6b9e2aaf9",
       "profession_id": "engineer",
@@ -165,6 +174,7 @@
       "canon_sha256": "da7e35b0c2b328ac379cbd23b5b0a92046e4a9d4c55aa60c093dfc3d98056d3d",
       "canon_version": "1.0.1",
       "name": "布莱恩·铜须",
+      "persona_depth_sha256": "61bce06ddc27524bfe3abb983d3ff6d42f54c00308e07e74695d615a0f8c83f6",
       "persona_memory_sha256": "07dbf7d17623bc6e5415eb3834420a7e32ead8338148ebbc569b64642f4b8b96",
       "persona_sha256": "1c7d7dbb6fbf7c424fc8526841692887ba19253e914c433ed50a4aa6b9e2aaf9",
       "profession_id": "engineer",
@@ -172,7 +182,7 @@
       "role_id": "engineer",
       "skin": "guild",
       "skin_sha256": "9435079e773dda14b5264f9b491b831cb4d8340c031c1876ae5fd1ca419fc407",
-      "skin_version": "1.0.5",
+      "skin_version": "1.1.0",
       "team": {
         "status": "pending",
         "team_id": null
@@ -182,6 +192,7 @@
       "canon_sha256": "94d6e6c6b416646d964469fa91e796d8fe4cf112152ee463bfd36292ab1d53aa",
       "canon_version": "1.0.1",
       "name": "情报调研",
+      "persona_depth_sha256": "828b7f39b3b2d667f9869e90aba20be63e13f1b8dc7c9f5a2dec014ac8ce3ca4",
       "persona_memory_sha256": "07dbf7d17623bc6e5415eb3834420a7e32ead8338148ebbc569b64642f4b8b96",
       "persona_sha256": "0d47a9bf533b08d4c77d643ce9cfcfd881efb4ff02144c76ae98f554fd4772fb",
       "profession_id": "researcher",
@@ -199,6 +210,7 @@
       "canon_sha256": "94d6e6c6b416646d964469fa91e796d8fe4cf112152ee463bfd36292ab1d53aa",
       "canon_version": "1.0.1",
       "name": "崔希丝",
+      "persona_depth_sha256": "828b7f39b3b2d667f9869e90aba20be63e13f1b8dc7c9f5a2dec014ac8ce3ca4",
       "persona_memory_sha256": "07dbf7d17623bc6e5415eb3834420a7e32ead8338148ebbc569b64642f4b8b96",
       "persona_sha256": "0d47a9bf533b08d4c77d643ce9cfcfd881efb4ff02144c76ae98f554fd4772fb",
       "profession_id": "researcher",
@@ -206,16 +218,17 @@
       "role_id": "researcher",
       "skin": "guild",
       "skin_sha256": "fc31bb5da4b9c2c79883176d1853e21e149134320a492465cf57e0799926ee06",
-      "skin_version": "1.0.5",
+      "skin_version": "1.1.0",
       "team": {
         "status": "pending",
         "team_id": null
       }
     },
     {
-      "canon_sha256": "9b6d12834e6c87103dffef4ecea76df8ec790729fd70c040bfbb0c466df6b683",
-      "canon_version": "1.0.2",
+      "canon_sha256": "3794d88174c55e8fa949a9e8b5f18d993590845b79510f6c703329342dcd1cb1",
+      "canon_version": "1.1.0",
       "name": "质量审查",
+      "persona_depth_sha256": "cad77d26ce1c847f660485e54f01b019ec1110f952c1f5550021429b2bb01576",
       "persona_memory_sha256": "07dbf7d17623bc6e5415eb3834420a7e32ead8338148ebbc569b64642f4b8b96",
       "persona_sha256": "ce3197f269f12a9324ef75816be08b3c405f9edda51a3d1bdcb326e880244dfb",
       "profession_id": "reviewer",
@@ -230,9 +243,10 @@
       }
     },
     {
-      "canon_sha256": "9b6d12834e6c87103dffef4ecea76df8ec790729fd70c040bfbb0c466df6b683",
-      "canon_version": "1.0.2",
+      "canon_sha256": "3794d88174c55e8fa949a9e8b5f18d993590845b79510f6c703329342dcd1cb1",
+      "canon_version": "1.1.0",
       "name": "提里奥·弗丁",
+      "persona_depth_sha256": "cad77d26ce1c847f660485e54f01b019ec1110f952c1f5550021429b2bb01576",
       "persona_memory_sha256": "07dbf7d17623bc6e5415eb3834420a7e32ead8338148ebbc569b64642f4b8b96",
       "persona_sha256": "ce3197f269f12a9324ef75816be08b3c405f9edda51a3d1bdcb326e880244dfb",
       "profession_id": "reviewer",
@@ -240,7 +254,7 @@
       "role_id": "reviewer",
       "skin": "guild",
       "skin_sha256": "dbdff677d3c69b126ef6258f8d927adae85c8294f125c5ee841f9af8e58da3fa",
-      "skin_version": "1.0.5",
+      "skin_version": "1.1.0",
       "team": {
         "status": "pending",
         "team_id": null
@@ -250,6 +264,7 @@
       "canon_sha256": "c0039168075b989450a1d66e0d8b0cb665e14dcfbd3cb16318b6717223dec499",
       "canon_version": "1.0.2",
       "name": "文档写作",
+      "persona_depth_sha256": "0672c3423b0b1df927eef855ca2f1f8661ef92e69ffe237915290a4eaf7f7c2d",
       "persona_memory_sha256": "07dbf7d17623bc6e5415eb3834420a7e32ead8338148ebbc569b64642f4b8b96",
       "persona_sha256": "28b9481b205a2aeb1421709ede01acb60defd82432082b283e1c040b366bbf70",
       "profession_id": "writer",
@@ -267,6 +282,7 @@
       "canon_sha256": "c0039168075b989450a1d66e0d8b0cb665e14dcfbd3cb16318b6717223dec499",
       "canon_version": "1.0.2",
       "name": "游学者周卓",
+      "persona_depth_sha256": "0672c3423b0b1df927eef855ca2f1f8661ef92e69ffe237915290a4eaf7f7c2d",
       "persona_memory_sha256": "07dbf7d17623bc6e5415eb3834420a7e32ead8338148ebbc569b64642f4b8b96",
       "persona_sha256": "28b9481b205a2aeb1421709ede01acb60defd82432082b283e1c040b366bbf70",
       "profession_id": "writer",
@@ -274,7 +290,7 @@
       "role_id": "writer",
       "skin": "guild",
       "skin_sha256": "e1ffd78ede805c712779d702b81960cb419c3e99e3e3164ecf320aa3029e44d1",
-      "skin_version": "1.0.5",
+      "skin_version": "1.1.0",
       "team": {
         "status": "pending",
         "team_id": null

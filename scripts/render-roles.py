@@ -14,6 +14,7 @@ role-canon 门共用同一份，不写第二套）。
   python scripts/render-roles.py validate
   python scripts/render-roles.py prompt   --role reviewer --skin guild [--json]
   python scripts/render-roles.py prompt   --skin guild --pack
+  python scripts/render-roles.py depth    --role coordinator
   python scripts/render-roles.py render   --host qoder --skin generic --dest <目标目录> [--dry-run]
   python scripts/render-roles.py emit-table --project <项目根>
 
@@ -159,6 +160,23 @@ def cmd_prompt(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_depth(args: argparse.Namespace) -> int:
+    """深度人格层（按需）：打印 depth 块，不改盘。这一层默认不进 system prompt。"""
+    root = Path(args.root).resolve() if args.root else repo_root()
+    bad = rolelib.validate(root)
+    if bad:
+        print("正本不合契约，拒绝出深度层：", file=sys.stderr)
+        for b in bad:
+            print(f"  - {b}", file=sys.stderr)
+        return 2
+    try:
+        sys.stdout.write(rolelib.render_depth(root, args.role))
+    except rolelib.RoleError as e:
+        print(str(e), file=sys.stderr)
+        return 2
+    return 0
+
+
 def cmd_bootstrap(args: argparse.Namespace) -> int:
     """给一个项目（或一台别的 AI）做初始化：角色文件 ＋ 宿主映射表 ＋ 一张说明卡。
 
@@ -259,6 +277,8 @@ def main() -> int:
                     help="主 AI 人格的会话提示词（含可调出角色表）")
     pp.add_argument("--pack", action="store_true", help="可派发角色拼成一份（默认七个）")
     pp.add_argument("--with-primary", action="store_true", help="包里也带上主 AI 人格")
+    dp = sub.add_parser("depth", help="打印深度人格层（按需，默认不进 system prompt）")
+    dp.add_argument("--role", required=True, choices=rolelib.ROLE_IDS)
     sp = sub.add_parser("render", help="渲染到目标目录（一律覆盖，不做 stale 判断）")
     sp.add_argument("--host", required=True, choices=rolelib.HOSTS)
     sp.add_argument("--skin", required=True, choices=rolelib.SKINS)
@@ -268,7 +288,7 @@ def main() -> int:
                     help="多出一个 _primary 文件（会话级主 AI 人格，不是可派发子代理）")
     args = p.parse_args()
     return {"validate": cmd_validate, "render": cmd_render, "emit-table": cmd_emit_table,
-            "prompt": cmd_prompt, "bootstrap": cmd_bootstrap}[args.cmd](args)
+            "prompt": cmd_prompt, "bootstrap": cmd_bootstrap, "depth": cmd_depth}[args.cmd](args)
 
 
 if __name__ == "__main__":

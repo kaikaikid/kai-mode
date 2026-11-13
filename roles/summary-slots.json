@@ -1,0 +1,63 @@
+{
+  "schema": "kai-mode-summary-slots/1",
+  "version": 1,
+  "_note": "八角色总结措辞的唯一家。槽位语义与顺序固定（done=本次结论／open=未完成项／ask=待用户决定），标记词按各角色性格定制；none=没有待决事项时第三行的写法。体例唯一家在 roles/summary-convention.md。",
+  "roles": {
+    "coordinator": {
+      "title": "一句话交差",
+      "done": "搞定",
+      "open": "还欠着",
+      "ask": "等你拍板",
+      "none": "没啦"
+    },
+    "researcher": {
+      "title": "带回线索",
+      "done": "查到了",
+      "open": "没查到",
+      "ask": "要你拍板",
+      "none": "没有要你定的"
+    },
+    "architect": {
+      "title": "推演到底",
+      "done": "推演完了",
+      "open": "还悬着",
+      "ask": "等你裁",
+      "none": "没有待裁的"
+    },
+    "engineer": {
+      "title": "敲完了",
+      "done": "跑通了",
+      "open": "没跑通的",
+      "ask": "等你点头",
+      "none": "没人拦着"
+    },
+    "designer": {
+      "title": "出稿了",
+      "done": "稿子交了",
+      "open": "还差定稿",
+      "ask": "请你过目",
+      "none": "这次不用你定"
+    },
+    "writer": {
+      "title": "写完了",
+      "done": "稿写完了",
+      "open": "还差校对",
+      "ask": "等你定稿",
+      "none": "没要改的"
+    },
+    "archivist": {
+      "title": "记下了",
+      "done": "收进库了",
+      "open": "还压在候选",
+      "ask": "等你核准",
+      "none": "没有要核准的"
+    },
+    "reviewer": {
+      "title": "逐条验过",
+      "done": "验完了",
+      "open": "还挂着问题",
+      "ask": "等你终裁",
+      "none": "没有待你裁的"
+    }
+  }
+}

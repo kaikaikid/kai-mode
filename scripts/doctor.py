@@ -1789,7 +1789,73 @@ def chk_persona(root: str, ms):
     errs = _p.validate(_P(root))
     if errs:
         return "fail", "人格层不合契约： " + "；".join(errs[:6])
-    return "ok", f"{len(_p.ROLE_IDS)} 份人格层：原初内核只读、ego 只放引用、记忆走 archivist（外部存储）"
+    # 深度人格层是按需层：默认渲染（render_prompt / render_primary）不得内联 depth 正文。
+    # 这条门拦的是「有人改渲染器把 depth 又塞回 system prompt」——那样常驻层会重新膨胀。
+    try:
+        import rolelib as _rl
+        depth_roles = []
+        probes = []
+        for rid in _p.ROLE_IDS:
+            depth = (_p.load(_P(root), rid) or {}).get("depth")
+            if not depth:
+                continue
+            depth_roles.append(rid)
+            for k in _p.DEPTH_SECTIONS:
+                blob = str(depth.get(k) or "")
+                for tok in _rl.HOST_TOKENS:
+                    if tok in blob:
+                        errs.append(f"{rid}.depth.{k} 含宿主专有词「{tok}」（该住 adapters/）")
+                body = blob.strip()
+                if not body:
+                    continue
+                # 探针要能扛住改写与折行：段首 40 字符 + 每行前 16 字符。
+                ps = {body[:40].strip()}
+                for line in body.splitlines()[:3]:
+                    s = line.strip()
+                    if len(s) >= 8:
+                        ps.add(s[:16])
+                probes.append((rid, k, ps))
+        # 渲染泄漏门：render_prompt（八角色 × 两皮）＋ render_primary（两皮）两条腿都要查。
+        for rid, k, ps in probes:
+            for sk in _rl.SKINS:
+                rendered = _rl.render_prompt(_P(root), rid, sk)
+                if any(p and p in rendered for p in ps):
+                    errs.append(f"{rid}.depth.{k} 混进了 {sk} 皮肤的默认渲染"
+                                f"（深度层按需，不许内联进 system prompt）")
+        for sk in _rl.SKINS:
+            primary = _rl.render_primary(_P(root), sk)
+            for rid, k, ps in probes:
+                if any(p and p in primary for p in ps):
+                    errs.append(f"{rid}.depth.{k} 混进了 {sk} 皮肤的主 AI 人格渲染"
+                                f"（深度层按需，不许内联进 system prompt）")
+        if errs:
+            return "fail", "深度层门不过： " + "；".join(errs[:6])
+    except Exception as e:
+        return "fail", f"深度层渲染门跑不起来：{e}"
+    n = len(depth_roles)
+    tail = f"；深度层按需 {n}/{len(_p.ROLE_IDS)} 份已接入" if n else "；深度层未接入"
+    return "ok", (f"{len(_p.ROLE_IDS)} 份人格层：原初内核只读、ego 只放引用、"
+                  f"记忆走 archivist（外部存储）{tail}")
+
+
+def chk_depth_publish(root: str, ms):
+    """深度人格层 → 安装面技能资源：投影必须与 persona 正本逐字一致。
+
+    `roles/` 属 repo_only，装机面到不了；深度材料要随技能发布，就得有投影。
+    投影是生成物（正文由 render_depth 现拼），手改即红——权威源永远是 persona 的 depth 块。
+    """
+    script = os.path.join(root, "scripts", "depth-publish.py")
+    if not os.path.isfile(script):
+        return "skip", "没有 scripts/depth-publish.py（旧仓不适用）"
+    try:
+        p = subprocess.run([sys.executable, script, "--root", root, "--check"], cwd=root,
+                           capture_output=True, text=True, encoding="utf-8", errors="replace")
+    except (OSError, ValueError) as exc:
+        return "fail", f"跑不动 depth-publish：{exc}"
+    out = " ".join(x.strip() for x in ((p.stdout or "") + (p.stderr or "")).splitlines() if x.strip())
+    if p.returncode != 0:
+        return "fail", f"深度层投影漂移：{out[:400]}"
+    return "ok", out[:300]
 
 
 def chk_role_canon(root: str, ms):
@@ -2188,6 +2254,7 @@ CHECKS = (
     ("role-canon", "角色正本契约（八角色 × 双皮 × 六宿主）", chk_role_canon),
     ("role-registry", "registry 与正本一致（profession/role v1）", chk_role_registry),
     ("persona-layer", "人格层契约（原初内核只读 / ego 只放引用 / 记忆走 archivist）", chk_persona),
+    ("depth-publish", "深度层投影（安装面资源与 persona 正本逐字一致）", chk_depth_publish),
     ("handoff-slots", "交接文档分类（槽位/命名/归位）", chk_handoff),
     ("skill-spec", "技能格式对齐 Agent Skills 1.2", chk_skill_spec),
     ("command-surface", "技能声明的命令在自己工具面里", chk_command_surface),
