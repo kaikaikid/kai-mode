@@ -41,8 +41,8 @@
       }
     },
     {
-      "canon_sha256": "54384a34d1e36874d9f05b240e3c3f9fa949a55a70d568cd4a7702f5b6601645",
-      "canon_version": "1.2.1",
+      "canon_sha256": "e0f27b3f04b57c396261ae9a69854b27b46a7e2067309dd9f646e44e2b70bf76",
+      "canon_version": "1.3.0",
       "persona_depth_sha256": "d7298c4cfea1a06c81e2fb4f1010b9060a0d670dcfb20786234f8e66d71aef38",
       "persona_memory_sha256": "07dbf7d17623bc6e5415eb3834420a7e32ead8338148ebbc569b64642f4b8b96",
       "persona_sha256": "68ed6ceeb4c20771a7b5249dd0ce37e13c127d8a6b01ba5fea2692725b99e13c",

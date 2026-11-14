@@ -713,3 +713,82 @@ def test_summary_derived_gate_tolerates_list_bullets(repo_copy):
                 "```markdown\n## 💰 一句话交差\n- 搞定~搞定~：<结果>\n"
                 "- 还欠着：<差什么>\n- 等你拍板：<事项>\n```\n")
     assert _summary_derived_status(repo_copy) == "ok"
+
+# ── 落点对照门：装配面的指纹漂了必须红 ────────────────────────────────────
+def _landing_status(root, monkeypatch=None):
+    """跑落点对照门；monkeypatch 给了就把 HOME 钉到假目录（隔离本机真落点）。"""
+    doctor = _load_doctor()
+    if monkeypatch is not None:
+        monkeypatch.setenv("KAI_DOCTOR_FAKE_HOME", "Z:/no-such-home")
+    status, msg = doctor.chk_landing_compare(str(root), None)
+    return status, msg
+
+
+def _make_landing(tmp_path, role_id="reviewer", skin="guild"):
+    """在假落点里造一份含指纹的 AGENTS.md，指纹从真仓现算。"""
+    doctor = _load_doctor()
+    land = tmp_path / "landing" / "agent-x"
+    land.mkdir(parents=True)
+    canon = rl.load_canon(REPO)
+    sk = rl.load_skin(REPO, skin)
+    entry = sk["roles"][role_id]
+    fp = rl.fingerprint(canon[role_id]["meta"], canon[role_id]["sha256"], skin,
+                        str(sk["skin_version"]), rl.entry_sha256(entry))
+    (land / "AGENTS.md").write_text(f"# 假落点\n\n{fp}\n\n正文。\n", encoding="utf-8")
+    return land
+
+
+def test_landing_compare_skips_when_no_landing_dir(tmp_path, monkeypatch):
+    """没配落点目录 ⇒ skip，不是红：别的机器上 doctor 照样绿。"""
+    monkeypatch.delenv("KAI_LANDING_DIRS", raising=False)
+    monkeypatch.setenv("KAI_DOCTOR_FAKE_HOME", str(tmp_path / "no-home"))
+    status, msg = _landing_status(REPO)
+    assert status == "skip", msg
+    assert "未配置落点目录" in msg, msg
+
+
+def test_landing_compare_is_green_on_matching_fingerprint(tmp_path, monkeypatch):
+    land = _make_landing(tmp_path)
+    monkeypatch.setenv("KAI_LANDING_DIRS", str(tmp_path / "landing"))
+    status, msg = _landing_status(REPO)
+    assert status == "ok", msg
+    assert "1 份落点与现渲一致" in msg, msg
+
+
+def test_landing_compare_catches_tampered_sha(tmp_path, monkeypatch):
+    """故意把落点指纹里的 canon_sha256 改一位 ⇒ 红并点名目录与字段。"""
+    land = _make_landing(tmp_path)
+    p = land / "AGENTS.md"
+    text = p.read_text(encoding="utf-8")
+    m = __import__("re").search(r"canon_sha256=([0-9a-f]{64})", text)
+    flipped = ("0" if m.group(1)[0] != "0" else "1") + m.group(1)[1:]
+    p.write_text(text.replace(f"canon_sha256={m.group(1)}", f"canon_sha256={flipped}", 1),
+                 encoding="utf-8")
+    monkeypatch.setenv("KAI_LANDING_DIRS", str(tmp_path / "landing"))
+    status, msg = _landing_status(REPO)
+    assert status == "fail", msg
+    assert "agent-x/AGENTS.md" in msg, msg
+    assert "canon_sha256" in msg, msg
+
+
+def test_landing_compare_skips_files_without_fingerprint(tmp_path, monkeypatch):
+    """无指纹的 AGENTS.md 不计红（不属于八角色），只进计数。"""
+    land = tmp_path / "landing" / "agent-x"
+    land.mkdir(parents=True)
+    (land / "AGENTS.md").write_text("# 不是角色\n", encoding="utf-8")
+    monkeypatch.setenv("KAI_LANDING_DIRS", str(tmp_path / "landing"))
+    status, msg = _landing_status(REPO)
+    assert status == "ok", msg
+    assert "无指纹跳过" in msg, msg
+
+
+def test_landing_compare_is_green_on_real_openbot_agents(monkeypatch):
+    """真机绿：~/OpenBot/Agents 下与现渲一致的角色面（coordinator 除外——它刚升版待重渲）。"""
+    doctor = _load_doctor()
+    status, msg = doctor.chk_landing_compare(str(REPO), None)
+    if status == "skip":
+        return  # 本机没配落点目录的环境，不判
+    # 真机上只断言不因「读不出来 / role_id 不在正本里」这类机器错而红
+    assert status in ("ok", "fail"), msg
+    if status == "fail":
+        assert "读不出来" not in msg, msg

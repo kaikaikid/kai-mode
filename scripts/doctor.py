@@ -2174,6 +2174,111 @@ def chk_emoji_derivation(root: str, ms):
     return "ok", "正本里的表情都等于皮肤的 summary_emoji，两皮逐角色一致"
 
 
+def _landing_dirs():
+    """落点目录列表：环境变量优先，其次 OpenBot 宿主约定目录。
+
+    环境变量 ``KAI_LANDING_DIRS`` 用分号或 os.pathsep 分隔；没配且
+    ``~/OpenBot/Agents`` 不存在 ⇒ 空表（调用方按「未配置」跳过，不判红）。
+    """
+    raw = os.environ.get("KAI_LANDING_DIRS", "")
+    dirs = []
+    for chunk in re.split(r"[;%s]" % re.escape(os.pathsep), raw or ""):
+        chunk = chunk.strip()
+        if chunk:
+            dirs.append(chunk)
+    if dirs:
+        return dirs
+    home = os.environ.get("KAI_DOCTOR_FAKE_HOME") or os.path.expanduser("~")
+    default = os.path.join(home, "OpenBot", "Agents")
+    return [default] if os.path.isdir(default) else []
+
+
+def chk_landing_compare(root: str, ms):
+    """落点对照：已装配到宿主目录的角色提示词，其指纹必须与现渲一致。
+
+    治的病：正本／渲染器改了，但装到宿主目录的那份提示词没跟着重渲——指纹
+    落在 ``<!-- kai-role ... -->`` 注释里，比对只看它，不重渲、不写盘。
+    """
+    from pathlib import Path as _P
+    rl = _load_rolelib(root)
+    if rl is None:
+        return "skip", "没有 scripts/rolelib.py（角色层未接入）"
+    dirs = _landing_dirs()
+    if not dirs:
+        return "skip", "未配置落点目录（KAI_LANDING_DIRS 或 ~/OpenBot/Agents），跳过"
+    try:
+        canon = rl.load_canon(_P(root))
+    except Exception as e:
+        return "fail", f"正本读不出来：{e}"
+    skins = {}
+    for skin in rl.SKINS:
+        try:
+            skins[skin] = rl.load_skin(_P(root), skin)
+        except Exception:
+            continue
+
+    fp_re = re.compile(r"<!--\s*kai-role\s+(.*?)\s*-->")
+    checked = 0
+    skipped = 0
+    bad = []
+    for base in dirs:
+        if not os.path.isdir(base):
+            continue
+        for name in sorted(os.listdir(base)):
+            sub = os.path.join(base, name)
+            agents_md = os.path.join(sub, "AGENTS.md")
+            if not os.path.isfile(agents_md):
+                continue
+            try:
+                with open(agents_md, encoding="utf-8") as fh:
+                    text = fh.read()
+            except OSError as e:
+                bad.append(f"{name}/AGENTS.md 读不出来：{e}")
+                continue
+            m = fp_re.search(text)
+            if not m:
+                skipped += 1
+                continue
+            fields = dict(
+                (kv.split("=", 1)[0].strip(), kv.split("=", 1)[1].strip())
+                for kv in m.group(1).split()
+                if "=" in kv
+            )
+            rid = fields.get("role_id")
+            skin = fields.get("skin")
+            c = canon.get(rid)
+            if c is None:
+                bad.append(f"{name}/AGENTS.md：指纹里的 role_id={rid!r} 不在正本里")
+                continue
+            sk = skins.get(skin)
+            if sk is None:
+                bad.append(f"{name}/AGENTS.md：指纹里的 skin={skin!r} 不是已知皮肤")
+                continue
+            entry = (sk.get("roles") or {}).get(rid)
+            if entry is None:
+                bad.append(f"{name}/AGENTS.md：皮肤 {skin} 里没有角色 {rid}")
+                continue
+            expected = {
+                "canon_version": c["meta"].get("canon_version", ""),
+                "canon_sha256": rl.sha256_normalized(c["raw"]),
+                "skin_version": str(sk.get("skin_version", "")),
+                "skin_sha256": rl.entry_sha256(entry),
+            }
+            checked += 1
+            for key, want in expected.items():
+                got = fields.get(key, "")
+                if got != want:
+                    bad.append(
+                        f"{name}/AGENTS.md：{rid} 的 {key} 落点值 {got[:12]} ≠ 现渲值 {want[:12]}"
+                    )
+    if bad:
+        tail = f"（共 {len(bad)} 处）" if len(bad) > 6 else ""
+        return "fail", "落点与现渲不一致：" + "；".join(bad[:6]) + tail
+    if not checked and not skipped:
+        return "ok", "落点目录下无角色提示词"
+    return "ok", f"{checked} 份落点与现渲一致（含 {skipped} 份无指纹跳过）"
+
+
 def chk_slot_binding(root: str, ms):
     """槽位绑定：slot_sources 里点名的机器面字段，必须还活着在该角色 canon 正本里。
 
@@ -2615,6 +2720,7 @@ CHECKS = (
     ("host-neutral", "宿主专有 token 不进正本", chk_host_neutral),
     ("role-canon", "角色正本契约（八角色 × 双皮 × 六宿主）", chk_role_canon),
     ("role-registry", "registry 与正本一致（profession/role v1）", chk_role_registry),
+    ("landing-compare", "落点对照（agent 指纹与现渲一致）", chk_landing_compare),
     ("persona-layer", "人格层契约（原初内核只读 / ego 只放引用 / 记忆走 archivist）", chk_persona),
     ("spec-shared", "共享契约一个家（canon 零抄写 / 四块共享块齐全有序）", chk_spec_shared),
     ("depth-publish", "深度层投影（安装面资源与 persona 正本逐字一致）", chk_depth_publish),

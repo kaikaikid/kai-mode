@@ -546,6 +546,15 @@ def validate(root: Path) -> list[str]:
             bad.append(f"{rel} effort 非法：{meta.get('effort')!r}")
         if tuple(c["blocks"]) != CANON_BLOCKS:
             bad.append(f"{rel} 正文块不符：{c['blocks']} != {list(CANON_BLOCKS)}")
+        # 顶级块标题逐字校验：BLOCK_RE 只认小写英文，中文/变体标题会绕过 blocks 比对，
+        # 所以单独扫正文行；子标题（###）放行，不靠改 BLOCK_RE（那会影响渲染路径）。
+        allowed_headings = {f"## {name}" for name in CANON_BLOCKS}
+        for i, line in enumerate(c["body"].splitlines(), 1):
+            if line.startswith("## ") and line not in allowed_headings:
+                bad.append(
+                    f"{rel} 正文第 {i} 行顶级标题「{line}」越界："
+                    f"块标题只许 {sorted(allowed_headings)} 四块（逐字），子标题请用 ###"
+                )
         for i, line in enumerate(c["body"].splitlines(), 1):
             if "canon:allow-host" in line:
                 continue
