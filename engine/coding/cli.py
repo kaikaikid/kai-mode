@@ -301,6 +301,7 @@ def _claim_card(s: dict[str, Any], t: dict[str, Any], sess: dict[str, Any]) -> d
         "worktree": s.get("worktree") or str(_root()),
         "touchset": list(t.get("touchset", [])),
         "ac": list(t.get("ac", [])),
+        "expected_output": t.get("expected_output", ""),
         "report_path": _card_report_path(s["run_id"], sess["id"]),
         "diff_base": sess.get("diff_base") or _diff_base(s),
     }
@@ -479,6 +480,9 @@ def cmd_plan(args: argparse.Namespace) -> None:
                 "deps": t.get("deps", []),
                 "touchset": t.get("touchset", []),
                 "ac": t.get("ac", []),
+                # #C 返工：任务卡双栏——ac（可机检）之外另带 expected_output
+                # （交付物形状／位置／证据形态）；缺省 ""＝旧任务行为不变。
+                "expected_output": t.get("expected_output", ""),
                 "ui": bool(t.get("ui", False)),
                 "status": "pending",
                 "attempts": 0,
@@ -834,6 +838,7 @@ def cmd_review_native(args: argparse.Namespace) -> dict:
             "diff_base": diff_base,
             "changed_files": changed,
             "ac": list(t.get("ac", [])),
+            "expected_output": t.get("expected_output", ""),
             "touchset": list(t.get("touchset", [])),
             "review_report_path": report_path,
             "read_only": True,
@@ -1183,6 +1188,7 @@ def cmd_context(args: argparse.Namespace) -> None:
             "attempts": t.get("attempts", 0),
             "touchset": list(t.get("touchset", [])),
             "ac": list(t.get("ac", [])),
+            "expected_output": t.get("expected_output", ""),
         } for t in s.get("tasks", [])],
         "gates": s.get("gates", {}),
         "budget": {

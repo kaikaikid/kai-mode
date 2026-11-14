@@ -75,10 +75,12 @@ def test_claim_writes_native_session_and_card(tmp_path):
     card = claim(root)
 
     assert set(card) == {"task_id", "brief", "worktree", "touchset", "ac",
-                         "report_path", "diff_base"}
+                         "expected_output", "report_path", "diff_base"}
     assert card["task_id"] == "t1"
     assert card["brief"] == "do t1"
     assert card["ac"] == ["t1 ok"]
+    # 旧 state 无该键：读出空串，不报错（#C 兼容）
+    assert card["expected_output"] == ""
     assert card["touchset"] == ["t1.py"]
     assert card["worktree"] == str(root)
     assert card["diff_base"] == "main"  # 临时目录不是 git 仓库：退回 base 分支名

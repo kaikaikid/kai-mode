@@ -26,6 +26,7 @@ Receipt 与 Envelope 是同一件（面向机器的交付信封），代码键�
 | `deps` | list[str] | plan | 1 |
 | `touchset` | list[str] | plan | 1 |
 | `ac` | list[str] | plan | 1 |
+| `expected_output` | str | plan（可选；交付物形状／位置／证据形态；缺省 ""，旧任务不回填） | 1 |
 | `ui` | bool | plan | 1 |
 | `status` | str | 内核推进（`pending|ready|running|review|returned|accepted|abandoned|blocked|failed`） | 1 |
 | `attempts` | int | 内核（return 计数，≥3 转 blocked 并锁定） | 1 |
