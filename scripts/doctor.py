@@ -1675,6 +1675,8 @@ HOST_TOKENS = (
 )
 # 安装器按宿主分腿，点名宿主是它的职责（各宿主 flag 仍应下沉 adapters，见体检 M2 未完成项）
 HOST_NEUTRAL_ALLOW = ("core/skills/set-kai-mode/",)
+# 角色提示词指纹注释解析正则（落点对照门与自发现共用，只扫一次）。
+KAI_ROLE_FP_RE = re.compile(r"<!--\s*kai-role\s+(.*?)\s*-->")
 # ── 角色层（ADR-0033）：正本／皮肤／宿主投影 ────────────────────────────────
 def _load_rolelib(root: str):
     """按路径加载 scripts/rolelib.py：与 render-roles.py 共用同一套判据，不写第二份。"""
@@ -2174,11 +2176,33 @@ def chk_emoji_derivation(root: str, ms):
     return "ok", "正本里的表情都等于皮肤的 summary_emoji，两皮逐角色一致"
 
 
-def _landing_dirs():
-    """落点目录列表：环境变量优先，其次 OpenBot 宿主约定目录。
+def _repo_parent(root: str):
+    """doctor 仓根的上级目录（自发现项目宿主落点的父级锚点，不写死本机路径）。"""
+    return os.path.dirname(os.path.abspath(os.path.expanduser(root)))
+
+
+def _auto_landing_dirs(root: str):
+    """除 OpenBot 约定目录外的自发现落点：仓根上级目录下的平铺宿主 agents 目录。
+
+    形态是「一个目录里平铺八个 ``*.md``」（如 ``.claude/agents``／``.qoder/agents``，
+    每份带 ``kai-role`` 指纹），OpenBot Agents 是「子目录＋AGENTS.md」。没有则空表，
+    不硬编码本机路径——别的机器 clone 下来也能能量到。
+    """
+    base = _repo_parent(root)
+    extra = []
+    for rel in (".claude/agents", ".qoder/agents"):
+        cand = os.path.join(base, rel)
+        if os.path.isdir(cand) and cand not in extra:
+            extra.append(cand)
+    return extra
+
+
+def _landing_dirs(root: str):
+    """落点目录列表：环境变量优先，其次 OpenBot 宿主约定目录，再自发现平铺宿主目录。
 
     环境变量 ``KAI_LANDING_DIRS`` 用分号或 os.pathsep 分隔；没配且
     ``~/OpenBot/Agents`` 不存在 ⇒ 空表（调用方按「未配置」跳过，不判红）。
+    自发现只在环境变量未配置时追加，已配则完全按变量，不叠加。
     """
     raw = os.environ.get("KAI_LANDING_DIRS", "")
     dirs = []
@@ -2190,7 +2214,10 @@ def _landing_dirs():
         return dirs
     home = os.environ.get("KAI_DOCTOR_FAKE_HOME") or os.path.expanduser("~")
     default = os.path.join(home, "OpenBot", "Agents")
-    return [default] if os.path.isdir(default) else []
+    if os.path.isdir(default):
+        dirs.append(default)
+    dirs.extend(_auto_landing_dirs(root))
+    return dirs
 
 
 def chk_landing_compare(root: str, ms):
@@ -2203,7 +2230,7 @@ def chk_landing_compare(root: str, ms):
     rl = _load_rolelib(root)
     if rl is None:
         return "skip", "没有 scripts/rolelib.py（角色层未接入）"
-    dirs = _landing_dirs()
+    dirs = _landing_dirs(root)
     if not dirs:
         return "skip", "未配置落点目录（KAI_LANDING_DIRS 或 ~/OpenBot/Agents），跳过"
     try:
@@ -2217,66 +2244,89 @@ def chk_landing_compare(root: str, ms):
         except Exception:
             continue
 
-    fp_re = re.compile(r"<!--\s*kai-role\s+(.*?)\s*-->")
     checked = 0
     skipped = 0
     bad = []
+    # 形态计数（detail 分开报数，不合并成糊数）
+    opened = 0
+    opened_skipped = 0
+    flat_checked = 0
+    flat_skipped = 0
     for base in dirs:
         if not os.path.isdir(base):
             continue
         for name in sorted(os.listdir(base)):
             sub = os.path.join(base, name)
             agents_md = os.path.join(sub, "AGENTS.md")
-            if not os.path.isfile(agents_md):
+            if os.path.isfile(agents_md):
+                opened += 1
+                _compare_file(base, name, agents_md, checked, skipped, bad, opened_skipped, canon, skins, rl)
                 continue
-            try:
-                with open(agents_md, encoding="utf-8") as fh:
-                    text = fh.read()
-            except OSError as e:
-                bad.append(f"{name}/AGENTS.md 读不出来：{e}")
-                continue
-            m = fp_re.search(text)
-            if not m:
-                skipped += 1
-                continue
-            fields = dict(
-                (kv.split("=", 1)[0].strip(), kv.split("=", 1)[1].strip())
-                for kv in m.group(1).split()
-                if "=" in kv
-            )
-            rid = fields.get("role_id")
-            skin = fields.get("skin")
-            c = canon.get(rid)
-            if c is None:
-                bad.append(f"{name}/AGENTS.md：指纹里的 role_id={rid!r} 不在正本里")
-                continue
-            sk = skins.get(skin)
-            if sk is None:
-                bad.append(f"{name}/AGENTS.md：指纹里的 skin={skin!r} 不是已知皮肤")
-                continue
-            entry = (sk.get("roles") or {}).get(rid)
-            if entry is None:
-                bad.append(f"{name}/AGENTS.md：皮肤 {skin} 里没有角色 {rid}")
-                continue
-            expected = {
-                "canon_version": c["meta"].get("canon_version", ""),
-                "canon_sha256": rl.sha256_normalized(c["raw"]),
-                "skin_version": str(sk.get("skin_version", "")),
-                "skin_sha256": rl.entry_sha256(entry),
-            }
-            checked += 1
-            for key, want in expected.items():
-                got = fields.get(key, "")
-                if got != want:
-                    bad.append(
-                        f"{name}/AGENTS.md：{rid} 的 {key} 落点值 {got[:12]} ≠ 现渲值 {want[:12]}"
-                    )
+            md_flat = os.path.join(base, name)
+            if name.endswith(".md") and os.path.isfile(md_flat):
+                flat_checked += 1
+                _compare_file(base, name, md_flat, checked, skipped, bad, flat_skipped, canon, skins, rl)
     if bad:
         tail = f"（共 {len(bad)} 处）" if len(bad) > 6 else ""
         return "fail", "落点与现渲不一致：" + "；".join(bad[:6]) + tail
-    if not checked and not skipped:
-        return "ok", "落点目录下无角色提示词"
-    return "ok", f"{checked} 份落点与现渲一致（含 {skipped} 份无指纹跳过）"
+    detail = (
+        f"{opened} 份 OpenBot 落点（子目录 AGENTS.md，无指纹跳过 {opened_skipped} 份）＋ "
+        f"{flat_checked} 份宿主平铺落点一致（无指纹跳过 {flat_skipped} 份），"
+        + ("（含自发现项目落点）" if _auto_landing_dirs(root) else "")
+    )
+    return "ok", detail
+
+
+def _compare_file(base: str, name: str, path: str, checked: int, skipped: int, bad: list,
+                  skip_skipped: int, canon: dict, skins: dict, rl):
+    """两类宿主形态共用同一段指纹比对：读文件 → 取指纹 → 五项比对 → 计数。
+
+    ``skip_skipped`` 是本形态的无指纹跳过计数，回传调用方做分形态 detail 报数。
+    """
+    try:
+        with open(path, encoding="utf-8") as fh:
+            text = fh.read()
+    except OSError as e:
+        bad.append(f"{name}/{path} 读不出来：{e}")
+        return
+    m = KAI_ROLE_FP_RE.search(text)
+    if not m:
+        skip_skipped += 1
+        return
+    fields = dict(
+        (kv.split("=", 1)[0].strip(), kv.split("=", 1)[1].strip())
+        for kv in m.group(1).split()
+        if "=" in kv
+    )
+    rid = fields.get("role_id")
+    skin = fields.get("skin")
+    c = canon.get(rid)
+    if c is None:
+        bad.append(f"{rid} 落点（{os.path.basename(path)}）：指纹里的 role_id={rid!r} 不在正本里")
+        return
+    sk = skins.get(skin)
+    if sk is None:
+        bad.append(f"{rid} 落点（{os.path.basename(path)}）：指纹里的 skin={skin!r} 不是已知皮肤")
+        return
+    entry = (sk.get("roles") or {}).get(rid)
+    if entry is None:
+        bad.append(f"{rid} 落点（{os.path.basename(path)}）：皮肤 {skin} 里没有角色 {rid}")
+        return
+    expected = {
+        "canon_version": c["meta"].get("canon_version", ""),
+        "canon_sha256": rl.sha256_normalized(c["raw"]),
+        "skin_version": str(sk.get("skin_version", "")),
+        "skin_sha256": rl.entry_sha256(entry),
+    }
+    checked += 1
+    for key, want in expected.items():
+        got = fields.get(key, "")
+        if got != want:
+            where = f"{name}/{os.path.basename(path)}"
+            bad.append(
+                f"{where}：{rid} 的 {key} 落点值 {got[:12]} ≠ 现渲值 {want[:12]}"
+            )
+    return checked
 
 
 def chk_slot_binding(root: str, ms):

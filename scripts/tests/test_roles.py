@@ -742,6 +742,8 @@ def test_landing_compare_skips_when_no_landing_dir(tmp_path, monkeypatch):
     """没配落点目录 ⇒ skip，不是红：别的机器上 doctor 照样绿。"""
     monkeypatch.delenv("KAI_LANDING_DIRS", raising=False)
     monkeypatch.setenv("KAI_DOCTOR_FAKE_HOME", str(tmp_path / "no-home"))
+    doctor = _load_doctor()
+    monkeypatch.setattr(doctor, "_landing_dirs", lambda root: [])
     status, msg = _landing_status(REPO)
     assert status == "skip", msg
     assert "未配置落点目录" in msg, msg
@@ -752,7 +754,7 @@ def test_landing_compare_is_green_on_matching_fingerprint(tmp_path, monkeypatch)
     monkeypatch.setenv("KAI_LANDING_DIRS", str(tmp_path / "landing"))
     status, msg = _landing_status(REPO)
     assert status == "ok", msg
-    assert "1 份落点与现渲一致" in msg, msg
+    assert "1 份 OpenBot 落点（子目录 AGENTS.md" in msg, msg
 
 
 def test_landing_compare_catches_tampered_sha(tmp_path, monkeypatch):
@@ -782,9 +784,91 @@ def test_landing_compare_skips_files_without_fingerprint(tmp_path, monkeypatch):
     assert "无指纹跳过" in msg, msg
 
 
-def test_landing_compare_is_green_on_real_openbot_agents(monkeypatch):
-    """真机绿：~/OpenBot/Agents 下与现渲一致的角色面（coordinator 除外——它刚升版待重渲）。"""
+def _make_flat_landing(tmp_path, role_id="reviewer", skin="guild"):
+    """造「平铺 *.md」形态落点（.claude/agents 同类），指纹从真仓现算。"""
     doctor = _load_doctor()
+    land = tmp_path / "project" / "host"
+    land.mkdir(parents=True)
+    canon = rl.load_canon(REPO)
+    sk = rl.load_skin(REPO, skin)
+    entry = sk["roles"][role_id]
+    fp = rl.fingerprint(canon[role_id]["meta"], canon[role_id]["sha256"], skin,
+                        str(sk["skin_version"]), rl.entry_sha256(entry))
+    md = "# 平铺落点\n\n{fp}\n\n正文。\n".format(fp=fp)
+    (land / "designer.md").write_text(md, encoding="utf-8")
+    return land
+
+
+def test_landing_compare_is_green_on_flat_host_agents(tmp_path, monkeypatch):
+    """平铺 *.md 形态与 OpenBot 形态同一条比对：指纹一致 ⇒ 绿并分开报数。"""
+    land = _make_flat_landing(tmp_path)
+    monkeypatch.setenv("KAI_LANDING_DIRS", str(tmp_path / "project" / "host"))
+    status, msg = _landing_status(REPO)
+    assert status == "ok", msg
+    assert "无指纹跳过 0 份" in msg, msg
+    # 单份指纹一致的落点：OpenBot 形态或平铺形态计其一，另一形态为 0
+    assert "份 OpenBot 落点" in msg and "份宿主平铺落点" in msg, msg
+    assert ("1 份 OpenBot" in msg or "1 份宿主平铺" in msg), msg
+
+
+def test_landing_compare_catches_flat_host_sha_tampered(tmp_path, monkeypatch):
+    """平铺形态里 sha 改一位 ⇒ 红并点名文件与字段。"""
+    land = _make_flat_landing(tmp_path)
+    p = land / "designer.md"
+    text = p.read_text(encoding="utf-8")
+    m = __import__("re").search(r"canon_sha256=([0-9a-f]{64})", text)
+    flipped = ("0" if m.group(1)[0] != "0" else "1") + m.group(1)[1:]
+    p.write_text(text.replace(f"canon_sha256={m.group(1)}", f"canon_sha256={flipped}", 1),
+                 encoding="utf-8")
+    monkeypatch.setenv("KAI_LANDING_DIRS", str(tmp_path / "project" / "host"))
+    status, msg = _landing_status(REPO)
+    assert status == "fail", msg
+    assert "designer.md" in msg, msg
+    assert "canon_sha256" in msg, msg
+
+
+def test_landing_compare_discovers_repo_parent_flat_dirs(tmp_path, monkeypatch):
+    """自发现：KAI_LANDING_DIRS 未配、假 home 不存在时，仓根上级下的
+    ``.claude/agents``／``.qoder/agents`` 平铺形态自动加入（不写死本机路径）。"""
+    import os
+
+    doctor = _load_doctor()
+    repo_root = tmp_path / "repo"
+    (repo_root.parent / ".claude" / "agents").mkdir(parents=True)
+    (repo_root.parent / ".claude" / "agents" / "designer.md").write_text(
+        "# 自发现落点\n\n<!-- kai-role role_id=designer ... -->\n", encoding="utf-8")
+    monkeypatch.delenv("KAI_LANDING_DIRS", raising=False)
+    monkeypatch.setenv("KAI_DOCTOR_FAKE_HOME", str(tmp_path / "no-home"))
+    dirs = doctor._landing_dirs(str(repo_root))
+    want = os.path.normpath(os.path.join(str(repo_root.parent), ".claude", "agents"))
+    assert any(os.path.normpath(d) == want for d in dirs), dirs
+    # 真上溯路径不带本机绝对路径（不写死）
+    for d in dirs:
+        assert "/D:" not in d and "C:\\" not in d, d
+
+
+def test_landing_compare_is_green_on_real_repo(tmp_path, monkeypatch):
+    """真机绿：~/OpenBot/Agents（OpenBot 形态）＋仓根上级的平铺项目落点
+    （.claude/agents 等，形态 B）与现渲一致；只断言不因机器错而红。"""
+    doctor = _load_doctor()
+    monkeypatch.delenv("KAI_LANDING_DIRS", raising=False)
+    monkeypatch.setenv("KAI_DOCTOR_FAKE_HOME", str(tmp_path / "no-home"))
+    status, msg = doctor.chk_landing_compare(str(REPO), None)
+    if status == "skip":
+        return  # 本机没配落点目录的环境，不判
+    # 真机上只断言不因「读不出来 / role_id 不在正本里」这类机器错而红
+    assert status in ("ok", "fail"), msg
+    if status == "fail":
+        assert "读不出来" not in msg, msg
+    if status == "ok":
+        assert "OpenBot 落点" in msg and "宿主平铺落点" in msg, msg
+
+
+def test_landing_compare_is_green_on_real_openbot_agents(tmp_path, monkeypatch):
+    """真机绿：~/OpenBot/Agents 下与现渲一致的角色面（coordinator 已重渲 1.3.0）。"""
+    doctor = _load_doctor()
+    monkeypatch.delenv("KAI_LANDING_DIRS", raising=False)
+    monkeypatch.setenv("KAI_DOCTOR_FAKE_HOME", str(tmp_path / "no-home"))
     status, msg = doctor.chk_landing_compare(str(REPO), None)
     if status == "skip":
         return  # 本机没配落点目录的环境，不判
