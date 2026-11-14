@@ -80,12 +80,15 @@ compatibility: Host-agnostic; host must be able to spawn subagents
 
 ## 任务卡与审查卡
 
-`fleet claim` 输出：`task_id`、`brief`、`worktree`、`touchset`、`ac`、`report_path`、`diff_base`。
+`fleet claim` 输出：`task_id`、`brief`、`worktree`、`touchset`、`ac`（可机检条件）、
+`expected_output`（可选；交付物形状／位置／证据形态）、`report_path`、`diff_base`。
+旧卡缺 `expected_output` 不报错，按缺省处理。
 
 - 子代理必须在 `worktree` 里工作，只改 `touchset` 范围内的文件。
 - 完成后把报告写到 `report_path`，形状见下方报告契约。
 
-`fleet review` 输出：`task_id`、`worktree`、`diff_base`、`changed_files`、`ac`、`touchset`、
+`fleet review` 输出：`task_id`、`worktree`、`diff_base`、`changed_files`、`ac`、
+`expected_output`（可选；有则一并对照）、`touchset`、
 `review_report_path`、`read_only`。
 
 - 必须用**只读**子代理；读实际 diff，对照 AC，输出
@@ -135,7 +138,8 @@ Agent **不写执行状态**：开工／结束／阻塞只引用内核事件（`
 ```json
 {"tasks": [
   {"id": "t1", "title": "短名", "brief": "自包含任务书", "tier": "light|medium|careful|heavy|fable",
-   "deps": ["t0"], "touchset": ["src/x/**"], "ac": ["可核的完成定义"], "ui": false}
+   "deps": ["t0"], "touchset": ["src/x/**"], "ac": ["可核的完成定义"],
+   "expected_output": "（可选）交付物形状／位置／证据形态", "ui": false}
 ]}
 ```
 
