@@ -151,6 +151,16 @@ def install_task(repo_root: str, cfg_path: str, board_name: str, interval: int,
     # 无 token：/ru 用当前用户、/rp 不写（schtasks 默认 interactive，不存密码）；
     # 代价＝登出/关机时不刷。
     action = bat_path or ""
+    # #25：schtasks 只存在于 Windows。CI（ubuntu-latest）跑 --apply 的回归测例时
+    # 直接 subprocess.run 会抛 FileNotFoundError，把整次安装打断在定时任务这一步，
+    # 后面的 vbs/入口也跟着不落——这是 skill-tests 门里唯一那条红的根因。
+    # 非 Windows 上定时任务本就无意义：钩子＋手工刷新照常可用，按「缺件降级」
+    # 走同一条告警口径，不阻断安装（Windows 行为一字不改）。
+    if apply and shutil.which("schtasks") is None:
+        print(f"  ⚠ 定时任务 {task} 跳过：本机没有 schtasks（非 Windows）。"
+              f"钩子与手动刷新仍可用；周期刷新请在 Windows 上重跑本命令。",
+              file=sys.stderr)
+        return 0
     create = [
         "schtasks", "/Create", "/TN", task, "/TR", f'"{action}"',
         "/SC", "MINUTE", "/MO", str(interval),
@@ -233,9 +243,13 @@ def main() -> int:
     else:
         t = SCHTASK_PREFIX + task_name
         if a.apply:
-            r = subprocess.run(["schtasks", "/Delete", "/TN", t, "/F"],
-                               capture_output=True, text=True, check=False)
-            print(f"  定时任务 {t}：{'已删除' if r.returncode == 0 else '删除失败'}")
+            if shutil.which("schtasks") is None:
+                # #25：同安装腿，缺件降级；非 Windows 没有任务可删，钩子停用照常完成。
+                print(f"  ⚠ 定时任务 {t} 跳过删除：本机没有 schtasks（非 Windows）")
+            else:
+                r = subprocess.run(["schtasks", "/Delete", "/TN", t, "/F"],
+                                   capture_output=True, text=True, check=False)
+                print(f"  定时任务 {t}：{'已删除' if r.returncode == 0 else '删除失败'}")
         else:
             print(f"  定时任务 {t}：[干跑] 会删除")
     if not a.apply:

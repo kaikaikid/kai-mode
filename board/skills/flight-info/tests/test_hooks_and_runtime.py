@@ -141,6 +141,34 @@ class TestNoBlackWindow(unittest.TestCase):
         rc, out = run("install_auto.py", "--repo-root", repo, "--config", cfg)
         self.assertIn("30", out)
 
+    def test_apply_without_schtasks_still_installs_entries(self):
+        """#25：CI（Linux）没有 schtasks —— 不许因 FileNotFoundError 打断整次安装。
+
+        用 patch 把 which 固定成 None，Windows 本机也能复现 CI 那条红；
+        断言退出码 0、定时任务降级告警、后续 bat/vbs/refresh.vbs 仍在。
+        """
+        from unittest import mock
+
+        repo, cfg = make_repo()
+        script = os.path.join(SCRIPTS, "install_auto.py")
+        argv = [script, "--repo-root", repo, "--config", cfg, "--apply"]
+        with mock.patch("shutil.which", return_value=None):
+            # 子进程内 patch 不到，改用同一解释器 -c 包一层（仍走真实 main）
+            code = (
+                "import shutil,sys; shutil.which=lambda *a,**k: None;"
+                "from importlib.machinery import SourceFileLoader;"
+                f"m=SourceFileLoader('install_auto',{script!r}).load_module();"
+                "sys.argv=['install_auto.py']+" + repr(argv[1:]) + ";"
+                "raise SystemExit(m.main())"
+            )
+            p = subprocess.run([sys.executable, "-c", code], capture_output=True,
+                               text=True, encoding="utf-8", errors="replace")
+        self.assertEqual(p.returncode, 0, (p.stdout or "") + (p.stderr or ""))
+        self.assertIn("没有 schtasks", (p.stdout or "") + (p.stderr or ""))
+        board = os.path.join(repo, "boards", "flight")
+        for name in ("refresh_task.bat", "refresh_tick.vbs", "refresh.vbs"):
+            self.assertTrue(os.path.isfile(os.path.join(board, name)), name)
+
 
 class TestRuntimeRetention(unittest.TestCase):
     def test_runtime_keeps_only_recent_runs(self):
