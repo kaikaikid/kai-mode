@@ -6,7 +6,7 @@ approved: 2026-11-14
 sources: []
 description: >
   只在「新建 React 19+ 界面／原型／内部工具」或「项目已依赖 @astryxdesign/*」时使用本地 Astryx 设计系统；
-  不接 Vue、不改造既有 Kai-vass 页面、不做全局安装。触发：新建 React 页面、React 原型、内部工具页面、Astryx 组件库、astryx 设计系统、找设计组件、新前端页面、用组件库搭页面。
+  不接 Vue、不改造既有 Kai-vass 页面、不做全局安装。触发：新建 React 页面、React 原型、内部工具页面、Astryx 组件库、astryx 设计系统、找设计组件、新前端页面、用组件库搭页面、设计手册。
 version: 0.1.0
 updated: 2026-11-14
 allowed-tools: Read Grep Bash
