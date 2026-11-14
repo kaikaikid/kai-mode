@@ -39,6 +39,12 @@
       "displayName": "执行内核",
       "source": "./engine",
       "description": "一个 issue 一个 run：主会话规划与验收，宿主原生子代理执行；含自有方法件 pk；通用方法按名用宿主中央库原版。"
+    },
+    {
+      "name": "dna",
+      "displayName": "DNA 飞轮",
+      "source": "./dna",
+      "description": "视觉 DNA 阅卷的数据工程入口：一个入口七个子命令，v1 实现 validate／evaluate／reflux；只读文件＋算数＋产提案，不写正本。"
     }
   ]
 }

@@ -1,0 +1,8 @@
+{
+  "name": "dna",
+  "version": "0.1.0",
+  "description": "DNA 飞轮：视觉 DNA 阅卷的规则校验、评估验收与知识回流（v1 三子命令）。",
+  "author": {
+    "name": "kaikaikid"
+  }
+}
