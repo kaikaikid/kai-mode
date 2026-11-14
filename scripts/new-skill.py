@@ -53,7 +53,7 @@ def render(name, title, summary, source, today):
     if source:
         res, _, note = source.partition("|")
         old = ('sources:\n'
-               '  - resource: "项目配置实例 registry.adrs.dir 指向的 ADR（ADR-xxxx-<裁决名>）"\n'
+               '  - resource: "仓内相对路径或可校验的权威文档"\n'
                '    note: "裁决来源：这份技能凭什么这么定；落点读项目配置实例（ADR-0004 D2），读不到实例 ⇒ 按 D4 报缺件"')
         text = text.replace(old, f'sources:\n  - resource: "{res.strip()}"\n    note: "{note.strip() or "裁决来源"}"')
     else:
