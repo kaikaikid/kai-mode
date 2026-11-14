@@ -30,6 +30,13 @@
         "青铜龙": "0.3.0"
       }
     },
+    "dna": {
+      "version": "0.1.0",
+      "digest": "67d60b4d0dc1314560eed06e8d5e1c533c11ec242664daf89329b3de3962da96",
+      "skills": {
+        "dna-flywheel": "0.1.0"
+      }
+    },
     "engine": {
       "version": "0.6.0",
       "digest": "2113eae1441abb23316e810961c9b6fadeb6d6b99cbd8f4ead31a6f42df293ae",
