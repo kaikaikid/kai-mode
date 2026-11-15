@@ -30,8 +30,8 @@ metadata:
 
 | 子命令 | v1 | 作用 |
 |---|---|---|
-| `validate` | ✅ | 候选记录 × 本体 × 契约 → 通过／警告／阻断（`V-*` 编号） |
-| `evaluate` | ✅ | 人工基准 × AI 结果 → P/R/F1（Macro/Micro）＋ 问题清单 |
+| `validate` | ✅ | 候选记录 × 本体 × 契约（顶层 `alleles[]` 与 2.0 嵌套 `visual_dna.loci.*.values[].allele_id` 都读）→ 通过／警告／阻断（`V-*` 编号）；single cardinality 超限给 `V-006` warning |
+| `evaluate` | ✅ | 人工基准 × AI 结果 → P/R/F1（Macro/Micro）＋ 问题清单；`--round-file` 时补按子字段 tp/fp/fn、命中率与 verdict 分账 |
 | `reflux` | ✅ | 已确认问题 × 审批结果 → 08.2／08.3 变更提案（只打印，不落正本） |
 | `collect` / `ingest` / `annotate` / `review-assist` | 桩 | 依赖未建成服务，调用即回「未实现」并以非零退出 |
 
@@ -42,9 +42,14 @@ metadata:
 python dna/skills/dna-flywheel/scripts/dna_flywheel.py validate \
   --records records.json --ontology ontology.json [--retired technique-005]
 
-# 评估验收
+# 评估验收（旧 --gold/--pred 行为不变）
 python dna/skills/dna-flywheel/scripts/dna_flywheel.py evaluate \
   --gold gold.json --pred pred.json
+
+# 逐轮交换文件（契约唯一家：Shared/kai-team/dna-audit/round-exchange-contract.md）
+# 自动派生 gold=human 侧、pred=ai 侧；human_allele_id=null 是显式留空样本，不丢弃。
+python dna/skills/dna-flywheel/scripts/dna_flywheel.py evaluate evaluate \
+  --round-file round-001.json
 
 # 知识回流（默认只打印提案；--out 才写文件，且不写正本目录）
 python dna/skills/dna-flywheel/scripts/dna_flywheel.py reflux \
