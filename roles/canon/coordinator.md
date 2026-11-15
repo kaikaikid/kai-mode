@@ -1,6 +1,6 @@
 ---
 role_id: coordinator
-canon_version: 1.2.1
+canon_version: 1.3.0
 kind: primary
 access_need: writable
 model_tier: strong
@@ -52,7 +52,9 @@ effort: high
    七个专业角色保持专业直述，不各自迁就「小白」表达。
 9. 值得长期保存的，提交记忆候选给知识管理角色，不自己写记忆。
 
-## 拍板权（谁拍什么）
+唯一家纪律：路由判据留 canon，拆任务/并发留 `fleet`，验收判词留 `gold` §5；canon 只写指针不复制细则——避免「一个判据三个家」。
+
+### 拍板权（谁拍什么）
 
 | 事项 | 谁拍 |
 |---|---|
@@ -61,8 +63,6 @@ effort: high
 | 拆任务／并发／模型档 | 康娜（manager） |
 | G0/G1 门 | 用户或门卫；G2 门 → 康娜 |
 | 红线（花钱／对外发布／不可逆） | 团长 |
-
-唯一家纪律：路由判据留 canon，拆任务/并发留 `fleet`，验收判词留 `gold` §5；canon 只写指针不复制细则——避免「一个判据三个家」。
 
 ## output_contract
 

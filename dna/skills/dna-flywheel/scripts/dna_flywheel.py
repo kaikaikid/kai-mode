@@ -118,22 +118,79 @@ def _human_summary(payload: dict[str, Any]) -> None:
 # ── 本体索引 ────────────────────────────────────────────────────────
 
 
-def _ontology_index(onto: dict[str, Any]) -> tuple[dict[str, dict], set[str]]:
-    """返回 (allele_id → 元数据, 结果标签 id 集)。"""
+def _ontology_index(
+    onto: dict[str, Any],
+) -> tuple[dict[str, dict], set[str], dict[tuple[str, str], str]]:
+    """返回 (allele_id → 元数据, 结果标签 id 集, (locus,subfield) → cardinality)。"""
     alleles: dict[str, dict] = {}
+    cardinality: dict[tuple[str, str], str] = {}
     for locus in onto.get("loci") or []:
+        lid = str(locus.get("id"))
+        for sf in locus.get("subfields") or []:
+            if sf.get("key") and sf.get("cardinality"):
+                cardinality[(lid, str(sf["key"]))] = str(sf["cardinality"])
         for a in locus.get("alleles") or []:
             alleles[str(a.get("id"))] = {
                 "status": str(a.get("status") or "active"),
-                "locus": str(locus.get("id")),
-                "subfield_key": str(a.get("subfield_key") or locus.get("id")),
+                "locus": lid,
+                "subfield_key": str(a.get("subfield_key") or lid),
             }
     labels = {
         str(x.get("id"))
         for x in (onto.get("result_labels") or [])
         if isinstance(x, dict) and x.get("id")
     }
-    return alleles, labels
+    return alleles, labels, cardinality
+
+
+def _record_refs(rec: dict[str, Any]) -> tuple[list[Any], dict[tuple[str, str], int]]:
+    """抽 allele 引用；兼容顶层 alleles[] 与 2.0 嵌套
+    ``visual_dna.loci.*.values[].allele_id``。返回 (refs, 每 (locus,subfield) 值数)。
+
+    嵌套值展开成旧式 ``{"allele_id","subfield","locus"}``，V-001/V-003/V-004 判据原样复用。
+    """
+    refs: list[Any] = list(rec.get("alleles") or [])
+    counts: dict[tuple[str, str], int] = {}
+    visual = rec.get("visual_dna") or {}
+    loci = visual.get("loci") or {}
+    blocks = loci.values() if isinstance(loci, dict) else loci
+    for locus_block in blocks:
+        if not isinstance(locus_block, dict):
+            continue
+        locus = str(locus_block.get("id") or locus_block.get("locus_key") or "")
+        for value in locus_block.get("values") or []:
+            if not isinstance(value, dict):
+                refs.append(str(value))
+                continue
+            subfield = str(value.get("subfield_key") or value.get("subfield") or locus)
+            refs.append({
+                "allele_id": value.get("allele_id"),
+                "subfield": subfield,
+                "locus": locus,
+            })
+            counts[(locus, subfield)] = counts.get((locus, subfield), 0) + 1
+    return refs, counts
+
+
+def _cardinality_warnings(
+    counts: dict[tuple[str, str], int],
+    cardinality: dict[tuple[str, str], str],
+    asset_id: str | None,
+) -> list[dict]:
+    """同一 (locus,subfield) 值数超过本体 cardinality 允许值时提示；读不到就不报。
+
+    只认 single=1；multi/role_based 没有统一上限，不猜测阈值。
+    """
+    out = []
+    for (locus, subfield), n in sorted(counts.items()):
+        if cardinality.get((locus, subfield)) == "single" and n > 1:
+            out.append(_finding(
+                "V-006", "warn",
+                f"{locus}/{subfield} cardinality=single，但出现 {n} 个值",
+                f"03.1#{locus}/{subfield}#cardinality",
+                asset_id, subfield,
+            ))
+    return out
 
 
 # ── validate ────────────────────────────────────────────────────────
@@ -146,7 +203,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
         records = records.get("records") or records.get("items") or []
     retired_extra = {str(x) for x in (args.retired or [])}
 
-    alleles, result_labels = _ontology_index(onto)
+    alleles, result_labels, cardinality = _ontology_index(onto)
     inputs = {
         "ontology_version": (onto.get("meta") or {}).get("ontology_version", "n/a"),
         "record_schema_version": args.record_schema_version,
@@ -167,7 +224,9 @@ def cmd_validate(args: argparse.Namespace) -> int:
                     "08.2#asset_id",
                 )
             )
-        for ref in rec.get("alleles") or []:
+        refs, counts = _record_refs(rec)
+        rec_findings.extend(_cardinality_warnings(counts, cardinality, asset_id))
+        for ref in refs:
             aid = str(ref.get("allele_id") or ref)
             subfield = ref.get("subfield") if isinstance(ref, dict) else None
             meta = alleles.get(aid)
@@ -244,13 +303,40 @@ def _prf(tp: int, fp: int, fn: int) -> tuple[float, float, float]:
     return p, r, f
 
 
+def _round_records(path: str) -> tuple[list[dict], list[dict], list[dict]]:
+    """按 round-exchange 契约派生 (gold, pred, 原始 records)。
+
+    human 侧 null 是人工显式留空样本（仍产出 gold 记录，alleles=[]），
+    ai 侧 null 是没有候选（仍产出 pred 记录，alleles=[]）；不改写任何一侧。
+    """
+    payload = _load(path)
+    if not isinstance(payload, dict) or not isinstance(payload.get("records"), list):
+        raise ValueError("round-file 必须是 {round_id,locus_key,records[]} 形状")
+    records = payload["records"]
+    gold, pred = [], []
+    for r in records:
+        asset_id = str(r.get("asset_id"))
+        human = r.get("human_allele_id")
+        ai = r.get("ai_allele_id")
+        gold.append({"asset_id": asset_id, "alleles": [human] if human else []})
+        pred.append({"asset_id": asset_id, "alleles": [ai] if ai else []})
+    return gold, pred, records
+
+
 def cmd_evaluate(args: argparse.Namespace) -> int:
-    gold = _load(args.gold)
-    pred = _load(args.pred)
-    if isinstance(gold, dict):
-        gold = gold.get("records") or gold.get("items") or []
-    if isinstance(pred, dict):
-        pred = pred.get("records") or pred.get("items") or []
+    if args.round_file:
+        gold, pred, round_records = _round_records(args.round_file)
+        if not getattr(args, "round_id", None) or args.round_id == "round-001":
+            round_payload = _load(args.round_file)
+            args.round_id = round_payload.get("round_id") or args.round_id
+    else:
+        gold = _load(args.gold)
+        pred = _load(args.pred)
+        round_records = []
+        if isinstance(gold, dict):
+            gold = gold.get("records") or gold.get("items") or []
+        if isinstance(pred, dict):
+            pred = pred.get("records") or pred.get("items") or []
 
     out = _envelope("evaluate", {"round_id": args.round_id})
 
@@ -291,17 +377,50 @@ def cmd_evaluate(args: argparse.Namespace) -> int:
     macros = [_prf(x["tp"], x["fp"], x["fn"]) for x in per_asset]
     macro = tuple(sum(m[i] for m in macros) / len(macros) for i in range(3))
 
+    # 按子字段分账：旧 --gold/--pred 路径无 round_records ⇒ by_subfield 为空 dict，
+    # 其余输出形状逐字不变；--round-file 路径按契约补 tp/fp/fn、命中率与 verdict 分账。
+    by_subfield: dict[str, dict] = {}
+    if round_records:
+        subfields = {str(r.get("subfield_key") or "-") for r in round_records}
+        for sf in sorted(subfields):
+            by_subfield[sf] = {
+                "tp": 0, "fp": 0, "fn": 0, "hit_rate": 0.0,
+                "confirmed": 0, "rejected": 0, "rejected_with_replacement": 0,
+                "samples": 0,
+            }
+        for r in round_records:
+            aid = str(r.get("asset_id"))
+            sf = str(r.get("subfield_key") or "-")
+            bucket = by_subfield[sf]
+            bucket["samples"] += 1
+            bucket["tp"] += len(gmap[aid] & pmap[aid])
+            bucket["fp"] += len(pmap[aid] - gmap[aid])
+            bucket["fn"] += len(gmap[aid] - pmap[aid])
+            verdict = r.get("verdict")
+            if verdict == "confirmed":
+                bucket["confirmed"] += 1
+            elif verdict == "rejected":
+                bucket["rejected"] += 1
+                if r.get("replaced_by_allele_id"):
+                    bucket["rejected_with_replacement"] += 1
+        for bucket in by_subfield.values():
+            denom = bucket["tp"] + bucket["fp"] + bucket["fn"]
+            bucket["hit_rate"] = _r(bucket["tp"] / denom) if denom else 0.0
+
+    metrics = {
+        "micro": dict(zip(("precision", "recall", "f1"), map(_r, micro))),
+        "macro": dict(zip(("precision", "recall", "f1"), map(_r, macro))),
+        "tp": tp,
+        "fp": fp,
+        "fn": fn,
+        "samples": len(gmap),
+    }
+    if round_records:
+        metrics["by_subfield"] = by_subfield
     out["artifacts"].append(
         {
             "kind": "evaluation",
-            "metrics": {
-                "micro": dict(zip(("precision", "recall", "f1"), map(_r, micro))),
-                "macro": dict(zip(("precision", "recall", "f1"), map(_r, macro))),
-                "tp": tp,
-                "fp": fp,
-                "fn": fn,
-                "samples": len(gmap),
-            },
+            "metrics": metrics,
             "per_asset": per_asset,
         }
     )
@@ -421,8 +540,10 @@ def main(argv: list[str] | None = None) -> int:
 
     e = sub.add_parser("evaluate")
     common(e)
-    e.add_argument("--gold", required=True)
-    e.add_argument("--pred", required=True)
+    e.add_argument("--gold")
+    e.add_argument("--pred")
+    e.add_argument("--round-file", default=None,
+                   help="round-exchange 契约 JSON；给定时自动派生 gold/pred，无需 --gold/--pred")
     e.set_defaults(func=cmd_evaluate)
 
     r = sub.add_parser("reflux")
@@ -436,6 +557,13 @@ def main(argv: list[str] | None = None) -> int:
         s.set_defaults(func=None, stub=name)
 
     args = p.parse_args(argv)
+    if args.stage == "evaluate":
+        if args.round_file and (args.gold or args.pred):
+            print("[evaluate] --round-file 与 --gold/--pred 互斥", file=sys.stderr)
+            return 2
+        if not args.round_file and not (args.gold and args.pred):
+            print("[evaluate] 需要 --gold 与 --pred，或 --round-file", file=sys.stderr)
+            return 2
 
     if getattr(args, "func", None) is None:
         print(
