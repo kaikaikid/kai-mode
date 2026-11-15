@@ -11,7 +11,7 @@
     },
     "core": {
       "version": "1.4.0",
-      "digest": "2bc455cc74b81d7dd12bf8f5441a797e64af4cb482677db0f7135a2e4650a31d",
+      "digest": "6487145f8a9946d67c87240592a45a21fef2ad1f530dd68f2a7b47894cae0169",
       "skills": {
         "gold": "0.9.0",
         "harness-audit": "0.2.1",
@@ -21,6 +21,7 @@
         "set-kai-mode": "7.0.0",
         "staff": "4.2.0",
         "upgrade-kai-mode": "0.2.1",
+        "书记官": "1.0.0",
         "卓尔游侠": "0.3.0",
         "圣骑士": "0.3.0",
         "德鲁伊": "0.3.0",
