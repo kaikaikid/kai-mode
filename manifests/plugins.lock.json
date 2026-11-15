@@ -32,7 +32,7 @@
     },
     "dna": {
       "version": "0.1.0",
-      "digest": "67d60b4d0dc1314560eed06e8d5e1c533c11ec242664daf89329b3de3962da96",
+      "digest": "f8a70f2572c853c268e5adc0b32e49c81e303653ded7e4d1e25c54e147da8783",
       "skills": {
         "dna-flywheel": "0.1.0"
       }

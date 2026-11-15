@@ -57,8 +57,20 @@
 | `V-003` | block | 引用了 **retired** `allele_id` |
 | `V-004` | block | 记录缺 `asset_id`（违反「只存 asset_id 引用」） |
 | `V-005` | warn | 记录引用了结果标签（`result_labels`）当基因位 |
+| `V-006` | warn | 同一 (locus,subfield) 的值数超过本体 `cardinality=single`；读不到 cardinality 不报 |
 | `E-001` | warn | 评估样本数为 0，指标不可算 |
 | `E-002` | block | gold 与 pred 的样本键集不一致 |
 | `R-001` | warn | 回流提案缺审批人，按「待批」输出 |
 
 新增编号只追加、不复用旧号。
+
+## evaluate --round-file 新增指标
+
+`--round-file` 读 `Shared/kai-team/dna-audit/round-exchange-contract.md` 的中间格式，
+gold=human 侧、pred=ai 侧；集合级 `micro`／`macro`／`tp`／`fp`／`fn`／`samples` 不变。
+`artifacts[0].metrics.by_subfield` 按 `subfield_key` 给
+`tp / fp / fn / hit_rate / confirmed / rejected / rejected_with_replacement / samples`；
+`verdict=confirmed|rejected` 只进分账，不改写 gold/pred。没有 `--round-file` 时旧输出形状逐字不变。
+
+`stage` 枚举不变；`V-001`／`V-003`／`V-004` 三类判据不变；
+`validate` 同时兼容顶层 `alleles[]` 与 2.0 嵌套 `visual_dna.loci.*.values[].allele_id`。
