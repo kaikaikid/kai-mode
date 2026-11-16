@@ -2,6 +2,17 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 0.43.0 — 2026-11-16
+
+- **调度层补齐（coordinator 1.3.0）**：分诊只定档位／主责／风险／预算，拆任务与并发归 `fleet`；新增「拍板权」表（技术验收→审查、产品取舍→团长、拆任务／并发／模型档→康娜、G0/G1→用户或门卫 G2→康娜、红线→团长）；workflow 补中断恢复三态（会话断→`fleet resume`、子代理超时→内核标 timeout 不手改 state.json、用户改主意→只改未 claim 的 task）；`gold` 接轮首状态卡四行（现场／在制／待决／预算，只引内核读数）与派活首行自包含。
+- **任务卡双栏**：`fleet claim`／`review`／`status` 透出可选 `expected_output`（交付物形状／位置／证据形态），与 `ac`（可机检条件）并列；缺省空串、旧任务行为不变；`docs/schema.md` 记字段。
+- **角色正本契约加固**：`rolelib.validate()` 新增「顶级标题只许 mission／boundaries／workflow／output_contract 四块」硬校验（此前靠只认小写英文名的正则，中文变体可绕过）；`doctor` 新增 `landing-compare`（落点指纹与现渲比对，覆盖 OpenBot 子目录形态与宿主平铺 `.md` 形态，支持 `KAI_LANDING_DIRS` 与仓根上级自发现）。
+- **输入契约补消息语义**（2026-11-13 已拍板未落地项）：事实／建议／决定／推测四分；「建议不等于批准，沉默不等于同意；推测不能替代决定；不得替其他角色或团长承诺、批准或扩大权限」；提交前核对任务包版本与中途指令，「已送达」≠「已处理」。
+- **终审前加设计观感走查**：`final-review` 2.3.0 视觉镜头开工前收 designer 的观感走查清单（三栏：位置／观感／建议，不含判词），审查者并入 `defects[]` 或 `unknown`，不为观感单独拍板；`design-critique` 1.1.0 补该清单模板。
+- **三角色职责调整**：researcher 1.2.0 补代码库只读探索（目录→入口→调用链→影响面，不改代码、不定架构，平台无真只读权限须标「提示词约束」）；architect 1.2.0 补 Critic 方案批评模式（须指出假设、证据缺口、失败条件、替代路径；自己是作者时不得冒充独立批评）；reviewer 1.4.0 拆三层审查（Reviewer 实现审查／Auditor 交付证据审计／Success Auditor 最终成功审计）。
+- **新增技能**：`astryx-ui`（新 React 界面才进场的 Astryx 组件库判据）；`书记官`（可莉私人书记官，手动件）；`dna` 模块与 `dna-flywheel` 技能（validate／evaluate／reflux，evaluate 接 round-file、validate 兼容 2.0 嵌套）；`flight-info` 非 Windows 缺 schtasks 时安装腿降级不中断。
+- **装机面**：7 插件／36 技能／0 红；`magpie-sync apply --include-manual` 后内容面 36 枚、落点面 8 家全绿；`doctor --with-tests` 37 项全绿。
+
 ## 0.42.0 — 2026-11-14
 
 - **武器集落地（studio 6 把新增，总数 12）**：`design-critique`／`design-handoff`／`prototype-demo`／`alt-text` 归泰兰德（canon 1.2.0），`accessibility-audit`／`security-review-desk` 归提里奥（canon 1.3.0）；`final-review` 2.2.0 加无障碍／安全两类镜头。旧 Cloudflare `security-audit` 退役归档（恢复路径见 `Shared/kai-team/archive/2026-11-13-retired-security-audit/README.md`），2026-11-05 市场卡片归档留历史对照。

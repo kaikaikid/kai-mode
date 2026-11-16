@@ -1,6 +1,6 @@
 # kai-mode —— 酒馆冒险团与执行内核
 
-> **状态：0.42.0（2026-11-14 武器集落地：studio 新增 6 把设计／安全武器（总数 12），泰兰德装 4 把、提里奥装 a11y 与安全审查，final-review 加无障碍／安全镜头；gold 接速推预检与默认决策表，速推内自动推当前工作分支；6 把武器经使用者真实冒烟后按缺陷小修模板与边界；详见 [`CHANGELOG.md`](CHANGELOG.md)）。**
+> **状态：0.43.0（2026-11-16 调度层与角色契约补齐：coordinator 1.3.0 加分权拍板表／中断恢复三态／轮首状态卡；任务卡加 `expected_output` 双栏；`rolelib` 拦顶级块越界、`doctor` 新增落点对照；输入契约补消息语义四分法；终审前加设计观感走查；researcher／architect／reviewer 三角色补只读探索／Critic／三层审计；新增 `astryx-ui`、`书记官`、`dna-flywheel`；7 插件 36 技能；详见 [`CHANGELOG.md`](CHANGELOG.md)）。**
 > `kai-mode` → `staff`；角色实例的入口必须属于当前宿主（优先原生子代理，宿主本身就是命令行工具时可用它自己的进程）；通用方法不再 fork，按名用宿主中央库原版；
 > 详见 [`CHANGELOG.md`](CHANGELOG.md) 与 [`docs/method-pointers.md`](docs/method-pointers.md)）。**
 >
