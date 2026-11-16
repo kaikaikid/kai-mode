@@ -1,0 +1,70 @@
+<!doctype html>
+<!-- 书记官 · KCard 交互卡模板。DATA 只放数据；白名单外字段忽略，不执行传入代码。
+     改 DATA 后交给 openbot.html_preview 自检（360px），通过再 openbot.html_render。
+     契约来源：Shared/kai-team/ui/card.js 与 ui/shell-inline.html（只读，不改）。 -->
+<meta charset="utf-8">
+<style>
+.kc{color:var(--foreground,#e6e6e6);font:14px/1.5 var(--font-sans,system-ui,sans-serif)}
+.kc-box{border:1px solid var(--border,#3a3a3a);border-left:3px solid var(--accent,#2f6feb);border-radius:var(--radius,12px);padding:14px;background:var(--card,transparent)}
+.kc-h{font-size:15px;font-weight:600;margin:0 0 2px}.kc-s{font-size:13px;color:var(--muted-foreground,#9a9a9a);margin:0 0 10px}
+.kc-kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0}.kc-kv dt{color:var(--muted-foreground,#9a9a9a);font-size:13px}.kc-kv dd{margin:0;word-break:break-word}
+.kc-ul{margin:2px 0;padding-left:18px}.kc-ul li{margin:2px 0;white-space:pre-wrap}
+.kc-tb{width:100%;border-collapse:collapse;font-size:13px}.kc-tb th,.kc-tb td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border,#333)}.kc-tb th{color:var(--muted-foreground,#9a9a9a);font-weight:500}
+.kc-bg{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;border:1px solid currentColor;margin:0 6px 6px 0}
+.kc-note{font-size:12px;color:var(--muted-foreground,#9a9a9a);margin:10px 0 0;word-break:break-word}
+.kc-act{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.kc-act button{font:inherit;font-size:13px;padding:6px 12px;border-radius:8px;cursor:pointer;border:1px solid var(--border,#444);background:var(--muted,#1e1e1e);color:inherit}
+.kc-act button.kc-p{background:var(--accent,#2f6feb);border-color:transparent;color:#fff}
+</style>
+<div class="kc"><div class="kc-box" id="box" role="group"></div></div>
+<script>
+// ↓ 只改这里。字段顺序固定；tone: info|ok|warn|bad。
+var DATA = {
+  title: "记录标题",
+  sub: "YYYY-MM-DD · 书记官存档",
+  tone: "info",
+  badges: ["日记"],
+  kv: [["编号", "YYYY-MM-DD-001"], ["去处", "本地"], ["心绪", "未记"]],
+  list: ["正文摘要，长文只放前几行"],
+  note: "存于 记录/YYYY/MM/…",
+  actions: [
+    {label: "看全文", message: "查 YYYY-MM-DD-001"},
+    {label: "推 GitHub", message: "把 YYYY-MM-DD-001 推到 GitHub"},
+    {label: "推飞书", message: "把 YYYY-MM-DD-001 推到飞书"},
+    {label: "推 Notion", message: "把 YYYY-MM-DD-001 推到 Notion"}
+  ]
+};
+(function () {
+  var TONE = {ok:"var(--success,#3fb950)",warn:"#f0b429",bad:"var(--destructive,#f85149)",info:"var(--accent,#2f6feb)"};
+  function el(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e;}
+  var d=DATA,box=document.getElementById("box");
+  if(d.tone&&TONE[d.tone])box.style.borderLeftColor=TONE[d.tone];
+  if(d.title){box.appendChild(el("div","kc-h",d.title));box.setAttribute("aria-label",d.title);}
+  if(d.sub)box.appendChild(el("div","kc-s",d.sub));
+  (d.badges||[]).forEach(function(b){
+    var s=el("span","kc-bg",typeof b==="string"?b:(b.text||""));
+    s.style.color="var(--muted-foreground,#9a9a9a)";box.appendChild(s);
+  });
+  if(d.kv&&d.kv.length){var dl=el("dl","kc-kv");d.kv.forEach(function(p){dl.appendChild(el("dt",null,p[0]));dl.appendChild(el("dd",null,p[1]));});box.appendChild(dl);}
+  if(d.list&&d.list.length){var ul=el("ul","kc-ul");d.list.forEach(function(i){ul.appendChild(el("li",null,i));});box.appendChild(ul);}
+  if(d.table&&d.table.head&&d.table.rows){
+    if(d.table.head.length>=4){var lu=el("ul","kc-ul");d.table.rows.forEach(function(r){lu.appendChild(el("li",null,r.map(function(c,i){return d.table.head[i]+"："+c;}).join(" · ")));});box.appendChild(lu);}
+    else{var t=el("table","kc-tb"),hd=el("thead"),tr=el("tr");d.table.head.forEach(function(h){var th=el("th",null,h);th.setAttribute("scope","col");tr.appendChild(th);});hd.appendChild(tr);t.appendChild(hd);var tb=el("tbody");d.table.rows.forEach(function(r){var rr=el("tr");r.forEach(function(c){rr.appendChild(el("td",null,String(c)));});tb.appendChild(rr);});t.appendChild(tb);box.appendChild(t);}
+  }
+  if(d.note)box.appendChild(el("div","kc-note",d.note));
+  if(d.actions&&d.actions.length){
+    var bar=el("div","kc-act");
+    d.actions.forEach(function(a){
+      var b=el("button",a.primary?"kc-p":null,a.label);b.type="button";
+      if(a.tone==="bad")b.style.color="var(--destructive,#f85149)";
+      b.onclick=function(){
+        var msg=a.message||a.label||"";
+        if(window.openbotPage&&window.openbotPage.sendMessage)openbotPage.sendMessage(msg);
+        else if(navigator.clipboard){navigator.clipboard.writeText(msg);b.textContent="已复制";}
+      };
+      bar.appendChild(b);
+    });
+    box.appendChild(bar);
+  }
+})();
+</script>
