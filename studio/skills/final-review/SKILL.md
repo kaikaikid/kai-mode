@@ -9,8 +9,8 @@ description: >
   归 提里奥·弗丁（reviewer）调用；必须新上下文，只判不修。
   四类镜头：文字／视觉／影音／跨角色协作。
   触发：`/review`，或说「终审」「审片」「验收」「过一遍」。
-version: 2.2.0
-updated: 2026-11-13
+version: 2.3.0
+updated: 2026-11-16
 allowed-tools: Read Grep
 compatibility: Host-agnostic
 metadata:
@@ -27,7 +27,7 @@ metadata:
 1. 收审查包：原始委托与验收标准、已批准方案、实际交付物、测试或导出证据。
    执行者的自述只作导航，不作证据。
 2. 逐条对验收标准，每条结论挂到可核验证据（文件位置、导出参数、来源链接）。
-3. 四类镜头各过一遍：文字／视觉／影音／跨角色协作边界；视觉镜头里的无障碍按 `accessibility-audit` 判，需要安全镜头时按 `security-review-desk` 审入口与信任边界。安全发现并入 `defects[]`，沿用 BLOCKER／MAJOR／MINOR／INFO，不另立等级。
+3. 四类镜头各过一遍：文字／视觉／影音／跨角色协作边界；视觉镜头里的无障碍按 `accessibility-audit` 判，需要安全镜头时按 `security-review-desk` 审入口与信任边界。安全发现并入 `defects[]`，沿用 BLOCKER／MAJOR／MINOR／INFO，不另立等级。带界面的交付，视觉镜头开工前先收泰兰德（designer）的观感走查清单：输入是设计稿＋成品截图／录屏；交付物是清单（三栏：位置／观感问题／建议，不含判词）；提里奥把观感条目合并进 `defects[]` 或 `unknown`，不为观感单独拍板；`verdict` 三态与判词语义不变。
 4. 出问题清单：编号、严重度（BLOCKER／MAJOR／MINOR／INFO）、位置、证据、整改建议。
 5. 标准必须在看结果之前定；看完再改标准＝无效审查。
 

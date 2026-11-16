@@ -62,15 +62,15 @@
     },
     "studio": {
       "version": "1.1.0",
-      "digest": "11ba8b7d9cc23009e9f199145a57b1c19ea8298a20dd8df22f25d57dca216d80",
+      "digest": "27d72938038126ddb642261c93ac63de0542fc0efd10d69d488ff63c2240e300",
       "skills": {
         "accessibility-audit": "1.0.0",
         "alt-text": "1.0.0",
         "astryx-ui": "0.1.0",
-        "design-critique": "1.0.0",
+        "design-critique": "1.1.0",
         "design-handoff": "1.0.0",
         "director": "2.0.0",
-        "final-review": "2.2.0",
+        "final-review": "2.3.0",
         "lead-artist": "2.0.0",
         "lead-writer": "2.0.0",
         "marketing": "2.0.0",
