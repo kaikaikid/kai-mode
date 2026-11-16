@@ -9,8 +9,8 @@
   "generator": "export-role-registry",
   "professions": [
     {
-      "canon_sha256": "d8f6df4b8186e4a66fb3483c3f6d8a0a503d084fedbb279aa1cb4bd99dd8b084",
-      "canon_version": "1.1.1",
+      "canon_sha256": "0f9a81e4ec04efaa9e36a0826adeb9793b92001e330ea027e83c67154739f3e7",
+      "canon_version": "1.2.0",
       "persona_depth_sha256": "6a3e9203eb158b45d6e71372a264b9ea0edb712a1471338e3aabc79c23034707",
       "persona_memory_sha256": "07dbf7d17623bc6e5415eb3834420a7e32ead8338148ebbc569b64642f4b8b96",
       "persona_sha256": "c81a8549a073da5ab1354bffb5f1d3ff861a0a604d9091f9cb046234366ca28e",
@@ -89,8 +89,8 @@
       }
     },
     {
-      "canon_sha256": "e3503af5b56ef9710521ec0101f4785cea9f154f97c5f678f8e2a5f5b323bb20",
-      "canon_version": "1.1.1",
+      "canon_sha256": "8365b870cab1c4c32be83d499eea6a078ecefcccf6e7b7eba45ff34797d3d796",
+      "canon_version": "1.2.0",
       "persona_depth_sha256": "d59a8c22ca5411f3b17987f9af6417df20e228076c1253b823ff4000f1ed2558",
       "persona_memory_sha256": "07dbf7d17623bc6e5415eb3834420a7e32ead8338148ebbc569b64642f4b8b96",
       "persona_sha256": "632fb900bd791dfa4256fc59badbb1c6a14505ffcb642c9d449d32f184150618",
@@ -105,8 +105,8 @@
       }
     },
     {
-      "canon_sha256": "e008cd78d372153f7c4b2f5f86203d591faf089cfb01dc620c5be597b3d14463",
-      "canon_version": "1.3.0",
+      "canon_sha256": "70f3e0f256b5de9f5504a3aef17a10c7bf656a117399fd0b0b9bf471275efbb4",
+      "canon_version": "1.4.0",
       "persona_depth_sha256": "55f7d7d6bd3383f822d4bf49c3cbc024e56d3932df59ae790a59c552f846eda5",
       "persona_memory_sha256": "07dbf7d17623bc6e5415eb3834420a7e32ead8338148ebbc569b64642f4b8b96",
       "persona_sha256": "a90b22bedc20431a941030a9ab19d997beac1ca1f3192a7116d0c42cf8e51e89",
