@@ -14,6 +14,8 @@ role-canon 门共用同一份，不写第二套）。
   python scripts/render-roles.py validate
   python scripts/render-roles.py prompt   --role reviewer --skin guild [--json]
   python scripts/render-roles.py prompt   --skin guild --pack
+  python scripts/render-roles.py contracts --role reviewer [--skin guild] [--json]
+  python scripts/render-roles.py contracts --pack [--skin guild] [--json]
   python scripts/render-roles.py depth    --role coordinator
   python scripts/render-roles.py render   --host qoder --skin generic --dest <目标目录> [--dry-run]
   python scripts/render-roles.py emit-table --project <项目根>
@@ -160,6 +162,46 @@ def cmd_prompt(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_contracts(args: argparse.Namespace) -> int:
+    """无人格契约投影：给只做契约内的事、不面向用户的执行子代理现拼一份（或七份包）。
+
+    与 `prompt` 的区别是刻意少三样：没有人格、没有总结体例/措辞、没有载体路由。
+    不写盘，正本改了下次就是新的。
+    """
+    root = Path(args.root).resolve() if args.root else repo_root()
+    bad = rolelib.validate(root)
+    if bad:
+        print("正本不合契约，拒绝出契约投影：", file=sys.stderr)
+        for b in bad:
+            print(f"  - {b}", file=sys.stderr)
+        return 2
+    if args.pack:
+        text = rolelib.render_contracts_pack(root, args.skin)
+        if args.json:
+            print(json.dumps({"root": str(root), "skin": args.skin,
+                              "roles": list(rolelib.DISPATCHABLE_IDS),
+                              "chars": len(text), "pack": text},
+                             ensure_ascii=False, indent=2))
+        else:
+            sys.stdout.write(text)
+        return 0
+    if not args.role:
+        print("要么给 --role，要么给 --pack", file=sys.stderr)
+        return 2
+    try:
+        text = rolelib.render_contract_prompt(root, args.role, args.skin)
+    except rolelib.RoleError as e:
+        print(str(e), file=sys.stderr)
+        return 2
+    if args.json:
+        print(json.dumps({"root": str(root), "skin": args.skin, "role": args.role,
+                          "chars": len(text), "prompt": text},
+                         ensure_ascii=False, indent=2))
+    else:
+        sys.stdout.write(text)
+    return 0
+
+
 def cmd_depth(args: argparse.Namespace) -> int:
     """深度人格层（按需）：打印 depth 块，不改盘。这一层默认不进 system prompt。"""
     root = Path(args.root).resolve() if args.root else repo_root()
@@ -277,6 +319,14 @@ def main() -> int:
                     help="主 AI 人格的会话提示词（含可调出角色表）")
     pp.add_argument("--pack", action="store_true", help="可派发角色拼成一份（默认七个）")
     pp.add_argument("--with-primary", action="store_true", help="包里也带上主 AI 人格")
+    ct = sub.add_parser("contracts", help="无人格契约投影（只做契约内的事的执行子代理）")
+    ct.add_argument("--skin", default="guild", choices=rolelib.SKINS)
+    ct.add_argument("--role", choices=rolelib.DISPATCHABLE_IDS,
+                    help="单个角色（主 AI 人格不是子代理，不在其中）")
+    ct.add_argument("--pack", action="store_true", help="七个可派发契约拼成一份包")
+    # 子命令自己的 --json：放在子命令后面也能用；SUPPRESS 保证它不会把顶层 --json 覆盖成 False。
+    ct.add_argument("--json", action="store_true", default=argparse.SUPPRESS,
+                    help="机器可读回执")
     dp = sub.add_parser("depth", help="打印深度人格层（按需，默认不进 system prompt）")
     dp.add_argument("--role", required=True, choices=rolelib.ROLE_IDS)
     sp = sub.add_parser("render", help="渲染到目标目录（一律覆盖，不做 stale 判断）")
@@ -288,7 +338,8 @@ def main() -> int:
                     help="多出一个 _primary 文件（会话级主 AI 人格，不是可派发子代理）")
     args = p.parse_args()
     return {"validate": cmd_validate, "render": cmd_render, "emit-table": cmd_emit_table,
-            "prompt": cmd_prompt, "bootstrap": cmd_bootstrap, "depth": cmd_depth}[args.cmd](args)
+            "prompt": cmd_prompt, "contracts": cmd_contracts,
+            "bootstrap": cmd_bootstrap, "depth": cmd_depth}[args.cmd](args)
 
 
 if __name__ == "__main__":
