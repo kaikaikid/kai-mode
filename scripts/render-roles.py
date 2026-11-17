@@ -68,7 +68,8 @@ def cmd_render(args: argparse.Namespace) -> int:
             print(f"  - {b}", file=sys.stderr)
         return 2
     files = rolelib.render_all(root, args.host, args.skin,
-                               with_primary=getattr(args, "with_primary", False))
+                               with_primary=getattr(args, "with_primary", False),
+                               contract_only=getattr(args, "contract_only", False))
     cfg = rolelib.load_hosts(root)["hosts"][args.host]
     dest = Path(args.dest).resolve()
     plan = {"new": [], "overwrite": [], "same": []}
@@ -336,6 +337,8 @@ def main() -> int:
     sp.add_argument("--dry-run", action="store_true", help="只报告将做什么，不写盘")
     sp.add_argument("--with-primary", action="store_true",
                     help="多出一个 _primary 文件（会话级主 AI 人格，不是可派发子代理）")
+    sp.add_argument("--contract-only", action="store_true",
+                    help="七个可派发角色改渲染无人格契约投影（_primary 仍保留人格）")
     args = p.parse_args()
     return {"validate": cmd_validate, "render": cmd_render, "emit-table": cmd_emit_table,
             "prompt": cmd_prompt, "contracts": cmd_contracts,

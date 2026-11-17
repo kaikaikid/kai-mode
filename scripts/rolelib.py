@@ -538,11 +538,16 @@ def render_depth(root: Path, role_id: str) -> str:
     return "\n".join(lines)
 
 
-def render_all(root: Path, host: str, skin: str, with_primary: bool = False) -> dict[str, str]:
+def render_all(root: Path, host: str, skin: str, with_primary: bool = False,
+               contract_only: bool = False) -> dict[str, str]:
     """返回 {文件名: 文本}。默认只渲染**可派发**的七个角色。
 
     主 AI 人格不是子代理：默认对话激活的就是它，要用就单独 `--with-primary` 出 `_primary.md`
     （会话级人格），不要混进按名派发的那一堆里。正文一律走同一个组装点。
+
+    `contract_only=True`：七个可派发角色改走 `render_contract_prompt`（无人格契约投影），
+    主 AI 人格仍走 `render_primary`（它面向用户，人格必须留着）。
+    默认 False 保持旧行为，正常重渲不会把落点悄悄换成人格或反过来。
     """
     hosts = load_hosts(root)
     if host not in (hosts.get("hosts") or {}):
@@ -559,7 +564,12 @@ def render_all(root: Path, host: str, skin: str, with_primary: bool = False) -> 
             raise RoleError(f"缺正本：roles/canon/{rid}.md")
         if rid not in entries:
             raise RoleError(f"皮肤 {skin} 缺角色 {rid}")
-        body = render_primary(root, skin) if rid == PRIMARY_ID else render_prompt(root, rid, skin)
+        if rid == PRIMARY_ID:
+            body = render_primary(root, skin)
+        elif contract_only:
+            body = render_contract_prompt(root, rid, skin)
+        else:
+            body = render_prompt(root, rid, skin)
         name = f"_primary{suffix}" if rid == PRIMARY_ID else f"{rid}{suffix}"
         out[name] = role_frontmatter(cfg, canon[rid], entries[rid]) + body
     return out
