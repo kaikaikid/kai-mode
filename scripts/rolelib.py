@@ -424,6 +424,64 @@ def render_pack(root: Path, skin: str, with_primary: bool = False) -> str:
     return "".join(parts)
 
 
+def render_contract_body(canon: dict, skin_meta: dict, entry: dict, skin_name: str) -> str:
+    """无人格契约投影正文：指纹 ＋ 一句身份 ＋ 输入契约 ＋ 信封规格 ＋ 正本四块逐字。
+
+    与 `render_body` 的区别是**故意少三样**：没有 `## personality`（人格不进这条投影）、
+    没有总结体例与措辞（那是面向用户说话的层）、没有载体路由（那是成品呈现的层）。
+    留下的是「一个只做契约内的事、不面向用户的执行子代理」必须知道的最小集：
+    输入契约、机器面信封、以及本角色的四块职责。四块一律逐字，不重排不摘要。
+    """
+    meta = canon["meta"]
+    root = canon["path"].parents[2]
+    # 失败关闭：与 render_body 同口径，缺了就抛，不静默产出没有契约的提示词。
+    input_block = load_input_contract(root)
+    envelope_block = load_envelope_spec(root)
+    parts = [
+        fingerprint(meta, canon["sha256"], skin_name,
+                    skin_meta.get("skin_version", ""), entry_sha256(entry)),
+        "",
+        f"你是{entry['name']}执行子代理，只做契约内的事，不面向用户。",
+        "",
+        input_block,
+        "",
+        envelope_block,
+        "",
+        canon["body"].lstrip("\n").rstrip("\n"),
+    ]
+    return "\n".join(parts) + "\n"
+
+
+def render_contract_prompt(root: Path, role_id: str, skin: str) -> str:
+    """无人格契约投影：给「只做契约内的事」的执行子代理现拼一份。
+
+    只覆盖七个可派发角色。主 AI 人格不是子代理（它面向用户、要调度），
+    拿它出无人格契约等于把它变成一条执行腿，所以直接拒。
+    """
+    if role_id not in ROLE_IDS:
+        raise RoleError(f"没有这个角色：{role_id!r}")
+    if role_id == PRIMARY_ID:
+        raise RoleError("主 AI 人格不是子代理：无人格契约投影只覆盖七个可派发角色")
+    canon = load_canon(root)
+    if role_id not in canon:
+        raise RoleError(f"缺正本：roles/canon/{role_id}.md")
+    sk = load_skin(root, skin)
+    entry = (sk.get("roles") or {}).get(role_id)
+    if entry is None:
+        raise RoleError(f"皮肤 {skin} 缺角色 {role_id}")
+    return render_contract_body(canon[role_id], sk, entry, skin)
+
+
+def render_contracts_pack(root: Path, skin: str) -> str:
+    """七份无人格契约拼成一份包（现读，不落盘）。"""
+    ids = DISPATCHABLE_IDS
+    parts = [f"# 契约包（skin={skin}，{len(ids)} 个可派发角色，无人格）\n"]
+    for rid in ids:
+        parts.append(f"\n---\n\n<!-- role={rid} -->\n")
+        parts.append(render_contract_prompt(root, rid, skin))
+    return "".join(parts)
+
+
 def render_primary(root: Path, skin: str) -> str:
     """主 AI 人格的会话提示词：本角色正文 ＋ 一张「可调出谁」的调度表。
 
