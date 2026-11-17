@@ -4,6 +4,7 @@
 
 ## 未发布 — 2026-11-18
 
+- **普适角色投影（ADR-0035）**：角色驻留改为宿主能力——OpenBot 团队投影保留常驻 agent，七位专业角色只渲染无人格契约（`render_contract_prompt`／`contracts` 命令）；CC/Codex/Qoder 等单入口宿主只渲染康娜入口，七份契约按需调。康娜人格并入可莉的活泼/慵懒/偶尔「本小姐」语感，保留原身份与「合理工作要求不拒绝」的硬边界；guild 皮肤升 1.5.0。`dream`／memory-audit／事件层列为后续批次，未在本次实现。
 - **技能改名**：`书记官` → `BOOK`（目录 `core/skills/BOOK`、frontmatter `name: BOOK`、registry 与 plugins.lock 键名同步）；`metadata.alias: 书记官` 保留旧口令，`记一下／写进日记／查日记` 仍可用。外发门禁不放松：GitHub／飞书／Notion 仍旧一次一确认、一次只覆盖一条一处。
 
 ## 0.43.0 — 2026-11-16
