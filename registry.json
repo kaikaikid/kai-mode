@@ -102,6 +102,17 @@
       "since": "1.0.0"
     },
     {
+      "name": "dream",
+      "path": "core/skills/dream",
+      "kind": "framework",
+      "scope": "global",
+      "install": "auto",
+      "summary": "dream：康娜的后台记忆整理技能——把任务痕迹整理成记忆候选，批量去重／查冲突／补来源后按追加式写入统一记忆 API；不做热路径写入，不编造角色经历。",
+      "plugin": "core",
+      "version": "0.1.0",
+      "since": "0.1.0"
+    },
+    {
       "name": "卓尔游侠",
       "path": "core/skills/卓尔游侠",
       "kind": "framework",

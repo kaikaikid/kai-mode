@@ -1,7 +1,12 @@
-"""角色经验记忆的测例（Issue #7 AC-07）。
+"""角色经验记忆的测例（Issue #7 AC-07；写者迁移见 ADR-0035 D4）。
 
 判据实现住 scripts/role-memory.py。测例走**真 CLI**（subprocess），不走内部函数：
 AC 断的是「别的角色写入被拒」这个可观测行为，不是「有没有调用某个函数」。
+
+ADR-0035 D4 起记忆写者从 archivist 迁到 coordinator：
+- 新写入只收 `coordinator`；
+- 旧日志里 `writer=archivist` 的记录兼容读、`check` 不判红（历史不追溯改写）；
+- `archivist` 不再是写者，写入一律拒。
 """
 
 from __future__ import annotations
@@ -20,7 +25,7 @@ def run(*args, cwd=REPO):
                           capture_output=True, text=True, encoding="utf-8", errors="replace")
 
 
-def append(log: Path, writer="archivist", scope="task_fact", statement="测一条",
+def append(log: Path, writer="coordinator", scope="task_fact", statement="测一条",
            evidence=("scripts/x.py:1",), extra=()):
     args = ["append", "--log", str(log), "--writer", writer, "--scope", scope,
             "--statement", statement]
@@ -35,27 +40,47 @@ def records(log: Path) -> list[dict]:
     return [json.loads(l) for l in log.read_text(encoding="utf-8").splitlines() if l.strip()]
 
 
-# ── 单写者 ──────────────────────────────────────────────────────────────────
-def test_archivist_can_write(tmp_path):
+# ── 单写者：coordinator ─────────────────────────────────────────────────────
+def test_coordinator_can_write(tmp_path):
     log = tmp_path / "mem.jsonl"
     r = append(log)
     assert r.returncode == 0, r.stderr
     recs = records(log)
     assert len(recs) == 1
     assert recs[0]["id"] == "m-0001"
-    assert recs[0]["writer"] == "archivist"
+    assert recs[0]["writer"] == "coordinator"
     assert recs[0]["layer"] == "ego"
 
 
 def test_every_other_role_is_refused(tmp_path):
-    """康娜也不行。写者唯一性不是礼貌，是拒写。"""
+    """archivist 也不行——它已改只读 memory-audit。写者唯一性不是礼貌，是拒写。"""
     log = tmp_path / "mem.jsonl"
-    for role in ("coordinator", "engineer", "reviewer", "researcher",
+    for role in ("archivist", "engineer", "reviewer", "researcher",
                  "architect", "designer", "writer", "康娜", "kanna", ""):
-        r = append(log, writer=role or "coordinator")
+        r = append(log, writer=role or "engineer")
         assert r.returncode == 3, f"{role} 居然写进去了：{r.stdout}"
         assert "唯一读写改者" in r.stderr
     assert records(log) == [], "被拒的写入不许留痕"
+
+
+# ── 兼容读：旧 archivist 记录不追溯改写 ─────────────────────────────────────
+def test_legacy_archivist_records_stay_readable(tmp_path):
+    """迁移只改新写入的写者：旧日志里 archivist 的记录 check 必须绿、show 必须看得到。"""
+    log = tmp_path / "mem.jsonl"
+    log.write_text(json.dumps({
+        "id": "m-0001", "ts": "2026-01-01T00:00:00Z", "writer": "archivist",
+        "scope": "task_fact", "layer": "ego", "statement": "旧写者留下的",
+        "evidence_refs": ["scripts/x.py:1"], "before": "", "after": "",
+        "conflicts_with": [], "rollback_of": None,
+    }, ensure_ascii=False) + "\n", encoding="utf-8")
+    r = run("check", "--log", str(log), "--json")
+    assert r.returncode == 0, r.stderr
+    assert json.loads(r.stdout)["ok"] is True
+    shown = json.loads(run("show", "--log", str(log), "--json").stdout)
+    assert [x["id"] for x in shown] == ["m-0001"]
+    # 同一份日志继续追加：新记录写者必须是 coordinator
+    assert append(log, statement="迁移后新写的").returncode == 0
+    assert records(log)[1]["writer"] == "coordinator"
 
 
 # ── 无证据不写 ──────────────────────────────────────────────────────────────
@@ -92,7 +117,7 @@ def test_ids_increment_and_earlier_bytes_never_change(tmp_path):
 def test_rollback_appends_and_keeps_original(tmp_path):
     log = tmp_path / "mem.jsonl"
     append(log, statement="原先的判断")
-    r = run("rollback", "--log", str(log), "--writer", "archivist",
+    r = run("rollback", "--log", str(log), "--writer", "coordinator",
             "--target", "m-0001", "--reason", "后面发现证据不支持")
     assert r.returncode == 0, r.stderr
     recs = records(log)
@@ -105,25 +130,26 @@ def test_rollback_appends_and_keeps_original(tmp_path):
 def test_rollback_requires_reason_and_existing_target(tmp_path):
     log = tmp_path / "mem.jsonl"
     append(log)
-    assert run("rollback", "--log", str(log), "--writer", "archivist",
+    assert run("rollback", "--log", str(log), "--writer", "coordinator",
                "--target", "m-0001", "--reason", "").returncode == 2
-    assert run("rollback", "--log", str(log), "--writer", "archivist",
+    assert run("rollback", "--log", str(log), "--writer", "coordinator",
                "--target", "m-9999", "--reason", "x").returncode == 2
 
 
-def test_rollback_by_non_archivist_is_refused(tmp_path):
+def test_rollback_by_non_coordinator_is_refused(tmp_path):
     log = tmp_path / "mem.jsonl"
     append(log)
-    r = run("rollback", "--log", str(log), "--writer", "coordinator",
-            "--target", "m-0001", "--reason", "x")
-    assert r.returncode == 3
+    for role in ("archivist", "engineer"):
+        r = run("rollback", "--log", str(log), "--writer", role,
+                "--target", "m-0001", "--reason", "x")
+        assert r.returncode == 3, role
     assert len(records(log)) == 1
 
 
 def test_show_hides_rolled_back_but_file_keeps_it(tmp_path):
     log = tmp_path / "mem.jsonl"
     append(log, statement="会被撤的")
-    run("rollback", "--log", str(log), "--writer", "archivist",
+    run("rollback", "--log", str(log), "--writer", "coordinator",
         "--target", "m-0001", "--reason", "撤")
     out = json.loads(run("show", "--log", str(log), "--json").stdout)
     assert out == [], "活跃视图里不该有被撤的条目"
@@ -141,11 +167,11 @@ def test_check_green_on_real_log(tmp_path):
 
 
 def test_check_catches_foreign_writer(tmp_path):
-    """有人绕开工具手写一条 coordinator 的记录，校验必须红。"""
+    """有人绕开工具手写一条 engineer 的记录，校验必须红。"""
     log = tmp_path / "mem.jsonl"
     append(log)
     log.write_text(log.read_text(encoding="utf-8") + json.dumps({
-        "id": "m-0002", "ts": "2026-01-01T00:00:00Z", "writer": "coordinator",
+        "id": "m-0002", "ts": "2026-01-01T00:00:00Z", "writer": "engineer",
         "scope": "task_fact", "layer": "ego", "statement": "手写进来的",
         "evidence_refs": ["x:1"], "before": "", "after": "",
         "conflicts_with": [], "rollback_of": None,
@@ -153,13 +179,13 @@ def test_check_catches_foreign_writer(tmp_path):
     r = run("check", "--log", str(log), "--json")
     assert r.returncode == 4
     problems = json.loads(r.stdout)["problems"]
-    assert any("只许 archivist" in p for p in problems), problems
+    assert any("只许 coordinator" in p for p in problems), problems
 
 
 def test_check_catches_missing_evidence_and_bad_layer(tmp_path):
     log = tmp_path / "mem.jsonl"
     log.write_text(json.dumps({
-        "id": "m-0001", "ts": "2026-01-01T00:00:00Z", "writer": "archivist",
+        "id": "m-0001", "ts": "2026-01-01T00:00:00Z", "writer": "coordinator",
         "scope": "task_fact", "layer": "superego", "statement": "x",
         "evidence_refs": [], "before": "", "after": "",
         "conflicts_with": [], "rollback_of": None,
@@ -181,6 +207,6 @@ def test_check_empty_log_is_green(tmp_path):
 def test_reverse_writer_gate_actually_depends_on_role(tmp_path):
     """同一个 log，换个 writer 结果必须翻——自证拒写不是因为别的错。"""
     log = tmp_path / "mem.jsonl"
-    assert append(log, writer="archivist").returncode == 0
-    assert append(log, writer="writer").returncode == 3
+    assert append(log, writer="coordinator").returncode == 0
+    assert append(log, writer="archivist").returncode == 3
     assert len(records(log)) == 1

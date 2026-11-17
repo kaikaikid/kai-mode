@@ -11,9 +11,10 @@
     },
     "core": {
       "version": "1.4.0",
-      "digest": "6679a4a8b697e33242af94b87f8b3ff8f22037dc08945acb6fb5cdb3f6a4244b",
+      "digest": "7911acb97cc0ea50fb917560bb11eec4ff79839e87bf68a50cc3f6fd7ee55a56",
       "skills": {
         "BOOK": "1.0.0",
+        "dream": "0.1.0",
         "gold": "0.9.0",
         "harness-audit": "0.2.1",
         "kai-handoff": "0.3.6",

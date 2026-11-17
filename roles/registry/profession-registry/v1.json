@@ -25,14 +25,14 @@
       }
     },
     {
-      "canon_sha256": "72f87578be89c7853a241614d1ece040fa68a80f7be5ccaaea2625c6ced014f8",
-      "canon_version": "1.1.2",
+      "canon_sha256": "5ff6488ae33b569366e4701bd5db9c1456cb3b4e604bcf6afef1e2626af3d582",
+      "canon_version": "1.2.1",
       "persona_depth_sha256": "efc787910c69b90003841818c2204aa37050d529319174fbf03eb925da78505f",
       "persona_memory_sha256": "07dbf7d17623bc6e5415eb3834420a7e32ead8338148ebbc569b64642f4b8b96",
       "persona_sha256": "305f08a14d0c2d3015f5317d6b5aff1411c92ef612a6f55a4e1b1b9c884a7011",
       "profession_id": "archivist",
-      "profession_name": "知识管理",
-      "skin_sha256": "cb5fceff1aef6caec93e6d309494f475ca4bcd26d9cdb14690498a6ae207e57a",
+      "profession_name": "Memory Check",
+      "skin_sha256": "8ac7f83b68f0793c1e6cc756367a2d57cc897e3aa19728034a15866d9da72bd8",
       "skin_version": "1.2.0",
       "summary_slots_sha256": "d610b62818fd684c2eee26503f12278889bfa55bf547b4e1a399abbbcaa08a8d",
       "team": {
