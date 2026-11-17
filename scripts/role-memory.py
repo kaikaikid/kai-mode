@@ -1,18 +1,21 @@
 #!/usr/bin/env python3
 """角色经验记忆：追加式日志，单写者，可回滚，留审计。
 
-裁决：docs/adr/0033-guild-role-layer.md D5。目录契约：roles/README.md「记忆」节。
+裁决：docs/adr/0033-guild-role-layer.md D5；写者迁移见 docs/adr/0035-universal-role-projection.md D4
+（记忆治理收给康娜的 `dream` skill，`archivist` 转只读 `memory-audit`）。
 
 硬判据（三条，全部机械执行，不靠提示词自觉）：
-1. **只有 `archivist` 能写**。其他角色的写入一律拒绝并返回非零——包括康娜。
-   别的角色只能提候选：把候选写成一段文本交给人或交回知识管理角色，不走本工具。
+1. **只有 `coordinator`（康娜）能写**。其他角色的写入一律拒绝并返回非零。
+   别的角色只能提候选：把候选写成一段文本交给人或交回康娜，不走本工具。
+   旧日志里 `writer=archivist` 的记录**兼容读**（历史不追溯改写）；`inspect` 两者都认，
+   但新写入只收 `coordinator`。
 2. **追加式**。日志只追加，不改旧行；回滚是再追加一条反向记录，原记录永久保留。
 3. **无证据不写**。每条至少一个 `evidence_refs`，且不得是空串或「我确认过」这类自述。
 
 用法：
-  python scripts/role-memory.py append   --log <路> --writer archivist --scope task_fact \
+  python scripts/role-memory.py append   --log <路> --writer coordinator --scope task_fact \
          --statement "…" --evidence "path/to/evidence:行号" [--conflicts "m-0002"]
-  python scripts/role-memory.py rollback --log <路> --writer archivist --target m-0001 --reason "…"
+  python scripts/role-memory.py rollback --log <路> --writer coordinator --target m-0001 --reason "…"
   python scripts/role-memory.py check    --log <路> [--json]
   python scripts/role-memory.py show     --log <路> [--json]
 
@@ -28,7 +31,11 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-WRITER = "archivist"
+# 写者：ADR-0035 D4 起记忆治理归康娜（coordinator）。旧日志的 archivist 记录兼容读，
+# 但不再接受 archivist 写入——历史可追溯，正本不追溯改写。
+WRITER = "coordinator"
+LEGACY_WRITERS = ("archivist",)
+KNOWN_WRITERS = (WRITER, *LEGACY_WRITERS)
 SCOPES = ("task_fact", "preference", "skill", "relationship", "failure_lesson")
 LAYER = "ego"  # light 变更只能落自我层（V1.5 R11）
 REQUIRED = ("id", "ts", "writer", "scope", "layer", "statement",
@@ -80,7 +87,7 @@ def require_writer(writer: str) -> None:
     if writer != WRITER:
         raise PermissionError(
             f"拒绝写入：记忆的唯一读写改者是 `{WRITER}`，收到的是 `{writer}`。"
-            f"别的角色只能提候选，不走本工具（ADR-0033 D5）。")
+            f"别的角色只能提候选，不走本工具（ADR-0035 D4）。")
 
 
 def clean_evidence(items: list[str]) -> list[str]:
@@ -167,8 +174,9 @@ def inspect(records: list[dict]) -> list[str]:
         if rid in seen:
             bad.append(f"id 重复：{rid}")
         seen.add(rid)
-        if r.get("writer") != WRITER:
-            bad.append(f"{rid} 的写者是 {r.get('writer')!r}，只许 {WRITER}")
+        if r.get("writer") not in KNOWN_WRITERS:
+            bad.append(f"{rid} 的写者是 {r.get('writer')!r}，只许 {WRITER}"
+                       f"（旧日志兼容 {'/'.join(LEGACY_WRITERS)}）")
         if r.get("layer") != LAYER:
             bad.append(f"{rid} 的 layer 是 {r.get('layer')!r}，light 变更只许 {LAYER}")
         if r.get("scope") and r.get("scope") not in SCOPES:
@@ -200,7 +208,7 @@ def cmd_check(a: argparse.Namespace) -> int:
             print(f"  - {b}")
     else:
         print(f"记忆日志通过：{len(records)} 条，活跃 {len(active_ids(records))} 条，"
-              f"写者只有 {WRITER}，每条都有可核验证据")
+              f"写者只有 {WRITER}（旧 {'/'.join(LEGACY_WRITERS)} 记录兼容读），每条都有可核验证据")
     return 4 if bad else 0
 
 
