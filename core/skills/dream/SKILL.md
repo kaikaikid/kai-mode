@@ -3,11 +3,6 @@ name: dream
 status: active
 approved_by: human:kaikaikid
 approved: 2026-11-18
-sources:
-  - resource: "docs/adr/0035-universal-role-projection.md"
-    note: "D4 记忆治理：dream 归康娜，archivist 转只读 memory-check（记忆核对）契约"
-  - resource: "scripts/role-memory.py"
-    note: "统一记忆 API：追加式日志、单写者（coordinator）、证据必填、可回滚"
 description: >
   康娜的记忆整理技能：后台把任务痕迹整理成记忆候选，批量去重、查冲突、补来源，
   在用户或 routine 触发时写入统一记忆 API；不做热路径写入、不在对话中途抢写。
@@ -27,7 +22,7 @@ metadata:
 
 > 记忆的写者只有一个：**康娜（coordinator）**。本技能是她做后台整理时的操作手册，
 > 不是第七位常驻角色，也不是另一套记忆系统。
-> 判据正本：`docs/adr/0035-universal-role-projection.md` D4；写入工具：`scripts/role-memory.py`。
+> 判据：ADR-0035 D4；写入工具：`scripts/role-memory.py`。
 
 ## 角色定位
 

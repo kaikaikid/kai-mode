@@ -2,7 +2,7 @@
 """角色经验记忆：追加式日志，单写者，可回滚，留审计。
 
 裁决：docs/adr/0033-guild-role-layer.md D5；写者迁移见 docs/adr/0035-universal-role-projection.md D4
-（记忆治理收给康娜的 `dream` skill，`archivist` 转只读 `memory-audit`）。
+（记忆治理收给康娜的 `dream` skill，`archivist` 转只读 `memory-check`）。
 
 硬判据（三条，全部机械执行，不靠提示词自觉）：
 1. **只有 `coordinator`（康娜）能写**。其他角色的写入一律拒绝并返回非零。
