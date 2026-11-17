@@ -14,7 +14,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from . import TASK_SCHEMA_VERSION, auto, dirty, scheduler, state as st, worktree
+from . import TASK_SCHEMA_VERSION, auto, dirty, events, scheduler, state as st, worktree
 
 
 # ---------------------------------------------------------------------------
@@ -1332,6 +1332,27 @@ def cmd_assimilate(args: argparse.Namespace) -> None:
     print(json.dumps({"ok": True, "message": "assimilated " + branch}, ensure_ascii=False))
 
 
+def cmd_emit(args: argparse.Namespace) -> None:
+    """写一条事件（append-only，source+key 幂等）；返回事件 JSON。"""
+    ev = events.emit(
+        args.source,
+        args.key,
+        args.type,
+        payload_ref=args.payload_ref or "",
+        run=getattr(args, "run", None),
+        subject=getattr(args, "subject", "") or "",
+        hops=getattr(args, "hops", 0) or 0,
+        root=_root(),
+    )
+    print(json.dumps(ev, ensure_ascii=False))
+
+
+def cmd_tick(args: argparse.Namespace) -> None:
+    """列出 pending 事件（只读；不建 run、不派活）。"""
+    rows = events.tick(root=_root(), limit=getattr(args, "limit", None))
+    print(json.dumps(rows, ensure_ascii=False))
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="fleet", description="fleet execution kernel control plane")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -1501,7 +1522,24 @@ def build_parser() -> argparse.ArgumentParser:
                     help="host command for worker subagent ({brief} placeholder)")
     ap.add_argument("--reviewer-cmd", default=auto.DEFAULT_REVIEWER,
                     help="host command for reviewer subagent ({brief} placeholder)")
+    ap.add_argument("--executor", choices=("native", "host-cmd", "message"), default=None,
+                    help="worker executor (ADR-0035 D6); default keeps legacy behavior: "
+                         "run the host command when configured, else ask for a native subagent")
     ap.set_defaults(func=auto.cmd_auto)
+
+    em = sub.add_parser("emit", help="append an event to .coding/events.jsonl (idempotent on source+key)")
+    em.add_argument("--source", required=True, help="event source (host adapter / service name)")
+    em.add_argument("--key", required=True, help="business key; source+key dedupe")
+    em.add_argument("--type", required=True, dest="type", help="event type")
+    em.add_argument("--payload-ref", default="", help="reference to payload (never the body)")
+    em.add_argument("--run", default=None, help="routed run id")
+    em.add_argument("--subject", default="", help="short human-readable subject")
+    em.add_argument("--hops", type=int, default=0, help="hop count; capped at 8 (over-limit recorded as paused)")
+    em.set_defaults(func=cmd_emit)
+
+    tk = sub.add_parser("tick", help="list pending events (read-only; does not create runs)")
+    tk.add_argument("--limit", type=int, default=None, help="max events to list")
+    tk.set_defaults(func=cmd_tick)
 
     asp = sub.add_parser("assimilate", help="merge an external branch (needs user approval)")
     asp.add_argument("branch")
