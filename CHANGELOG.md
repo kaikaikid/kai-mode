@@ -2,6 +2,10 @@
 
 本仓变更记录；按版本倒序，每条一行。版本号正本＝仓根 [`VERSION`](VERSION)。
 
+## 未发布 — 2026-11-18
+
+- **技能改名**：`书记官` → `BOOK`（目录 `core/skills/BOOK`、frontmatter `name: BOOK`、registry 与 plugins.lock 键名同步）；`metadata.alias: 书记官` 保留旧口令，`记一下／写进日记／查日记` 仍可用。外发门禁不放松：GitHub／飞书／Notion 仍旧一次一确认、一次只覆盖一条一处。
+
 ## 0.43.0 — 2026-11-16
 
 - **调度层补齐（coordinator 1.3.0）**：分诊只定档位／主责／风险／预算，拆任务与并发归 `fleet`；新增「拍板权」表（技术验收→审查、产品取舍→团长、拆任务／并发／模型档→康娜、G0/G1→用户或门卫 G2→康娜、红线→团长）；workflow 补中断恢复三态（会话断→`fleet resume`、子代理超时→内核标 timeout 不手改 state.json、用户改主意→只改未 claim 的 task）；`gold` 接轮首状态卡四行（现场／在制／待决／预算，只引内核读数）与派活首行自包含。
