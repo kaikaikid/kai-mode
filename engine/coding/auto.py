@@ -146,8 +146,13 @@ def _phase_of(run_id: str) -> str:
 
 
 def drive(run_id: str, worker_cmd: str = DEFAULT_WORKER, reviewer_cmd: str = DEFAULT_REVIEWER,
-          max_rounds: int = 50) -> dict:
-    """无人值守循环：取下一个任务 → claim → 派子会话 → report → 审查 → verdict，直到终态。"""
+          max_rounds: int = 50, executor: str | None = None) -> dict:
+    """无人值守循环：取下一个任务 → claim → 派子会话 → report → 审查 → verdict，直到终态。
+
+    `executor` 缺省（None）保持旧行为：直接走 `_spawn_worker`（配了宿主命令跑命令，
+    没配就报子代理缺件）。显式给 `native|host-cmd|message` 时改走 executor 抽象
+    （ADR-0035 D6）；审查腿不变，仍是 `_spawn_reviewer`。
+    """
     from . import state as st
 
     worker_cmd = (worker_cmd or "").strip() or _config_cmd("worker_cmd")
@@ -225,11 +230,24 @@ def drive(run_id: str, worker_cmd: str = DEFAULT_WORKER, reviewer_cmd: str = DEF
                 continue
 
             log.append(f"worker on {tid}")
-            rep = _spawn_worker(card, worker_cmd)
+            if executor:
+                # 显式执行器（ADR-0035 D6）：native / host-cmd / message 三选一。
+                from .executor import get_executor
+                rep = get_executor(executor, worker_cmd).run(card)
+            else:
+                rep = _spawn_worker(card, worker_cmd)
             if rep.get("_needs_subagent"):
                 log.append(f"subagent needed on {tid}: run a writable host-native subagent on the card above, "
                            f"then fleet report {run_id} {tid}")
                 result = {"run_id": run_id, "phase": "delegating", "next_action": f"subagent {tid}",
+                          "pending_card": card, "log": log}
+                print(json.dumps(result, ensure_ascii=False, indent=2))
+                return result
+            if rep.get("_needs_message"):
+                # 消息面只交卡，不发送；发送由宿主适配器在团长确认后自己走。
+                log.append(f"message needed on {tid}: send the card through the host message channel, "
+                           f"then fleet report {run_id} {tid}")
+                result = {"run_id": run_id, "phase": "messaging", "next_action": f"message {tid}",
                           "pending_card": card, "log": log}
                 print(json.dumps(result, ensure_ascii=False, indent=2))
                 return result
@@ -274,4 +292,5 @@ def drive(run_id: str, worker_cmd: str = DEFAULT_WORKER, reviewer_cmd: str = DEF
 
 
 def cmd_auto(args: argparse.Namespace) -> None:
-    drive(args.run_id, worker_cmd=args.worker_cmd, reviewer_cmd=args.reviewer_cmd)
+    drive(args.run_id, worker_cmd=args.worker_cmd, reviewer_cmd=args.reviewer_cmd,
+          executor=getattr(args, "executor", None))

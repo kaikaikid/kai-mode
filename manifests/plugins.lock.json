@@ -40,7 +40,7 @@
     },
     "engine": {
       "version": "0.6.0",
-      "digest": "d34028f16ebb5302ddbecf2d6def1889a85b515483b3f8b148f9fb262eb7d5f2",
+      "digest": "80be279ba9d4f60d58a63212a0cfede86a8a7f0c1965ae1930e0c9e49ef5dec2",
       "skills": {
         "fleet": "0.9.0",
         "pk": "0.1.1"

@@ -18,3 +18,8 @@ BLOCKED_REASON_CODES = frozenset({
 
 # 单张任务可拆 Worker 上限；Worker 不突破 Crew——实际可派按 min(worker 上限, crew_limit)。
 TASK_MAX_WORKERS = 8
+
+# 事件层（ADR-0035 D6）：事件状态机与 8 跳熔断上限。
+EVENTS_SCHEMA_VERSION = 1
+EVENT_STATUSES = frozenset({"pending", "routed", "paused", "skipped", "done"})
+EVENT_HOPS_MAX = 8
