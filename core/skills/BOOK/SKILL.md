@@ -1,5 +1,5 @@
 ---
-name: 书记官
+name: BOOK
 status: active
 approved_by: human:kaikaikid
 approved: 2026-11-15
@@ -13,24 +13,26 @@ sources:
   - resource: "references/协议.md"
     note: "回话格式、字段白名单、三个出口落点与确认门禁的细则"
 description: >
-  可莉的私人书记官：整理团长明确要求保存的叙述，按固定四行回话格式与 KCard 交互卡片呈现，
-  可把同一条记录推送到 GitHub、飞书、Notion。
-  只在团长明确点名（记一下／写进日记／查日记／推到…／书记官）时使用；普通闲聊不触发。
+  BOOK（原书记官）：可莉的私人记录技能——整理团长明确要求保存的叙述，按固定四行回话格式
+  与 KCard 交互卡片呈现，可把同一条记录推送到 GitHub、飞书、Notion。
+  只在团长明确点名时使用；普通闲聊不触发。
+  旧口令全保留：书记官／/书记官 仍可用（兼容别名），与 记一下、写进日记、查日记、BOOK 同一入口。
   记录先落本地；外发是不可逆动作，推送前必须团长确认一次，一次只覆盖一条一处。
-  触发：/书记官（兼容口令）、记一下、写进日记、查日记、把这条推到 GitHub/飞书/Notion、书记官技能。
+  触发：BOOK、/BOOK、书记官（兼容口令）、/书记官、记一下、写进日记、查日记、把这条推到 GitHub/飞书/Notion。
   不做：不自动记录闲聊、不建私有记忆库、不接施工调度、不改团队正本、不删旧记录、不把「未查到」写成「没问题」。
 version: 1.0.0
-updated: 2026-11-15
+updated: 2026-11-18
 allowed-tools: Bash(python:*) Bash(git:*) Bash(gh:*) Bash(lark-cli:*) Read Write Edit
 compatibility: Requires python3 (stdlib only), git；飞书推送另需 lark-cli bot 身份，GitHub 需 gh 已登录，Notion 需 MCP 连通
 metadata:
   alias: 书记官
 ---
 
-# 书记官 —— 可莉的私人书记官
+# BOOK（原书记官）—— 可莉的私人记录技能
 
 > 契约见 `references/协议.md`（回话格式、字段白名单、三个出口门禁）；可执行脚本见 `scripts/scribe.py`，交互卡模板见 `templates/card.html`。
-> 属个人技能（`install:manual`）：只给可莉自己的书记官模式用，不进中央装机档位。
+> 属个人技能（`install:manual`）：只给可莉自己的 BOOK 模式用，不进中央装机档位。
+> 改名兼容：本技能原名「书记官」，目录与 frontmatter `name` 现为 `BOOK`；`metadata.alias: 书记官` 保留旧口令，两个名字指向同一份正本。
 
 ## 角色定位
 
@@ -57,6 +59,7 @@ metadata:
 
 - 只写团长明确要求保存的内容；不推测、不美化事实，没证据的写「未查到」或「待团长确认」。
 - 外发是不可逆动作：推送前必须团长确认一次，一次确认只覆盖该条、该出口；确认卡只放标题、id、目标出口与位置，不放全文。
+- 改名不放松外发：技能从「书记官」更名为 BOOK 后，GitHub／飞书／Notion 三面仍是「一次一确认」，旧口令不跳过确认门禁。
 - 不删记录、不覆盖旧正文；要补充就另记一条并在正文里写明对应原条目。
 - 普通闲聊不触发记录；不自动记录、不建私有记忆库；不接施工调度、不建 routine、不派活给队友、不发消息。
 - 只用 Python 标准库，脚本一律 `python -I` 运行；中文正文一律走 `--body-file`，全程 UTF-8。

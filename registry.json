@@ -91,12 +91,12 @@
       "since": "1.4.0"
     },
     {
-      "name": "书记官",
-      "path": "core/skills/书记官",
+      "name": "BOOK",
+      "path": "core/skills/BOOK",
       "kind": "personal",
       "scope": "owner",
       "install": "manual",
-      "summary": "可莉的私人书记官：整理团长明确要求保存的叙述，按固定四行回话格式与 KCard 交互卡片呈现，可推 GitHub/飞书/Notion。只在团长明确点名时使用，普通闲聊不触发。",
+      "summary": "BOOK（原书记官）：可莉的私人记录技能——整理团长明确要求保存的叙述，按固定四行回话格式与 KCard 交互卡片呈现，可推 GitHub/飞书/Notion。只在团长明确点名时使用，普通闲聊不触发；旧口令「书记官」保留为兼容别名。",
       "plugin": "core",
       "version": "1.0.0",
       "since": "1.0.0"

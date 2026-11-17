@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""书记官 · scribe.py — 记录 → 本地 / GitHub / 飞书 / Notion。
+"""BOOK（原书记官）· scribe.py — 记录 → 本地 / GitHub / 飞书 / Notion。
 
 只依赖 Python 标准库；可安全用 `python -I` 运行。
 所有数据落在 agent 根目录下的 store（默认「记录/」），技能目录只放代码与模板。
@@ -243,7 +243,7 @@ def cmd_card(cfg, a):
 
     data = {
         "title": e.get("title", ""),
-        "sub": f'{e.get("date","")} · 书记官存档',
+        "sub": f'{e.get("date","")} · BOOK 存档',
         "tone": a.tone if a.tone in TONES else "info",
         "badges": [e.get("kind", "")] + list(e.get("tags") or []),
         "kv": kv,
@@ -444,7 +444,7 @@ def cmd_search(cfg, a):
 
 def main():
     sys.stdout.reconfigure(encoding="utf-8") if hasattr(sys.stdout, "reconfigure") else None
-    p = argparse.ArgumentParser(prog="scribe", description="书记官：记录、检索、出卡、推送")
+    p = argparse.ArgumentParser(prog="scribe", description="BOOK（原书记官）：记录、检索、出卡、推送")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     sub.add_parser("check")
