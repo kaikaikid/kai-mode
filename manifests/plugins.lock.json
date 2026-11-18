@@ -11,7 +11,7 @@
     },
     "core": {
       "version": "1.4.0",
-      "digest": "45df7cea0cd9f8ee4fc742711ad576d76a616d9633f6c260dfcb6df9b06044b7",
+      "digest": "275d0cf4ceea5ef40dfdeb3811a737ceb39614eb036d3aec647d78495da2d7c4",
       "skills": {
         "BOOK": "1.0.0",
         "dream": "0.1.0",
