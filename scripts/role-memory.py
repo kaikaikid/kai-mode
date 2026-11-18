@@ -12,12 +12,19 @@
 2. **追加式**。日志只追加，不改旧行；回滚是再追加一条反向记录，原记录永久保留。
 3. **无证据不写**。每条至少一个 `evidence_refs`，且不得是空串或「我确认过」这类自述。
 
+两种存储（ADR-0037 D9）：
+- `--db <SQLite>`：v1 目标形态。append 转 propose+commit 写账本；show/check 读账本；
+  `import` 把旧 JSONL 导入账本并保留 `legacy_id`。
+- `--log <JSONL>`：v0 兼容路径，行为与旧版一致（历史可追溯，不静默改写）。
+
 用法：
-  python scripts/role-memory.py append   --log <路> --writer archivist --scope task_fact \
+  python scripts/role-memory.py append   --db <库> --writer archivist --scope task_fact \
          --statement "…" --evidence "path/to/evidence:行号" [--conflicts "m-0002"]
-  python scripts/role-memory.py rollback --log <路> --writer archivist --target m-0001 --reason "…"
-  python scripts/role-memory.py check    --log <路> [--json]
-  python scripts/role-memory.py show     --log <路> [--json]
+  python scripts/role-memory.py append   --log <路> …（旧 JSONL 路径）
+  python scripts/role-memory.py rollback --db <库> --writer archivist --target m-0001 --reason "…"
+  python scripts/role-memory.py check    --db <库> [--json]
+  python scripts/role-memory.py show     --db <库> [--json]
+  python scripts/role-memory.py import   --db <库> --from-jsonl <旧路> --writer archivist
 
 退出码：0 成功；2 参数/格式错；3 非授权写者；4 校验不过。
 """
@@ -27,6 +34,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sqlite3
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -90,6 +98,132 @@ def require_writer(writer: str) -> None:
             f"别的角色只能提候选，不走本工具（ADR-0035 D4）。")
 
 
+# -- 账本模式（ADR-0037 D9） -------------------------------------------------
+
+def _open_ledger(db: str):
+    """惰性导入 engine/memory；没装包时只在用 --db 时才需要。"""
+    engine_dir = Path(__file__).resolve().parents[1] / "engine"
+    if str(engine_dir) not in sys.path:
+        sys.path.insert(0, str(engine_dir))
+    from memory.engine import FTS5Engine
+    from memory.ledger import Ledger
+    return Ledger(db, engine=FTS5Engine(db))
+
+
+def ledger_append(a: argparse.Namespace) -> int:
+    require_writer(a.writer)
+    statement = a.statement.strip()
+    if not statement:
+        raise MemoryError_("--statement 不能为空")
+    evidence = clean_evidence(a.evidence or [])
+    with _open_ledger(a.db) as ledger:
+        prop = ledger.propose(
+            actor_role=a.writer, namespace=a.namespace or "shared",
+            kind=a.scope, statement=statement, evidence_refs=evidence,
+            source=a.source or "role-memory", layer=LAYER,
+            before=(a.before or "").strip(), after=(a.after or "").strip(),
+            conflicts_with=[c.strip() for c in (a.conflicts or []) if c.strip()])
+        rec = ledger.commit(actor_role=WRITER, proposal_id=prop["memory_id"])
+    out = dict(rec)
+    out["writer"] = rec.get("actor_role")
+    out["scope"] = rec.get("kind")
+    print(json.dumps(out, ensure_ascii=False, indent=2, default=str))
+    return 0
+
+
+def ledger_rollback(a: argparse.Namespace) -> int:
+    require_writer(a.writer)
+    if not a.reason.strip():
+        raise MemoryError_("回滚必须写 --reason（审计要能看出为什么撤）")
+    with _open_ledger(a.db) as ledger:
+        rec = ledger.rollback(actor_role=a.writer, target=a.target,
+                              reason=a.reason.strip())
+    out = dict(rec)
+    out["writer"] = rec.get("actor_role")
+    out["scope"] = rec.get("kind")
+    print(json.dumps(out, ensure_ascii=False, indent=2, default=str))
+    return 0
+
+
+def ledger_problems(ledger) -> list[str]:
+    bad: list[str] = []
+    events = ledger.events()
+    ids = {e.get("memory_id") for e in events}
+    for i, e in enumerate(events, 1):
+        rid = e.get("memory_id") or f"#{i}"
+        if e.get("kind") not in SCOPES:
+            bad.append(f"{rid} 的 scope 非法：{e.get('kind')!r}")
+        if e.get("layer") not in (None, LAYER):
+            bad.append(f"{rid} 的 layer 是 {e.get('layer')!r}，light 变更只许 {LAYER}")
+        if e.get("event_type") in ("commit", "import"):
+            if e.get("committed_by") != WRITER:
+                bad.append(f"{rid} 的 committed_by 是 {e.get('committed_by')!r}，只许 {WRITER}")
+            if e.get("actor_role") not in KNOWN_WRITERS:
+                bad.append(
+                    f"{rid} 的写者是 {e.get('actor_role')!r}，只许 {WRITER}"
+                    f"（旧日志兼容 {'/'.join(LEGACY_WRITERS)}）")
+        if e.get("event_type") in ("propose", "commit", "import"):
+            ev = e.get("evidence_refs") or []
+            if not ev:
+                bad.append(f"{rid} 没有证据引用")
+            for x in ev:
+                if SELF_EVIDENCE.match(str(x).strip()):
+                    bad.append(f"{rid} 的证据是自述类：{x!r}")
+        if e.get("rollback_of") and e["rollback_of"] not in ids:
+            bad.append(f"{rid} 回滚了不存在的记录 {e['rollback_of']}")
+    return bad
+
+
+def ledger_check(a: argparse.Namespace) -> int:
+    with _open_ledger(a.db) as ledger:
+        bad = ledger_problems(ledger)
+        records = ledger.count_events()
+        active = sorted(r["memory_id"] for r in ledger.current_rows(status="active"))
+    if a.json:
+        print(json.dumps({"log": str(a.db), "records": records, "active": active,
+                          "ok": not bad, "problems": bad},
+                         ensure_ascii=False, indent=2))
+    elif bad:
+        print(f"记忆账本校验不过（{len(bad)} 处）：")
+        for b in bad:
+            print(f"  - {b}")
+    else:
+        print(f"记忆账本通过：{records} 个事件，活跃 {len(active)} 条，"
+              f"写者只有 {WRITER}（旧 {'/'.join(LEGACY_WRITERS)} 记录兼容读），"
+              "每条都有可核验证据")
+    return 4 if bad else 0
+
+
+def ledger_show(a: argparse.Namespace) -> int:
+    with _open_ledger(a.db) as ledger:
+        rows = ledger.current_rows(status="active")
+    out = []
+    for r in rows:
+        out.append({**r, "id": r["memory_id"], "scope": r.get("kind"),
+                    "writer": r.get("actor_role")})
+    if a.json:
+        print(json.dumps(out, ensure_ascii=False, indent=2, default=str))
+    else:
+        for r in out:
+            print(f"{r['id']} [{r['scope']}] {r['statement']}")
+            print(f"    证据：{'; '.join(r.get('evidence_refs') or [])}")
+    return 0
+
+
+def ledger_import(a: argparse.Namespace) -> int:
+    require_writer(a.writer)
+    records = read_log(Path(a.from_jsonl))
+    with _open_ledger(a.db) as ledger:
+        result = ledger.import_legacy(records)
+    if a.json:
+        print(json.dumps({**result, "db": str(a.db),
+                          "from": str(a.from_jsonl)}, ensure_ascii=False, indent=2))
+    else:
+        print(f"导入完成：新增 {result['imported']}，跳过 {result['skipped']}，"
+              f"账本共 {result['events']} 个事件（legacy_id 已保留）")
+    return 0
+
+
 def clean_evidence(items: list[str]) -> list[str]:
     out = []
     for raw in items:
@@ -105,6 +239,8 @@ def clean_evidence(items: list[str]) -> list[str]:
 
 
 def cmd_append(a: argparse.Namespace) -> int:
+    if a.db:
+        return ledger_append(a)
     require_writer(a.writer)
     if a.scope not in SCOPES:
         raise MemoryError_(f"--scope 必须是 {SCOPES} 之一")
@@ -132,6 +268,8 @@ def cmd_append(a: argparse.Namespace) -> int:
 
 
 def cmd_rollback(a: argparse.Namespace) -> int:
+    if a.db:
+        return ledger_rollback(a)
     require_writer(a.writer)
     path = Path(a.log)
     records = read_log(path)
@@ -195,6 +333,8 @@ def inspect(records: list[dict]) -> list[str]:
 
 
 def cmd_check(a: argparse.Namespace) -> int:
+    if a.db:
+        return ledger_check(a)
     path = Path(a.log)
     records = read_log(path)
     bad = inspect(records)
@@ -213,6 +353,8 @@ def cmd_check(a: argparse.Namespace) -> int:
 
 
 def cmd_show(a: argparse.Namespace) -> int:
+    if a.db:
+        return ledger_show(a)
     records = read_log(Path(a.log))
     live = active_ids(records)
     rows = [r for r in records if r.get("id") in live and not r.get("rollback_of")]
@@ -230,7 +372,8 @@ def main() -> int:
     sub = p.add_subparsers(dest="cmd", required=True)
     for name in ("append", "rollback", "check", "show"):
         sp = sub.add_parser(name)
-        sp.add_argument("--log", required=True, help="日志文件路径（JSONL）")
+        sp.add_argument("--log", default=None, help="旧 JSONL 日志路径（v0 兼容）")
+        sp.add_argument("--db", default=None, help="SQLite 账本路径（v1 目标形态）")
         sp.add_argument("--json", action="store_true", help="机器可读输出")
         if name == "append":
             sp.add_argument("--writer", required=True)
@@ -240,20 +383,44 @@ def main() -> int:
             sp.add_argument("--before", default="")
             sp.add_argument("--after", default="")
             sp.add_argument("--conflicts", action="append", default=[])
+            sp.add_argument("--namespace", default="shared",
+                            help="账本模式命名空间（默认 shared）")
+            sp.add_argument("--source", default=None,
+                            help="账本模式来源标识（默认 role-memory）")
         if name == "rollback":
             sp.add_argument("--writer", required=True)
             sp.add_argument("--target", required=True)
             sp.add_argument("--reason", required=True)
+
+    sp = sub.add_parser("import", help="把旧 JSONL 导入 SQLite 账本（保留 legacy_id）")
+    sp.add_argument("--db", required=True, help="SQLite 账本路径")
+    sp.add_argument("--from-jsonl", required=True, help="旧 JSONL 路径")
+    sp.add_argument("--writer", required=True)
+    sp.add_argument("--json", action="store_true", help="机器可读输出")
+
     a = p.parse_args()
     try:
+        if a.cmd != "import":
+            if not (getattr(a, "db", None) or getattr(a, "log", None)):
+                raise MemoryError_("必须给 --db（账本）或 --log（旧 JSONL）")
         return {"append": cmd_append, "rollback": cmd_rollback,
-                "check": cmd_check, "show": cmd_show}[a.cmd](a)
+                "check": cmd_check, "show": cmd_show,
+                "import": ledger_import}[a.cmd](a)
     except PermissionError as e:
         print(str(e), file=sys.stderr)
         return 3
-    except (MemoryError_, OSError, ValueError) as e:
+    except (MemoryError_, OSError, ValueError, sqlite3.Error) as e:
         print(f"错误：{e}", file=sys.stderr)
         return 2
+    except Exception as e:  # engine/memory 的异常类名为保持包独立，不在此处 import
+        kind = type(e).__name__
+        if kind == "PermissionDenied":
+            print(str(e), file=sys.stderr)
+            return 3
+        if kind in ("MemoryError", "NotFound", "ConflictError"):
+            print(f"错误：{e}", file=sys.stderr)
+            return 2
+        raise
 
 
 if __name__ == "__main__":

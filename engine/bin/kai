@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# kai launcher: `kai memory ...` → engine/memory/cli.py
+set -euo pipefail
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec "${PYTHON:-python}" "$DIR/../memory/_entry.py" "$@"
