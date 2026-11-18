@@ -66,6 +66,18 @@
 - ADR-0035 D7 验收「无驻留角色 agent」改为：「核心 3 有 agent 定义但无常驻进程；专家不写常驻 agent 目录；主 AI 只有会话 prompt」。
 - 0035 其余条款不变。
 
+### D8 实现落点（2026-11-19，#26）
+
+| 决定 | 落点 |
+|---|---|
+| D1 kind 三档 | `roles/canon/*.md` frontmatter；`scripts/rolelib.py` 的 `KIND_BY_ROLE` / `CORE_IDS` / `SPECIALIST_IDS` |
+| D2 加载三层 + 15k | `rolelib.discoverable_estimate()`；doctor `role-projection`（估算 273/15000 token） |
+| D3 投影 | `adapters/role-hosts.json` 的 `profiles_dir` / `primary`；`render-roles.py render --kind core|specialist`；`bootstrap` 三层落点；`core/skills/role-entry/` |
+| D4 dispatch preset | `roles/presets/*.json`；`rolelib.preset_sources/validate_preset/resolve_preset`；doctor `dispatch-preset` |
+| D5 决策权 / 记忆 | `docs/persona-layer.md` 记忆读写矩阵；preset 校验（roles/lead/review/memory.write） |
+| D6 热修整改 | `core/skills/gold/SKILL.md`、`roles/canon/coordinator.md`、`docs/adr/0020-*.md` D5；doctor `role-boundary`（静态承诺 + run 产物 diff/代码改动） |
+| D7 修订 0035 | 已在本文 D7 记录；ADR-0035 正文的逐字改写待团长批准后执行 |
+
 ## Consequences
 
 - 8 份 canon 不动名字；只改 `kind`、加载、权限。

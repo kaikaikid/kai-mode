@@ -1,0 +1,25 @@
+{
+  "schema": "kai-dispatch-preset/1",
+  "name": "review-only",
+  "description": "纯验收任务：没有施工，只对既有 diff / 证据出判词",
+  "mode": "one-session",
+  "roles": ["reviewer"],
+  "lead": "reviewer",
+  "tier": "medium",
+  "budget": {
+    "max_tokens": 50000,
+    "max_minutes": 30
+  },
+  "isolation": {
+    "worktree": false,
+    "review": "none"
+  },
+  "memory": {
+    "read": ["project:<id>", "shared"],
+    "write": "propose"
+  },
+  "output": {
+    "label_by_role": true,
+    "final_owner": "reviewer"
+  }
+}

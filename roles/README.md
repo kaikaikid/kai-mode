@@ -26,6 +26,7 @@ roles/
   output-routing.md    载体路由唯一家（渲染器逐字前置）
   summary-convention.md 总结体例唯一家（渲染器逐字前置）
   summary-slots.json   八角色总结措辞唯一家（数据面）
+  presets/<name>.json  框架默认 dispatch preset（项目可用 .ai/presets/ 同名覆盖）
   registry/            派生登记（生成物；手改即红）
 ```
 
@@ -33,8 +34,10 @@ roles/
 `designer` `writer` `archivist` `reviewer`。
 
 **其中一个不是子代理**：`coordinator`（康娜）是**主 AI 人格**——默认对话激活的就是它，
-`kind: primary`。另外七个是 `kind: dispatchable`，按需调出：用户点名可以直接调，主 AI 也能自己派。
-所以「渲染成可派发定义文件」的只有七个；主 AI 人格单独出 `_primary`，是**会话级**人格，不是候选项。
+`kind: primary`。另外七个分两层：`engineer`／`reviewer`／`archivist` 是 `kind: core`，
+渲染成宿主 agent 定义（常驻可发现、按需调用）；`researcher`／`architect`／`designer`／`writer`
+是 `kind: specialist`，渲染成 `.ai/roles/profiles/` 的按需 profile，不进 agent 目录。
+主 AI 人格单独出 `_primary` 会话 prompt，是**会话级**人格，不是候选项（也不进 agent 目录）。
 
 ## 正本 frontmatter（六键，固定顺序）
 
@@ -51,8 +54,9 @@ effort: high
 
 - `access_need` 只是**声明角色需要什么**，不授权。实际权限按 ADR-0033 D7 取交集：
   宿主无关三样（工作树隔离／范围校验／发货单点）永远生效，宿主工具白名单是加分项。
-- `kind` 只有两档：`primary`（主 AI 人格，有且只有 `coordinator`）／`dispatchable`（可派发）。
-  尺子会拦「两个 primary」与「把主 AI 人格标成可派发」。
+- `kind` 只有三档：`primary`（主 AI 人格，有且只有 `coordinator`）／`core`（`engineer`／`reviewer`／
+  `archivist`，进宿主 agent 目录）／`specialist`（`researcher`／`architect`／`designer`／`writer`，
+  进 `.ai/roles/profiles/` 按需加载）。尺子会拦「两个 primary」「把主 AI 人格标成其它档」与错配的 kind。
 - `model_tier` 是宿主中立档位（`fast` / `standard` / `strong` / `inherit`），
   由投影表翻成宿主认的值；`effort` 用通用档位词，宿主不认就不写该字段。
 - `canon_version` 改动必须升版；产物头部的指纹记版本与 hash，用来对账，不用来判断过期。
@@ -143,7 +147,7 @@ effort: high
 | 体例 | 槽位语义与顺序、七条红线、禁列字眼、越界字眼、人味上限 | `roles/summary-convention.md` |
 | 措辞 | 八角色各自的标题动作短语与三个槽位标记词 | `roles/summary-slots.json` |
 
-**七份 dispatchable 正本里一份总结体例都不许抄。** 八份近义散文＝八个家且必漂，
+**七份可派发正本（3 份 core ＋ 4 份 specialist）里一份总结体例都不许抄。** 八份近义散文＝八个家且必漂，
 而 doctor 的判据门查不出散文重复——所以走共享块注入，不走正本复制。
 只有 `reviewer` 例外：它的正本写「只输出一个判词对象」，那句必须改成
 「……面向读者的结果总结属机读面之外的**外层段**，不属于判词对象」。
@@ -160,17 +164,20 @@ effort: high
 |---|---|---|
 | **现读·主 AI 人格** | `render-roles.py prompt --primary --skin S` | **不用动任何文件**，下次调用就是新的 |
 | **现读·可派发** | `render-roles.py prompt --role X --skin S`（或 `--pack` 一次七个） | 同上 |
-| **定义文件** | `render-roles.py render --host H --dest <目录>`（默认七个；`--with-primary` 多出 `_primary`） | 重跑一次 `render` 覆盖 |
+| **核心定义文件** | `render-roles.py render --host H --kind core --dest <宿主 agent 目录>` | 重跑一次 `render` 覆盖 |
+| **专家 profile** | `render-roles.py render --host H --kind specialist`（默认落 `profiles_dir`，标 generated） | 同上 |
 
 ```bash
 python scripts/render-roles.py prompt --primary --skin guild          # 康娜的会话提示词（含可调出角色表）
 python scripts/render-roles.py prompt --role reviewer --skin guild    # 单个可派发角色
-python scripts/render-roles.py render --host qoder --skin generic --dest <项目>/.qoder/agents
+python scripts/render-roles.py render --host qoder --skin generic --kind core --dest <项目>/.qoder/agents
+python scripts/render-roles.py render --host qoder --skin generic --kind specialist
 ```
 
 - **主 AI 人格的提示词自带一张「可调出角色」表**（role_id／名字／管什么／读写），
   这样它不需要额外读文档就知道该派谁。表由正本现拼，不手写。
 - 可派发包默认**不含**主 AI 人格：它是会话级人格，混进候选项会变成「派自己」。
+- 专家 4 的 profile 由入口 skill `core/skills/role-entry/` 按需读取（只做触发与指针，不复制契约）。
 
 - `render` ＝ 同一份现拼结果前面加宿主 frontmatter（字段与值按 `adapters/role-hosts.json` 翻译）。
 - **没有 stale 巡检**（2026-11-08 用户令）：派生物只是缓存。装／升级一律重渲染覆盖，
@@ -182,6 +189,22 @@ python scripts/render-roles.py render --host qoder --skin generic --dest <项目
 - 为什么不能用指针：宿主定义文件的正文**就是**系统提示，会话启动一次性读入，没有动态 include。
   只放指针等于角色开局没人格，得靠自己读一次才拿得到；工具白名单没有读工具就永远拿不到，
   且读进来的是对话内容、会进压缩（见 ADR-0033 D4）。
+
+## dispatch preset：这次谁一起上
+
+preset 是**任务侧**组合（一对多），不是角色契约，也不是 specialist profile。
+框架默认住 `roles/presets/*.json`；项目覆盖住 `<项目>/.ai/presets/*.json`（同名覆盖）；
+任务图只写 `"preset": "<name>"`，解析顺序**项目 → 框架 → 缺件**，未知 preset 停下报缺件，不猜默认。
+
+- schema `kai-dispatch-preset/1`，严格模式：未知字段拒绝。
+- `roles` 不能含 `coordinator`／`archivist`；`reviewer` 只能单独成 preset 且 `isolation.review=none`。
+- 有施工时 `isolation.review=separate`，reviewer 由内核另起上下文，不写进 `roles`。
+- `lead` 必须 ∈ `roles`；`memory.write` 固定 `propose`（只有 archivist 能 commit）。
+
+```bash
+python scripts/render-roles.py preset --list
+python scripts/render-roles.py preset --name content-small --project <项目根> --json
+```
 
 ## 通用接入（换宿主、换框架都吃这一套）
 
@@ -197,7 +220,9 @@ python scripts/render-roles.py bootstrap --project <项目根> --host <宿主> -
 
 | 落点 | 是什么 |
 |---|---|
-| `<宿主落点>/`（如 `.qoder/agents/`、`.ai/roles/`） | 七个可派发角色 ＋ `_primary`（会话级主 AI 人格） |
+| `<宿主 dest_dir>/`（如 `.qoder/agents/`、`.ai/roles/`） | **核心 3** 的宿主 agent 定义 |
+| `<宿主 profiles_dir>/`（默认 `.ai/roles/profiles/`） | **专家 4** 的按需 profile（渲染缓存，标 generated） |
+| `<项目>/.ai/roles/_primary.md` | **主 AI 会话 prompt**（会话级人格，不进 agent 目录） |
 | `<项目>/.coding/host-programs.json` | 宿主→程序名映射，内核据此拦跨宿主借兵 |
 | `<项目>/.ai/BOOTSTRAP.md` | **给那个 AI 看的说明卡**：开局带谁、能调谁、怎么派、不许做什么 |
 

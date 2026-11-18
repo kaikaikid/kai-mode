@@ -1,0 +1,25 @@
+{
+  "schema": "kai-dispatch-preset/1",
+  "name": "content-small",
+  "description": "小内容任务：设计 + 写作同会话，审查由内核另起上下文",
+  "mode": "one-session",
+  "roles": ["designer", "writer"],
+  "lead": "designer",
+  "tier": "light",
+  "budget": {
+    "max_tokens": 60000,
+    "max_minutes": 30
+  },
+  "isolation": {
+    "worktree": true,
+    "review": "separate"
+  },
+  "memory": {
+    "read": ["user", "project:<id>", "shared"],
+    "write": "propose"
+  },
+  "output": {
+    "label_by_role": true,
+    "final_owner": "designer"
+  }
+}

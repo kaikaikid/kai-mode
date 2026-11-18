@@ -98,9 +98,14 @@ def test_decided_pair_installs_roles_and_records_the_skin(tmp_path):
     p, proj = _e2e(tmp_path, _write_answers(tmp_path))
     assert p.returncode == 0, p.stderr[-400:]
     agents = proj / ".qoder" / "agents"
-    names = sorted(f.name for f in agents.iterdir())
-    assert len(names) == 8 and "_primary.md" in names, names
-    head = (agents / "_primary.md").read_text(encoding="utf-8")
+    core_names = sorted(f.name for f in agents.iterdir())
+    assert core_names == ["archivist.md", "engineer.md", "reviewer.md"], core_names
+    profiles = proj / ".ai" / "roles" / "profiles"
+    assert sorted(f.name for f in profiles.iterdir()) == [
+        "architect.md", "designer.md", "researcher.md", "writer.md"]
+    primary = proj / ".ai" / "roles" / "_primary.md"
+    assert primary.is_file(), "主 AI 会话 prompt 不进 agent 目录"
+    head = primary.read_text(encoding="utf-8")
     assert "skin=guild" in head, "皮肤没记进产物头部＝下次初始化无从可查"
     assert "canon_sha256=" in head and "skin_sha256=" in head, "指纹缺失，漂移无从判"
     assert (proj / ".coding" / "host-programs.json").exists()

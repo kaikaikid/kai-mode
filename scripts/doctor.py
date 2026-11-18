@@ -2391,6 +2391,127 @@ def chk_role_canon(root: str, ms):
                   f"四块职责逐字共用，指纹可复算")
 
 
+def chk_role_projection(root: str, ms):
+    """投影分层（ADR-0036 D3）：主 AI 会话 prompt / 核心 3 agent 目录 / 专家 4 profiles。"""
+    from pathlib import Path as _P
+    rl = _load_rolelib(root)
+    if rl is None or not os.path.isdir(os.path.join(root, "roles")):
+        return "skip", "没有 roles/ 或 scripts/rolelib.py（角色层未接入）"
+    bad = rl.projection_problems(_P(root))
+    if bad:
+        tail = f"（共 {len(bad)} 处）" if len(bad) > 6 else ""
+        return "fail", "投影分层不合契约： " + "；".join(bad[:6]) + tail
+    est = rl.discoverable_estimate(_P(root))
+    if est["over"]:
+        return "fail", (f"可发现预算超限：估算 {est['tokens_est']} token > {est['limit']}"
+                        f"（字符数/4；先裁描述，不裁契约）")
+    return "ok", (f"核心 3 → dest_dir（{'、'.join(rl.CORE_IDS)}）；"
+                  f"专家 4 → profiles_dir（{'、'.join(rl.SPECIALIST_IDS)}）；"
+                  f"主 AI 走会话 prompt 不进 agent 目录；"
+                  f"可发现预算估算 {est['tokens_est']}/{est['limit']} token（估算）")
+
+
+def chk_dispatch_preset(root: str, ms):
+    """dispatch preset：框架默认逐份校验；未知 preset 由解析口报缺件。"""
+    from pathlib import Path as _P
+    rl = _load_rolelib(root)
+    if rl is None:
+        return "skip", "没有 scripts/rolelib.py（角色层未接入）"
+    bad = rl.preset_problems(_P(root))
+    if bad:
+        tail = f"（共 {len(bad)} 处）" if len(bad) > 6 else ""
+        return "fail", "dispatch preset 不合契约： " + "；".join(bad[:6]) + tail
+    names = sorted(rl.preset_sources(_P(root)))
+    if not names:
+        return "skip", "没有 roles/presets（preset 未接入）"
+    return "ok", f"{len(names)} 个框架 preset 合法：{'、'.join(names)}"
+
+
+def _coordinator_diff_hits(node, in_coord: bool = False) -> list[str]:
+    """在一个 JSON 子树里找「coordinator 产出的 diff／代码改动」的结构性证据。"""
+    hits: list[str] = []
+    if isinstance(node, dict):
+        role = node.get("role_id") or node.get("created_by") or node.get("role")
+        coord = in_coord or (isinstance(role, str) and role == "coordinator")
+        if coord:
+            for key in ("diff", "patch", "code_changes"):
+                if node.get(key):
+                    hits.append(key)
+            changed = node.get("changed_files")
+            if isinstance(changed, list) and changed:
+                hits.append("changed_files")
+            arts = node.get("artifacts")
+            if isinstance(arts, list):
+                for art in arts:
+                    if not isinstance(art, dict):
+                        continue
+                    if str(art.get("type") or "") == "code":
+                        hits.append("artifact type=code")
+                    if str(art.get("format") or "").lower() in ("diff", "patch"):
+                        hits.append(f"artifact format={art.get('format')}")
+                    if str(art.get("uri") or "").lower().endswith((".diff", ".patch")):
+                        hits.append("artifact uri=.diff/.patch")
+        for value in node.values():
+            hits.extend(_coordinator_diff_hits(value, coord))
+    elif isinstance(node, list):
+        for value in node:
+            hits.extend(_coordinator_diff_hits(value, in_coord))
+    return hits
+
+
+def chk_role_boundary(root: str, ms):
+    """角色边界对账（ADR-0036 D6）：coordinator 只调度；产物含 diff / 代码改动即红。"""
+    from pathlib import Path as _P
+    rl = _load_rolelib(root)
+    if rl is None or not os.path.isdir(os.path.join(root, "roles")):
+        return "skip", "没有 roles/ 或 scripts/rolelib.py（角色层未接入）"
+    bad: list[str] = []
+    coord = os.path.join(root, "roles", "canon", "coordinator.md")
+    if not os.path.isfile(coord):
+        bad.append("缺 roles/canon/coordinator.md")
+    else:
+        text = open(coord, encoding="utf-8").read()
+        for phrase in ("小修补", "小调查", "自办硬门槛"):
+            if phrase in text:
+                bad.append(f"coordinator 正本仍写「{phrase}」：再小的修也派 worker，主 AI 只验收")
+    gold = os.path.join(root, "core", "skills", "gold", "SKILL.md")
+    if os.path.isfile(gold):
+        text = open(gold, encoding="utf-8").read()
+        for phrase in ("免票热修", "默认 0 个子代理"):
+            if phrase in text:
+                bad.append(f"gold 仍写「{phrase}」：热修例外已退役，施工一律派 worker")
+    adr20 = os.path.join(root, "docs", "adr", "0020-ace-pilot-expedited-lane.md")
+    if os.path.isfile(adr20):
+        text = open(adr20, encoding="utf-8").read()
+        if "ADR-0036" not in text:
+            bad.append("ADR-0020 D5 未登记退役（应由 ADR-0036 D6 取代）")
+
+    runs = os.path.join(root, ".coding", "runs")
+    scanned = 0
+    if os.path.isdir(runs):
+        for base, dirs, files in os.walk(runs):
+            dirs[:] = [d for d in dirs if d not in ("__pycache__", ".git")]
+            for fn in sorted(files):
+                if not fn.lower().endswith(".json"):
+                    continue
+                p = os.path.join(base, fn)
+                try:
+                    data = json.loads(open(p, encoding="utf-8").read())
+                except (OSError, ValueError):
+                    continue
+                scanned += 1
+                rel = os.path.relpath(p, root).replace("\\", "/")
+                for hit in _coordinator_diff_hits(data):
+                    bad.append(f"{rel}：coordinator 产物含 {hit}（主 AI 不施工）")
+                    if len(bad) >= 6:
+                        break
+    if bad:
+        tail = f"（共 {len(bad)} 处）" if len(bad) > 6 else ""
+        return "fail", "角色边界对账失败： " + "；".join(bad[:6]) + tail
+    run_note = f"运行记录 {scanned} 份，无 coordinator 代码产物" if runs else "无 .coding/runs（运行面未接入）"
+    return "ok", f"coordinator 只调度、gold 无热修例外、ADR-0020 D5 已退役；{run_note}"
+
+
 # ── 21 frontmatter YAML 形状（skills / agents）：不引 PyYAML，只拦最常见的粘连 ──
 YAML_RESERVED_START = ("@", "`")
 
@@ -2769,6 +2890,9 @@ CHECKS = (
     ("decoupling-gate", "解耦门（项目硬路径零残留）", chk_decoupling),
     ("host-neutral", "宿主专有 token 不进正本", chk_host_neutral),
     ("role-canon", "角色正本契约（八角色 × 双皮 × 六宿主）", chk_role_canon),
+    ("role-projection", "角色投影分层（会话/agent/profile + 15k 预算）", chk_role_projection),
+    ("dispatch-preset", "dispatch preset 合法（schema/角色/lead/review）", chk_dispatch_preset),
+    ("role-boundary", "角色边界对账（coordinator 只调度，产物无 diff）", chk_role_boundary),
     ("role-registry", "registry 与正本一致（profession/role v1）", chk_role_registry),
     ("landing-compare", "落点对照（agent 指纹与现渲一致）", chk_landing_compare),
     ("persona-layer", "人格层契约（原初内核只读 / ego 只放引用 / 记忆走 archivist）", chk_persona),

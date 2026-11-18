@@ -1,7 +1,7 @@
 ---
 role_id: engineer
-canon_version: 1.1.1
-kind: dispatchable
+canon_version: 1.2.0
+kind: core
 access_need: writable
 model_tier: standard
 effort: high

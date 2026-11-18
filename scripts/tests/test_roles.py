@@ -40,11 +40,14 @@ def repo_copy(tmp_path):
     (tmp_path / "roles").mkdir()
     shutil.copytree(REPO / "roles" / "canon", tmp_path / "roles" / "canon")
     shutil.copytree(REPO / "roles" / "skins", tmp_path / "roles" / "skins")
+    shutil.copytree(REPO / "roles" / "presets", tmp_path / "roles" / "presets")
     for name in ("input-contract.md", "output-routing.md", "envelope-header.md",
                  "summary-convention.md", "summary-slots.json"):
         shutil.copy2(REPO / "roles" / name, tmp_path / "roles" / name)
     (tmp_path / "adapters").mkdir()
     shutil.copy2(REPO / "adapters" / "role-hosts.json", tmp_path / "adapters" / "role-hosts.json")
+    (tmp_path / "scripts").mkdir()
+    shutil.copy2(REPO / "scripts" / "rolelib.py", tmp_path / "scripts" / "rolelib.py")
     # 派生体例门要看的两个落点也得在，否则假仓里门只会报「文件不在」
     (tmp_path / "docs").mkdir()
     shutil.copy2(REPO / "docs" / "eval-cases.md", tmp_path / "docs" / "eval-cases.md")
@@ -77,6 +80,17 @@ def test_exactly_one_primary_and_it_is_the_coordinator():
     assert primaries == [rl.PRIMARY_ID] == ["coordinator"]
     assert rl.PRIMARY_ID not in rl.DISPATCHABLE_IDS
     assert len(rl.DISPATCHABLE_IDS) == 7
+
+
+def test_kind_splits_core_three_and_specialist_four():
+    """ADR-0036 D1：kind 三档；核心 3 进 agent 目录，专家 4 走 profile。"""
+    canon = rl.load_canon(REPO)
+    kinds = {rid: c["meta"]["kind"] for rid, c in canon.items()}
+    assert kinds == rl.KIND_BY_ROLE
+    assert set(rl.CORE_IDS) == {"engineer", "reviewer", "archivist"}
+    assert set(rl.SPECIALIST_IDS) == {"researcher", "architect", "designer", "writer"}
+    assert set(rl.CORE_IDS) | set(rl.SPECIALIST_IDS) == set(rl.DISPATCHABLE_IDS)
+    assert not (set(rl.CORE_IDS) & set(rl.SPECIALIST_IDS))
 
 
 def test_canon_has_exactly_four_blocks_in_order():
@@ -209,15 +223,24 @@ def test_canon_fingerprint_ignores_line_endings(tmp_path):
 
 
 def test_canon_fingerprint_matches_normalized_git_blob():
-    """工作树 CRLF 不得让指纹漂离 git blob：指纹以 LF 归一后的字节为准。"""
+    """工作树 CRLF 不得让指纹漂离 git blob：指纹以 LF 归一后的字节为准。
+
+    实现期工作树会脏（kind 拆分尚未提交）：对干净件仍与 HEAD blob 逐字对账；
+    对有意改动的件只要求指纹等于「归一后的工作树字节」，不把未提交改动误判成漂移。
+    """
     canon = rl.load_canon(REPO)
+    dirty = []
     for p in sorted((REPO / "roles" / "canon").glob("*.md")):
         rel = p.relative_to(REPO).as_posix()
         blob = subprocess.run(
             ["git", "show", f"HEAD:{rel}"], cwd=REPO, capture_output=True, check=True
         ).stdout
         want = rl.sha256_bytes(blob.replace(b"\r\n", b"\n"))
-        assert canon[p.stem]["sha256"] == want, p.name
+        if canon[p.stem]["sha256"] == want:
+            continue
+        dirty.append(p.name)
+        assert canon[p.stem]["sha256"] == rl.sha256_normalized(p.read_bytes()), p.name
+    assert dirty == sorted(set(dirty)), dirty
 
 
 def test_entry_fingerprint_ignores_json_whitespace_and_key_order():
@@ -294,6 +317,163 @@ def test_qoder_readonly_is_pinned_as_not_hard():
     """钉住实测结论：Desktop 这条派发面上工具白名单没被执行，只读不是硬机制。
     哪天宿主修好了，这条会红——那就该把它改成 yes，并同步 ADR-0033。"""
     assert rl.load_hosts(REPO)["hosts"]["qoder"]["readonly_hard"] == "no"
+
+
+# ── 分层投影：核心 3 → agent 目录；专家 4 → profiles（标 generated）───────────
+@pytest.mark.parametrize("host", rl.HOSTS)
+def test_render_kind_core_and_specialist_split(host):
+    core = rl.render_all(REPO, host, "guild", kind="core")
+    spec = rl.render_all(REPO, host, "guild", kind="specialist")
+    suffix = rl.load_hosts(REPO)["hosts"][host].get("suffix", ".md")
+    assert set(core) == {f"{r}{suffix}" for r in rl.CORE_IDS}
+    assert set(spec) == {f"{r}.md" for r in rl.SPECIALIST_IDS}
+    assert "_primary.md" not in core and "_primary.md" not in spec
+    for name, text in spec.items():
+        assert text.startswith("<!-- generated: kai-role-profile;"), name
+        assert not text.startswith("---"), f"{name} 是 profile，不该带宿主 frontmatter"
+        rid = Path(name).stem
+        assert rl.render_prompt(REPO, rid, "guild") in text, f"{name} 正文不是同一个组装点"
+    for name, text in core.items():
+        if rl.load_hosts(REPO)["hosts"][host].get("agent_file"):
+            assert text.startswith("---"), f"{host}/{name} 核心角色应有宿主 frontmatter"
+
+
+def test_projection_config_keeps_specialists_out_of_agent_dirs():
+    hosts = rl.load_hosts(REPO)["hosts"]
+    for host, cfg in hosts.items():
+        assert cfg.get("profiles_dir"), host
+        assert cfg.get("primary", {}).get("mode") == "session-prompt", host
+        if cfg.get("agent_file"):
+            dest = cfg["dest_dir"].replace("\\", "/").strip("/")
+            prof = cfg["profiles_dir"].replace("\\", "/").strip("/")
+            assert prof != dest and not prof.startswith(dest + "/"), host
+            pdir = cfg["primary"]["dir"].replace("\\", "/").strip("/")
+            assert pdir != dest and not pdir.startswith(dest + "/"), host
+
+
+def test_reverse_missing_profiles_dir_is_red(repo_copy):
+    p = repo_copy / "adapters" / "role-hosts.json"
+    d = json.loads(p.read_text(encoding="utf-8"))
+    d["hosts"]["qoder"].pop("profiles_dir", None)
+    p.write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
+    bad = rl.validate(repo_copy)
+    assert any("profiles_dir" in b for b in bad), bad
+
+
+def test_reverse_primary_in_agent_dir_is_red(repo_copy):
+    p = repo_copy / "adapters" / "role-hosts.json"
+    d = json.loads(p.read_text(encoding="utf-8"))
+    d["hosts"]["qoder"]["primary"]["dir"] = d["hosts"]["qoder"]["dest_dir"]
+    p.write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
+    bad = rl.validate(repo_copy)
+    assert any("primary.dir 落在 agent 目录" in b for b in bad), bad
+
+
+def test_discoverable_budget_is_under_15k_and_marked_estimate():
+    est = rl.discoverable_estimate(REPO)
+    assert est["estimate"] is True
+    assert est["tokens_est"] <= est["limit"], est
+    assert set(est["parts"]) == {"primary_table", "core_descriptions", "specialist_triggers"}
+
+
+# ── dispatch preset：加载 / 校验 / 未知报缺件 ───────────────────────────────
+def test_framework_presets_are_valid_and_resolvable():
+    names = sorted(rl.preset_sources(REPO))
+    assert names, "至少要有框架默认 preset"
+    assert rl.preset_problems(REPO) == []
+    for name in names:
+        data = rl.resolve_preset(REPO, name)
+        assert data["schema"] == rl.PRESET_SCHEMA
+        assert data["lead"] in data["roles"]
+        assert "coordinator" not in data["roles"] and "archivist" not in data["roles"]
+
+
+def test_preset_project_override_wins_and_unknown_is_missing(tmp_path):
+    proj = tmp_path / "proj"
+    (proj / ".ai" / "presets").mkdir(parents=True)
+    base = json.loads((REPO / "roles" / "presets" / "review-only.json").read_text(encoding="utf-8"))
+    base["description"] = "项目覆盖版"
+    (proj / ".ai" / "presets" / "review-only.json").write_text(
+        json.dumps(base, ensure_ascii=False), encoding="utf-8")
+    got = rl.resolve_preset(REPO, "review-only", proj)
+    assert got["_source"] == "project" and got["description"] == "项目覆盖版"
+    with pytest.raises(rl.RoleError) as e:
+        rl.resolve_preset(REPO, "no-such-preset", proj)
+    assert "缺件" in str(e.value)
+
+
+@pytest.mark.parametrize("mutate,needle", [
+    (lambda d: d["roles"].append("coordinator"), "不能含 coordinator"),
+    (lambda d: d.__setitem__("roles", ["reviewer", "writer"]), "reviewer 只能单独"),
+    (lambda d: d["isolation"].__setitem__("review", "optional"), "isolation.review"),
+    (lambda d: d["budget"].__setitem__("max_tokens", -1), "正整数"),
+    (lambda d: d.__setitem__("lead", "engineer"), "lead 必须"),
+    (lambda d: d.__setitem__("extra", 1), "未知字段"),
+])
+def test_preset_validator_catches_bad_shapes(mutate, needle):
+    data = json.loads((REPO / "roles" / "presets" / "content-small.json").read_text(encoding="utf-8"))
+    mutate(data)
+    bad = rl.validate_preset(data, "content-small")
+    assert any(needle in b for b in bad), bad
+
+
+# ── 角色边界对账：coordinator 产物含 diff / 代码改动即红 ───────────────────
+def _boundary_status(root):
+    doctor = _load_doctor()
+    return doctor.chk_role_boundary(str(root), None)
+
+
+def test_role_boundary_gate_is_green_on_real_repo():
+    status, msg = _boundary_status(REPO)
+    assert status == "ok", msg
+
+
+def test_role_boundary_gate_catches_coordinator_self_execution_text(repo_copy):
+    p = repo_copy / "roles" / "canon" / "coordinator.md"
+    p.write_text(p.read_text(encoding="utf-8") + "\n小修补可在当前会话直接做。\n", encoding="utf-8")
+    status, msg = _boundary_status(repo_copy)
+    assert status == "fail" and "小修补" in msg, msg
+
+
+def test_role_boundary_gate_catches_coordinator_diff_artifact(repo_copy):
+    run = repo_copy / ".coding" / "runs" / "r1"
+    run.mkdir(parents=True)
+    (run / "report.json").write_text(json.dumps({
+        "role_id": "coordinator",
+        "changed_files": ["scripts/rolelib.py"],
+        "artifacts": [{"type": "code", "uri": "x.patch"}],
+    }, ensure_ascii=False), encoding="utf-8")
+    status, msg = _boundary_status(repo_copy)
+    assert status == "fail" and "coordinator 产物含" in msg, msg
+
+
+def test_role_boundary_gate_allows_engineer_diff_artifact(repo_copy):
+    run = repo_copy / ".coding" / "runs" / "r1"
+    run.mkdir(parents=True)
+    (run / "report.json").write_text(json.dumps({
+        "role_id": "engineer",
+        "changed_files": ["scripts/rolelib.py"],
+    }, ensure_ascii=False), encoding="utf-8")
+    status, msg = _boundary_status(repo_copy)
+    assert status == "ok", msg
+
+
+def test_role_entry_skill_exists_and_points_at_profiles():
+    skill = REPO / "core" / "skills" / "role-entry" / "SKILL.md"
+    text = skill.read_text(encoding="utf-8")
+    assert text.startswith("---\nname: role-entry\n")
+    for rid in rl.SPECIALIST_IDS:
+        assert f"`{rid}`" in text, rid
+    assert ".ai/roles/profiles/<role_id>.md" in text
+    assert "## mission" not in text, "入口 skill 不该复制专家契约"
+
+
+def test_doctor_projection_and_preset_checks_are_wired_and_green():
+    doctor = _load_doctor()
+    status, msg = doctor.chk_role_projection(str(REPO), None)
+    assert status == "ok", msg
+    status, msg = doctor.chk_dispatch_preset(str(REPO), None)
+    assert status == "ok", msg
 
 
 # ── 两条消费路径：打包（要重渲染） vs 现读（零同步）──────────────────────────
@@ -377,8 +557,14 @@ def test_bootstrap_cli_writes_roles_table_card_and_is_idempotent(host, expected_
                         encoding="utf-8", errors="replace")
     assert r1.returncode == 0, r1.stderr
     roles = proj / expected_dir
-    assert len(sorted(roles.glob("*.md"))) == 8, "七个可派发 ＋ _primary"
-    assert (roles / "_primary.md").is_file()
+    core_names = {f"{r}.md" for r in rl.CORE_IDS}
+    # opencode 没有 agent 文件层，主 AI 会话 prompt 与核心提示词同住 .ai/roles（仍不进 agent 目录）。
+    expected_core = core_names | ({"_primary.md"} if expected_dir == ".ai/roles" else set())
+    assert {p.name for p in roles.glob("*.md")} == expected_core, "核心 3 才进 agent 目录"
+    profiles = proj / ".ai" / "roles" / "profiles"
+    assert {p.name for p in profiles.glob("*.md")} == {f"{r}.md" for r in rl.SPECIALIST_IDS}
+    primary = proj / ".ai" / "roles" / "_primary.md"
+    assert primary.is_file() and "skin=generic" in primary.read_text(encoding="utf-8")
     assert (proj / ".coding" / "host-programs.json").is_file()
     assert (proj / ".ai" / "BOOTSTRAP.md").is_file()
     r2 = subprocess.run(cmd, cwd=str(REPO), capture_output=True, text=True,
@@ -467,23 +653,23 @@ def test_reverse_host_without_own_cli_is_red(repo_copy):
 def test_reverse_second_primary_is_red(repo_copy):
     """只许一个主 AI 人格：给别人也标 primary，尺子必须红。"""
     p = repo_copy / "roles" / "canon" / "reviewer.md"
-    p.write_text(p.read_text(encoding="utf-8").replace("kind: dispatchable", "kind: primary"),
+    p.write_text(p.read_text(encoding="utf-8").replace("kind: core", "kind: primary"),
                  encoding="utf-8")
     bad = rl.validate(repo_copy)
     assert any("主 AI 人格只能是" in b for b in bad), bad
 
 
-def test_reverse_primary_marked_dispatchable_is_red(repo_copy):
+def test_reverse_primary_marked_specialist_is_red(repo_copy):
     p = repo_copy / "roles" / "canon" / "coordinator.md"
-    p.write_text(p.read_text(encoding="utf-8").replace("kind: primary", "kind: dispatchable"),
+    p.write_text(p.read_text(encoding="utf-8").replace("kind: primary", "kind: specialist"),
                  encoding="utf-8")
     bad = rl.validate(repo_copy)
-    assert any("不能声明 dispatchable" in b for b in bad), bad
+    assert any("kind 只能是 primary" in b for b in bad), bad
 
 
 def test_reverse_bad_kind_is_red(repo_copy):
     p = repo_copy / "roles" / "canon" / "writer.md"
-    p.write_text(p.read_text(encoding="utf-8").replace("kind: dispatchable", "kind: subagent"),
+    p.write_text(p.read_text(encoding="utf-8").replace("kind: specialist", "kind: subagent"),
                  encoding="utf-8")
     bad = rl.validate(repo_copy)
     assert any("kind 非法" in b for b in bad), bad

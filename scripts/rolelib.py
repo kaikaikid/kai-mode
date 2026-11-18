@@ -30,9 +30,24 @@ SUMMARY_SLOTS_REL = "roles/summary-slots.json"
 SUMMARY_SLOT_KEYS = ("title", "done", "open", "ask", "none", "tone_cap")
 SUMMARY_SLOT_SOURCE_KEYS = ("done", "open", "ask")
 ACCESS = ("read_only", "writable")
-KINDS = ("primary", "dispatchable")
+KINDS = ("primary", "core", "specialist")
+# 角色 → kind 的固定映射（ADR-0036 D1）：kind 只扩枚举，不新增 frontmatter 键。
+# 主 AI 人格有且只有 coordinator；核心 3 进宿主 agent 目录；专家 4 走按需 profile。
+KIND_BY_ROLE = {
+    "coordinator": "primary",
+    "engineer": "core",
+    "reviewer": "core",
+    "archivist": "core",
+    "researcher": "specialist",
+    "architect": "specialist",
+    "designer": "specialist",
+    "writer": "specialist",
+}
 # 主 AI 人格：默认对话激活的就是它，不渲染成可派发的子代理定义。
 PRIMARY_ID = "coordinator"
+CORE_IDS = tuple(r for r in ROLE_IDS if KIND_BY_ROLE[r] == "core")
+SPECIALIST_IDS = tuple(r for r in ROLE_IDS if KIND_BY_ROLE[r] == "specialist")
+# 兼容别名：可派发 = 核心 + 专家（不含主 AI 人格）；旧调用点仍可用。
 DISPATCHABLE_IDS = tuple(r for r in ROLE_IDS if r != PRIMARY_ID)
 TIERS = ("fast", "standard", "strong", "inherit")
 EFFORTS = ("low", "medium", "high", "xhigh", "max")
@@ -43,6 +58,22 @@ HOST_TOKENS = (
     ".qoder/", ".claude/", ".cursor/", ".github/agents", "disallowedTools",
     "maxTurns", "permissionMode", "codex exec", "opencode run", "mcp__",
 )
+
+# dispatch preset（ADR-0036 D4 / 计划 §7.5）：框架默认 + 项目覆盖，任务图只写名字。
+PRESET_SCHEMA = "kai-dispatch-preset/1"
+PRESETS_REL = "roles/presets"
+PROJECT_PRESETS_REL = ".ai/presets"
+PRESET_MODES = ("one-session", "separate-sessions", "subagents")
+PRESET_TIERS = ("light", "medium", "careful", "heavy", "fable")
+PRESET_TOP_KEYS = ("schema", "name", "description", "mode", "roles", "lead",
+                   "tier", "budget", "isolation", "memory", "output")
+PRESET_BUDGET_KEYS = ("max_tokens", "max_minutes")
+PRESET_ISOLATION_KEYS = ("worktree", "review")
+PRESET_MEMORY_KEYS = ("read", "write")
+PRESET_OUTPUT_KEYS = ("label_by_role", "final_owner")
+PRESET_REVIEW_VALUES = ("separate", "none")
+# 可发现预算（ADR-0036 D2）：主 AI 角色表 + 核心 3 描述 + 专家 4 触发词；无 tokenizer 时按 字符/4 估算。
+DISCOVERABLE_TOKEN_LIMIT = 15000
 
 FM_RE = re.compile(r"\A---\s*\n(.*?)\n---\s*\n?", re.S)
 BLOCK_RE = re.compile(r"^## ([a-z_]+)\s*$", re.M)
@@ -136,6 +167,256 @@ def load_hosts(root: Path) -> dict:
     if not p.is_file():
         raise RoleError("缺宿主投影表：adapters/role-hosts.json")
     return json.loads(p.read_text(encoding="utf-8"))
+
+
+# ── dispatch preset：加载 / 解析 / 校验（框架默认 → 项目覆盖 → 缺件）──────────
+def preset_sources(root: Path, project: Path | None = None) -> dict[str, tuple[Path, str]]:
+    """返回 {preset 名: (文件, 来源)}；项目同名覆盖框架，但两份文件都留着做校验。"""
+    root = Path(root)
+    out: dict[str, tuple[Path, str]] = {}
+    fdir = root / PRESETS_REL
+    if fdir.is_dir():
+        for p in sorted(fdir.glob("*.json")):
+            out[p.stem] = (p, "framework")
+    if project is not None:
+        pdir = Path(project) / PROJECT_PRESETS_REL
+        if pdir.is_dir():
+            for p in sorted(pdir.glob("*.json")):
+                out[p.stem] = (p, "project")
+    return out
+
+
+def _kebab(name: str) -> bool:
+    return bool(re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", name or ""))
+
+
+def validate_preset(data: dict, expected_name: str) -> list[str]:
+    """单份 preset 的形状与规则；返回问题列表（空＝通过）。严格模式：未知字段拒绝。"""
+    bad: list[str] = []
+    if not isinstance(data, dict):
+        return ["不是 JSON 对象"]
+
+    unknown = sorted(set(data) - set(PRESET_TOP_KEYS))
+    if unknown:
+        bad.append(f"未知字段：{', '.join(unknown)}")
+    missing = [k for k in PRESET_TOP_KEYS if k not in data]
+    if missing:
+        bad.append(f"缺字段：{', '.join(missing)}")
+    if data.get("schema") != PRESET_SCHEMA:
+        bad.append(f"schema 必须是 {PRESET_SCHEMA!r}：{data.get('schema')!r}")
+
+    name = str(data.get("name") or "")
+    if not _kebab(name):
+        bad.append(f"name 必须是 kebab-case：{name!r}")
+    elif name != expected_name:
+        bad.append(f"name 与文件名不符：{name!r} != {expected_name!r}")
+    if not str(data.get("description") or "").strip():
+        bad.append("description 不能为空")
+    if data.get("mode") not in PRESET_MODES:
+        bad.append(f"mode 非法：{data.get('mode')!r}（{' / '.join(PRESET_MODES)}）")
+
+    roles = data.get("roles")
+    if not isinstance(roles, list) or not roles:
+        bad.append("roles 必须是非空数组")
+        roles = []
+    else:
+        all_str = all(isinstance(r, str) for r in roles)
+        if not all_str or any(r not in ROLE_IDS for r in roles):
+            bad.append(f"roles 含未知 role_id：{roles}")
+        if all_str and len(set(roles)) != len(roles):
+            bad.append(f"roles 有重复：{roles}")
+        forbidden = sorted({r for r in roles if r in ("coordinator", "archivist")})
+        if forbidden:
+            bad.append(f"roles 不能含 coordinator / archivist：{', '.join(forbidden)}")
+        if "reviewer" in roles and roles != ["reviewer"]:
+            bad.append("reviewer 只能单独成 preset（review=none），不能与施工角色组合")
+
+    lead = data.get("lead")
+    if lead not in roles:
+        bad.append(f"lead 必须 ∈ roles：{lead!r}")
+
+    if data.get("tier") not in PRESET_TIERS:
+        bad.append(f"tier 非法：{data.get('tier')!r}（{' / '.join(PRESET_TIERS)}）")
+
+    budget = data.get("budget")
+    if not isinstance(budget, dict):
+        bad.append("budget 必须是对象")
+    else:
+        extra = sorted(set(budget) - set(PRESET_BUDGET_KEYS))
+        if extra:
+            bad.append(f"budget 未知字段：{', '.join(extra)}")
+        for k in PRESET_BUDGET_KEYS:
+            v = budget.get(k)
+            if not isinstance(v, int) or isinstance(v, bool) or v <= 0:
+                bad.append(f"budget.{k} 必须是正整数：{v!r}")
+
+    isolation = data.get("isolation")
+    review = None
+    if not isinstance(isolation, dict):
+        bad.append("isolation 必须是对象")
+    else:
+        extra = sorted(set(isolation) - set(PRESET_ISOLATION_KEYS))
+        if extra:
+            bad.append(f"isolation 未知字段：{', '.join(extra)}")
+        if not isinstance(isolation.get("worktree"), bool):
+            bad.append("isolation.worktree 必须是布尔值")
+        review = isolation.get("review")
+        if review not in PRESET_REVIEW_VALUES:
+            bad.append(f"isolation.review 只能是 separate 或 none：{review!r}")
+    if roles == ["reviewer"] and review != "none":
+        bad.append("reviewer 单独 preset 必须 isolation.review = none（没有施工可审）")
+
+    memory = data.get("memory")
+    if not isinstance(memory, dict):
+        bad.append("memory 必须是对象")
+    else:
+        extra = sorted(set(memory) - set(PRESET_MEMORY_KEYS))
+        if extra:
+            bad.append(f"memory 未知字段：{', '.join(extra)}")
+        reads = memory.get("read")
+        if not isinstance(reads, list) or not reads or any(not isinstance(x, str) or not x for x in reads):
+            bad.append("memory.read 必须是非空字符串数组")
+        if memory.get("write") != "propose":
+            bad.append(f"memory.write 固定为 propose（只有 archivist 能 commit）：{memory.get('write')!r}")
+
+    output = data.get("output")
+    if not isinstance(output, dict):
+        bad.append("output 必须是对象")
+    else:
+        extra = sorted(set(output) - set(PRESET_OUTPUT_KEYS))
+        if extra:
+            bad.append(f"output 未知字段：{', '.join(extra)}")
+        if not isinstance(output.get("label_by_role"), bool):
+            bad.append("output.label_by_role 必须是布尔值")
+        if output.get("final_owner") not in roles:
+            bad.append(f"output.final_owner 必须 ∈ roles：{output.get('final_owner')!r}")
+
+    return [f"{expected_name}: {b}" for b in bad]
+
+
+def preset_problems(root: Path, project: Path | None = None) -> list[str]:
+    """所有可见 preset 逐份校验；框架目录存在但为空也算问题（默认组合不能凭空消失）。"""
+    root = Path(root)
+    bad: list[str] = []
+    fdir = root / PRESETS_REL
+    pdir = (Path(project) / PROJECT_PRESETS_REL) if project is not None else None
+    if not fdir.is_dir() and not (pdir and pdir.is_dir()):
+        return []
+    if fdir.is_dir() and not sorted(fdir.glob("*.json")):
+        bad.append(f"{PRESETS_REL}: 框架默认 preset 目录是空的")
+    seen: set[Path] = set()
+    for d in (fdir, pdir):
+        if d is None or not d.is_dir():
+            continue
+        for p in sorted(d.glob("*.json")):
+            if p in seen:
+                continue
+            seen.add(p)
+            try:
+                data = json.loads(p.read_text(encoding="utf-8"))
+            except (OSError, ValueError) as e:
+                bad.append(f"{p.name}: 不是合法 JSON：{e}")
+                continue
+            bad.extend(validate_preset(data, p.stem))
+    return bad
+
+
+def resolve_preset(root: Path, name: str, project: Path | None = None) -> dict:
+    """按「项目 .ai/presets → 框架 roles/presets → 缺件」解析；未知 preset 报缺件，不猜默认。"""
+    sources = preset_sources(root, project)
+    if name not in sources:
+        where = [str(Path(root) / PRESETS_REL)]
+        if project is not None:
+            where.insert(0, str(Path(project) / PROJECT_PRESETS_REL))
+        raise RoleError(f"缺件：dispatch preset {name!r} 不在 {' 或 '.join(where)}")
+    path, origin = sources[name]
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        raise RoleError(f"dispatch preset 读不出来：{path}（{e}）")
+    bad = validate_preset(data, name)
+    if bad:
+        raise RoleError(f"dispatch preset 不合契约（{origin}）：" + "；".join(bad))
+    out = dict(data)
+    out["_source"] = origin
+    out["_path"] = path.as_posix()
+    return out
+
+
+# ── 投影分层：主 AI 不进 agent 目录；核心进 dest_dir；专家进 profiles_dir ─────
+def _rel_norm(value: object) -> str:
+    return str(value or "").replace("\\", "/").strip("/")
+
+
+def _same_or_under(child: str, parent: str) -> bool:
+    c, p = _rel_norm(child), _rel_norm(parent)
+    return bool(c and p) and (c == p or c.startswith(p + "/"))
+
+
+def projection_problems(root: Path) -> list[str]:
+    """宿主投影表必须能分出三层落点（ADR-0036 D3）：dest_dir / profiles_dir / primary。"""
+    root = Path(root)
+    try:
+        hosts = (load_hosts(root).get("hosts") or {})
+    except (RoleError, OSError, ValueError) as e:
+        return [str(e)]
+    bad: list[str] = []
+    for host, cfg in sorted(hosts.items()):
+        rel = f"adapters/role-hosts.json:{host}"
+        dest = _rel_norm(cfg.get("dest_dir"))
+        prof = _rel_norm(cfg.get("profiles_dir"))
+        if not prof:
+            bad.append(f"{rel} 缺 profiles_dir（专家 4 的按需落点）")
+        prim = cfg.get("primary")
+        if not isinstance(prim, dict):
+            bad.append(f"{rel} 缺 primary（主 AI 人格的会话级落点）")
+            continue
+        pdir = _rel_norm(prim.get("dir"))
+        pfile = str(prim.get("file") or "").strip()
+        if prim.get("mode") != "session-prompt":
+            bad.append(f"{rel} primary.mode 必须是 session-prompt")
+        if not str(prim.get("landing") or "").strip():
+            bad.append(f"{rel} primary.landing 不能为空")
+        if not pdir or not pfile:
+            bad.append(f"{rel} primary 缺 dir/file")
+        if cfg.get("agent_file"):
+            # 有 agent 定义文件层的宿主：核心与专家都必须离开 agent 目录，主 AI 也不许进去。
+            if prof and (prof == dest or _same_or_under(prof, dest)):
+                bad.append(f"{rel} profiles_dir 落在 agent 目录里：{prof}")
+            if pdir and (pdir == dest or _same_or_under(pdir, dest)):
+                bad.append(f"{rel} primary.dir 落在 agent 目录里：{pdir}")
+        if prof and pdir and (pdir == prof or _same_or_under(pdir, prof)):
+            bad.append(f"{rel} primary.dir 不能落在 profiles_dir 里：{pdir}")
+    return bad
+
+
+def discoverable_estimate(root: Path, skin: str = "guild") -> dict:
+    """可发现预算：主 AI 角色表 + 核心 3 描述 + 专家 4 触发词（无数据时用描述代估）。
+
+    没有 tokenizer，按字符数 / 4 估算并标 estimate=True；超限裁描述，不裁契约。
+    """
+    root = Path(root)
+    canon = load_canon(root)
+    sk = load_skin(root, skin)
+    entries = sk.get("roles") or {}
+    parts: dict[str, int] = {}
+    primary = render_primary(root, skin)
+    table = primary.split("## 可调出的角色", 1)[-1] if "## 可调出的角色" in primary else ""
+    parts["primary_table"] = len(table)
+    parts["core_descriptions"] = sum(
+        len(description_for((entries.get(r) or {}).get("name", ""), canon[r]["body"]))
+        for r in CORE_IDS
+    )
+    parts["specialist_triggers"] = sum(
+        len(description_for((entries.get(r) or {}).get("name", ""), canon[r]["body"]))
+        for r in SPECIALIST_IDS
+    )
+    chars = sum(parts.values())
+    return {
+        "skill": skin, "chars": chars, "tokens_est": (chars + 3) // 4,
+        "limit": DISCOVERABLE_TOKEN_LIMIT, "estimate": True, "parts": parts,
+        "over": (chars + 3) // 4 > DISCOVERABLE_TOKEN_LIMIT,
+    }
 
 
 def entry_sha256(entry: dict) -> str:
@@ -414,6 +695,20 @@ def render_prompt(root: Path, role_id: str, skin: str) -> str:
     return render_body(canon[role_id], sk, entry, skin)
 
 
+def render_specialist_profile(root: Path, role_id: str, skin: str) -> str:
+    """专家 profile：渲染缓存（`.ai/roles/profiles/<role_id>.md`），标 generated。
+
+    专家不进宿主 agent 目录（防止宿主自动派活），所以不加宿主 frontmatter；正文仍走
+    同一个组装点 `render_prompt`，与现读结果逐字相同，只在前面加一行生成物标记。
+    """
+    if KIND_BY_ROLE.get(role_id) != "specialist":
+        raise RoleError(f"{role_id!r} 不是 specialist，不能出 specialist profile")
+    body = render_prompt(root, role_id, skin)
+    marker = (f"<!-- generated: kai-role-profile; role_id={role_id}; "
+              f"source=roles/canon/{role_id}.md; skin={skin}; render=render-roles.py --kind specialist -->")
+    return marker + "\n\n" + body
+
+
 def render_pack(root: Path, skin: str, with_primary: bool = False) -> str:
     """把可派发角色拼成一份包（默认七个，不含主 AI 人格）。同样是现读。"""
     ids = ROLE_IDS if with_primary else DISPATCHABLE_IDS
@@ -539,25 +834,33 @@ def render_depth(root: Path, role_id: str) -> str:
 
 
 def render_all(root: Path, host: str, skin: str, with_primary: bool = False,
-               contract_only: bool = False) -> dict[str, str]:
-    """返回 {文件名: 文本}。默认只渲染**可派发**的七个角色。
+               contract_only: bool = False, kind: str | None = None) -> dict[str, str]:
+    """返回 {文件名: 文本}。默认渲染七个可派发角色（核心 + 专家）；`kind` 可分层过滤。
 
-    主 AI 人格不是子代理：默认对话激活的就是它，要用就单独 `--with-primary` 出 `_primary.md`
-    （会话级人格），不要混进按名派发的那一堆里。正文一律走同一个组装点。
+    `kind="core"`：只出核心 3（进宿主 dest_dir，带宿主 frontmatter）；
+    `kind="specialist"`：只出专家 4 的 profile（纯正文 + generated 标记，不进 agent 目录）。
+    主 AI 人格不是子代理：默认对话激活的就是它，要用就单独 `--with-primary` 出 `_primary.md`。
+    正文一律走同一个组装点。
 
-    `contract_only=True`：七个可派发角色改走 `render_contract_prompt`（无人格契约投影），
+    `contract_only=True`：可派发角色改走 `render_contract_prompt`（无人格契约投影），
     主 AI 人格仍走 `render_primary`（它面向用户，人格必须留着）。
-    默认 False 保持旧行为，正常重渲不会把落点悄悄换成人格或反过来。
     """
     hosts = load_hosts(root)
     if host not in (hosts.get("hosts") or {}):
         raise RoleError(f"投影表里没有宿主 {host!r}")
+    if kind is not None and kind not in ("core", "specialist"):
+        raise RoleError(f"kind 只能是 core / specialist：{kind!r}")
     cfg = hosts["hosts"][host]
     canon = load_canon(root)
     sk = load_skin(root, skin)
     entries = sk.get("roles") or {}
     suffix = cfg.get("suffix", ".md")
-    ids = ROLE_IDS if with_primary else DISPATCHABLE_IDS
+    if kind == "core":
+        ids = CORE_IDS
+    elif kind == "specialist":
+        ids = SPECIALIST_IDS
+    else:
+        ids = ROLE_IDS if with_primary else DISPATCHABLE_IDS
     out: dict[str, str] = {}
     for rid in ids:
         if rid not in canon:
@@ -566,11 +869,16 @@ def render_all(root: Path, host: str, skin: str, with_primary: bool = False,
             raise RoleError(f"皮肤 {skin} 缺角色 {rid}")
         if rid == PRIMARY_ID:
             body = render_primary(root, skin)
-        elif contract_only:
-            body = render_contract_prompt(root, rid, skin)
-        else:
-            body = render_prompt(root, rid, skin)
-        name = f"_primary{suffix}" if rid == PRIMARY_ID else f"{rid}{suffix}"
+            name = f"_primary{suffix}"
+            out[name] = role_frontmatter(cfg, canon[rid], entries[rid]) + body
+            continue
+        if kind == "specialist":
+            name = f"{rid}.md"
+            out[name] = render_specialist_profile(root, rid, skin)
+            continue
+        body = (render_contract_prompt(root, rid, skin) if contract_only
+                else render_prompt(root, rid, skin))
+        name = f"{rid}{suffix}"
         out[name] = role_frontmatter(cfg, canon[rid], entries[rid]) + body
     return out
 
@@ -602,12 +910,17 @@ def validate(root: Path) -> list[str]:
             bad.append(f"{rel} canon_version 不是 x.y.z：{meta.get('canon_version')!r}")
         if meta.get("access_need") not in ACCESS:
             bad.append(f"{rel} access_need 非法：{meta.get('access_need')!r}")
-        if meta.get("kind") not in KINDS:
-            bad.append(f"{rel} kind 非法：{meta.get('kind')!r}（primary / dispatchable）")
-        elif meta.get("kind") == "primary" and rid != PRIMARY_ID:
-            bad.append(f"{rel} 声明 primary，但主 AI 人格只能是 {PRIMARY_ID}")
-        elif meta.get("kind") == "dispatchable" and rid == PRIMARY_ID:
-            bad.append(f"{rel} 是主 AI 人格，不能声明 dispatchable")
+        kind = meta.get("kind")
+        want_kind = KIND_BY_ROLE.get(rid)
+        if kind not in KINDS:
+            bad.append(f"{rel} kind 非法：{kind!r}（primary / core / specialist）")
+        elif kind != want_kind:
+            if kind == "primary":
+                bad.append(f"{rel} 声明 primary，但主 AI 人格只能是 {PRIMARY_ID}")
+            elif want_kind == "primary":
+                bad.append(f"{rel} 是主 AI 人格，kind 只能是 primary（不能声明 {kind}）")
+            else:
+                bad.append(f"{rel} kind 与角色映射不符：{rid} 应为 {want_kind}，实际 {kind}")
         if meta.get("model_tier") not in TIERS:
             bad.append(f"{rel} model_tier 非法：{meta.get('model_tier')!r}")
         if meta.get("effort") not in EFFORTS:
@@ -701,6 +1014,8 @@ def validate(root: Path) -> list[str]:
         else:
             if not cfg.get("own_cli"):
                 bad.append(f"{rel} 无定义文件层必须给出本宿主自己的 CLI（ADR-0033 D3）")
+    bad.extend(projection_problems(root))
+    bad.extend(preset_problems(root))
     return bad
 
 
@@ -717,7 +1032,10 @@ def render_bootstrap(root: Path, host: str, skin: str) -> str:
     sk = load_skin(root, skin)
     entries = sk.get("roles") or {}
     prim = entries.get(PRIMARY_ID) or {}
-    dest = cfg.get("dest_dir") or "?"
+    dest = _rel_norm(cfg.get("dest_dir")) or "?"
+    prof = _rel_norm(cfg.get("profiles_dir")) or ".ai/roles/profiles"
+    prim_cfg = cfg.get("primary") or {}
+    prim_path = f"{_rel_norm(prim_cfg.get('dir'))}/{prim_cfg.get('file')}"
     suffix = cfg.get("suffix", ".md")
     lines = [
         f"# 这套东西怎么用（宿主 {host}｜皮肤 {skin}）",
@@ -726,31 +1044,41 @@ def render_bootstrap(root: Path, host: str, skin: str) -> str:
         "",
         "## 0. 你开局带哪份人格",
         "",
-        f"主 AI 人格是 **{prim.get('name', '')}**（`{PRIMARY_ID}`）：`{dest}/_primary{suffix}`。",
+        f"主 AI 人格是 **{prim.get('name', '')}**（`{PRIMARY_ID}`）：`{prim_path}`。",
         "会话启动时把那一份整段读入（当 system prompt 或开场指令）。默认对话面就是它，",
         "**它自己不是可派发的角色**；按名派它等于「派自己」，会绕成一圈。",
+        "主 AI 不进宿主 agent 目录：交互宿主用项目指令指针，headless 启动时现拼。",
         "",
         "## 1. 你能调出谁",
         "",
-        "| role_id | 名字 | 管什么 | 读写 | 文件 |",
-        "|---|---|---|---|---|",
+        "| role_id | 类型 | 名字 | 管什么 | 读写 | 文件 |",
+        "|---|---|---|---|---|---|",
     ]
     for rid in DISPATCHABLE_IDS:
         e = entries.get(rid) or {}
         need = canon[rid]["meta"].get("access_need", "")
         desc = description_for(e.get("name", ""), canon[rid]["body"])
         desc = desc.split("：", 1)[1] if "：" in desc else desc
-        lines.append(f"| {rid} | {e.get('name', '')} | {desc} | "
-                     f"{'只读' if need == 'read_only' else '可写'} | `{dest}/{rid}{suffix}` |")
+        role_kind = KIND_BY_ROLE.get(rid, "")
+        path = f"{dest}/{rid}{suffix}" if rid in CORE_IDS else f"{prof}/{rid}.md"
+        lines.append(f"| {rid} | {role_kind} | {e.get('name', '')} | {desc} | "
+                     f"{'只读' if need == 'read_only' else '可写'} | `{path}` |")
     lines += ["", "## 2. 派活怎么派（本宿主）", ""]
     if cfg.get("agent_file"):
-        lines.append(f"- 把上表七个文件放到 `{dest}/`，宿主会把它们当可派发的定义"
-                     f"（选择键：{cfg.get('select_key')}）。")
+        lines += [
+            f"- 把核心 3 份文件放到 `{dest}/`，宿主会把它们当可派发的定义"
+            f"（选择键：{cfg.get('select_key')}）。",
+            f"- 专家 4 在 `{prof}/`：**不要放进 `{dest}/`**，由入口 skill 按需读取，防宿主自动派活。",
+        ]
     else:
         lines += [
             f"- 本宿主**没有 agent 定义文件层**：把 `{dest}/<role_id>{suffix}` 整段拼进派发提示词即可，",
             "  格式与定义文件的正文完全一样（同一个组装点）。",
+            f"- 专家 4 在 `{prof}/`，按需读取；不要整包塞进每次派发。",
         ]
+    lines.append(
+        "- dispatch preset：项目覆盖放 `.ai/presets/*.json`，任务图只写 `\"preset\": \"<名字>\"`；"
+        "解析顺序项目 → 框架默认 → 缺件，不猜默认。")
     if cfg.get("kernel_cmd_keys"):
         keys = " / ".join(f"`{k}`" for k in cfg["kernel_cmd_keys"])
         cli = cfg.get("own_cli") or "（本宿主自己的 CLI）"
@@ -768,6 +1096,7 @@ def render_bootstrap(root: Path, host: str, skin: str) -> str:
         "3. **发货单点**：只有主会话能合并／推送／关票，角色实例一律不发货。",
         "4. **记忆只有一个写者**：长期记忆由 `archivist` 读写改，别的角色只能提候选。",
         "5. 角色名与职业必须写进正文：子代理看不到自己的类型名，`identity` 块里逐字写。",
+        "6. **主 AI 不自己做施工**：再小的修也派 worker；主 AI 只分诊、调度与验收。",
         "",
         "## 4. 项目侧另两份边界件",
         "",

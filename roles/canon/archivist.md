@@ -1,7 +1,7 @@
 ---
 role_id: archivist
-canon_version: 1.3.0
-kind: dispatchable
+canon_version: 1.4.0
+kind: core
 access_need: writable
 model_tier: standard
 effort: medium

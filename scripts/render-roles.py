@@ -17,7 +17,9 @@ role-canon 门共用同一份，不写第二套）。
   python scripts/render-roles.py contracts --role reviewer [--skin guild] [--json]
   python scripts/render-roles.py contracts --pack [--skin guild] [--json]
   python scripts/render-roles.py depth    --role coordinator
-  python scripts/render-roles.py render   --host qoder --skin generic --dest <目标目录> [--dry-run]
+  python scripts/render-roles.py render   --host qoder --skin generic --kind core --dest <目标目录> [--dry-run]
+  python scripts/render-roles.py render   --host qoder --skin generic --kind specialist [--dest <profiles>]
+  python scripts/render-roles.py preset   --name content-small [--project <项目根>] [--json]
   python scripts/render-roles.py emit-table --project <项目根>
 
 render 只新增或覆盖它自己渲染的那几个文件，不动目标目录里别的东西；覆盖前备份到
@@ -54,8 +56,9 @@ def cmd_validate(args: argparse.Namespace) -> int:
     else:
         canon = rolelib.load_canon(root)
         hosts = rolelib.load_hosts(root)["hosts"]
+        presets = rolelib.preset_sources(root)
         print(f"角色正本契约通过：{len(canon)} 份正本 × {len(rolelib.SKINS)} 套皮肤 × "
-              f"{len(hosts)} 家宿主；四块职责逐字共用，指纹可复算")
+              f"{len(hosts)} 家宿主 × {len(presets)} 个 preset；四块职责逐字共用，指纹可复算")
     return 1 if bad else 0
 
 
@@ -67,11 +70,21 @@ def cmd_render(args: argparse.Namespace) -> int:
         for b in bad:
             print(f"  - {b}", file=sys.stderr)
         return 2
+    kind = getattr(args, "kind", None)
+    with_primary = getattr(args, "with_primary", False)
+    if kind and with_primary:
+        print("--kind 分层渲染不接受 --with-primary：主 AI 不进 agent 目录", file=sys.stderr)
+        return 2
     files = rolelib.render_all(root, args.host, args.skin,
-                               with_primary=getattr(args, "with_primary", False),
-                               contract_only=getattr(args, "contract_only", False))
+                               with_primary=with_primary,
+                               contract_only=getattr(args, "contract_only", False),
+                               kind=kind)
     cfg = rolelib.load_hosts(root)["hosts"][args.host]
-    dest = Path(args.dest).resolve()
+    if args.dest:
+        dest = Path(args.dest).resolve()
+    else:
+        base = cfg.get("profiles_dir") if kind == "specialist" else cfg.get("dest_dir")
+        dest = (Path.cwd() / str(base or ".ai/roles")).resolve()
     plan = {"new": [], "overwrite": [], "same": []}
     for name, text in sorted(files.items()):
         p = dest / name
@@ -93,7 +106,7 @@ def cmd_render(args: argparse.Namespace) -> int:
         for name, text in sorted(files.items()):
             (dest / name).write_bytes(text.encode("utf-8"))
     receipt = {
-        "host": args.host, "skin": args.skin, "dest": str(dest),
+        "host": args.host, "skin": args.skin, "dest": str(dest), "kind": kind,
         "select_key": cfg.get("select_key"), "agent_file": bool(cfg.get("agent_file")),
         "readonly_via": cfg.get("readonly_via"), "dry_run": args.dry_run,
         "backup": str(backup) if backup else None,
@@ -102,7 +115,8 @@ def cmd_render(args: argparse.Namespace) -> int:
     if args.json:
         print(json.dumps(receipt, ensure_ascii=False, indent=2))
     else:
-        print(f"宿主 {args.host}｜皮肤 {args.skin}｜落点 {dest}")
+        kind_label = f"｜kind {kind}" if kind else "｜kind 全部可派发"
+        print(f"宿主 {args.host}｜皮肤 {args.skin}{kind_label}｜落点 {dest}")
         print(f"选择键={receipt['select_key']}｜定义文件层={receipt['agent_file']}｜只读靠={receipt['readonly_via']}")
         for key, label in (("new", "新增"), ("overwrite", "备份后覆盖"), ("same", "内容相同（照写）")):
             print(f"{label}（{len(plan[key])}）：{', '.join(plan[key]) or '—'}")
@@ -237,7 +251,16 @@ def cmd_bootstrap(args: argparse.Namespace) -> int:
     project = Path(args.project).resolve()
     cfg = rolelib.load_hosts(root)["hosts"][args.host]
     dest = project / str(cfg.get("dest_dir") or ".ai/roles")
-    files = rolelib.render_all(root, args.host, args.skin, with_primary=True)
+    profiles = project / str(cfg.get("profiles_dir") or ".ai/roles/profiles")
+    prim_cfg = cfg.get("primary") or {}
+    primary_path = project / str(prim_cfg.get("dir") or ".ai/roles") / str(prim_cfg.get("file") or "_primary.md")
+
+    # 三层投影：核心 3 → dest_dir；专家 4 → profiles_dir（渲染缓存，标 generated）；
+    # 主 AI → 会话级 prompt 文件，不进 agent 目录。
+    core_files = rolelib.render_all(root, args.host, args.skin, kind="core")
+    spec_files = rolelib.render_all(root, args.host, args.skin, kind="specialist")
+    primary_files = {primary_path.name: rolelib.render_primary(root, args.skin)}
+    targets = [(dest, core_files), (profiles, spec_files), (primary_path.parent, primary_files)]
 
     def put(path: Path, text: str) -> str:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -254,16 +277,17 @@ def cmd_bootstrap(args: argparse.Namespace) -> int:
         path.write_bytes(text.encode("utf-8"))
         return "new"
 
-    if not args.dry_run:
-        dest.mkdir(parents=True, exist_ok=True)
     plan: dict[str, list[str]] = {"new": [], "overwrite": [], "same": []}
-    for name, text in sorted(files.items()):
-        if args.dry_run:
-            p = dest / name
-            plan["same" if p.is_file() and p.read_bytes() == text.encode("utf-8")
-                 else ("overwrite" if p.is_file() else "new")].append(name)
-        else:
-            plan[put(dest / name, text)].append(name)
+    for base, files in targets:
+        for name, text in sorted(files.items()):
+            p = base / name
+            label = p.relative_to(project).as_posix()
+            if args.dry_run:
+                state = ("same" if p.is_file() and p.read_bytes() == text.encode("utf-8")
+                         else ("overwrite" if p.is_file() else "new"))
+            else:
+                state = put(p, text)
+            plan[state].append(label)
 
     table = rolelib.host_programs(root)
     tpath = project / ".coding" / "host-programs.json"
@@ -278,9 +302,11 @@ def cmd_bootstrap(args: argparse.Namespace) -> int:
         card_path.parent.mkdir(parents=True, exist_ok=True)
         card_path.write_text(card, encoding="utf-8")
 
+    all_names = sorted([*core_files, *spec_files, *primary_files])
     receipt = {
         "project": str(project), "host": args.host, "skin": args.skin,
-        "roles_dir": str(dest), "role_files": sorted(files),
+        "core_dir": str(dest), "profiles_dir": str(profiles),
+        "primary_file": str(primary_path), "role_files": all_names,
         "host_table": str(tpath), "bootstrap_card": str(card_path),
         "dry_run": args.dry_run, **plan,
     }
@@ -288,7 +314,9 @@ def cmd_bootstrap(args: argparse.Namespace) -> int:
         print(json.dumps(receipt, ensure_ascii=False, indent=2))
     else:
         print(f"初始化完成：宿主 {args.host}｜皮肤 {args.skin}｜项目 {project}")
-        print(f"角色文件（{len(files)} 份，含 _primary）：{dest}")
+        print(f"核心 3（宿主 agent 目录）：{dest}")
+        print(f"专家 4（按需 profile，标 generated）：{profiles}")
+        print(f"主 AI 会话 prompt（不进 agent 目录）：{primary_path}")
         for key, label in (("new", "新增"), ("overwrite", "备份后覆盖"), ("same", "内容相同")):
             print(f"  {label}（{len(plan[key])}）：{', '.join(plan[key]) or '—'}")
         print(f"宿主映射表：{tpath}")
@@ -297,6 +325,37 @@ def cmd_bootstrap(args: argparse.Namespace) -> int:
             print("dry-run：未写盘")
         print("下一步：把说明卡的内容落进该项目的 AGENTS.md / 开局指令，"
               f"或直接让那个 AI 读 {card_path}。")
+    return 0
+
+
+def cmd_preset(args: argparse.Namespace) -> int:
+    """解析 dispatch preset：只按名字取，项目覆盖优先，未知即缺件。"""
+    root = Path(args.root).resolve() if args.root else repo_root()
+    project = Path(args.project).resolve() if getattr(args, "project", None) else None
+    if args.list:
+        sources = rolelib.preset_sources(root, project)
+        rows = [{"name": n, "source": src, "path": p.as_posix()}
+                for n, (p, src) in sorted(sources.items())]
+        if args.json:
+            print(json.dumps(rows, ensure_ascii=False, indent=2))
+        else:
+            for r in rows:
+                print(f"{r['name']}\t{r['source']}\t{r['path']}")
+        return 0
+    if not args.name:
+        print("要么给 --name，要么给 --list", file=sys.stderr)
+        return 2
+    try:
+        data = rolelib.resolve_preset(root, args.name, project)
+    except rolelib.RoleError as e:
+        print(str(e), file=sys.stderr)
+        return 2
+    if args.json:
+        print(json.dumps(data, ensure_ascii=False, indent=2))
+    else:
+        print(f"preset {data['name']}（{data['_source']}）：{data['_path']}")
+        print(json.dumps({k: v for k, v in data.items() if not k.startswith("_")},
+                         ensure_ascii=False, indent=2))
     return 0
 
 
@@ -333,15 +392,23 @@ def main() -> int:
     sp = sub.add_parser("render", help="渲染到目标目录（一律覆盖，不做 stale 判断）")
     sp.add_argument("--host", required=True, choices=rolelib.HOSTS)
     sp.add_argument("--skin", required=True, choices=rolelib.SKINS)
-    sp.add_argument("--dest", required=True, help="目标目录（项目里的宿主落点）")
+    sp.add_argument("--dest", help="目标目录（缺省：core 用 dest_dir，specialist 用 profiles_dir）")
+    sp.add_argument("--kind", choices=("core", "specialist"),
+                    help="分层渲染：core 3 → agent 目录；specialist 4 → profiles（标 generated）")
     sp.add_argument("--dry-run", action="store_true", help="只报告将做什么，不写盘")
     sp.add_argument("--with-primary", action="store_true",
                     help="多出一个 _primary 文件（会话级主 AI 人格，不是可派发子代理）")
     sp.add_argument("--contract-only", action="store_true",
                     help="七个可派发角色改渲染无人格契约投影（_primary 仍保留人格）")
+    ps = sub.add_parser("preset", help="解析 dispatch preset（项目覆盖 → 框架默认 → 缺件）")
+    ps.add_argument("--name", help="preset 名字（任务图里只写这个名字）")
+    ps.add_argument("--project", help="项目仓根（读 .ai/presets）")
+    ps.add_argument("--list", action="store_true", help="列出可见 preset")
+    ps.add_argument("--json", action="store_true", default=argparse.SUPPRESS,
+                    help="机器可读回执")
     args = p.parse_args()
     return {"validate": cmd_validate, "render": cmd_render, "emit-table": cmd_emit_table,
-            "prompt": cmd_prompt, "contracts": cmd_contracts,
+            "prompt": cmd_prompt, "contracts": cmd_contracts, "preset": cmd_preset,
             "bootstrap": cmd_bootstrap, "depth": cmd_depth}[args.cmd](args)
 
 

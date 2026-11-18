@@ -14,6 +14,17 @@
       "since": "1.4.0"
     },
     {
+      "name": "role-entry",
+      "path": "core/skills/role-entry",
+      "kind": "framework",
+      "scope": "global",
+      "install": "auto",
+      "summary": "role-entry",
+      "plugin": "core",
+      "version": "0.1.0",
+      "since": "0.1.0"
+    },
+    {
       "name": "harness-audit",
       "path": "core/skills/harness-audit",
       "kind": "framework",
