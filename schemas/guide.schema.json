@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kai-mode.local/schemas/guide.schema.json",
+  "title": "kai-mode 攻略章节契约（GUIDE.md）",
+  "description": "GUIDE.md 是人读文档，不是机器字段的第二份。本 schema 定义章节清单（x-guide-sections）与一份可选的章节 manifest 形状；scripts/map-check.py 消费 x-guide-sections 核对项目里的 .ai/GUIDE.md。机器字段（命令、路径、票平台、发布形态）仍只住 .ai/kai-mode.project.json。",
+  "type": "object",
+  "required": ["schema", "sections"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "kai-guide/1",
+      "description": "章节 manifest 的格式版本。"
+    },
+    "sections": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/section" }
+    }
+  },
+  "$defs": {
+    "section": {
+      "type": "object",
+      "required": ["id", "title"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "description": "GUIDE.md 里的二级标题文字；匹配时按 `## <title>` 找。"
+        },
+        "required": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    }
+  },
+  "x-guide-sections": [
+    { "id": "goal-boundary", "title": "目标与边界", "required": true },
+    { "id": "directory-map", "title": "目录地图", "required": true },
+    { "id": "commands", "title": "命令", "required": true },
+    { "id": "roles-skills", "title": "角色与技能", "required": true },
+    { "id": "red-lines", "title": "红线", "required": true },
+    { "id": "delivery", "title": "交付", "required": true },
+    { "id": "pitfalls", "title": "坑", "required": true },
+    { "id": "links", "title": "链接", "required": true }
+  ],
+  "examples": [
+    {
+      "schema": "kai-guide/1",
+      "sections": [
+        { "id": "goal-boundary", "title": "目标与边界", "required": true },
+        { "id": "directory-map", "title": "目录地图", "required": true },
+        { "id": "commands", "title": "命令", "required": true },
+        { "id": "roles-skills", "title": "角色与技能", "required": true },
+        { "id": "red-lines", "title": "红线", "required": true },
+        { "id": "delivery", "title": "交付", "required": true },
+        { "id": "pitfalls", "title": "坑", "required": true },
+        { "id": "links", "title": "链接", "required": true }
+      ]
+    }
+  ]
+}

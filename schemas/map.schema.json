@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kai-mode.local/schemas/map.schema.json",
+  "title": "kai-mode 冒险者地图（map.json）",
+  "description": "数据根里的机器事实：一个地区（项目仓）一条记录。文件本身 untracked；本 schema 与模板 tracked 在框架仓。落点与规则见 docs/guide-landing.md 与 plan §7.6。",
+  "type": "object",
+  "required": ["schema", "regions"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "kai-map/1",
+      "description": "地图格式版本；只认这一个值。"
+    },
+    "regions": {
+      "type": "array",
+      "description": "地区列表；id 在整张地图内唯一。",
+      "items": { "$ref": "#/$defs/region" }
+    }
+  },
+  "$defs": {
+    "region_id": {
+      "type": "string",
+      "description": "region-id：仓库名 slug，唯一、不可变；记忆命名空间 project:<region-id> 取这里。",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "abs_path": {
+      "type": "string",
+      "description": "机器绝对路径（盘符、UNC 或 POSIX 根）；只住 untracked 的 map.json，不进 tracked 仓。",
+      "pattern": "^(?:[A-Za-z]:[\\\\/]|[\\\\/]{2}|/)"
+    },
+    "rel_path": {
+      "type": "string",
+      "description": "相对项目仓根的路径；不写盘符、不以分隔符开头、不得越出仓根（map-check 会解析核对）。",
+      "pattern": "^(?![A-Za-z]:)(?![\\\\/]).+$"
+    },
+    "region": {
+      "type": "object",
+      "description": "一个地区＝一个项目仓。",
+      "required": [
+        "id",
+        "name",
+        "path",
+        "remote",
+        "default_branch",
+        "instance",
+        "guide",
+        "runtime",
+        "channels",
+        "trust"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/region_id" },
+        "aliases": {
+          "type": "array",
+          "description": "曾用 region-id 或原仓库名；登记后旧名仍可解析。",
+          "items": { "$ref": "#/$defs/region_id" },
+          "uniqueItems": true
+        },
+        "name": {
+          "type": "string",
+          "description": "人读名称。",
+          "minLength": 1
+        },
+        "path": {
+          "allOf": [{ "$ref": "#/$defs/abs_path" }],
+          "description": "项目仓根的机器绝对路径。"
+        },
+        "remote": {
+          "type": ["string", "null"],
+          "description": "git remote origin；没有远端时写 null，不猜。"
+        },
+        "default_branch": {
+          "type": "string",
+          "description": "默认分支名。",
+          "minLength": 1
+        },
+        "instance": {
+          "allOf": [{ "$ref": "#/$defs/rel_path" }],
+          "description": "机器契约相对仓根的落点，常规为 .ai/kai-mode.project.json。"
+        },
+        "guide": {
+          "allOf": [{ "$ref": "#/$defs/rel_path" }],
+          "description": "攻略相对仓根的落点，常规为 .ai/GUIDE.md。"
+        },
+        "runtime": {
+          "type": "object",
+          "description": "发现到的运行时入口（不是机器差异事实源，解析规则仍住机器契约的 runtime 段）。",
+          "additionalProperties": false,
+          "properties": {
+            "backend_python": { "type": ["string", "null"] },
+            "node": { "type": ["string", "null"] },
+            "deps": { "type": ["string", "null"] }
+          }
+        },
+        "channels": {
+          "type": "array",
+          "description": "该地区可用的宿主通道（宿主适配名），供分发寻址。",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "trust": {
+          "type": "string",
+          "description": "trusted＝可直接施工；review-required＝每次施工前需人复核。",
+          "enum": ["trusted", "review-required"]
+        }
+      }
+    }
+  }
+}
