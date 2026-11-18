@@ -37,6 +37,14 @@ def pick_executor(cfg: dict[str, Any]):
     return get_executor(kind, host_cmd)
 
 
+_INTERNAL_MARKERS = ("report_path", "touchset", "你是执行内核的施工子代理", '"brief"')
+
+
+def _looks_like_internal_card(text: str) -> bool:
+    """执行内核的任务卡不是给人看的答案；漏到飞书会暴露内部提示词。"""
+    return any(m in text for m in _INTERNAL_MARKERS)
+
+
 def run_card(executor: Executor, card: dict[str, Any]) -> dict[str, Any]:
     """执行一张卡，并把「宿主命令只有 stdout、没写 report.json」收敛成答案。
 
@@ -49,7 +57,12 @@ def run_card(executor: Executor, card: dict[str, Any]) -> dict[str, Any]:
     err = str(report.get("_error") or "")
     out = str(report.get("_stdout") or "").strip()
     if err and out and "did not write report" in err:
+        if _looks_like_internal_card(out):
+            return {"_error": "执行器回传了内部任务卡，没有拿到真人答案"}
         return {"answer": out, "result": "done", "notes": "", "_stdout": out}
+    answer = str(report.get("answer") or "")
+    if answer and _looks_like_internal_card(answer):
+        return {"_error": "执行器回传了内部任务卡，没有拿到真人答案"}
     return report
 
 
