@@ -11,15 +11,16 @@
     },
     "core": {
       "version": "1.4.0",
-      "digest": "275d0cf4ceea5ef40dfdeb3811a737ceb39614eb036d3aec647d78495da2d7c4",
+      "digest": "8f54a8a8f536c177d42cdb22fcd5a7dea8cf5bc7325393b173c13300d2f6836b",
       "skills": {
         "BOOK": "1.0.0",
         "dream": "0.1.0",
-        "gold": "0.9.0",
+        "gold": "0.9.1",
         "harness-audit": "0.2.1",
         "kai-handoff": "0.3.6",
         "kai-persona-deep": "0.2.0",
         "principles": "1.1.0",
+        "role-entry": "0.1.0",
         "set-kai-mode": "7.0.0",
         "staff": "4.2.0",
         "upgrade-kai-mode": "0.2.1",
@@ -41,7 +42,7 @@
     },
     "engine": {
       "version": "0.6.0",
-      "digest": "d240f7b7aa8f1e3c022d7ece3c9550b475649bc3913e21c44fc53a15b6bb9fa2",
+      "digest": "702cc18cd5fd57775be251c951f9b79305d99ad3a433e1fab48710aef96ac36c",
       "skills": {
         "fleet": "0.9.0",
         "pk": "0.1.1"
