@@ -69,8 +69,9 @@ def _host_run(host_cmd: str, prompt: str, cwd: str) -> subprocess.CompletedProce
     # 不给「先跑起来再说」的缝。宿主→程序名映射从 .coding/host-programs.json 读（数据，不写死）。
     hostguard.assert_own_host(host_cmd, hostguard.current_host(_root()),
                               hostguard.load_table(_root()))
-    if any(a == "{brief}" for a in argv):
-        argv = [prompt if a == "{brief}" else a for a in argv]
+    if any(a in ("{brief}", "{task}") for a in argv):
+        # {brief}/{task} 都是「整段提示词」的占位写法：宿主命令自选一个。
+        argv = [prompt if a in ("{brief}", "{task}") else a for a in argv]
     else:  # 没写占位符：追加到末尾
         argv.append(prompt)
     return subprocess.run(argv, cwd=cwd, capture_output=True, text=True,
