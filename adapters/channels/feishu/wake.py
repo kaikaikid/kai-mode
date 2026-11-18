@@ -26,6 +26,16 @@ def _answer(text: str, report: dict[str, Any]) -> str:
     return (text or "").strip()
 
 
+def _chat_prompt(brief: str, cwd: str, timeout_s: int) -> str:
+    """飞书对话腿只送用户原话，绝不让内核的施工卡泄漏给值守 agent。"""
+    return (
+        "这是飞书用户发来的一句话。你是值守前台：只回答这句话，等康娜必要时再转接。\n"
+        "不要写 report.json，不要解释 touchset／report_path，不要回内部任务卡。\n"
+        f"工作目录：{cwd}\n超时秒数：{timeout_s}\n\n"
+        f"用户原话：\n{brief}\n"
+    )
+
+
 def make_wake(cfg: dict[str, Any], root: "Path | str", spawn=None, wait=None, read=None):
     """返回 wake(brief, cwd, resume) -> {text, session_id, tokens, adapter, rc}。
 
@@ -47,6 +57,7 @@ def make_wake(cfg: dict[str, Any], root: "Path | str", spawn=None, wait=None, re
             sdir.mkdir(parents=True, exist_ok=True)
             card = {
                 "brief": brief,
+                "prompt": _chat_prompt(brief, str(cwd), int(wake_cfg.get("timeout_s") or 600)),
                 "worktree": str(cwd),
                 "report_path": str(sdir / "report.json"),
                 "session_id": resume or "",

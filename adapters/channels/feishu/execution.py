@@ -46,12 +46,13 @@ def _looks_like_internal_card(text: str) -> bool:
 
 
 def run_card(executor: Executor, card: dict[str, Any]) -> dict[str, Any]:
-    """执行一张卡，并把「宿主命令只有 stdout、没写 report.json」收敛成答案。
-
-    OpenBot 的 kai-run.ps1 只回文本，不写执行内核的 report 文件；这不是失败，
-    把 stdout 当答案返回，避免把一次成功的执行误报成「缺 report」。
-    """
-    report = executor.run(card)
+    """执行一张卡：飞书对话腿只送纯用户提示词，不把施工任务卡交给值守 agent。"""
+    run_prompt = str(card.get("prompt") or card.get("brief") or "")
+    if not run_prompt:
+        return {"_error": "执行卡缺少用户提示词"}
+    report = executor.run({"brief": run_prompt,
+                           "worktree": card.get("worktree", "."),
+                           "report_path": card.get("report_path", "")})
     if not isinstance(report, dict):
         return {"answer": str(report or ""), "result": "done"}
     err = str(report.get("_error") or "")
