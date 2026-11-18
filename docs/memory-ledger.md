@@ -4,7 +4,8 @@
 规划：`handoff/20-plan/2026-11/2026-11-19-role-memory-convergence-plan.md` §8.3–§8.6、§8.12。
 
 一句话：**SQLite WAL 里一张只追加的事件表是唯一真相；FTS5 只是可重建的索引。**
-本版不含 daemon、MCP、Qdrant、OpenViking；那些是后续里程碑。
+本文件只讲账本核心；daemon、MCP、token 见 `docs/memory-service.md`。
+Qdrant、OpenViking 仍是后续里程碑。
 
 ## 代码落点
 
@@ -13,9 +14,10 @@
 | `engine/memory/ledger.py` | 账本：`memory_events` 表、`memory_current` 视图、propose/commit/rollback/veto、幂等、并发串行化、JSONL 导入 |
 | `engine/memory/engine.py` | `MemoryEngine` 接口；默认 `FTS5Engine`；Qdrant/OpenViking 只留桩 |
 | `engine/memory/cli.py` | `kai memory ...` 命令面 |
+| `engine/memory/daemon.py` · `mcp.py` · `tokens.py` | 本机 daemon、MCP stdio、token 表；见 `docs/memory-service.md` |
 | `engine/bin/kai` · `engine/bin/kai.cmd` | 无安装 launcher |
 | `scripts/role-memory.py` | v0 JSONL 兼容读；`--db` 时 append 转 propose/commit；`import` 导入旧日志 |
-| `scripts/tests/test_memory_ledger.py` | 本票验收测例 |
+| `scripts/tests/test_memory_ledger.py` · `test_memory_daemon.py` | 账本核心与 daemon/MCP 验收测例 |
 
 ## 数据模型
 
@@ -95,5 +97,6 @@ python scripts/role-memory.py append --log .coding/role-memory.jsonl …
 
 ## v1 不做
 
-daemon、MCP、HTTP、Qdrant/OpenViking 实现、自动摘要、图谱、写入 UI、跨机同步。
+Qdrant/OpenViking 实现、自动摘要、图谱、写入 UI、跨机同步。
 `MemoryEngine` 的 Qdrant/OpenViking 适配器只留接口桩，调用即如实报未实现。
+daemon / MCP / HTTP 的用法与边界见 `docs/memory-service.md`。
