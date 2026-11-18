@@ -61,8 +61,14 @@ class Consumer(threading.Thread):
                     _P(self.log_dir).mkdir(parents=True, exist_ok=True)
                     err = open(_P(self.log_dir) / f"{self.bot}-{self.event_key}.log",
                                "a", encoding="utf-8")
-                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=err,
-                                        text=True, encoding="utf-8", errors="replace",
+                # lark-cli event consume 把 stdin EOF 当作退出信号；后台桥的 stdin
+                # 常是 /dev/null，不给一个永不 EOF 的源就会 ready 后立刻退出。
+                keepalive = subprocess.Popen(
+                    [sys.executable, "-c", "import time\nwhile True: time.sleep(3600)"],
+                    stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                    stderr=subprocess.DEVNULL, **lark.no_window_kwargs())
+                proc = subprocess.Popen(cmd, stdin=keepalive.stdout, stdout=subprocess.PIPE,
+                                        stderr=err, text=True, encoding="utf-8", errors="replace",
                                         **lark.no_window_kwargs())
             except Exception as e:
                 print(f"[feishu.warn] cannot start consumer {self.event_key}: {e}", file=sys.stderr)
@@ -80,10 +86,11 @@ class Consumer(threading.Thread):
                         print(f"[feishu.warn] handler failed for {ev.get('dedup_key')}: {e}",
                               file=sys.stderr)
             finally:
-                try:
-                    proc.terminate()
-                except Exception:
-                    pass
+                for p in (proc, keepalive):
+                    try:
+                        p.terminate()
+                    except Exception:
+                        pass
             if self.stop.wait(backoff[min(i, len(backoff) - 1)]):
                 return
             i += 1

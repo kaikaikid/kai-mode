@@ -65,6 +65,10 @@ def _host_run(host_cmd: str, prompt: str, cwd: str) -> subprocess.CompletedProce
     argv = shlex.split(host_cmd, posix=(os.name != "nt"))
     if not argv:
         raise ValueError("empty host command")
+    # Windows 下 shlex 按 posix=False 拆分会保留字面引号，powershell -File
+    # 收到带引号的路径直接报非法路径秒失败；这里脱一层两侧成对引号。
+    argv = [a[1:-1] if len(a) >= 2 and a[0] == a[-1] and a[0] in "\"'" else a
+            for a in argv]
     # 角色实例的入口必须属于当前宿主（ADR-0033 D3）。跨宿主借兵在这里就炸，
     # 不给「先跑起来再说」的缝。宿主→程序名映射从 .coding/host-programs.json 读（数据，不写死）。
     hostguard.assert_own_host(host_cmd, hostguard.current_host(_root()),

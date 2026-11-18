@@ -41,7 +41,7 @@ def run(args: list[str], timeout: int = 60) -> subprocess.CompletedProcess:
 def send_text(profile: str, chat_id: str, text: str, idem: str = "",
               user_id: str = "") -> subprocess.CompletedProcess:
     target = ["--user-id", user_id] if user_id else ["--chat-id", chat_id]
-    args = base(profile) + ["im", "+messages-send"] + target + ["--text", text]
+    args = base(profile) + ["im", "+messages-send", "--as", "bot"] + target + ["--text", text]
     if idem:
         args += ["--idempotency-key", idem[:50]]
     return run(args)
@@ -50,7 +50,7 @@ def send_text(profile: str, chat_id: str, text: str, idem: str = "",
 def send_card(profile: str, chat_id: str, card: dict[str, Any], idem: str = "",
               user_id: str = "") -> subprocess.CompletedProcess:
     target = ["--user-id", user_id] if user_id else ["--chat-id", chat_id]
-    args = base(profile) + ["im", "+messages-send"] + target + [
+    args = base(profile) + ["im", "+messages-send", "--as", "bot"] + target + [
                             "--msg-type", "interactive", "--content",
                             json.dumps(card, ensure_ascii=False)]
     if idem:
@@ -59,7 +59,7 @@ def send_card(profile: str, chat_id: str, card: dict[str, Any], idem: str = "",
 
 
 def reply_text(profile: str, message_id: str, text: str, idem: str = "") -> subprocess.CompletedProcess:
-    args = base(profile) + ["im", "+messages-reply", "--message-id", message_id, "--text", text]
+    args = base(profile) + ["im", "+messages-reply", "--as", "bot", "--message-id", message_id, "--text", text]
     if idem:
         args += ["--idempotency-key", idem[:50]]
     return run(args)
@@ -156,7 +156,7 @@ def history_items(proc: subprocess.CompletedProcess) -> "list[dict[str, Any]] | 
 
 
 def consume_cmd(profile: str, event_key: str) -> list[str]:
-    return base(profile) + ["event", "consume", event_key]
+    return base(profile) + ["event", "consume", event_key, "--as", "bot"]
 
 
 def chat_members(profile: str, chat_id: str) -> subprocess.CompletedProcess:
