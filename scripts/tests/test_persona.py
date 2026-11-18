@@ -60,7 +60,7 @@ def test_profession_matches_tavern_professions():
         "engineer": "矮人工匠",
         "designer": "德鲁伊",
         "writer": "游学者",
-        "archivist": "记忆核对契约",
+        "archivist": "青铜龙",
         "reviewer": "圣骑士",
     }
     for rid, prof in expect.items():

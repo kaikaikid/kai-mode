@@ -2,20 +2,20 @@
 """角色经验记忆：追加式日志，单写者，可回滚，留审计。
 
 裁决：docs/adr/0033-guild-role-layer.md D5；写者迁移见 docs/adr/0035-universal-role-projection.md D4
-（记忆治理收给康娜的 `dream` skill，`archivist` 转只读 `memory-check`）。
+（记忆治理归青铜龙的 `dream` skill，`coordinator` 旧记录兼容读）。
 
 硬判据（三条，全部机械执行，不靠提示词自觉）：
-1. **只有 `coordinator`（康娜）能写**。其他角色的写入一律拒绝并返回非零。
+1. **只有 `archivist`（青铜龙）能写**。其他角色的写入一律拒绝并返回非零。
    别的角色只能提候选：把候选写成一段文本交给人或交回康娜，不走本工具。
-   旧日志里 `writer=archivist` 的记录**兼容读**（历史不追溯改写）；`inspect` 两者都认，
-   但新写入只收 `coordinator`。
+   旧日志里 `writer=coordinator` 的记录**兼容读**（历史不追溯改写）；`inspect` 两者都认，
+   但新写入只收 `archivist`。
 2. **追加式**。日志只追加，不改旧行；回滚是再追加一条反向记录，原记录永久保留。
 3. **无证据不写**。每条至少一个 `evidence_refs`，且不得是空串或「我确认过」这类自述。
 
 用法：
-  python scripts/role-memory.py append   --log <路> --writer coordinator --scope task_fact \
+  python scripts/role-memory.py append   --log <路> --writer archivist --scope task_fact \
          --statement "…" --evidence "path/to/evidence:行号" [--conflicts "m-0002"]
-  python scripts/role-memory.py rollback --log <路> --writer coordinator --target m-0001 --reason "…"
+  python scripts/role-memory.py rollback --log <路> --writer archivist --target m-0001 --reason "…"
   python scripts/role-memory.py check    --log <路> [--json]
   python scripts/role-memory.py show     --log <路> [--json]
 
@@ -31,10 +31,10 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-# 写者：ADR-0035 D4 起记忆治理归康娜（coordinator）。旧日志的 archivist 记录兼容读，
-# 但不再接受 archivist 写入——历史可追溯，正本不追溯改写。
-WRITER = "coordinator"
-LEGACY_WRITERS = ("archivist",)
+# 写者：ADR-0035 D4 修订后记忆治理归青铜龙（archivist）。旧日志的 coordinator 记录兼容读，
+# 但不再接受 coordinator 写入——历史可追溯，正本不追溯改写。
+WRITER = "archivist"
+LEGACY_WRITERS = ("coordinator",)
 KNOWN_WRITERS = (WRITER, *LEGACY_WRITERS)
 SCOPES = ("task_fact", "preference", "skill", "relationship", "failure_lesson")
 LAYER = "ego"  # light 变更只能落自我层（V1.5 R11）

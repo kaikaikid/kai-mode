@@ -5,11 +5,11 @@ approved_by: human:kaikaikid
 approved: 2026-11-18
 sources: []
 description: >
-  康娜的记忆整理技能：后台把任务痕迹整理成记忆候选，批量去重、查冲突、补来源，
-  在用户或 routine 触发时写入统一记忆 API；不做热路径写入、不在对话中途抢写。
+  青铜龙的记忆整理技能：后台把任务痕迹整理成记忆候选，批量去重、查冲突、补来源，
+  在用户手动派活或定期任务触发时写入统一记忆 API；不做热路径写入、不在对话中途抢写。
   记忆域只限 user／project／task／shared／coordinator-private；七位临时执行角色不建 role memory。
   写入一律 append-only、每条带可核验证据引用、可回滚；身份与内核变更交团长批准。
-  触发：dream、记忆整理、后台整理记忆、跑一轮记忆维护、把这条沉淀下来（明确要求时）。
+  触发：dream、记忆整理、后台整理记忆、跑一轮记忆维护、把这条沉淀下来（手动派活或定期任务触发）。
   不做：不编造角色经历、不改身份/职责/权限、不写无证据条目、不删旧记录、不接管只读核对，也不替圣骑士判任务交付。
 version: 0.1.0
 updated: 2026-11-18
@@ -19,26 +19,24 @@ metadata:
   alias: 记忆整理
 ---
 
-# dream —— 康娜的后台记忆整理
+# dream —— 青铜龙的后台记忆整理
 
-> 记忆的写者只有一个：**康娜（coordinator）**。本技能是她做后台整理时的操作手册，
-> 不是第七位常驻角色，也不是另一套记忆系统。
+> 记忆的写者只有一个：**青铜龙（archivist）**。本技能是她做后台整理时的操作手册，
+> 她可由团长手动派活，或由定期任务在独立上下文触发；本技能不是另一套记忆系统。
 > 判据：角色层裁决 D4；写入工具：`scripts/role-memory.py`。
 
 ## 角色定位
 
-康娜在**后台**（用户明确要求、或 routine 触发）把一段时间的任务痕迹整理成长期记忆：
+青铜龙在**后台**（团长手动派活、或定期任务触发）把一段时间的任务痕迹整理成长期记忆：
 挑出有长期价值的条目、补上来源、去重、标冲突、再按追加式日志写进去。
 整理完给用户一句结论＋几条候选，不铺陈过程。
 
-`archivist` 已改为只读的 `memory-check`（记忆核对）契约（查重、冲突、来源、回滚完整性），
-**不再写记忆**。本技能与它是「写」与「查」两件事，不要合并。
-任务交付的判词归圣骑士（reviewer）；记忆核对只查记忆日志本身，不出 accept／return／defer。
+任务交付的判词归圣骑士（reviewer）；本技能只管记忆账本，不出 accept／return／defer。
 
 ## 什么时候跑（不做热路径）
 
 - **不做热路径**：不在对话中途顺手写记忆，不在每次任务结束时自动写。
-- 由用户明确要求（「记一下」「跑一轮记忆整理」）或 routine 在独立上下文触发时整批跑。
+- 由团长手动派活（「跑一轮记忆整理」）或定期任务在独立上下文触发时整批跑。
 - 一次跑完一批候选再写，不一条一条打断正在进行的对话。
 
 ## 记忆域（白名单，别的不写）
@@ -51,7 +49,7 @@ metadata:
 | `shared` | 团队共享事实 | 角色分工、命名约定 |
 | `coordinator-private` | 康娜自己的调度经验 | 哪类活该派给谁 |
 
-- 七位临时执行角色（含 archivist）**不建 role memory**；旧角色记忆只读归档，不续写。
+- 其他临时执行角色不建 role memory；记忆写入由 archivist 统一负责。
 - 白名单外的一律不写：模型自述、单次对话细节、无证据推断、别人的私密材料。
 
 ## 写入纪律（机械执行，不靠自觉）
@@ -83,12 +81,12 @@ metadata:
 ## 命令
 
 ```bash
-# 追加一条（写者只能是 coordinator）
-python scripts/role-memory.py append --log <日志.jsonl> --writer coordinator \
+# 追加一条（写者只能是 archivist）
+python scripts/role-memory.py append --log <日志.jsonl> --writer archivist \
   --scope task_fact --statement "…" --evidence "path/to/evidence:行号"
 
 # 回滚一条（追加反向记录，原记录保留）
-python scripts/role-memory.py rollback --log <日志.jsonl> --writer coordinator \
+python scripts/role-memory.py rollback --log <日志.jsonl> --writer archivist \
   --target m-0001 --reason "…"
 
 # 校验 / 看活跃条目
@@ -96,8 +94,8 @@ python scripts/role-memory.py check --log <日志.jsonl> [--json]
 python scripts/role-memory.py show  --log <日志.jsonl> [--json]
 ```
 
-兼容：旧日志里 `writer=archivist` 的记录仍可读、可被 `check` 接受（历史不追溯改写）；
-新记录一律 `writer=coordinator`。
+兼容：旧日志里 `writer=coordinator` 的记录仍可读、可被 `check` 接受（历史不追溯改写）；
+新记录一律 `writer=archivist`。
 
 ## 自检（回报前跑一遍）
 
@@ -111,5 +109,5 @@ python scripts/role-memory.py show  --log <日志.jsonl> [--json]
 
 - 不合并、不推送、不关票；发货仍是主会话的事。
 - 不改 `roles/canon`、`roles/skins`、`registry.json` 等正本；要改先报告。
-- 不接管 archivist 的只读核对；核对结果（pass／fail＋findings）由 `memory-check` 契约出，本技能只消费。
+- 记忆写入归 archivist；账本自检用 `check`，发现问题按追加反向记录修正。
 - 不替圣骑士判任务交付：本技能只管记忆账本，任务验收判词归 reviewer。
