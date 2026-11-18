@@ -92,6 +92,20 @@
 - **武器**：创作类技能（原「文娱集团」六岗位）。每把归一个角色认领，认领关系写在 <!-- canon:allow-retired -->
   技能 description 首句与 `metadata.weapon_of`；剧本正本住 `studio/PLAYBOOK.md`。
 
+## 角色加载与记忆（2026-11-19）
+
+- **primary / core / specialist**：角色加载档位。`primary` 只有 coordinator（主 AI，会话级 prompt，不进 agent 目录）；`core` 是 engineer / reviewer / archivist（进宿主 agent 目录，常驻可发现）；`specialist` 是 researcher / architect / designer / writer（渲染成 specialist profile，按需加载）。
+- **常驻**：角色定义已安装 + 短描述可发现；不是常驻进程，也不是每会话注入完整契约。
+- **specialist profile**：一个专家角色按需渲染出的契约（role 侧，一对一）。
+- **dispatch preset**：一次任务里把多个角色放进同一会话的组合（task 侧，一对多）。
+- **task card**：这一单的任务卡；preset 只写名字，任务卡写 brief／AC／touchset。
+- **记忆账本**：append-only 的真相层；memory_events + memory_current；证据、回滚、单写者。
+- **记忆引擎**：MemoryEngine 适配层；索引可重建，不是真相。
+- **冒险者地图**：数据根里的 map.json，记地区位置与入口；机器路径不进 tracked 仓。
+- **地区**：一个项目仓；机器契约是项目仓 .ai 目录下的 kai-mode.project.json。
+- **攻略**：项目仓 .ai 目录下的 GUIDE.md，项目人读说明；只链接技能／脚本，不复制机器字段。
+- **region-id**：地区标识，仓库名 slug，唯一不可变。
+
 ## 酒馆七步口径（界面与文档统一展示）
 
 用户可见的基础流程只此七步；底层状态与字段仍按行业通用标识（见上「口径分层」）。
