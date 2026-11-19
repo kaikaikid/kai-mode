@@ -9,6 +9,9 @@ from pathlib import Path
 
 import pytest
 
+# map-check 的 schema 校验依赖 jsonschema；缺席时整组跳过（CI 会装上，见 plugin-check.yml）。
+pytest.importorskip("jsonschema")
+
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = ROOT / "scripts" / "map-check.py"
 GUIDE_SCHEMA = ROOT / "schemas" / "guide.schema.json"

@@ -1,7 +1,7 @@
 # 记忆账本核心（v1）
 
 裁决：[ADR-0037](adr/0037-memory-ledger-and-engine.md) D1–D5/D7/D9。
-规划：`handoff/20-plan/2026-11/2026-11-19-role-memory-convergence-plan.md` §8.3–§8.6、§8.12。
+规划：[ADR-0037](adr/0037-memory-ledger-and-engine.md) D1–D5/D7/D9；设计会话记录不入库。
 
 一句话：**SQLite WAL 里一张只追加的事件表是唯一真相；FTS5 只是可重建的索引。**
 本文件只讲账本核心；daemon、MCP、token 见 `docs/memory-service.md`。

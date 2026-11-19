@@ -42,7 +42,7 @@
     },
     "engine": {
       "version": "0.6.0",
-      "digest": "702cc18cd5fd57775be251c951f9b79305d99ad3a433e1fab48710aef96ac36c",
+      "digest": "16e719d9e37b2c73ed5163d69a555db3332d5ab461bca8e27a126de184eb7cd6",
       "skills": {
         "fleet": "0.9.0",
         "pk": "0.1.1"

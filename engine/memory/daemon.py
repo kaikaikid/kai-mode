@@ -28,6 +28,7 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from .engine import build_engine
 from .ledger import (
@@ -390,15 +391,22 @@ class _MemoryHandler(BaseHTTPRequestHandler):
             return None
 
     # -- 路由 ---------------------------------------------------------------
+    def _request_path(self) -> str:
+        """取请求路径；经 HTTP 代理时 request-target 会是绝对 URL。"""
+        raw = self.path or "/"
+        if raw.startswith(("http://", "https://")):
+            raw = urlsplit(raw).path or "/"
+        return raw.split("?", 1)[0].rstrip("/") or "/"
+
     def do_GET(self) -> None:
-        path = self.path.split("?", 1)[0].rstrip("/") or "/"
+        path = self._request_path()
         if path == "/health":
             self._send(200, self.server.service.health())
             return
         self._send(404, _error_payload("not_found", f"没有这个路径：{path}"))
 
     def do_POST(self) -> None:
-        path = self.path.split("?", 1)[0].rstrip("/")
+        path = self._request_path()
         if not path.startswith("/v1/memory/"):
             self._send(404, _error_payload("not_found", f"没有这个路径：{path}"))
             return
