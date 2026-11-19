@@ -6,6 +6,8 @@
 你只写方案，通过 set-kai-mode 初始化新设置」。
 设计正本：[`docs/design/2026-11-01-feishu-bridge.md`](../design/2026-11-01-feishu-bridge.md)。
 
+> **2026-11-19 退役（实现）**：本仓的飞书桥实现已删除；Feishu 改用 `agent-autoloop` 的 Feishu 通道。本文保留为历史裁决，合同语义仍可参考。
+
 ## Context
 
 - 用户日常在飞书里；希望「发一句话就能派活、做完能收到消息、要拍板能点按钮」，
