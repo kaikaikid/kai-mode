@@ -978,3 +978,35 @@ def test_list_retired_green_when_only_exempt_lines_remain(tmp_path):
                        capture_output=True, text=True, encoding="utf-8")
     assert p.returncode == 0, p.stdout + p.stderr
     assert "命中 0 处" in p.stdout, p.stdout
+
+
+def _add_role_canon(root):
+    canon = root / "roles" / "canon"
+    canon.mkdir(parents=True, exist_ok=True)
+    for rid in ("architect", "archivist", "coordinator", "designer",
+                "engineer", "researcher", "reviewer", "writer"):
+        (canon / f"{rid}.md").write_text(f"# {rid}\n", encoding="utf-8")
+
+
+def _skill_with_binding(root, name, owner, allowed):
+    md = SKILL_MD.format(name=name)
+    extra = f"metadata:\n  owner_role: {owner}\n  allowed_roles: [{allowed}]\n"
+    path = root / "skills" / name / "SKILL.md"
+    path.write_text(md.replace("\n---\n\n# ", "\n" + extra + "---\n\n# ", 1), encoding="utf-8")
+
+
+def test_skill_bindings_unknown_role_is_red(tmp_path):
+    root = make_repo(tmp_path, skills=("how",))
+    _add_role_canon(root)
+    _skill_with_binding(root, "how", owner="ghost", allowed="coordinator")
+    _rc, data = run_doctor(root)
+    assert status_of(data, "skill-bindings") == "fail"
+    assert "ghost" in detail_of(data, "skill-bindings")
+
+
+def test_skill_bindings_known_roles_are_green(tmp_path):
+    root = make_repo(tmp_path, skills=("how",))
+    _add_role_canon(root)
+    _skill_with_binding(root, "how", owner="architect", allowed="coordinator")
+    _rc, data = run_doctor(root)
+    assert status_of(data, "skill-bindings") == "ok"

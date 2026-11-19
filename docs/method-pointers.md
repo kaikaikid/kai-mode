@@ -21,6 +21,8 @@
 
 只有 `engine/skills/pk/`：通用对比分析（`/pk`、`/对比`），本仓原创，无上游对应件，随 engine 插件安装。
 
+`core/skills/{how,why,sharpen}` 为借 pstack 结构重写的本仓方法件，非上游正文副本；主责见各 `metadata.owner_role`。
+
 除它以外，`kai-*` 方法副本已全部删除；本仓不再随装任何上游方法正文。
 
 ## 缺件怎么办

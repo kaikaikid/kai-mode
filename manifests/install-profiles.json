@@ -13,7 +13,10 @@
         "upgrade-kai-mode",
         "kai-handoff",
         "fleet",
-        "principles"
+        "principles",
+        "how",
+        "why",
+        "sharpen"
       ]
     },
     "full": {
@@ -54,7 +57,10 @@
         "圣骑士",
         "dna-flywheel",
         "astryx-ui",
-        "dream"
+        "dream",
+        "how",
+        "why",
+        "sharpen"
       ]
     }
   }

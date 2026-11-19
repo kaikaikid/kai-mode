@@ -25,6 +25,39 @@
       "since": "0.1.0"
     },
     {
+      "name": "how",
+      "path": "core/skills/how",
+      "kind": "framework",
+      "scope": "global",
+      "install": "auto",
+      "summary": "how",
+      "plugin": "core",
+      "version": "0.1.0",
+      "since": "0.1.0"
+    },
+    {
+      "name": "why",
+      "path": "core/skills/why",
+      "kind": "framework",
+      "scope": "global",
+      "install": "auto",
+      "summary": "why",
+      "plugin": "core",
+      "version": "0.1.0",
+      "since": "0.1.0"
+    },
+    {
+      "name": "sharpen",
+      "path": "core/skills/sharpen",
+      "kind": "framework",
+      "scope": "global",
+      "install": "auto",
+      "summary": "sharpen",
+      "plugin": "core",
+      "version": "0.1.0",
+      "since": "0.1.0"
+    },
+    {
       "name": "harness-audit",
       "path": "core/skills/harness-audit",
       "kind": "framework",

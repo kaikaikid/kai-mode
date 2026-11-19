@@ -244,6 +244,52 @@ def chk_frontmatter(root, ms):
     return "ok", f"{len(data.get('skills') or [])} 条 frontmatter 八字段齐全、顺序一致、name 三处一致"
 
 
+def chk_skill_bindings(root, ms):
+    """技能归属绑定：how/why/sharpen 的 metadata.owner_role 与 allowed_roles 必须是八角色之一。"""
+    data, err = registry(root, ms)
+    if data is None:
+        return "skip", f"注册表不可用（01 已报）：{err}"
+    canon = os.path.join(root, "roles", "canon")
+    role_ids = (
+        {f[:-3] for f in os.listdir(canon) if f.endswith(".md")}
+        if os.path.isdir(canon) else set()
+    )
+    if not role_ids:
+        return "skip", "没有 roles/canon/"
+    problems, checked = [], 0
+    for entry in data.get("skills") or []:
+        name = entry.get("name") if isinstance(entry, dict) else None
+        if name not in ("how", "why", "sharpen"):
+            continue
+        rel = str(entry.get("path") or "")
+        if not rel:
+            continue
+        md = os.path.join(root, *rel.split("/"), "SKILL.md")
+        if not os.path.isfile(md):
+            continue  # 路径缺失归 05 报
+        with open(md, encoding="utf-8") as f:
+            fm = f.read().split("\n---", 1)[0]
+        checked += 1
+        owner = re.search(r"^\s+owner_role:\s*([A-Za-z0-9_-]+)\s*$", fm, re.M)
+        allowed = re.search(r"^\s+allowed_roles:\s*\[(.*?)\]", fm, re.M)
+        if owner is None:
+            problems.append(f"{name}：缺 metadata.owner_role")
+        elif owner.group(1) not in role_ids:
+            problems.append(f"{name}：owner_role={owner.group(1)} 不在八角色")
+        if allowed is None:
+            problems.append(f"{name}：缺 metadata.allowed_roles")
+        else:
+            bad = [x.strip() for x in allowed.group(1).split(",")
+                   if x.strip() and x.strip() not in role_ids]
+            if bad:
+                problems.append(f"{name}：allowed_roles 含未知角色 {'、'.join(bad)}")
+    if problems:
+        return "fail", "；".join(problems[:6])
+    if checked == 0:
+        return "skip", "没有 how/why/sharpen 技能"
+    return "ok", f"{checked} 个方法技能的 owner/allowed 角色都在八角色内"
+
+
 def chk_unregistered(root, ms):
     """04 盘上有技能目录但没登记 ⇒ 红；插件目录没进市场清单也红。"""
     data, _ = registry(root, ms)
@@ -2871,6 +2917,7 @@ CHECKS = (
     ("plugin-manifest", "插件清单与版本锁", chk_plugin_manifest),
     ("skill-frontmatter", "frontmatter 与 name 三处一致", chk_frontmatter),
     ("frontmatter-yaml", "frontmatter YAML 形状", chk_frontmatter_yaml),
+    ("skill-bindings", "方法技能归属绑定（owner/allowed 角色）", chk_skill_bindings),
     ("unregistered-skill", "盘上技能都登记了", chk_unregistered),
     ("missing-skill-path", "注册条目路径都在", chk_missing_path),
     ("machine-path", "没有机器绝对路径", chk_machine_path),

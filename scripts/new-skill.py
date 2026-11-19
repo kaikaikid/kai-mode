@@ -4,7 +4,7 @@
 新技能脚手架 —— 别手写 frontmatter，跑这个。
 ================================================
 干两件事：复制骨架模板 → 填 frontmatter 八字段 → 放进指定插件的 skills/ 目录。
-插件的技能清单由目录现场派生，不再维护 registry。
+插件的技能清单由目录现场派生；registry.json 仍需登记（以 doctor 04 为准）。
 
 用法：
   python scripts/new-skill.py <技能名> --summary "一句话：这个技能干什么"

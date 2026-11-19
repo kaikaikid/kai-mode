@@ -10,20 +10,23 @@
       }
     },
     "core": {
-      "version": "1.4.0",
-      "digest": "f8ffb567ecdc615dacae5ab23293f5aa83fb5a3b47c2dfd74d0f7c99a674728b",
+      "version": "1.5.0",
+      "digest": "370afd9e19b04b27c0407e02decc9b8b48ac9692e8eb04f6dd8c67036859d98e",
       "skills": {
         "BOOK": "1.0.0",
         "dream": "0.1.0",
         "gold": "0.9.1",
         "harness-audit": "0.2.1",
+        "how": "0.1.0",
         "kai-handoff": "0.3.6",
         "kai-persona-deep": "0.2.0",
         "principles": "1.1.0",
         "role-entry": "0.1.0",
         "set-kai-mode": "7.0.0",
+        "sharpen": "0.1.0",
         "staff": "4.2.0",
         "upgrade-kai-mode": "0.2.1",
+        "why": "0.1.0",
         "卓尔游侠": "0.3.0",
         "圣骑士": "0.3.0",
         "德鲁伊": "0.3.0",
@@ -42,7 +45,7 @@
     },
     "engine": {
       "version": "0.6.0",
-      "digest": "16e719d9e37b2c73ed5163d69a555db3332d5ab461bca8e27a126de184eb7cd6",
+      "digest": "d672acc49956e5f4f4da4232e9549aae160819a380e9b1421147380247bd92ef",
       "skills": {
         "fleet": "0.9.0",
         "pk": "0.1.1"

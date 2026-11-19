@@ -34,12 +34,17 @@ metadata:
 核心 3（`engineer`／`reviewer`／`archivist`）走宿主 agent 目录，主 AI 是会话级 prompt；
 它们都不由本技能触发，别在这里重复加载。
 
+**配对方法技能**（只在读 profile 时解析、随任务包注入绝对路径）：
+`architect → ../how/SKILL.md`（怎么运作/放哪层）、`researcher → ../why/SKILL.md`（为什么这样）。
+其余角色无配对；不把主 AI 写进本表。
+
 ## 怎么走
 
 1. **认角色** —— 从用户话里取 role_id；对不上专家 4 就停，不硬套。
    **终点**：拿到一个 role_id。
 2. **读 profile** —— 读 `.ai/roles/profiles/<role_id>.md`；文件不在 ⇒ 按缺件停下报「profile 未渲染」。
-   **终点**：拿到该专家的完整契约正文。
+   有配对方法技能时，同时解析其绝对路径（`core/skills/<名>/SKILL.md`）写进任务包。
+   **终点**：拿到该专家的完整契约正文与配对技能路径。
 3. **交给派发** —— 把 profile 正文作为该次任务的角色提示词，按内核派活规则带任务卡执行。
    **终点**：该角色在自己的上下文里开工；主 AI 只调度与验收。
 

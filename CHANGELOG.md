@@ -7,6 +7,7 @@
 - **普适角色投影（ADR-0035）**：角色驻留改为宿主能力——OpenBot 团队投影保留常驻 agent，七位专业角色按契约渲染；CC/Codex/Qoder 等单入口宿主只渲染康娜入口，七份契约按需调。康娜人格并入可莉的活泼/慵懒/偶尔「本小姐」语感，保留原身份与「合理工作要求不拒绝」的硬边界；guild 皮肤升 1.5.0。记忆管理见下条；事件层列为后续批次，未在本次实现。
 - **记忆治理（ADR-0035 D4）**：新增 `dream` 技能（青铜龙的后台记忆整理：候选生成、去重、查冲突、补来源，append-only＋证据引用＋可回滚，不做热路径写入；记忆域只限 user／project／task／shared／coordinator-private；其他执行角色不建 role memory）。青铜龙保留为记忆管理者，可由团长手动派活或定期任务触发；`scripts/role-memory.py` 写者为 `archivist`（旧 `coordinator` 记录兼容读）。`archivist` 正本升 1.3.0；不出 accept／return／defer，任务判词归圣骑士。registry／install-profiles／plugins.lock 同步（7 插件／37 技能）。
 - **技能改名**：`书记官` → `BOOK`（目录 `core/skills/BOOK`、frontmatter `name: BOOK`、registry 与 plugins.lock 键名同步）；`metadata.alias: 书记官` 保留旧口令，`记一下／写进日记／查日记` 仍可用。外发门禁不放松：GitHub／飞书／Notion 仍旧一次一确认、一次只覆盖一条一处。
+- **方法技能三件**：新增 `how`／`why`／`sharpen` 三个只读方法技能（core 插件 1.5.0；主责 architect／researcher／coordinator；registry＋core/full 装机档＋插件锁同步；41 技能）。
 
 ## 0.43.0 — 2026-11-16
 
