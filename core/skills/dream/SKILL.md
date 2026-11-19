@@ -35,7 +35,7 @@ metadata:
 任务交付的判词归圣骑士（reviewer）；本技能只管记忆账本，不出 accept／return／defer。
 
 **与 BOOK / OpenViking 的分界**：BOOK 只写团长点名的日记条目（本地原文＋可选外发），不进长期记忆账本；
-OpenViking 是底层记忆库，dream 通过统一 API 写治理账本，不另起向量库、不复制 OpenViking 正文。
+记忆账本是真相；OpenViking 只是可选索引引擎（AGPL，自用），v1 未启用；dream 不另起向量库、不复制索引正文。
 
 ## 什么时候跑（不做热路径）
 

@@ -4,14 +4,14 @@
   "plugins": {
     "board": {
       "version": "1.4.0",
-      "digest": "2f46ba7a9aeaab5ab16d4585364d142d286beeb811d23c4888e7fcf24a959079",
+      "digest": "15491ae440c67cc94f4a790995a1a1b1291a1799b869309f5fa734948067673f",
       "skills": {
         "flight-info": "1.6.0"
       }
     },
     "core": {
       "version": "1.4.0",
-      "digest": "8f54a8a8f536c177d42cdb22fcd5a7dea8cf5bc7325393b173c13300d2f6836b",
+      "digest": "f8ffb567ecdc615dacae5ab23293f5aa83fb5a3b47c2dfd74d0f7c99a674728b",
       "skills": {
         "BOOK": "1.0.0",
         "dream": "0.1.0",
