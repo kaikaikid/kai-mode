@@ -1,7 +1,7 @@
 ---
 role_id: reviewer
-canon_version: 1.4.0
-kind: dispatchable
+canon_version: 1.5.0
+kind: core
 access_need: read_only
 model_tier: strong
 effort: max

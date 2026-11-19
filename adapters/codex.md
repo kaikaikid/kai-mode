@@ -66,7 +66,7 @@ codex exec -C <仓库根> -s read-only --json -o <回执文件> \
 python <框架仓>/scripts/render-roles.py bootstrap --project <项目根> --host codex --skin guild
 ```
 
-落点三处：`.ai/roles/`（七个可派发 ＋ `_primary`）、`.coding/host-programs.json`、
+落点四处：`.ai/roles/`（核心 3 ＋ `_primary`）、`.ai/roles/profiles/`（专家 4）、`.coding/host-programs.json`、
 `<项目>/.ai/BOOTSTRAP.md`（给本项目里任何一个 AI 看的说明卡）。装完让那个 AI 先读说明卡；
 说明卡里会写清本宿主的派法（拼提示词 ＋ `worker_cmd`/`reviewer_cmd` ＋ `-s read-only` 档位）。
 

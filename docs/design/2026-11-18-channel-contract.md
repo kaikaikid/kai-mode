@@ -3,7 +3,7 @@
 > 状态：草案（solo 冒烟用，不接真实账号）
 > 适用：飞书、钉钉两条远端通道；任何后续通道按同一合同接入。
 > 关系：飞书实现口径沿用 ADR-0031（CLI 长连接、零公网回调）；本文只定义**通道无关的合同**，
-> 不重复各通道的部署细节（见 `adapters/channels/feishu.md`、`adapters/channels/dingtalk.md`）。
+> Feishu 已改用 `agent-autoloop` 的 Feishu 通道；本文合同仍适用于钉钉等自维护通道，不重复 autoloop 的部署细节。
 
 ## 1. 三个原语
 

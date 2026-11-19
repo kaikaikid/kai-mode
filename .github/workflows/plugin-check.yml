@@ -27,7 +27,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: install pytest
-        run: python -m pip install --quiet pytest
+        run: python -m pip install --quiet pytest jsonschema
       - name: plugin-check
         run: python scripts/plugin-check.py
       - name: doctor (with tests)

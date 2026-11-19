@@ -1,0 +1,25 @@
+{
+  "schema": "kai-dispatch-preset/1",
+  "name": "deep-build",
+  "description": "先定结构再施工：架构 + 工程同会话，审查独立",
+  "mode": "one-session",
+  "roles": ["architect", "engineer"],
+  "lead": "engineer",
+  "tier": "careful",
+  "budget": {
+    "max_tokens": 180000,
+    "max_minutes": 90
+  },
+  "isolation": {
+    "worktree": true,
+    "review": "separate"
+  },
+  "memory": {
+    "read": ["project:<id>", "shared"],
+    "write": "propose"
+  },
+  "output": {
+    "label_by_role": true,
+    "final_owner": "engineer"
+  }
+}

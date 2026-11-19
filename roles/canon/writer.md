@@ -1,7 +1,7 @@
 ---
 role_id: writer
-canon_version: 1.1.2
-kind: dispatchable
+canon_version: 1.2.0
+kind: specialist
 access_need: writable
 model_tier: standard
 effort: medium

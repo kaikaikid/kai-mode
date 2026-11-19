@@ -4,22 +4,23 @@
   "plugins": {
     "board": {
       "version": "1.4.0",
-      "digest": "2f46ba7a9aeaab5ab16d4585364d142d286beeb811d23c4888e7fcf24a959079",
+      "digest": "15491ae440c67cc94f4a790995a1a1b1291a1799b869309f5fa734948067673f",
       "skills": {
         "flight-info": "1.6.0"
       }
     },
     "core": {
       "version": "1.4.0",
-      "digest": "275d0cf4ceea5ef40dfdeb3811a737ceb39614eb036d3aec647d78495da2d7c4",
+      "digest": "f8ffb567ecdc615dacae5ab23293f5aa83fb5a3b47c2dfd74d0f7c99a674728b",
       "skills": {
         "BOOK": "1.0.0",
         "dream": "0.1.0",
-        "gold": "0.9.0",
+        "gold": "0.9.1",
         "harness-audit": "0.2.1",
         "kai-handoff": "0.3.6",
         "kai-persona-deep": "0.2.0",
         "principles": "1.1.0",
+        "role-entry": "0.1.0",
         "set-kai-mode": "7.0.0",
         "staff": "4.2.0",
         "upgrade-kai-mode": "0.2.1",
@@ -41,7 +42,7 @@
     },
     "engine": {
       "version": "0.6.0",
-      "digest": "d240f7b7aa8f1e3c022d7ece3c9550b475649bc3913e21c44fc53a15b6bb9fa2",
+      "digest": "16e719d9e37b2c73ed5163d69a555db3332d5ab461bca8e27a126de184eb7cd6",
       "skills": {
         "fleet": "0.9.0",
         "pk": "0.1.1"

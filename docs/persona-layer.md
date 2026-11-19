@@ -43,6 +43,25 @@ rollback(memory_id)                -> receipt       # 回滚也留审计
 - `scope` 只允许 `task_fact / preference / skill / relationship / failure_lesson`。
 - 注入顺序：安全规则 → 原初内核 → 职责边界 → 任务契约 → 与本任务相关的 ego 摘要。
 
+## 记忆读写矩阵（v1）
+
+v1 只落三类：`task_fact` / `failure_lesson` / `preference`。所有角色都只能 `propose`；
+`commit` / `rollback` / `veto` 只有 `archivist` 能做（含 coordinator 的私有记忆入账）。
+
+| 角色 | 按需读（namespace / kind） | propose | 私有记忆 |
+|---|---|---|---|
+| coordinator | 全部 ＋ `coordinator-private`；全部 kind | `preference` / `relationship` / `task_fact` | 有 |
+| engineer | `project` / `task` / `shared`；`skill` / `task_fact` / `failure_lesson` | `task_fact` / `failure_lesson` / `skill` | 无 |
+| reviewer | 任务卡 ＋ 实际 diff ＋ 测试/CI ＋ `project` / `shared`；工程师报告只当 claim | `failure_lesson` | 无 |
+| archivist | 全部 | `commit` / `rollback` / `veto` | 无（治理全部） |
+| researcher | `project` / `shared`；`task_fact` / `failure_lesson` | `task_fact` | 无 |
+| architect | `project` / `shared`；`task_fact` / `relationship` | `task_fact` / `relationship` | 无 |
+| designer | `user` / `project` / `shared`；`preference` / `skill` | `preference` / `skill` | 无 |
+| writer | `user` / `project` / `shared`；`preference` / `skill` | `preference` / `skill` | 无 |
+
+设计 / 写作的偏好只在「用户明确说过或项目规范有证据」时 propose；researcher 只提事实，
+结论归 architect / coordinator；reviewer 的独立性锚定 diff 与测试，不锚定工程师叙述。
+
 ## 指纹
 
 `python scripts/persona.py fingerprint <role>` 输出 `identity_core` 的 sha256。

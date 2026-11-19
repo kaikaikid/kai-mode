@@ -7,6 +7,9 @@
     "qoder": {
       "agent_file": true,
       "dest_dir": ".qoder/agents",
+      "profiles_dir": ".ai/roles/profiles",
+      "primary": {"mode": "session-prompt", "landing": "AGENTS.md",
+                  "dir": ".ai/roles", "file": "_primary.md"},
       "suffix": ".md",
       "select_key": "device-agent-id",
       "dispatch_via": "create_chat_session.agentId（Desktop 实测）；subagent_type 不认角色名",
@@ -38,6 +41,9 @@
     "claude": {
       "agent_file": true,
       "dest_dir": ".claude/agents",
+      "profiles_dir": ".ai/roles/profiles",
+      "primary": {"mode": "session-prompt", "landing": "CLAUDE.md",
+                  "dir": ".ai/roles", "file": "_primary.md"},
       "suffix": ".md",
       "select_key": "name-field",
       "own_cli": "claude",
@@ -67,6 +73,9 @@
     "copilot": {
       "agent_file": true,
       "dest_dir": ".github/agents",
+      "profiles_dir": ".ai/roles/profiles",
+      "primary": {"mode": "session-prompt", "landing": "prompt",
+                  "dir": ".ai/roles", "file": "_primary.md"},
       "suffix": ".agent.md",
       "select_key": "filename",
       "own_cli": "copilot",
@@ -95,6 +104,9 @@
     "cursor": {
       "agent_file": true,
       "dest_dir": ".cursor/agents",
+      "profiles_dir": ".ai/roles/profiles",
+      "primary": {"mode": "session-prompt", "landing": "prompt",
+                  "dir": ".ai/roles", "file": "_primary.md"},
       "suffix": ".md",
       "select_key": "name-field",
       "own_cli": "agent",
@@ -125,6 +137,9 @@
     "codex": {
       "agent_file": false,
       "dest_dir": ".ai/roles",
+      "profiles_dir": ".ai/roles/profiles",
+      "primary": {"mode": "session-prompt", "landing": "AGENTS.md",
+                  "dir": ".ai/roles", "file": "_primary.md"},
       "suffix": ".md",
       "select_key": "filename",
       "own_cli": "codex",
@@ -139,6 +154,9 @@
     "opencode": {
       "agent_file": false,
       "dest_dir": ".ai/roles",
+      "profiles_dir": ".ai/roles/profiles",
+      "primary": {"mode": "session-prompt", "landing": "AGENTS.md",
+                  "dir": ".ai/roles", "file": "_primary.md"},
       "suffix": ".md",
       "select_key": "filename",
       "own_cli": "opencode",

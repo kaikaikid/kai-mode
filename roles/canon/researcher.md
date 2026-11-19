@@ -1,7 +1,7 @@
 ---
 role_id: researcher
-canon_version: 1.2.0
-kind: dispatchable
+canon_version: 1.3.0
+kind: specialist
 access_need: read_only
 model_tier: standard
 effort: medium
