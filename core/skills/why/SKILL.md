@@ -3,7 +3,9 @@ name: why
 status: active
 approved_by: human:kaikaikid
 approved: 2026-11-19
-sources: []
+sources:
+  - resource: "../role-entry/SKILL.md"
+    note: "专家入口：researcher 的派发与配对技能注入口径"
 description: >
   只读溯源：回答一段代码或一个决策为什么长这样，七类证据源逐类盘点后给置信度。
   不改 issue/PR、不写文件、不自动写记忆。
@@ -61,7 +63,7 @@ metadata:
 - 只用四类词：`fact` / `inference` / `unknown` / `recommendation`。
 - fact：文件+行号、commit sha、PR/issue 号、命令读数，四者之一。
 - 引用可点：给路径与行号；远程条目给编号与标题，不给会烂的链接。
-- 共享证据契约不在这里重复，见 `../role-entry/SKILL.md` 引用的信封说明。
+- 共享证据契约由调用角色的上下文提供；本技能只使用 fact/inference/unknown/recommendation 四类词，不重复判据。
 
 ## 边界
 

@@ -3,7 +3,11 @@ name: how
 status: active
 approved_by: human:kaikaikid
 approved: 2026-11-19
-sources: []
+sources:
+  - resource: "../role-entry/SKILL.md"
+    note: "专家入口：由它按 role_id 加载 profile 并注入配对方法技能路径"
+  - resource: "../principles/SKILL.md"
+    note: "四类词与一次一问等通用判据的单一住处，本技能不复述"
 description: >
   只读代码导航：解释一段代码怎么运作、该放哪层、谁拥有这块，给可点证据建心智模型。
   不写代码、不改设计、不开票、不自动写记忆。
@@ -61,7 +65,7 @@ metadata:
 
 - 只用四类词：`fact`（带证据）/ `inference`（标依据）/ `unknown`（缺什么）/ `recommendation`（谁决策）。
 - 事实的证据：`file:line`、commit sha、PR/issue 号、命令读数。四样都没有的，不算 fact。
-- 共享证据契约不在这里重复，见 `../role-entry/SKILL.md` 引用的信封说明。
+- 共享证据契约由调用角色的上下文提供；本技能只使用 fact/inference/unknown/recommendation 四类词，不重复判据。
 
 ## 边界
 

@@ -3,7 +3,11 @@ name: sharpen
 status: active
 approved_by: human:kaikaikid
 approved: 2026-11-19
-sources: []
+sources:
+  - resource: "../gold/SKILL.md"
+    note: "锐化卡之后按它的 §2 判断走哪条路由；判据不在本技能重复"
+  - resource: "../principles/SKILL.md"
+    note: "一次一问等沟通判据的唯一住处"
 description: >
   开工前锐化：把模糊需求收敛成 5 行锐化卡（目标一句话/真正的验收/放开与补上的约束/外部核验点）。
   只读；不写代码、不开票、不派活。康娜在判断走哪条之前自用。
