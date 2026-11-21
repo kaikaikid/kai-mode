@@ -7,6 +7,8 @@
 拍定依据：2026-11-11 频道讨论的定案；落点票面 `kaikaikid/kai-mode#20`（本 ADR 由该票产出）。
 本 ADR 只定**三层定义与派生线**：不搬正文、不改任何正本文件、不改 doctor 判据。
 
+> **演变注（2026-11-20，[ADR-0038](0038-leader-class-and-guild-team-model.md) D2/D7）**：D0/D2 的“profession = canon、role_id ↔ profession 当前一一对应、role→peer 为硬分区”由 ADR-0038 部分取代：`class_id` 表示职业模板，`role_id` 表示人物卡；取消独立 role memory，记忆最小单位改为项目｜冒险团。字段迁移完成前旧 registry 保持兼容读取。
+
 正本层级：本 ADR 是这批口径的**裁决件**；字段级展开件住
 [`docs/design/2026-11-13-role-layer-three-homes.md`](../design/2026-11-13-role-layer-three-homes.md)。
 展开件不得与本 ADR 冲突，冲突以本 ADR 为准；两者都不造第二份词义定义（词义唯一家在 `GLOSSARY.md`）。

@@ -1,9 +1,18 @@
 # roles —— 角色正本
 
-裁决：[`docs/adr/0033-guild-role-layer.md`](../docs/adr/0033-guild-role-layer.md) D1/D4/D5/D6/D9。
+裁决：[`docs/adr/0033-guild-role-layer.md`](../docs/adr/0033-guild-role-layer.md) D1/D4/D5/D6/D9；
+多项目分层与 `class_id` / `role_id` 新口径见 [`docs/adr/0038-leader-class-and-guild-team-model.md`](../docs/adr/0038-leader-class-and-guild-team-model.md)。
 本文只写**目录契约与渲染口径**；宿主字段与落点的唯一家是 [`adapters/`](../adapters/README.md)
 （机器可读投影表 [`adapters/role-hosts.json`](../adapters/role-hosts.json)）；
 派活规则的唯一家是 `engine/skills/fleet/SKILL.md`，本目录一句都不复述。
+
+## ADR-0038 新口径（与现行迁移并存）
+
+- `class_id` ＝职业模板：职责、边界、workflow、output_contract、工具与质量标准；`leader` 与 `watchman` 为新增职业模板。
+- `role_id` ＝角色/人物卡：身份、人格、关系与语言；康娜、可莉、守夜人等人物卡唯一，由会长新建时自行设计。
+- 一项目一冒险团，每团一位团长实例；康娜的调度职能作为 `leader` 模板来源，可莉为默认飞书前台。
+- 记忆最小单位改为项目｜冒险团；取消独立 role memory。
+- 目录迁移目标为 `roles/classes/<class_id>.md`；在迁移票完成前，现行 `roles/canon/<role_id>.md` 仍为兼容正本，不手改正文。
 
 ## 为什么分成 canon 与 skins
 

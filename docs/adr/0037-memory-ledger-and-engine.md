@@ -1,5 +1,7 @@
 # 0037 记忆地基：账本、引擎适配与 daemon
 
+> **2026-11-20 演变注（ADR-0038 D7）**：namespace 设计意图保持 `user / project:<region-id> / task:<run-id> / shared / coordinator-private`，但 ADR-0038 将“记忆最小单位”上提为项目｜冒险团，并取消独立 role memory；实际物理映射仍按本 ADR 状态与 V3.0 §21.6 解禁门执行，未解禁前不得声称 project/team 隔离已生效。
+
 ## Status
 
 **proposed（草案）** —— 2026-11-19 设计会话收敛，待团长复核后转 accepted。
