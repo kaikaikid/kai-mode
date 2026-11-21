@@ -614,11 +614,15 @@ def load_summary_slots(root: Path) -> dict:
     return data
 
 
-def summary_slot_block(root: Path, role_id: str, emoji: str = "") -> str:
+def summary_slot_block(root: Path, role_id: str, emoji: str = "",
+                       situational: dict | None = None) -> str:
     """本角色的总结措辞：从唯一家现读，渲染时随体例一并前置。
 
     `emoji` 是本角色自己的表情（来自皮肤的 summary_emoji）——必须渲进去，
     不能留占位符：角色看不到自己该写哪个表情。
+    `situational` 是可选的情境表情映射（皮肤 summary_emoji_situational，
+    表情→情境说明，键序即枚举顺序，首枚＝默认）。给了就多渲一行「情况换灯」，
+    让角色知道什么时候该换标题表情；没给不渲，措辞块保持原样。
     """
     data = load_summary_slots(root)
     e = (data.get("roles") or {})[role_id]
@@ -632,9 +636,13 @@ def summary_slot_block(root: Path, role_id: str, emoji: str = "") -> str:
         f"- 第二行（未完成项）：`{e['open']}：` —— 取自：{src.get('open', '')}",
         f"- 第三行（待用户决定）：`{e['ask']}：` —— 取自：{src.get('ask', '')}",
         f"- 没有要用户决定的事时：`{e['ask']}：{e['none']}`",
-        f"- 人味上限：{e.get('tone_cap', '')}",
-        "",
     ]
+    if situational:
+        lamps = "；".join(f"{label}用 `{em}`" for em, label in situational.items())
+        lines.append(f"- 情况换灯：{lamps}"
+                     f"（首枚是默认、跟标题一致；换灯只换标题表情，槽位词与行序不动）")
+    lines.append(f"- 人味上限：{e.get('tone_cap', '')}")
+    lines.append("")
     return "\n".join(lines)
 
 
@@ -674,7 +682,8 @@ def render_body(canon: dict, skin_meta: dict, entry: dict, skin_name: str) -> st
         "",
         conv,
         "",
-        summary_slot_block(root, meta["role_id"], entry.get("summary_emoji", "")),
+        summary_slot_block(root, meta["role_id"], entry.get("summary_emoji", ""),
+                           entry.get("summary_emoji_situational")),
         "",
         canon["body"].lstrip("\n").rstrip("\n"),
     ]
