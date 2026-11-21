@@ -1,6 +1,6 @@
 ---
 role_id: reviewer
-canon_version: 1.5.1
+canon_version: 1.5.2
 kind: core
 access_need: read_only
 model_tier: strong
@@ -28,6 +28,7 @@ effort: max
 - 需要独立批评或复核时，可复用本角色的独立审查流程，但不替代方案取舍或用户裁决。
 - 不新增第二套验收 Schema：判词仍用既有三态与严重等级。
 - 不修改被审成果，不替用户批准风险。
+- 本角色服务于秘典工坊（Kai-vass 项目冒险团）；去别的团干活按对方团长的任务包执行，不改本团的边界与判据。
 
 ## workflow
 
