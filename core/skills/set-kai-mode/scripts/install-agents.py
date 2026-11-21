@@ -27,6 +27,22 @@ def host_root() -> Path:
     return Path(env) if env else Path.home() / ".claude"
 
 
+LANDING_MARK = "<!-- kai-role"
+
+
+def is_rendered_landing(path: Path) -> bool:
+    """目标文件是否是渲染出的角色落点（指纹行在文件头）。
+
+    kai-mode 的角色卡（render-roles.py 产物）与子代理模板可能同名落同一目录
+    （如 researcher.md）；落点正本是渲染器现读的唯一家，--force 也不许盖——
+    覆盖它等于把角色契约换成子代理模板。要动它走渲染器/正本，不走本安装器。
+    """
+    try:
+        return LANDING_MARK in path.read_text(encoding="utf-8", errors="ignore")[:4000]
+    except OSError:
+        return False
+
+
 def plan(target: Path, force: bool) -> dict:
     actions = {"copy": [], "overwrite": [], "skip": [], "conflict": []}
     for src in sorted(SOURCE.glob("*.md")):
@@ -35,6 +51,9 @@ def plan(target: Path, force: bool) -> dict:
         dst = target / src.name
         if not dst.exists():
             actions["copy"].append(src.name)
+        elif is_rendered_landing(dst):
+            # 同名渲染落点：无论是否 --force 一律拒绝（2026-11-21 团长令：同名模板防覆盖）。
+            actions["conflict"].append(f"{src.name}（kai-role 渲染落点，--force 也不覆盖）")
         elif dst.read_bytes() == src.read_bytes():
             actions["skip"].append(src.name)
         elif force:
@@ -107,7 +126,7 @@ def main() -> int:
         if args.dry_run:
             print("dry-run：未写盘")
         if actions["conflict"]:
-            print("冲突用 --force 处理；装完起新会话才重新加载。", file=sys.stderr)
+            print("冲突用 --force 处理（带 kai-role 渲染落点标记的除外——那类永不覆盖，走正本重渲）；装完起新会话才重新加载。", file=sys.stderr)
     return 1 if actions["conflict"] else 0
 
 
