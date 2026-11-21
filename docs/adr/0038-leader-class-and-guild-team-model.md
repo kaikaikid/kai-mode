@@ -110,8 +110,8 @@
 
 ### D10 真源与迁移
 
-- 职业模板正本：`roles/classes/<class_id>.md`；从当前 `roles/canon/<role_id>.md` 的职责四块迁移。目标职业清单：`leader`（团长）、`ranger`（游侠）、`大法师`（大法师）、`artisan`（工匠）、`druid`（德鲁伊）、`scholar`（学者）、`dreamwalker`（梦境行者，创意联想/叙事构思/概念探索/非线性启发）、`shaman`（萨满，记忆治理/去重/冲突/来源/回滚）、`paladin`（圣骑士）、`watchman`（守夜人）；可莉前台职责作为 `front_desk`（前台）候选，是否独立成 class 待实施票确认。旧草案中把 `dreamwalker` 当记忆治理职业的语义迁移到 `shaman`。
-- 职业名与角色/种族名分离：青铜龙是人物卡/种族，职业为 `shaman`；诺恩·星页是引用 `dreamwalker` 的人物卡，`dreamwalker` 不是记忆治理职业；矮人与铜须是人物卡/种族与氏族，职业为 `artisan`；卓尔是人物卡/种族，职业为 `ranger`；符文/奥术相关职业统一为“大法师”，`class_id` 与展示名均为“大法师”，不再使用“符文法师/奥术师/mage”作为职业名；瑞兹、康娜、可莉等具体姓名与外貌/背景只住人物卡。
+- 职业模板正本：`roles/classes/<class_id>.md`；从当前 `roles/canon/<role_id>.md` 的职责四块迁移。目标职业清单：`leader`（团长）、`ranger`（游侠）、`大法师`（大法师）、`artisan`（工匠）、`druid`（德鲁伊）、`scholar`（学者）、`imaginist`（奇想师，原 dreamwalker／梦境行者，2026-11-21《职业图鉴》更名；创意联想/叙事构思/概念探索/非线性启发）、`shaman`（萨满，记忆治理/去重/冲突/来源/回滚）、`paladin`（圣骑士）、`watchman`（守夜人）；可莉前台职责作为 `front_desk`（前台）候选，是否独立成 class 待实施票确认。旧草案中把 `dreamwalker` 当记忆治理职业的语义迁移到 `shaman`。
+- 职业名与角色/种族名分离：青铜龙是人物卡/种族，职业为 `shaman`；诺恩·星页是引用 `imaginist`（原 dreamwalker）的人物卡，`imaginist` 不是记忆治理职业；矮人与铜须是人物卡/种族与氏族，职业为 `artisan`；卓尔是人物卡/种族，职业为 `ranger`；符文/奥术相关职业统一为“大法师”，`class_id` 与展示名均为“大法师”，不再使用“符文法师/奥术师/mage”作为职业名；瑞兹、康娜、可莉等具体姓名与外貌/背景只住人物卡。
 - 角色人物卡正本：`roles/persona/<role_id>.json` 与 `roles/skins/<skin>.json` 的对应条目；只保留身份/人格/关系/语言，不再承载职业正文。
 - 项目冒险团真源：`Shared/kai-team/teams/<team_id>.md`；`TEAM.md` 保留总览与 Agent 名单，`regions.json` 由团队真源同步或生成，避免两处手改。
 - `role-registry` 派生 v2：显式包含 `class_id`、`role_id`、skin/persona 指纹、团队绑定占位；旧 `profession_id` 标 legacy。
