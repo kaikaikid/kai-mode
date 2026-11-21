@@ -25,14 +25,14 @@
 - **角色模板**：稳定的身份、职责、专业方法、行为边界与输出契约；版本化唯一正本，
   不承载派活规则、不授予权限。按 ADR-0034 拆成两层：**职业**（底座）与**角色**（脸）；
   底座正本住 `roles/canon/`，脸住 `roles/skins/` 与 `roles/persona/`。
-- **可派发角色**：按需调出的七个专业角色。核心 3（`engineer`／`reviewer`／`archivist`，`kind: core`）
+- **可派发角色**：按需调出的六个专业角色。核心 2（`engineer`／`reviewer`，`kind: core`）
   进宿主 agent 目录、常驻可发现；专家 4（`researcher`／`architect`／`designer`／`writer`，`kind: specialist`）
   走 `.ai/roles/profiles/` 按需加载。用户点名可调，主 AI 人格也可自己派。
 - **dispatch preset**：一次任务里「谁一起上」的组合（任务侧一对多），不是角色契约。
   框架默认住 `roles/presets/`，项目覆盖住 `.ai/presets/`；任务图只写 preset 名字。
 - **角色唤醒入口**：中文默认，技能名即命令——`/卓尔游侠`、`/符文法师`、`/矮人工匠`、`/德鲁伊`、
-  `/游学者`、`/青铜龙`、`/圣骑士`（酒馆职业名）。角色名（崔希丝／瑞兹／布莱恩·铜须／泰兰德·语风／
-  游学者周卓／克罗米／提里奥·弗丁）与英文 `role_id` 作自然语言唤醒词也认，但命令面上只有职业名可用。
+  `/游学者`、`/圣骑士`（酒馆职业名）。角色名（崔希丝／瑞兹／布莱恩·铜须／泰兰德·语风／
+  游学者周卓／提里奥·弗丁）与英文 `role_id` 作自然语言唤醒词也认，但命令面上只有职业名可用。
   角色身份仍住角色正本，入口只管唤醒与任务包。
 - **角色实例**：由角色模板创建的一次独立任务会话；同模板可多实例，各自上下文隔离，不共享完整历史。
 - **角色派生物**：装机时按宿主渲染出的定义文件或提示词文件；正文逐字内联、头部记正本指纹。
@@ -98,7 +98,7 @@
 
 ## 角色加载与记忆（2026-11-19）
 
-- **primary / core / specialist**：角色加载档位。`primary` 只有 coordinator（主 AI，会话级 prompt，不进 agent 目录）；`core` 是 engineer / reviewer / archivist（进宿主 agent 目录，常驻可发现）；`specialist` 是 researcher / architect / designer / writer（渲染成 specialist profile，按需加载）。
+- **primary / core / specialist**：角色加载档位。`primary` 只有 coordinator（主 AI，会话级 prompt，不进 agent 目录）；`core` 是 engineer / reviewer（进宿主 agent 目录，常驻可发现）；`specialist` 是 researcher / architect / designer / writer（渲染成 specialist profile，按需加载）。
 - **常驻**：角色定义已安装 + 短描述可发现；不是常驻进程，也不是每会话注入完整契约。
 - **specialist profile**：一个专家角色按需渲染出的契约（role 侧，一对一）。
 - **dispatch preset**：一次任务里把多个角色放进同一会话的组合（task 侧，一对多）。

@@ -31,7 +31,7 @@ metadata:
 | `designer` | 界面、观感、原型、设计规格 | `.ai/roles/profiles/<role_id>.md` |
 | `writer` | 成稿、文案、长文档 | `.ai/roles/profiles/<role_id>.md` |
 
-核心 3（`engineer`／`reviewer`／`archivist`）走宿主 agent 目录，主 AI 是会话级 prompt；
+核心 2（`engineer`／`reviewer`）走宿主 agent 目录，主 AI 是会话级 prompt；
 它们都不由本技能触发，别在这里重复加载。
 
 **配对方法技能**（只在读 profile 时解析、随任务包注入绝对路径）：
@@ -54,7 +54,7 @@ metadata:
 - **不复制契约**：本技能只留触发与指针，契约唯一家在 profile 文件。
 - **不放 agent 目录**：专家 profile 不进宿主的常驻 agent 目录，防宿主自动派活。
 - **不唤醒主 AI**：主 AI 是会话入口，不是可派发角色。
-- **记忆只提候选**：任何角色都不直接写长期记忆；入账只走 `archivist`。
+- **记忆只提候选**：任何角色都不直接写长期记忆；入账只走 `shaman`。
 - 缺件按三格登记（缺什么／卡在哪一步／要谁拍补），不猜默认、不假装已加载。
 
 ## 验证

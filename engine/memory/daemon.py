@@ -2,7 +2,7 @@
 
 - 只监听回环地址（默认 `127.0.0.1:8788`），单实例锁；
 - 鉴权：`Authorization: Bearer <token>`，token 表见 `tokens.py`；
-- 治理动作 commit/rollback/veto/dream/export/admin 只认 `archivist` token；
+- 治理动作 commit/rollback/veto/dream/export/admin 只认 `shaman` token；
 - daemon 是唯一写者：请求进一把进程内锁，写操作再由账本 `BEGIN IMMEDIATE` 串行化；
 - 只用标准库（`http.server` + `threading`），不引入第三方依赖。
 
@@ -15,9 +15,9 @@ HTTP 面（除 `/health` 外都要 token）：
     POST /v1/memory/rollback   {target, reason, evidence_refs?}
     POST /v1/memory/veto       {target, reason, evidence_refs?}
     POST /v1/memory/lineage    {memory_id}
-    POST /v1/memory/dream      {}                      archivist
-    POST /v1/memory/export     {events?}               archivist
-    POST /v1/memory/admin      {action?}               archivist
+    POST /v1/memory/dream      {}                      shaman
+    POST /v1/memory/export     {events?}               shaman
+    POST /v1/memory/admin      {action?}               shaman
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ from urllib.parse import urlsplit
 from .engine import build_engine
 from .ledger import (
     ACTIVE_STATUS,
-    ARCHIVIST,
+    WRITER_ROLE,
     ConflictError,
     Ledger,
     MemoryError,
@@ -187,9 +187,9 @@ class MemoryService:
         if op not in ALL_OPS:
             raise NotFound(f"未知记忆操作：{op!r}")
         role = str((identity or {}).get("role") or "")
-        if op in GOVERNANCE_OPS and role != ARCHIVIST:
+        if op in GOVERNANCE_OPS and role != WRITER_ROLE:
             raise PermissionDenied(
-                f"拒绝 {op}：治理动作只认 archivist token，当前角色 `{role}`"
+                f"拒绝 {op}：治理动作只认 shaman token，当前角色 `{role}`"
                 "（ADR-0037 D4/D6）")
         body = dict(args or {})
         with self._inflight_guard:

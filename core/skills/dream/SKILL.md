@@ -5,7 +5,7 @@ approved_by: human:kaikaikid
 approved: 2026-11-18
 sources: []
 description: >
-  青铜龙的记忆整理技能：后台把任务痕迹整理成记忆候选，批量去重、查冲突、补来源，
+  记忆治理职业（萨满 shaman）的记忆整理技能：后台把任务痕迹整理成记忆候选，批量去重、查冲突、补来源，
   在用户手动派活或定期任务触发时写入统一记忆 API；不做热路径写入、不在对话中途抢写。
   记忆域只限 user／project／task／shared／coordinator-private；七位临时执行角色不建 role memory。
   写入一律 append-only、每条带可核验证据引用、可回滚；身份与内核变更交团长批准。
@@ -19,16 +19,16 @@ metadata:
   alias: 记忆整理
 ---
 
-# dream —— 青铜龙的后台记忆整理
+# dream —— 萨满的后台记忆整理
 
-> 记忆的写者只有一个：**青铜龙（archivist）**。本技能是她做后台整理时的操作手册，
+> 记忆的写者只有一个：**萨满（shaman）**。本技能是记忆治理职业做后台整理时的操作手册，
 > 她可由团长手动派活，或由定期任务在独立上下文触发；本技能不是另一套记忆系统。
 > 判据：角色层裁决 D4；写入工具：`scripts/role-memory.py`。
 > 收敛口径：dream 是长期记忆的唯一整理入口；BOOK 只记团长明确要求保存的日记条目，两者不互为副本。
 
 ## 角色定位
 
-青铜龙在**后台**（团长手动派活、或定期任务触发）把一段时间的任务痕迹整理成长期记忆：
+萨满在**后台**（团长手动派活、或定期任务触发）把一段时间的任务痕迹整理成长期记忆：
 挑出有长期价值的条目、补上来源、去重、标冲突、再按追加式日志写进去。
 整理完给用户一句结论＋几条候选，不铺陈过程。
 
@@ -53,7 +53,7 @@ metadata:
 | `shared` | 团队共享事实 | 角色分工、命名约定 |
 | `coordinator-private` | 历史兼容读：康娜旧调度经验 | 不再新写；新条目写入项目｜冒险团记忆（物理仍 `project:<region-id>`） |
 
-- 其他临时执行角色不建 role memory；记忆写入由 archivist 统一负责。
+- 其他临时执行角色不建 role memory；记忆写入由 shaman 统一负责。
 - 按新团长的记忆口径，取消独立角色记忆与团长个人记忆的新写入；`coordinator-private` 仅供历史读取，不新增。
 - 白名单外的一律不写：模型自述、单次对话细节、无证据推断、别人的私密材料。
 
@@ -86,12 +86,12 @@ metadata:
 ## 命令
 
 ```bash
-# 追加一条（写者只能是 archivist）
-python scripts/role-memory.py append --log <日志.jsonl> --writer archivist \
+# 追加一条（写者只能是 shaman）
+python scripts/role-memory.py append --log <日志.jsonl> --writer shaman \
   --scope task_fact --statement "…" --evidence "path/to/evidence:行号"
 
 # 回滚一条（追加反向记录，原记录保留）
-python scripts/role-memory.py rollback --log <日志.jsonl> --writer archivist \
+python scripts/role-memory.py rollback --log <日志.jsonl> --writer shaman \
   --target m-0001 --reason "…"
 
 # 校验 / 看活跃条目
@@ -100,7 +100,7 @@ python scripts/role-memory.py show  --log <日志.jsonl> [--json]
 ```
 
 兼容：旧日志里 `writer=coordinator` 的记录仍可读、可被 `check` 接受（历史不追溯改写）；
-新记录一律 `writer=archivist`。
+新记录一律 `writer=shaman`。
 
 ## 自检（回报前跑一遍）
 
@@ -114,5 +114,5 @@ python scripts/role-memory.py show  --log <日志.jsonl> [--json]
 
 - 不合并、不推送、不关票；发货仍是主会话的事。
 - 不改 `roles/canon`、`roles/skins`、`registry.json` 等正本；要改先报告。
-- 记忆写入归 archivist；账本自检用 `check`，发现问题按追加反向记录修正。
+- 记忆写入归 shaman；账本自检用 `check`，发现问题按追加反向记录修正。
 - 不替圣骑士判任务交付：本技能只管记忆账本，任务验收判词归 reviewer。

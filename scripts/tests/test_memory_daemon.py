@@ -3,8 +3,8 @@
 断的是可观测行为：
 - token：每 agent 一把、文件只存 sha256、`key new/rotate/remove` 可用；
 - daemon：只监听回环、单实例锁、`/health` 公开、其余路由必须 token；
-- 权限：任何角色可 retrieve/propose；commit/rollback/veto/dream/export/admin 只认 archivist；
-- HTTP 回读：propose → archivist commit → retrieve/lineage；
+- 权限：任何角色可 retrieve/propose；commit/rollback/veto/dream/export/admin 只认 shaman；
+- HTTP 回读：propose → shaman commit → retrieve/lineage；
 - MCP：stdio 握手、tools/list、工具调用转发到 daemon、无 token 报错。
 
 所有测例用临时库/临时 token 表/临时端口，不碰真实数据根。
@@ -48,7 +48,7 @@ class Env:
         self.db = tmp_path / "ledger.db"
         self.tokens = tmp_path / "tokens.json"
         self.store = TokenStore(self.tokens)
-        self.arch = self.store.create("archivist", "archivist")
+        self.arch = self.store.create("shaman", "shaman")
         self.eng = self.store.create("engineer", "engineer")
 
 
@@ -111,21 +111,21 @@ def test_token_file_stores_only_hashes_and_is_private(tmp_path):
 
 def test_token_create_rotate_remove_lifecycle(tmp_path):
     store = TokenStore(tmp_path / "tokens.json")
-    first = store.create("archivist", "archivist")
+    first = store.create("shaman", "shaman")
     with pytest.raises(TokenError, match="已有 token"):
-        store.create("archivist", "archivist")
+        store.create("shaman", "shaman")
     with pytest.raises(TokenError, match="agent 名不合规"):
-        store.create("-bad", "archivist")
+        store.create("-bad", "shaman")
 
-    second = store.rotate("archivist")
+    second = store.rotate("shaman")
     assert second != first
     assert store.lookup(first) is None, "轮换后旧 token 立即失效"
-    assert store.lookup(second)["role"] == "archivist"
+    assert store.lookup(second)["role"] == "shaman"
 
-    store.remove("archivist")
+    store.remove("shaman")
     assert store.lookup(second) is None
     with pytest.raises(TokenError, match="没有 agent"):
-        store.remove("archivist")
+        store.remove("shaman")
     assert store.list() == []
 
 
@@ -227,14 +227,14 @@ def test_http_propose_commit_retrieve_lineage_and_governance(daemon, env):
     status, payload = call(base, "/v1/memory/commit", token=env.eng,
                            body={"proposal_id": proposal["memory_id"]})
     assert status == 403
-    assert "archivist" in payload["error"]["message"]
+    assert "shaman" in payload["error"]["message"]
 
     status, payload = call(base, "/v1/memory/commit", token=env.arch,
                            body={"proposal_id": proposal["memory_id"]})
     assert status == 200, payload
     committed = payload["memory"]
     assert committed["status"] == "active"
-    assert committed["committed_by"] == "archivist"
+    assert committed["committed_by"] == "shaman"
 
     status, payload = call(base, "/v1/memory/retrieve", token=env.eng, body={
         "namespace": "project:demo", "query": "并发"})
@@ -256,7 +256,7 @@ def test_http_propose_commit_retrieve_lineage_and_governance(daemon, env):
     ):
         status, payload = call(base, f"/v1/memory/{op}", token=env.eng, body=body)
         assert status == 403, (op, payload)
-        assert "archivist" in payload["error"]["message"]
+        assert "shaman" in payload["error"]["message"]
 
     status, payload = call(base, "/v1/memory/dream", token=env.arch, body={})
     assert status == 200, payload
@@ -324,7 +324,7 @@ def test_http_write_requires_evidence_and_token_role_beats_body(daemon, env):
 
     status, payload = call(base, "/v1/memory/propose", token=env.eng, body={
         "namespace": "shared", "kind": "task_fact", "statement": "冒名",
-        "evidence_refs": ["tests:x:1"], "actor_role": "archivist"})
+        "evidence_refs": ["tests:x:1"], "actor_role": "shaman"})
     assert status == 200
     mid = payload["memory"]["memory_id"]
     status, payload = call(base, "/v1/memory/lineage", token=env.arch,
@@ -410,7 +410,7 @@ def test_mcp_handshake_tools_list_and_governance(daemon, env):
         result = session.request("tools/call", {
             "name": "memory_commit", "arguments": {"proposal_id": proposal_id}})
         assert result["result"]["isError"] is True
-        assert "archivist" in result["result"]["content"][0]["text"]
+        assert "shaman" in result["result"]["content"][0]["text"]
 
         result = session.request("tools/call", {
             "name": "memory_nope", "arguments": {}})

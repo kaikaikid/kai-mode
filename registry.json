@@ -223,17 +223,6 @@
       "since": "1.4.0"
     },
     {
-      "name": "青铜龙",
-      "path": "core/skills/青铜龙",
-      "kind": "framework",
-      "scope": "global",
-      "install": "auto",
-      "summary": "青铜龙",
-      "plugin": "core",
-      "version": "1.4.0",
-      "since": "1.4.0"
-    },
-    {
       "name": "flight-info",
       "path": "board/skills/flight-info",
       "kind": "framework",

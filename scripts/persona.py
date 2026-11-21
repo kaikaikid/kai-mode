@@ -5,10 +5,10 @@
   id             本我：天性与欲望
   ego            自我：成长层，只放记忆引用，不内联事实
   superego       超我：价值与行为准则
-  memory         记忆接口声明：记忆本体在仓外，只有 archivist 能写
+  memory         记忆接口声明：记忆本体在仓外，只有 shaman 能写
 
 本模块只做两件事：validate（结构/契约）与 fingerprint（原初内核稳定性）。
-记忆读写本身的实现留给外部记忆库（adapter=archivist），框架只定义接口。
+记忆读写本身的实现留给外部记忆库（adapter=shaman），框架只定义接口。
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ import re
 from pathlib import Path
 
 ROLE_IDS = ("coordinator", "researcher", "architect", "engineer",
-            "designer", "writer", "archivist", "reviewer")
+            "designer", "writer", "reviewer")
 REQUIRED_TOP = ("role_id", "persona_version", "identity_core", "id", "ego", "superego", "memory")
 MEMORY_SCOPE = {"task_fact", "preference", "skill", "relationship", "failure_lesson"}
 # 深度人格层（按需）：五个段位。层内长文本不进 system prompt，只在闲聊／深度情境现取。
@@ -83,8 +83,8 @@ def validate(root: Path | str) -> list[str]:
             errs.append(f"{rid} ego.refs 只放引用，不内联长文本"
                         f"（每条 ≤{EGO_REF_MAX_CHARS} 字符；字符串型与对象型都算）")
         mem = data.get("memory") or {}
-        if mem.get("adapter") != "archivist":
-            errs.append(f"{rid} memory.adapter 必须是 archivist（记忆唯一写者）")
+        if mem.get("adapter") != "shaman":
+            errs.append(f"{rid} memory.adapter 必须是 shaman（记忆唯一写者）")
         if mem.get("storage") != "external":
             errs.append(f"{rid} memory.storage 必须是 external（记忆本体不进仓）")
         if mem.get("write_policy") != "candidate_only":
@@ -142,7 +142,7 @@ def cli(argv: list[str]) -> int:
             for e in errs:
                 print(" -", e)
             return 1
-        print(f"人格层合规：{len(ROLE_IDS)} 份（原初内核只读、ego 只放引用、记忆走 archivist）")
+        print(f"人格层合规：{len(ROLE_IDS)} 份（原初内核只读、ego 只放引用、记忆走 shaman）")
         return 0
     if cmd == "fingerprint":
         rid = argv[1] if len(argv) > 1 else "coordinator"

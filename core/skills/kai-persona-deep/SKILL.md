@@ -39,7 +39,7 @@ compatibility: Requires python3
 ## 怎么取
 
 **装机面（技能自带，首选）**：深度材料随本技能发布在 `resources/depth/<role_id>.md`，直接读那个文件。
-`role_id` 取角色自己的那个：coordinator / researcher / architect / engineer / designer / writer / archivist / reviewer。
+`role_id` 取角色自己的那个：coordinator / researcher / architect / engineer / designer / writer / reviewer。
 
 **框架仓在场时（权威源）**：正本是 `roles/persona/<role_id>.json` 的 `depth` 块，可以现拼：
 

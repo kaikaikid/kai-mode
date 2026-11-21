@@ -19,7 +19,7 @@ from pathlib import Path
 FORBIDDEN_VERDICTS = {"PASS", "CONDITIONAL_PASS", "FAIL", "NEEDS_INFO"}
 ROLE_ENUMS = {
     "coordinator", "researcher", "architect", "engineer",
-    "designer", "writer", "archivist", "reviewer",
+    "designer", "writer", "reviewer",
 }
 CLAIM_KINDS = {"fact", "inference", "unknown", "recommendation"}
 VERDICT_VALUES = {"accept", "return", "defer"}

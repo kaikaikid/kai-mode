@@ -1,4 +1,4 @@
-"""无人格契约投影的测例：七个可派发角色，只给契约、不给人物。
+"""无人格契约投影的测例：六个可派发角色，只给契约、不给人物。
 
 投影对象是「只做契约内的事、不面向用户」的执行子代理，所以正文必须：
 有指纹、有一句身份、有输入契约与信封规格、有正本四块逐字；
@@ -46,9 +46,9 @@ def repo_copy(tmp_path):
 
 
 # ── 契约包：七份、无主 AI 人格 ─────────────────────────────────────────────
-def test_contract_pack_has_seven_dispatchable_roles():
+def test_contract_pack_has_six_dispatchable_roles():
     pack = rl.render_contracts_pack(REPO, "guild")
-    assert pack.count("<!-- kai-role") == 7, "契约包必须恰好七份（七个可派发角色）"
+    assert pack.count("<!-- kai-role") == 6, "契约包必须恰好六份（六个可派发角色）"
     for rid in rl.DISPATCHABLE_IDS:
         assert f"role={rid}" in pack, rid
         assert f"role_id={rid}" in pack, rid
@@ -140,7 +140,7 @@ def test_contract_fails_closed_without_contract_files(repo_copy):
         rl.render_contract_prompt(repo_copy, "engineer", "guild")
 
 
-def test_contract_pack_is_the_seven_prompts_in_order():
+def test_contract_pack_is_the_six_prompts_in_order():
     pack = rl.render_contracts_pack(REPO, "guild")
     for rid in rl.DISPATCHABLE_IDS:
         assert rl.render_contract_prompt(REPO, rid, "guild") in pack, rid
@@ -156,7 +156,7 @@ def _run(*args: str) -> subprocess.CompletedProcess:
 def test_cli_contracts_pack_prints_content():
     r = _run("contracts", "--pack", "--skin", "guild")
     assert r.returncode == 0, r.stderr
-    assert r.stdout.count("<!-- kai-role") == 7
+    assert r.stdout.count("<!-- kai-role") == 6
     assert "## mission" in r.stdout and "## personality" not in r.stdout
 
 

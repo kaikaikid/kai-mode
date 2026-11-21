@@ -245,7 +245,7 @@ def chk_frontmatter(root, ms):
 
 
 def chk_skill_bindings(root, ms):
-    """技能归属绑定：how/why/sharpen 的 metadata.owner_role 与 allowed_roles 必须是八角色之一。"""
+    """技能归属绑定：how/why/sharpen 的 metadata.owner_role 与 allowed_roles 必须是七角色之一。"""
     data, err = registry(root, ms)
     if data is None:
         return "skip", f"注册表不可用（01 已报）：{err}"
@@ -275,7 +275,7 @@ def chk_skill_bindings(root, ms):
         if owner is None:
             problems.append(f"{name}：缺 metadata.owner_role")
         elif owner.group(1) not in role_ids:
-            problems.append(f"{name}：owner_role={owner.group(1)} 不在八角色")
+            problems.append(f"{name}：owner_role={owner.group(1)} 不在七角色")
         if allowed is None:
             problems.append(f"{name}：缺 metadata.allowed_roles")
         else:
@@ -287,7 +287,7 @@ def chk_skill_bindings(root, ms):
         return "fail", "；".join(problems[:6])
     if checked == 0:
         return "skip", "没有 how/why/sharpen 技能"
-    return "ok", f"{checked} 个方法技能的 owner/allowed 角色都在八角色内"
+    return "ok", f"{checked} 个方法技能的 owner/allowed 角色都在七角色内"
 
 
 def chk_unregistered(root, ms):
@@ -1820,11 +1820,11 @@ def chk_role_registry(root: str, ms):
         if got != want:
             return "fail", (f"registry 与正本不一致：{rel} → "
                             f"{_first_registry_diff(want, got)}；手改或未重导出")
-    return "ok", "2 份 registry 与 8 份正本/皮肤/persona 一致"
+    return "ok", "2 份 registry 与 7 份正本/皮肤/persona 一致"
 
 
 def chk_persona(root: str, ms):
-    """人格层契约：八份 persona；原初内核只读、ego 只放引用、记忆只走 archivist。"""
+    """人格层契约：七份 persona；原初内核只读、ego 只放引用、记忆只走 shaman。"""
     from pathlib import Path as _P
     pdir = os.path.join(root, "roles", "persona")
     if not os.path.isdir(pdir):
@@ -1880,7 +1880,7 @@ def chk_persona(root: str, ms):
                     if len(s) >= 8:
                         ps.add(s[:16])
                 probes.append((rid, k, ps))
-        # 渲染泄漏门：render_prompt（八角色 × 两皮）＋ render_primary（两皮）两条腿都要查。
+        # 渲染泄漏门：render_prompt（七角色 × 两皮）＋ render_primary（两皮）两条腿都要查。
         for rid, k, ps in probes:
             for sk in _rl.SKINS:
                 rendered = _rl.render_prompt(_P(root), rid, sk)
@@ -1900,7 +1900,7 @@ def chk_persona(root: str, ms):
     n = len(depth_roles)
     tail = f"；深度层按需 {n}/{len(_p.ROLE_IDS)} 份已接入" if n else "；深度层未接入"
     return "ok", (f"{len(_p.ROLE_IDS)} 份人格层：原初内核只读、ego 只放引用、"
-                  f"记忆走 archivist（外部存储）{tail}")
+                  f"记忆走 shaman（外部存储）{tail}")
 
 
 def chk_spec_shared(root: str, ms):
@@ -2438,7 +2438,7 @@ def chk_role_canon(root: str, ms):
 
 
 def chk_role_projection(root: str, ms):
-    """投影分层（ADR-0036 D3）：主 AI 会话 prompt / 核心 3 agent 目录 / 专家 4 profiles。"""
+    """投影分层（ADR-0036 D3）：主 AI 会话 prompt / 核心 2 agent 目录 / 专家 4 profiles。"""
     from pathlib import Path as _P
     rl = _load_rolelib(root)
     if rl is None or not os.path.isdir(os.path.join(root, "roles")):
@@ -2451,7 +2451,7 @@ def chk_role_projection(root: str, ms):
     if est["over"]:
         return "fail", (f"可发现预算超限：估算 {est['tokens_est']} token > {est['limit']}"
                         f"（字符数/4；先裁描述，不裁契约）")
-    return "ok", (f"核心 3 → dest_dir（{'、'.join(rl.CORE_IDS)}）；"
+    return "ok", (f"核心 2 → dest_dir（{'、'.join(rl.CORE_IDS)}）；"
                   f"专家 4 → profiles_dir（{'、'.join(rl.SPECIALIST_IDS)}）；"
                   f"主 AI 走会话 prompt 不进 agent 目录；"
                   f"可发现预算估算 {est['tokens_est']}/{est['limit']} token（估算）")
@@ -2936,13 +2936,13 @@ CHECKS = (
     ("payload-refs", "安装面零开发史引用", chk_payload_refs),
     ("decoupling-gate", "解耦门（项目硬路径零残留）", chk_decoupling),
     ("host-neutral", "宿主专有 token 不进正本", chk_host_neutral),
-    ("role-canon", "角色正本契约（八角色 × 双皮 × 六宿主）", chk_role_canon),
+    ("role-canon", "角色正本契约（七角色 × 双皮 × 六宿主）", chk_role_canon),
     ("role-projection", "角色投影分层（会话/agent/profile + 15k 预算）", chk_role_projection),
     ("dispatch-preset", "dispatch preset 合法（schema/角色/lead/review）", chk_dispatch_preset),
     ("role-boundary", "角色边界对账（coordinator 只调度，产物无 diff）", chk_role_boundary),
     ("role-registry", "registry 与正本一致（profession/role v1）", chk_role_registry),
     ("landing-compare", "落点对照（agent 指纹与现渲一致）", chk_landing_compare),
-    ("persona-layer", "人格层契约（原初内核只读 / ego 只放引用 / 记忆走 archivist）", chk_persona),
+    ("persona-layer", "人格层契约（原初内核只读 / ego 只放引用 / 记忆走 shaman）", chk_persona),
     ("spec-shared", "共享契约一个家（canon 零抄写 / 四块共享块齐全有序）", chk_spec_shared),
     ("depth-publish", "深度层投影（安装面资源与 persona 正本逐字一致）", chk_depth_publish),
     ("summary-derived", "派生体例（gold／eval-cases 的总结措辞跟唯一家一致）", chk_summary_derived),

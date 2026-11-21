@@ -9,7 +9,7 @@
    旧行一个字节都不改。`memory_current` 是视图，不是第二份真相。
 2. **证据强制**：propose／commit／import 的每条记录至少一个可核验的 `evidence_refs`；
    自述类（「我确认过」「已确认」「无」等）不算证据。
-3. **单写者**：任何角色可 propose；只有 `archivist` 能 commit／rollback／veto。
+3. **单写者**：任何角色可 propose；只有 `shaman` 能 commit／rollback／veto。
 
 业务键 `namespace + kind + subject + content_hash` 幂等：同键重复 propose 返回旧条目，
 不追加第二行。`layer=ego` 是元数据，导入与 role-memory 写入时保留。
@@ -29,7 +29,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Iterator
 
-ARCHIVIST = "archivist"
+WRITER_ROLE = "shaman"
 
 V1_KINDS = ("task_fact", "failure_lesson", "preference")
 ALL_KINDS = V1_KINDS + ("skill", "relationship")
@@ -59,7 +59,7 @@ class MemoryError(Exception):
 
 
 class PermissionDenied(MemoryError):
-    """写了不该写的东西（非 archivist 治理动作）。CLI 退出码 3。"""
+    """写了不该写的东西（非 shaman 治理动作）。CLI 退出码 3。"""
 
 
 class NotFound(MemoryError):
@@ -399,7 +399,7 @@ class Ledger:
                session_id: str | None = None, before: str = "", after: str = "",
                conflicts_with: Iterable[str] | None = None, layer: str | None = None,
                supersedes: str | None = None) -> dict[str, Any]:
-        self._require_archivist(actor_role)
+        self._require_shaman(actor_role)
 
         if proposal_id:
             src = self.current_row(proposal_id)
@@ -467,7 +467,7 @@ class Ledger:
                     namespace=namespace, kind=kind, subject=subject, statement=stmt,
                     evidence_refs=evidence, before=before, after=after,
                     conflicts_with=conflicts, rollback_of=None, layer=layer,
-                    committed_by=ARCHIVIST, legacy_id=None, superseded_by=None,
+                    committed_by=WRITER_ROLE, legacy_id=None, superseded_by=None,
                     reason=None, content_hash_value=digest, business_key_value=key,
                 )
         if supersedes:
@@ -480,7 +480,7 @@ class Ledger:
     # -- 写：veto / rollback ------------------------------------------------
     def veto(self, *, actor_role: str, target: str, reason: str,
              evidence_refs: Iterable[str] | None = None) -> dict[str, Any]:
-        self._require_archivist(actor_role)
+        self._require_shaman(actor_role)
         reason = str(reason or "").strip()
         if not reason:
             raise MemoryError("veto 必须写 --reason（审计要能看出为什么撤）")
@@ -503,7 +503,7 @@ class Ledger:
                 kind=src["kind"], subject=src["subject"], statement=src["statement"],
                 evidence_refs=evidence, before="", after="",
                 conflicts_with=src.get("conflicts_with") or [], rollback_of=None,
-                layer=src.get("layer"), committed_by=ARCHIVIST, legacy_id=None,
+                layer=src.get("layer"), committed_by=WRITER_ROLE, legacy_id=None,
                 superseded_by=None, reason=reason,
                 content_hash_value=src["content_hash"],
                 business_key_value=src["business_key"], valid_to=now,
@@ -515,7 +515,7 @@ class Ledger:
 
     def rollback(self, *, actor_role: str, target: str, reason: str,
                  evidence_refs: Iterable[str] | None = None) -> dict[str, Any]:
-        self._require_archivist(actor_role)
+        self._require_shaman(actor_role)
         reason = str(reason or "").strip()
         if not reason:
             raise MemoryError("回滚必须写 --reason（审计要能看出为什么撤）")
@@ -540,7 +540,7 @@ class Ledger:
                 evidence_refs=evidence, before=src.get("after") or "",
                 after=src.get("before") or "",
                 conflicts_with=src.get("conflicts_with") or [], rollback_of=target,
-                layer=src.get("layer"), committed_by=ARCHIVIST, legacy_id=None,
+                layer=src.get("layer"), committed_by=WRITER_ROLE, legacy_id=None,
                 superseded_by=None, reason=reason,
                 content_hash_value=src["content_hash"],
                 business_key_value=src["business_key"], valid_to=now,
@@ -578,7 +578,7 @@ class Ledger:
                 evidence_refs=old.get("evidence_refs") or [],
                 before="", after="",
                 conflicts_with=old.get("conflicts_with") or [], rollback_of=None,
-                layer=old.get("layer"), committed_by=ARCHIVIST, legacy_id=None,
+                layer=old.get("layer"), committed_by=WRITER_ROLE, legacy_id=None,
                 superseded_by=new_id, reason=f"superseded by {new_id}",
                 content_hash_value=old["content_hash"],
                 business_key_value=old["business_key"], valid_to=utcnow(),
@@ -604,7 +604,7 @@ class Ledger:
                 namespace = validate_namespace(namespace)
             except MemoryError:
                 namespace = "shared"
-            actor_role = str(rec.get("writer") or rec.get("actor_role") or ARCHIVIST)
+            actor_role = str(rec.get("writer") or rec.get("actor_role") or WRITER_ROLE)
             evidence = [str(x).strip() for x in (rec.get("evidence_refs") or [])
                         if str(x).strip()]
             layer = rec.get("layer")
@@ -639,7 +639,7 @@ class Ledger:
                             conflicts_with=rec.get("conflicts_with") or [],
                             rollback_of=target,
                             layer=tgt.get("layer", layer) or layer,
-                            committed_by=ARCHIVIST, legacy_id=legacy_id or None,
+                            committed_by=WRITER_ROLE, legacy_id=legacy_id or None,
                             superseded_by=None, reason=statement or None,
                             content_hash_value=tgt.get("content_hash", digest),
                             business_key_value=tgt.get("business_key", key),
@@ -657,7 +657,7 @@ class Ledger:
                     before=str(rec.get("before") or ""),
                     after=str(rec.get("after") or ""),
                     conflicts_with=[str(x) for x in (rec.get("conflicts_with") or [])],
-                    rollback_of=None, layer=layer, committed_by=ARCHIVIST,
+                    rollback_of=None, layer=layer, committed_by=WRITER_ROLE,
                     legacy_id=legacy_id or None, superseded_by=None, reason=None,
                     content_hash_value=digest, business_key_value=key, ts=now,
                 )
@@ -742,9 +742,9 @@ class Ledger:
             if r.get("status") not in STATUSES:
                 problems.append(f"{label} 的 status 非法：{r.get('status')!r}")
             if r.get("event_type") in ("commit", "import") and \
-                    r.get("committed_by") != ARCHIVIST:
+                    r.get("committed_by") != WRITER_ROLE:
                 problems.append(
-                    f"{label} 的 committed_by 是 {r.get('committed_by')!r}，只许 {ARCHIVIST}")
+                    f"{label} 的 committed_by 是 {r.get('committed_by')!r}，只许 {WRITER_ROLE}")
             if r.get("event_type") in ("commit", "import", "propose"):
                 ev = r.get("evidence_refs") or []
                 if not ev:
@@ -757,10 +757,10 @@ class Ledger:
         return problems
 
     # -- 内部 ---------------------------------------------------------------
-    def _require_archivist(self, actor_role: str) -> None:
-        if actor_role != ARCHIVIST:
+    def _require_shaman(self, actor_role: str) -> None:
+        if actor_role != WRITER_ROLE:
             raise PermissionDenied(
-                f"拒绝写入：记忆的唯一读写改者是 `{ARCHIVIST}`，收到的是 `{actor_role}`。"
+                f"拒绝写入：记忆的唯一读写改者是 `{WRITER_ROLE}`，收到的是 `{actor_role}`。"
                 "别的角色只能 propose，不能 commit/rollback/veto（ADR-0037 D4）。")
 
     def _governance_evidence(self, items: Iterable[str] | None,

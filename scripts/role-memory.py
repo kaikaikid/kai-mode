@@ -2,13 +2,13 @@
 """角色经验记忆：追加式日志，单写者，可回滚，留审计。
 
 裁决：docs/adr/0033-guild-role-layer.md D5；写者迁移见 docs/adr/0035-universal-role-projection.md D4
-（记忆治理归青铜龙的 `dream` skill，`coordinator` 旧记录兼容读）。
+（记忆治理归萨满的 `dream` skill，`coordinator` 旧记录兼容读）。
 
 硬判据（三条，全部机械执行，不靠提示词自觉）：
-1. **只有 `archivist`（青铜龙）能写**。其他角色的写入一律拒绝并返回非零。
+1. **只有 `shaman`（萨满）能写**。其他角色的写入一律拒绝并返回非零。
    别的角色只能提候选：把候选写成一段文本交给人或交回康娜，不走本工具。
    旧日志里 `writer=coordinator` 的记录**兼容读**（历史不追溯改写）；`inspect` 两者都认，
-   但新写入只收 `archivist`。
+   但新写入只收 `shaman`。
 2. **追加式**。日志只追加，不改旧行；回滚是再追加一条反向记录，原记录永久保留。
 3. **无证据不写**。每条至少一个 `evidence_refs`，且不得是空串或「我确认过」这类自述。
 
@@ -18,13 +18,13 @@
 - `--log <JSONL>`：v0 兼容路径，行为与旧版一致（历史可追溯，不静默改写）。
 
 用法：
-  python scripts/role-memory.py append   --db <库> --writer archivist --scope task_fact \
+  python scripts/role-memory.py append   --db <库> --writer shaman --scope task_fact \
          --statement "…" --evidence "path/to/evidence:行号" [--conflicts "m-0002"]
   python scripts/role-memory.py append   --log <路> …（旧 JSONL 路径）
-  python scripts/role-memory.py rollback --db <库> --writer archivist --target m-0001 --reason "…"
+  python scripts/role-memory.py rollback --db <库> --writer shaman --target m-0001 --reason "…"
   python scripts/role-memory.py check    --db <库> [--json]
   python scripts/role-memory.py show     --db <库> [--json]
-  python scripts/role-memory.py import   --db <库> --from-jsonl <旧路> --writer archivist
+  python scripts/role-memory.py import   --db <库> --from-jsonl <旧路> --writer shaman
 
 退出码：0 成功；2 参数/格式错；3 非授权写者；4 校验不过。
 """
@@ -39,9 +39,9 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-# 写者：ADR-0035 D4 修订后记忆治理归青铜龙（archivist）。旧日志的 coordinator 记录兼容读，
+# 写者：ADR-0035 D4 修订后记忆治理归萨满（shaman）。旧日志的 coordinator 记录兼容读，
 # 但不再接受 coordinator 写入——历史可追溯，正本不追溯改写。
-WRITER = "archivist"
+WRITER = "shaman"
 LEGACY_WRITERS = ("coordinator",)
 KNOWN_WRITERS = (WRITER, *LEGACY_WRITERS)
 SCOPES = ("task_fact", "preference", "skill", "relationship", "failure_lesson")

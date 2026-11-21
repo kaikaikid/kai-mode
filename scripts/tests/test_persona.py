@@ -1,4 +1,4 @@
-"""人格层契约测试：八份 persona、内核只读、ego 只放引用、记忆走 archivist。"""
+"""人格层契约测试：七份 persona、内核只读、ego 只放引用、记忆走 shaman。"""
 import json
 import sys
 from pathlib import Path
@@ -13,7 +13,7 @@ def test_persona_validates():
     assert persona.validate(REPO) == []
 
 
-def test_eight_personas_match_role_ids():
+def test_seven_personas_match_role_ids():
     files = {p.stem for p in (REPO / "roles" / "persona").glob("*.json")}
     assert files == set(persona.ROLE_IDS)
 
@@ -35,10 +35,10 @@ def test_ego_holds_refs_only():
             assert len(str(ref)) <= 200, f"{rid} ego.refs 内联了长文本"
 
 
-def test_memory_goes_through_archivist_and_stays_external():
+def test_memory_goes_through_shaman_and_stays_external():
     for rid in persona.ROLE_IDS:
         mem = persona.load(REPO, rid)["memory"]
-        assert mem["adapter"] == "archivist"
+        assert mem["adapter"] == "shaman"
         assert mem["storage"] == "external"
         assert mem["write_policy"] == "candidate_only"
         assert set(mem["scope"]) <= persona.MEMORY_SCOPE
@@ -60,7 +60,6 @@ def test_profession_matches_tavern_professions():
         "engineer": "矮人工匠",
         "designer": "德鲁伊",
         "writer": "游学者",
-        "archivist": "青铜龙",
         "reviewer": "圣骑士",
     }
     for rid, prof in expect.items():

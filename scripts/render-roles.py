@@ -255,7 +255,7 @@ def cmd_bootstrap(args: argparse.Namespace) -> int:
     prim_cfg = cfg.get("primary") or {}
     primary_path = project / str(prim_cfg.get("dir") or ".ai/roles") / str(prim_cfg.get("file") or "_primary.md")
 
-    # 三层投影：核心 3 → dest_dir；专家 4 → profiles_dir（渲染缓存，标 generated）；
+    # 三层投影：核心 2 → dest_dir；专家 4 → profiles_dir（渲染缓存，标 generated）；
     # 主 AI → 会话级 prompt 文件，不进 agent 目录。
     core_files = rolelib.render_all(root, args.host, args.skin, kind="core")
     spec_files = rolelib.render_all(root, args.host, args.skin, kind="specialist")
@@ -314,7 +314,7 @@ def cmd_bootstrap(args: argparse.Namespace) -> int:
         print(json.dumps(receipt, ensure_ascii=False, indent=2))
     else:
         print(f"初始化完成：宿主 {args.host}｜皮肤 {args.skin}｜项目 {project}")
-        print(f"核心 3（宿主 agent 目录）：{dest}")
+        print(f"核心 2（宿主 agent 目录）：{dest}")
         print(f"专家 4（按需 profile，标 generated）：{profiles}")
         print(f"主 AI 会话 prompt（不进 agent 目录）：{primary_path}")
         for key, label in (("new", "新增"), ("overwrite", "备份后覆盖"), ("same", "内容相同")):

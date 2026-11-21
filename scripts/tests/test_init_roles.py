@@ -4,7 +4,7 @@
 渲染与枚举的正本住 `scripts/render-roles.py`。本测例只断四件事：
 
 ① 皮肤或宿主没拍板 ⇒ 零产出、stdout 点名缺件，且不许留下半截目录；
-② 拍了板 ⇒ 真产出 8 份角色件，`_primary` 头部记着所选皮肤（皮肤的家＝产物头部，不进配置实例）；
+② 拍了板 ⇒ 真产出 7 份角色件，`_primary` 头部记着所选皮肤（皮肤的家＝产物头部，不进配置实例）；
 ③ `--dry-run` 一件都不写盘；
 ④ 脚本里不许长第二份渲染逻辑（只准调那条唯一渲染口）。
 """
@@ -99,7 +99,7 @@ def test_decided_pair_installs_roles_and_records_the_skin(tmp_path):
     assert p.returncode == 0, p.stderr[-400:]
     agents = proj / ".qoder" / "agents"
     core_names = sorted(f.name for f in agents.iterdir())
-    assert core_names == ["archivist.md", "engineer.md", "reviewer.md"], core_names
+    assert core_names == ["engineer.md", "reviewer.md"], core_names
     profiles = proj / ".ai" / "roles" / "profiles"
     assert sorted(f.name for f in profiles.iterdir()) == [
         "architect.md", "designer.md", "researcher.md", "writer.md"]

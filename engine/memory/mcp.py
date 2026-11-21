@@ -10,7 +10,7 @@ daemon 是唯一写者；MCP 进程不碰账本，只把工具调用翻译成 `P
 
 传输：stdio，一行一条 JSON-RPC 2.0 消息（MCP 的 stdio 约定）。
 工具：memory_retrieve / propose / commit / rollback / veto / lineage / dream / export / admin。
-只读与 propose 任何 agent 可用；治理工具由 daemon 按 token 角色把关（只认 archivist）。
+只读与 propose 任何 agent 可用；治理工具由 daemon 按 token 角色把关（只认 shaman）。
 """
 
 from __future__ import annotations
@@ -88,7 +88,7 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "memory_commit",
-        "description": "archivist 把候选转正或直接写入；可 supersedes 旧条目。",
+        "description": "shaman 把候选转正或直接写入；可 supersedes 旧条目。",
         "inputSchema": _schema({
             "proposal_id": {"type": "string", "description": "候选 memory_id"},
             **COMMON_WRITE,
@@ -97,7 +97,7 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "memory_rollback",
-        "description": "archivist 追加反向记录；原记录保留，必须写 reason。",
+        "description": "shaman 追加反向记录；原记录保留，必须写 reason。",
         "inputSchema": _schema({
             "target": {"type": "string"},
             "reason": {"type": "string"},
@@ -106,7 +106,7 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "memory_veto",
-        "description": "archivist 标 tombstone；不删除，必须写 reason。",
+        "description": "shaman 标 tombstone；不删除，必须写 reason。",
         "inputSchema": _schema({
             "target": {"type": "string"},
             "reason": {"type": "string"},
@@ -122,19 +122,19 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "memory_dream",
-        "description": "archivist 后台整理入口：重建索引、统计状态、报告冲突与审计问题。",
+        "description": "shaman 后台整理入口：重建索引、统计状态、报告冲突与审计问题。",
         "inputSchema": _schema({}),
     },
     {
         "name": "memory_export",
-        "description": "archivist 导出账本（当前视图或全部事件）。",
+        "description": "shaman 导出账本（当前视图或全部事件）。",
         "inputSchema": _schema({
             "events": {"type": "boolean", "default": False},
         }),
     },
     {
         "name": "memory_admin",
-        "description": "archivist 运维：check / stats / rebuild_index。",
+        "description": "shaman 运维：check / stats / rebuild_index。",
         "inputSchema": _schema({
             "action": {"type": "string",
                        "enum": ["check", "stats", "rebuild_index"],
@@ -286,7 +286,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--url", default=None,
                    help=f"daemon 地址（默认 $KAI_MEMORY_URL 或 {DEFAULT_URL}）")
     p.add_argument("--token", default=None,
-                   help="agent token（默认 $KAI_MEMORY_TOKEN；治理动作需 archivist token）")
+                   help="agent token（默认 $KAI_MEMORY_TOKEN；治理动作需 shaman token）")
     p.add_argument("--timeout", default=10.0, type=float, help="单次 HTTP 超时秒数")
     return p
 

@@ -30,7 +30,7 @@ try:  # Windows 控制台中文输出
 except Exception:
     pass
 
-ROLES = ("researcher", "architect", "engineer", "designer", "writer", "archivist", "reviewer")
+ROLES = ("researcher", "architect", "engineer", "designer", "writer", "reviewer")
 PRIMARY = "_primary.md"
 FP_RX = re.compile(r"<!--\s*(kai-role\s+[^>]*?)\s*-->")
 PERSONALITY_RX = re.compile(r"^\s*##\s+personality\b", re.IGNORECASE | re.MULTILINE)

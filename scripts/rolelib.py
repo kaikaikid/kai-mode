@@ -16,7 +16,7 @@ from pathlib import Path
 
 ROLE_IDS = (
     "coordinator", "researcher", "architect", "engineer",
-    "designer", "writer", "archivist", "reviewer",
+    "designer", "writer", "reviewer",
 )
 CANON_BLOCKS = ("mission", "boundaries", "workflow", "output_contract")
 META_KEYS = ("role_id", "canon_version", "kind", "access_need", "model_tier", "effort")
@@ -32,12 +32,11 @@ SUMMARY_SLOT_SOURCE_KEYS = ("done", "open", "ask")
 ACCESS = ("read_only", "writable")
 KINDS = ("primary", "core", "specialist")
 # 角色 → kind 的固定映射（ADR-0036 D1）：kind 只扩枚举，不新增 frontmatter 键。
-# 主 AI 人格有且只有 coordinator；核心 3 进宿主 agent 目录；专家 4 走按需 profile。
+# 主 AI 人格有且只有 coordinator；核心 2 进宿主 agent 目录；专家 4 走按需 profile。
 KIND_BY_ROLE = {
     "coordinator": "primary",
     "engineer": "core",
     "reviewer": "core",
-    "archivist": "core",
     "researcher": "specialist",
     "architect": "specialist",
     "designer": "specialist",
@@ -72,7 +71,7 @@ PRESET_ISOLATION_KEYS = ("worktree", "review")
 PRESET_MEMORY_KEYS = ("read", "write")
 PRESET_OUTPUT_KEYS = ("label_by_role", "final_owner")
 PRESET_REVIEW_VALUES = ("separate", "none")
-# 可发现预算（ADR-0036 D2）：主 AI 角色表 + 核心 3 描述 + 专家 4 触发词；无 tokenizer 时按 字符/4 估算。
+# 可发现预算（ADR-0036 D2）：主 AI 角色表 + 核心 2 描述 + 专家 4 触发词；无 tokenizer 时按 字符/4 估算。
 DISCOVERABLE_TOKEN_LIMIT = 15000
 
 FM_RE = re.compile(r"\A---\s*\n(.*?)\n---\s*\n?", re.S)
@@ -225,9 +224,9 @@ def validate_preset(data: dict, expected_name: str) -> list[str]:
             bad.append(f"roles 含未知 role_id：{roles}")
         if all_str and len(set(roles)) != len(roles):
             bad.append(f"roles 有重复：{roles}")
-        forbidden = sorted({r for r in roles if r in ("coordinator", "archivist")})
+        forbidden = sorted({r for r in roles if r in ("coordinator",)})
         if forbidden:
-            bad.append(f"roles 不能含 coordinator / archivist：{', '.join(forbidden)}")
+            bad.append(f"roles 不能含 coordinator：{', '.join(forbidden)}")
         if "reviewer" in roles and roles != ["reviewer"]:
             bad.append("reviewer 只能单独成 preset（review=none），不能与施工角色组合")
 
@@ -277,7 +276,7 @@ def validate_preset(data: dict, expected_name: str) -> list[str]:
         if not isinstance(reads, list) or not reads or any(not isinstance(x, str) or not x for x in reads):
             bad.append("memory.read 必须是非空字符串数组")
         if memory.get("write") != "propose":
-            bad.append(f"memory.write 固定为 propose（只有 archivist 能 commit）：{memory.get('write')!r}")
+            bad.append(f"memory.write 固定为 propose（只有 shaman 能 commit）：{memory.get('write')!r}")
 
     output = data.get("output")
     if not isinstance(output, dict):
@@ -391,7 +390,7 @@ def projection_problems(root: Path) -> list[str]:
 
 
 def discoverable_estimate(root: Path, skin: str = "guild") -> dict:
-    """可发现预算：主 AI 角色表 + 核心 3 描述 + 专家 4 触发词（无数据时用描述代估）。
+    """可发现预算：主 AI 角色表 + 核心 2 描述 + 专家 4 触发词（无数据时用描述代估）。
 
     没有 tokenizer，按字符数 / 4 估算并标 estimate=True；超限裁描述，不裁契约。
     """
@@ -846,7 +845,7 @@ def render_all(root: Path, host: str, skin: str, with_primary: bool = False,
                contract_only: bool = False, kind: str | None = None) -> dict[str, str]:
     """返回 {文件名: 文本}。默认渲染七个可派发角色（核心 + 专家）；`kind` 可分层过滤。
 
-    `kind="core"`：只出核心 3（进宿主 dest_dir，带宿主 frontmatter）；
+    `kind="core"`：只出核心 2（进宿主 dest_dir，带宿主 frontmatter）；
     `kind="specialist"`：只出专家 4 的 profile（纯正文 + generated 标记，不进 agent 目录）。
     主 AI 人格不是子代理：默认对话激活的就是它，要用就单独 `--with-primary` 出 `_primary.md`。
     正文一律走同一个组装点。
@@ -1075,7 +1074,7 @@ def render_bootstrap(root: Path, host: str, skin: str) -> str:
     lines += ["", "## 2. 派活怎么派（本宿主）", ""]
     if cfg.get("agent_file"):
         lines += [
-            f"- 把核心 3 份文件放到 `{dest}/`，宿主会把它们当可派发的定义"
+            f"- 把核心 2 份文件放到 `{dest}/`，宿主会把它们当可派发的定义"
             f"（选择键：{cfg.get('select_key')}）。",
             f"- 专家 4 在 `{prof}/`：**不要放进 `{dest}/`**，由入口 skill 按需读取，防宿主自动派活。",
         ]
@@ -1103,7 +1102,7 @@ def render_bootstrap(root: Path, host: str, skin: str) -> str:
         "别指望宿主工具白名单——实测多数不执行。",
         "2. **不跨宿主借兵**：角色实例的入口必须属于当前宿主；别在 A 里拉 B 的 CLI。",
         "3. **发货单点**：只有主会话能合并／推送／关票，角色实例一律不发货。",
-        "4. **记忆只有一个写者**：长期记忆由 `archivist` 读写改，别的角色只能提候选。",
+        "4. **记忆只有一个写者**：长期记忆由 `shaman` 读写改，别的角色只能提候选。",
         "5. 角色名与职业必须写进正文：子代理看不到自己的类型名，`identity` 块里逐字写。",
         "6. **主 AI 不自己做施工**：再小的修也派 worker；主 AI 只分诊、调度与验收。",
         "",

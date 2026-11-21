@@ -42,7 +42,7 @@ def test_contract_only_dispatchables_have_no_personality():
         assert "## personality" not in text, f"{name} 带回了人格"
         assert "## identity" not in text, f"{name} 带回了皮肤人格块"
         checked += 1
-    assert checked == len(rl.DISPATCHABLE_IDS) == 7
+    assert checked == len(rl.DISPATCHABLE_IDS) == 6
 
 
 def test_contract_only_bodies_match_contract_prompt():
@@ -85,5 +85,5 @@ def test_cli_render_contract_only_dry_run(tmp_path):
     names = receipt["new"] + receipt["overwrite"] + receipt["same"]
     # 七个可派发 + _primary，一个不少
     assert any(n.startswith("_primary") for n in names)
-    assert len([n for n in names if not n.startswith("_primary")]) == 7
+    assert len([n for n in names if not n.startswith("_primary")]) == 6
     assert not dest.exists(), "dry-run 不应写盘"

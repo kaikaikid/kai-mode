@@ -1,7 +1,7 @@
 """`kai memory` 命令面：retrieve / propose / commit / rollback / veto / lineage / export。
 
 真相在 `engine/memory/ledger.py` 的 SQLite 账本；这里只做参数解析与输出。
-治理动作（commit/rollback/veto）只收 `archivist`；其它角色只能 propose。
+治理动作（commit/rollback/veto）只收 `shaman`；其它角色只能 propose。
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from typing import Any
 from .engine import build_engine
 from .ledger import (
     ALL_KINDS,
-    ARCHIVIST,
+    WRITER_ROLE,
     Ledger,
     MemoryError,
     NotFound,
@@ -217,7 +217,7 @@ def cmd_export(a: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="kai memory",
-        description="记忆账本：append-only SQLite + FTS5；治理动作只收 archivist")
+        description="记忆账本：append-only SQLite + FTS5；治理动作只收 shaman")
     p.add_argument("--db", default=None,
                    help=f"账本路径（默认 {default_db()}；也可用 KAI_MEMORY_DB）")
     p.add_argument("--engine", default=None,
@@ -245,7 +245,7 @@ def build_parser() -> argparse.ArgumentParser:
     common(sp)
     sp.set_defaults(func=cmd_propose)
 
-    sp = sub.add_parser("commit", help="archivist 把候选转正（或直接写入）")
+    sp = sub.add_parser("commit", help="shaman 把候选转正（或直接写入）")
     sp.add_argument("--actor-role", required=True)
     sp.add_argument("--proposal-id", default=None)
     sp.add_argument("--namespace", default=None)
@@ -264,7 +264,7 @@ def build_parser() -> argparse.ArgumentParser:
     common(sp)
     sp.set_defaults(func=cmd_commit)
 
-    sp = sub.add_parser("rollback", help="archivist 追加反向记录；原记录保留")
+    sp = sub.add_parser("rollback", help="shaman 追加反向记录；原记录保留")
     sp.add_argument("--actor-role", required=True)
     sp.add_argument("--target", required=True)
     sp.add_argument("--reason", required=True)
@@ -272,7 +272,7 @@ def build_parser() -> argparse.ArgumentParser:
     common(sp)
     sp.set_defaults(func=cmd_rollback)
 
-    sp = sub.add_parser("veto", help="archivist 标 tombstone；不删除")
+    sp = sub.add_parser("veto", help="shaman 标 tombstone；不删除")
     sp.add_argument("--actor-role", required=True)
     sp.add_argument("--target", required=True)
     sp.add_argument("--reason", required=True)
@@ -318,7 +318,7 @@ def build_parser() -> argparse.ArgumentParser:
     k = ksub.add_parser("new", help="给 agent 新建 token（明文只显示这一次）")
     k.add_argument("--agent", required=True)
     k.add_argument("--role", default=None,
-                   help="权限角色，默认等于 agent；治理动作要 archivist")
+                   help="权限角色，默认等于 agent；治理动作要 shaman")
     common(k)
     k.set_defaults(func=cmd_key_new)
     k = ksub.add_parser("rotate", help="轮换 token；旧 token 立即失效")

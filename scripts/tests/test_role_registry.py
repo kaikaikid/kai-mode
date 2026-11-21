@@ -111,8 +111,8 @@ def test_registry_has_pointers_not_bodies(tmp_path):
                 "skin_version", "skin_sha256", "persona_sha256",
                 "persona_memory_sha256", "team"}
     assert required <= prof_keys and required <= role_keys
-    assert len(docs["profession-registry/v1.json"]["professions"]) == 8
-    assert len(docs["role-registry/v1.json"]["roles"]) == 16
+    assert len(docs["profession-registry/v1.json"]["professions"]) == 7
+    assert len(docs["role-registry/v1.json"]["roles"]) == 14
     text = (out / REGISTRY_REL[0]).read_text(encoding="utf-8") + \
            (out / REGISTRY_REL[1]).read_text(encoding="utf-8")
     for forbidden in ("mission", "boundaries", "workflow", "output_contract",

@@ -30,7 +30,7 @@ OUT = ROOT / "manual" / "assets" / "skills-data.js"
 # 没有 commands/ 的插件里，这些技能本身就是口令
 SELF_COMMAND_SKILLS = {
     "gold",
-    "卓尔游侠", "符文法师", "矮人工匠", "德鲁伊", "游学者", "青铜龙", "圣骑士",
+    "卓尔游侠", "符文法师", "矮人工匠", "德鲁伊", "游学者", "圣骑士",
     "producer", "lead-writer", "lead-artist", "director",
     "design-critique", "design-handoff", "prototype-demo", "alt-text", "accessibility-audit", "security-review-desk",
     "final-review", "marketing",

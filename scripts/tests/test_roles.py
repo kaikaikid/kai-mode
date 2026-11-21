@@ -64,10 +64,10 @@ def test_real_repo_canon_validates():
     assert rl.validate(REPO) == []
 
 
-def test_eight_roles_two_skins_six_hosts():
+def test_seven_roles_two_skins_six_hosts():
     canon = rl.load_canon(REPO)
     assert set(canon) == set(rl.ROLE_IDS)
-    assert len(canon) == 8
+    assert len(canon) == 7
     for skin in rl.SKINS:
         assert set(rl.load_skin(REPO, skin)["roles"]) == set(rl.ROLE_IDS)
     assert set(rl.load_hosts(REPO)["hosts"]) == set(rl.HOSTS)
@@ -79,15 +79,15 @@ def test_exactly_one_primary_and_it_is_the_coordinator():
     primaries = [rid for rid, c in canon.items() if c["meta"].get("kind") == "primary"]
     assert primaries == [rl.PRIMARY_ID] == ["coordinator"]
     assert rl.PRIMARY_ID not in rl.DISPATCHABLE_IDS
-    assert len(rl.DISPATCHABLE_IDS) == 7
+    assert len(rl.DISPATCHABLE_IDS) == 6
 
 
-def test_kind_splits_core_three_and_specialist_four():
-    """ADR-0036 D1：kind 三档；核心 3 进 agent 目录，专家 4 走 profile。"""
+def test_kind_splits_core_two_and_specialist_four():
+    """ADR-0036 D1：kind 三档；核心 2 进 agent 目录，专家 4 走 profile。"""
     canon = rl.load_canon(REPO)
     kinds = {rid: c["meta"]["kind"] for rid, c in canon.items()}
     assert kinds == rl.KIND_BY_ROLE
-    assert set(rl.CORE_IDS) == {"engineer", "reviewer", "archivist"}
+    assert set(rl.CORE_IDS) == {"engineer", "reviewer"}
     assert set(rl.SPECIALIST_IDS) == {"researcher", "architect", "designer", "writer"}
     assert set(rl.CORE_IDS) | set(rl.SPECIALIST_IDS) == set(rl.DISPATCHABLE_IDS)
     assert not (set(rl.CORE_IDS) & set(rl.SPECIALIST_IDS))
@@ -138,9 +138,9 @@ def test_ac08_filenames_stable_across_skins():
 @pytest.mark.parametrize("host", rl.HOSTS)
 @pytest.mark.parametrize("skin", rl.SKINS)
 def test_ac02_render_is_idempotent(host, skin, tmp_path):
-    """渲染两遍结果一样：派生物没有「旧版」这个概念，重渲染就是全部。默认只出七个可派发角色。"""
+    """渲染两遍结果一样：派生物没有「旧版」这个概念，重渲染就是全部。默认只出六个可派发角色。"""
     first = rl.render_all(REPO, host, skin)
-    assert len(first) == 7
+    assert len(first) == 6
     assert "coordinator.md" not in first and "_primary.md" not in first
     for name, text in first.items():
         (tmp_path / name).write_bytes(text.encode("utf-8"))
@@ -152,7 +152,7 @@ def test_ac02_render_is_idempotent(host, skin, tmp_path):
 
 def test_ac02_with_primary_adds_only_the_session_agent(host="qoder"):
     files = rl.render_all(REPO, host, "guild", with_primary=True)
-    assert len(files) == 8
+    assert len(files) == 7
     prim = next(n for n in files if n.startswith("_primary"))
     body = _body_of(files[prim])
     assert body == rl.render_primary(REPO, "guild")
@@ -201,11 +201,11 @@ def test_ac02_canon_bump_changes_fingerprint_immediately(repo_copy):
 def test_fingerprint_is_recomputable():
     canon = rl.load_canon(REPO)
     sk = rl.load_skin(REPO, "guild")
-    text = rl.render_all(REPO, "qoder", "guild")["archivist.md"]
+    text = rl.render_all(REPO, "qoder", "guild")["writer.md"]
     head = next(l for l in text.splitlines() if l.startswith("<!-- kai-role"))
-    assert f"canon_sha256={canon['archivist']['sha256']}" in head
-    assert f"skin_sha256={rl.entry_sha256(sk['roles']['archivist'])}" in head
-    assert "role_id=archivist" in head and "skin=guild" in head
+    assert f"canon_sha256={canon['writer']['sha256']}" in head
+    assert f"skin_sha256={rl.entry_sha256(sk['roles']['writer'])}" in head
+    assert "role_id=writer" in head and "skin=guild" in head
 
 
 def test_canon_fingerprint_ignores_line_endings(tmp_path):
@@ -319,7 +319,7 @@ def test_qoder_readonly_is_pinned_as_not_hard():
     assert rl.load_hosts(REPO)["hosts"]["qoder"]["readonly_hard"] == "no"
 
 
-# ── 分层投影：核心 3 → agent 目录；专家 4 → profiles（标 generated）───────────
+# ── 分层投影：核心 2 → agent 目录；专家 4 → profiles（标 generated）───────────
 @pytest.mark.parametrize("host", rl.HOSTS)
 def test_render_kind_core_and_specialist_split(host):
     core = rl.render_all(REPO, host, "guild", kind="core")
@@ -385,7 +385,7 @@ def test_framework_presets_are_valid_and_resolvable():
         data = rl.resolve_preset(REPO, name)
         assert data["schema"] == rl.PRESET_SCHEMA
         assert data["lead"] in data["roles"]
-        assert "coordinator" not in data["roles"] and "archivist" not in data["roles"]
+        assert "coordinator" not in data["roles"]
 
 
 def test_preset_project_override_wins_and_unknown_is_missing(tmp_path):
@@ -507,12 +507,12 @@ def test_prompt_tracks_canon_without_any_file(repo_copy):
     assert rl.render_prompt(repo_copy, "reviewer", "generic") != before
 
 
-def test_pack_contains_seven_dispatchable_roles():
+def test_pack_contains_six_dispatchable_roles():
     pack = rl.render_pack(REPO, "guild")
     for rid in rl.DISPATCHABLE_IDS:
         assert f"role={rid}" in pack
     assert "role=coordinator" not in pack, "主 AI 人格不该混进可派发包"
-    assert pack.count("<!-- kai-role") == 7
+    assert pack.count("<!-- kai-role") == 6
 
 
 def test_primary_prompt_carries_dispatch_table():
@@ -525,7 +525,7 @@ def test_primary_prompt_carries_dispatch_table():
 
 
 # ── 给别的 AI 做初始化：bootstrap 卡片与落点 ────────────────────────────────
-def test_bootstrap_card_names_primary_and_all_seven():
+def test_bootstrap_card_names_primary_and_all_six():
     for host in rl.HOSTS:
         card = rl.render_bootstrap(REPO, host, "guild")
         assert "主 AI 人格是 **康娜**" in card, host
@@ -560,7 +560,7 @@ def test_bootstrap_cli_writes_roles_table_card_and_is_idempotent(host, expected_
     core_names = {f"{r}.md" for r in rl.CORE_IDS}
     # opencode 没有 agent 文件层，主 AI 会话 prompt 与核心提示词同住 .ai/roles（仍不进 agent 目录）。
     expected_core = core_names | ({"_primary.md"} if expected_dir == ".ai/roles" else set())
-    assert {p.name for p in roles.glob("*.md")} == expected_core, "核心 3 才进 agent 目录"
+    assert {p.name for p in roles.glob("*.md")} == expected_core, "核心 2 才进 agent 目录"
     profiles = proj / ".ai" / "roles" / "profiles"
     assert {p.name for p in profiles.glob("*.md")} == {f"{r}.md" for r in rl.SPECIALIST_IDS}
     primary = proj / ".ai" / "roles" / "_primary.md"
@@ -570,7 +570,7 @@ def test_bootstrap_cli_writes_roles_table_card_and_is_idempotent(host, expected_
     r2 = subprocess.run(cmd, cwd=str(REPO), capture_output=True, text=True,
                         encoding="utf-8", errors="replace")
     assert r2.returncode == 0
-    assert "新增（0）" in r2.stdout and "内容相同（8）" in r2.stdout
+    assert "新增（0）" in r2.stdout and "内容相同（7）" in r2.stdout
 
 
 def test_bootstrap_card_never_lands_inside_a_scanned_agent_dir(tmp_path):
@@ -617,7 +617,7 @@ def test_reverse_block_order_is_red(repo_copy):
 def test_reverse_missing_skin_role_is_red(repo_copy):
     p = repo_copy / "roles" / "skins" / "generic.json"
     d = json.loads(p.read_text(encoding="utf-8"))
-    del d["roles"]["archivist"]
+    del d["roles"]["writer"]
     p.write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
     bad = rl.validate(repo_copy)
     assert any("角色集不符" in b for b in bad), bad
@@ -960,7 +960,7 @@ def test_landing_compare_catches_tampered_sha(tmp_path, monkeypatch):
 
 
 def test_landing_compare_skips_files_without_fingerprint(tmp_path, monkeypatch):
-    """无指纹的 AGENTS.md 不计红（不属于八角色），只进计数。"""
+    """无指纹的 AGENTS.md 不计红（不属于七角色），只进计数。"""
     land = tmp_path / "landing" / "agent-x"
     land.mkdir(parents=True)
     (land / "AGENTS.md").write_text("# 不是角色\n", encoding="utf-8")

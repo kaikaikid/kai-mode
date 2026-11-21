@@ -3,7 +3,7 @@
 断的是可观测行为：
 - 只追加：rollback/veto/supersede 不删旧行；
 - 证据强制：无证据或自述类证据拒绝；
-- 单写者：只有 archivist 能 commit/rollback/veto；
+- 单写者：只有 shaman 能 commit/rollback/veto；
 - 幂等：业务键 namespace+kind+subject+content_hash；
 - 并发：多连接同时 propose 不丢条目、同内容不重复；
 - FTS5：关键词检索 + namespace/kind 过滤 + top-k/token 上限；
@@ -28,7 +28,7 @@ if str(ENGINE_DIR) not in sys.path:
 
 from memory.engine import FTS5Engine, OpenVikingEngine, QdrantEngine, build_engine  # noqa: E402
 from memory.ledger import (  # noqa: E402
-    ARCHIVIST,
+    WRITER_ROLE,
     Ledger,
     MemoryError,
     NotFound,
@@ -45,7 +45,7 @@ def open_ledger(db: Path) -> Ledger:
 
 def commit(ledger: Ledger, statement: str, *, namespace: str = "shared",
            kind: str = "task_fact", evidence=("tests:x:1",), **kwargs) -> dict:
-    return ledger.commit(actor_role=ARCHIVIST, namespace=namespace, kind=kind,
+    return ledger.commit(actor_role=WRITER_ROLE, namespace=namespace, kind=kind,
                          statement=statement, evidence_refs=list(evidence), **kwargs)
 
 
@@ -84,10 +84,10 @@ def test_propose_then_commit_becomes_active(tmp_path):
                               kind="failure_lesson", statement="先 reflow 再 merge",
                               evidence_refs=["docs/x.md:9"])
         assert prop["status"] == "proposed"
-        rec = ledger.commit(actor_role=ARCHIVIST, proposal_id=prop["memory_id"])
+        rec = ledger.commit(actor_role=WRITER_ROLE, proposal_id=prop["memory_id"])
         assert rec["status"] == "active"
         assert rec["memory_id"] == prop["memory_id"]
-        assert rec["committed_by"] == ARCHIVIST
+        assert rec["committed_by"] == WRITER_ROLE
         assert rec["layer"] is None
 
 
@@ -107,7 +107,7 @@ def test_evidence_is_mandatory_and_self_report_is_not_evidence(tmp_path):
 
 
 # ── 单写者 ──────────────────────────────────────────────────────────────────
-def test_only_archivist_can_commit_rollback_and_veto(tmp_path):
+def test_only_shaman_can_commit_rollback_and_veto(tmp_path):
     with open_ledger(tmp_path / "l.db") as ledger:
         prop = ledger.propose(actor_role="engineer", namespace="shared",
                               kind="task_fact", statement="待转正",
@@ -116,7 +116,7 @@ def test_only_archivist_can_commit_rollback_and_veto(tmp_path):
             ledger.commit(actor_role="engineer", proposal_id=prop["memory_id"])
         assert ledger.current_row(prop["memory_id"])["status"] == "proposed"
 
-        rec = ledger.commit(actor_role=ARCHIVIST, proposal_id=prop["memory_id"])
+        rec = ledger.commit(actor_role=WRITER_ROLE, proposal_id=prop["memory_id"])
         for actor in ("engineer", "coordinator", ""):
             with pytest.raises(PermissionDenied):
                 ledger.veto(actor_role=actor, target=rec["memory_id"], reason="x")
@@ -140,8 +140,8 @@ def test_business_key_is_idempotent(tmp_path):
         assert second["memory_id"] == first["memory_id"]
         assert ledger.count_events() == 1, "同业务键不追加第二行"
 
-        c1 = ledger.commit(actor_role=ARCHIVIST, proposal_id=first["memory_id"])
-        c2 = ledger.commit(actor_role=ARCHIVIST, proposal_id=first["memory_id"])
+        c1 = ledger.commit(actor_role=WRITER_ROLE, proposal_id=first["memory_id"])
+        c2 = ledger.commit(actor_role=WRITER_ROLE, proposal_id=first["memory_id"])
         assert c1["created"] is True and c2["created"] is False
         assert ledger.count_events() == 2, "重复 commit 不追加"
 
@@ -172,7 +172,7 @@ def test_supersede_keeps_old_row_and_hides_it(tmp_path):
 def test_veto_leaves_a_tombstone(tmp_path):
     with open_ledger(tmp_path / "l.db") as ledger:
         rec = commit(ledger, "会被 veto 的条目")
-        out = ledger.veto(actor_role=ARCHIVIST, target=rec["memory_id"],
+        out = ledger.veto(actor_role=WRITER_ROLE, target=rec["memory_id"],
                           reason="证据后来被推翻")
         assert out["status"] == "vetoed"
         assert out["reason"] == "证据后来被推翻"
@@ -184,7 +184,7 @@ def test_veto_leaves_a_tombstone(tmp_path):
 def test_rollback_appends_reverse_record_and_keeps_original(tmp_path):
     with open_ledger(tmp_path / "l.db") as ledger:
         rec = commit(ledger, "原先的判断")
-        out = ledger.rollback(actor_role=ARCHIVIST, target=rec["memory_id"],
+        out = ledger.rollback(actor_role=WRITER_ROLE, target=rec["memory_id"],
                               reason="后面发现证据不支持")
         assert out["status"] == "rolled_back"
         assert "证据不支持" in out["statement"]
@@ -199,18 +199,18 @@ def test_rollback_requires_reason_and_existing_target(tmp_path):
     with open_ledger(tmp_path / "l.db") as ledger:
         rec = commit(ledger, "x")
         with pytest.raises(MemoryError, match="--reason"):
-            ledger.rollback(actor_role=ARCHIVIST, target=rec["memory_id"], reason="")
+            ledger.rollback(actor_role=WRITER_ROLE, target=rec["memory_id"], reason="")
         with pytest.raises(NotFound):
-            ledger.rollback(actor_role=ARCHIVIST, target="m-9999", reason="x")
+            ledger.rollback(actor_role=WRITER_ROLE, target="m-9999", reason="x")
 
 
 # ── layer=ego 保留 ──────────────────────────────────────────────────────────
 def test_layer_ego_is_preserved_as_metadata(tmp_path):
     with open_ledger(tmp_path / "l.db") as ledger:
-        prop = ledger.propose(actor_role=ARCHIVIST, namespace="shared",
+        prop = ledger.propose(actor_role=WRITER_ROLE, namespace="shared",
                               kind="task_fact", statement="自我层记忆",
                               evidence_refs=["tests:x:1"], layer="ego")
-        rec = ledger.commit(actor_role=ARCHIVIST, proposal_id=prop["memory_id"])
+        rec = ledger.commit(actor_role=WRITER_ROLE, proposal_id=prop["memory_id"])
         assert rec["layer"] == "ego"
         assert ledger.current_rows()[0]["layer"] == "ego"
 
@@ -271,7 +271,7 @@ def test_conflict_is_isolated_until_resolved(tmp_path):
                    conflicts_with=[a["memory_id"]])
         hits = ledger.retrieve(namespace="shared", query="冲突")
         assert [r["memory_id"] for r in hits] == [a["memory_id"]], "冲突条目暂不注入"
-        ledger.veto(actor_role=ARCHIVIST, target=a["memory_id"], reason="甲错")
+        ledger.veto(actor_role=WRITER_ROLE, target=a["memory_id"], reason="甲错")
         hits = ledger.retrieve(namespace="shared", query="冲突")
         assert [r["memory_id"] for r in hits] == [b["memory_id"]], "冲突解除后恢复"
 
@@ -313,7 +313,7 @@ def test_concurrent_proposes_are_serialized(tmp_path):
 def test_lineage_and_export(tmp_path):
     with open_ledger(tmp_path / "l.db") as ledger:
         rec = commit(ledger, "审计一条")
-        ledger.rollback(actor_role=ARCHIVIST, target=rec["memory_id"], reason="撤")
+        ledger.rollback(actor_role=WRITER_ROLE, target=rec["memory_id"], reason="撤")
         lineage = ledger.lineage(rec["memory_id"])
         assert [e["event_type"] for e in lineage] == ["commit", "rollback"]
         assert len(ledger.events()) == 2
@@ -329,7 +329,7 @@ def test_check_catches_tampered_committer_and_missing_evidence(tmp_path):
             "UPDATE memory_events SET committed_by = 'engineer', evidence_refs = '[]' "
             "WHERE memory_id = ? AND event_type = 'commit'", (rec["memory_id"],))
         problems = ledger.check()
-        assert any("committed_by" in p and "只许 archivist" in p for p in problems)
+        assert any("committed_by" in p and "只许 shaman" in p for p in problems)
         assert any("没有证据引用" in p for p in problems)
 
 
@@ -364,9 +364,9 @@ def test_cli_end_to_end(tmp_path):
 
     p = _kai("--db", db, "commit", "--actor-role", "engineer",
              "--proposal-id", prop["memory_id"])
-    assert p.returncode == 3, "非 archivist 不能 commit"
+    assert p.returncode == 3, "非 shaman 不能 commit"
 
-    p = _kai("--db", db, "commit", "--actor-role", "archivist",
+    p = _kai("--db", db, "commit", "--actor-role", "shaman",
              "--proposal-id", prop["memory_id"])
     assert p.returncode == 0, p.stderr
     rec = json.loads(p.stdout)
@@ -380,7 +380,7 @@ def test_cli_end_to_end(tmp_path):
     p = _kai("--db", db, "veto", "--actor-role", "engineer",
              "--target", rec["memory_id"], "--reason", "x")
     assert p.returncode == 3
-    p = _kai("--db", db, "veto", "--actor-role", "archivist",
+    p = _kai("--db", db, "veto", "--actor-role", "shaman",
              "--target", rec["memory_id"], "--reason", "错误结论")
     assert p.returncode == 0, p.stderr
 
@@ -393,12 +393,12 @@ def test_cli_end_to_end(tmp_path):
 # ── role-memory.py 兼容 ─────────────────────────────────────────────────────
 def test_role_memory_append_show_check_read_ledger(tmp_path):
     db = str(tmp_path / "mem.db")
-    p = run_cli(ROLE_MEMORY, "append", "--db", db, "--writer", "archivist",
+    p = run_cli(ROLE_MEMORY, "append", "--db", db, "--writer", "shaman",
                 "--scope", "task_fact", "--statement", "账本模式一条",
                 "--evidence", "scripts/x.py:1")
     assert p.returncode == 0, p.stderr
     rec = json.loads(p.stdout)
-    assert rec["writer"] == ARCHIVIST and rec["layer"] == "ego"
+    assert rec["writer"] == WRITER_ROLE and rec["layer"] == "ego"
 
     p = run_cli(ROLE_MEMORY, "show", "--db", db, "--json")
     rows = json.loads(p.stdout)
@@ -413,7 +413,7 @@ def test_role_memory_append_show_check_read_ledger(tmp_path):
                 "--evidence", "scripts/x.py:1")
     assert p.returncode == 3
 
-    p = run_cli(ROLE_MEMORY, "rollback", "--db", db, "--writer", "archivist",
+    p = run_cli(ROLE_MEMORY, "rollback", "--db", db, "--writer", "shaman",
                 "--target", rec["memory_id"], "--reason", "测试撤销")
     assert p.returncode == 0, p.stderr
     assert json.loads(run_cli(ROLE_MEMORY, "show", "--db", db, "--json").stdout) == []
@@ -426,11 +426,11 @@ def test_role_memory_import_preserves_legacy_id(tmp_path):
          "scope": "task_fact", "layer": "ego", "statement": "旧写者留下的",
          "evidence_refs": ["scripts/x.py:1"], "before": "", "after": "",
          "conflicts_with": [], "rollback_of": None},
-        {"id": "m-0002", "ts": "2026-01-02T00:00:00Z", "writer": "archivist",
+        {"id": "m-0002", "ts": "2026-01-02T00:00:00Z", "writer": "shaman",
          "scope": "failure_lesson", "layer": "ego", "statement": "会被回滚的",
          "evidence_refs": ["scripts/y.py:2"], "before": "", "after": "",
          "conflicts_with": [], "rollback_of": None},
-        {"id": "m-0003", "ts": "2026-01-03T00:00:00Z", "writer": "archivist",
+        {"id": "m-0003", "ts": "2026-01-03T00:00:00Z", "writer": "shaman",
          "scope": "failure_lesson", "layer": "ego", "statement": "回滚 m-0002：证据不支持",
          "evidence_refs": ["role-memory:m-0002"], "before": "", "after": "",
          "conflicts_with": [], "rollback_of": "m-0002"},
@@ -439,13 +439,13 @@ def test_role_memory_import_preserves_legacy_id(tmp_path):
                    encoding="utf-8")
     db = tmp_path / "mem.db"
     p = run_cli(ROLE_MEMORY, "import", "--db", str(db), "--from-jsonl", str(log),
-                "--writer", "archivist", "--json")
+                "--writer", "shaman", "--json")
     assert p.returncode == 0, p.stderr
     assert json.loads(p.stdout)["imported"] == 3
 
     # 重跑幂等：legacy_id 已存在即跳过。
     p = run_cli(ROLE_MEMORY, "import", "--db", str(db), "--from-jsonl", str(log),
-                "--writer", "archivist", "--json")
+                "--writer", "shaman", "--json")
     assert p.returncode == 0, p.stderr
     assert json.loads(p.stdout)["skipped"] == 3
 

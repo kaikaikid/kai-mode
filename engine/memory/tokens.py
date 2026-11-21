@@ -4,7 +4,7 @@
 默认位置跟随账本：`$KAI_MEMORY_TOKENS` → `<账本目录>/tokens.json`。
 POSIX 上文件权限 0600；Windows 只做 best-effort（`os.chmod` 语义有限），安全边界靠回环监听。
 
-治理动作（commit/rollback/veto/dream/export/admin）只认 `role=archivist` 的 token；
+治理动作（commit/rollback/veto/dream/export/admin）只认 `role=shaman` 的 token；
 角色由 token 记录决定，请求体里的 `actor_role` 不参与鉴权。
 """
 
@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-ARCHIVIST = "archivist"
+WRITER_ROLE = "shaman"
 ROLE_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,31}$")
 TOKEN_PREFIX = "kmt_"
 STORE_VERSION = 1
@@ -96,7 +96,7 @@ class TokenStore:
     # -- 生命周期 -----------------------------------------------------------
     def create(self, agent: str, role: str | None = None) -> str:
         agent = str(agent or "").strip()
-        role = str(role or agent).strip().lower()  # 角色统一小写，archivist 治理判定才稳
+        role = str(role or agent).strip().lower()  # 角色统一小写，shaman 治理判定才稳
         if not ROLE_RE.match(agent):
             raise TokenError(f"agent 名不合规：{agent!r}（字母开头，字母数字 _ -，≤32）")
         if not ROLE_RE.match(role):

@@ -40,10 +40,10 @@ roles/
 ```
 
 `role_id` 是稳定标识，不随皮肤变：`coordinator` `researcher` `architect` `engineer`
-`designer` `writer` `archivist` `reviewer`。
+`designer` `writer` `reviewer`。
 
 **其中一个不是子代理**：`coordinator`（康娜）是**主 AI 人格**——默认对话激活的就是它，
-`kind: primary`。另外七个分两层：`engineer`／`reviewer`／`archivist` 是 `kind: core`，
+`kind: primary`。另外六个分两层：`engineer`／`reviewer` 是 `kind: core`，
 渲染成宿主 agent 定义（常驻可发现、按需调用）；`researcher`／`architect`／`designer`／`writer`
 是 `kind: specialist`，渲染成 `.ai/roles/profiles/` 的按需 profile，不进 agent 目录。
 主 AI 人格单独出 `_primary` 会话 prompt，是**会话级**人格，不是候选项（也不进 agent 目录）。
@@ -63,8 +63,8 @@ effort: high
 
 - `access_need` 只是**声明角色需要什么**，不授权。实际权限按 ADR-0033 D7 取交集：
   宿主无关三样（工作树隔离／范围校验／发货单点）永远生效，宿主工具白名单是加分项。
-- `kind` 只有三档：`primary`（主 AI 人格，有且只有 `coordinator`）／`core`（`engineer`／`reviewer`／
-  `archivist`，进宿主 agent 目录）／`specialist`（`researcher`／`architect`／`designer`／`writer`，
+- `kind` 只有三档：`primary`（主 AI 人格，有且只有 `coordinator`）／`core`（`engineer`／`reviewer`，
+  进宿主 agent 目录）／`specialist`（`researcher`／`architect`／`designer`／`writer`，
   进 `.ai/roles/profiles/` 按需加载）。尺子会拦「两个 primary」「把主 AI 人格标成其它档」与错配的 kind。
 - `model_tier` 是宿主中立档位（`fast` / `standard` / `strong` / `inherit`），
   由投影表翻成宿主认的值；`effort` 用通用档位词，宿主不认就不写该字段。
@@ -206,9 +206,9 @@ preset 是**任务侧**组合（一对多），不是角色契约，也不是 sp
 任务图只写 `"preset": "<name>"`，解析顺序**项目 → 框架 → 缺件**，未知 preset 停下报缺件，不猜默认。
 
 - schema `kai-dispatch-preset/1`，严格模式：未知字段拒绝。
-- `roles` 不能含 `coordinator`／`archivist`；`reviewer` 只能单独成 preset 且 `isolation.review=none`。
+- `roles` 不能含 `coordinator`；`reviewer` 只能单独成 preset 且 `isolation.review=none`。
 - 有施工时 `isolation.review=separate`，reviewer 由内核另起上下文，不写进 `roles`。
-- `lead` 必须 ∈ `roles`；`memory.write` 固定 `propose`（只有 archivist 能 commit）。
+- `lead` 必须 ∈ `roles`；`memory.write` 固定 `propose`（只有 shaman 能 commit）。
 
 ```bash
 python scripts/render-roles.py preset --list
@@ -229,7 +229,7 @@ python scripts/render-roles.py bootstrap --project <项目根> --host <宿主> -
 
 | 落点 | 是什么 |
 |---|---|
-| `<宿主 dest_dir>/`（如 `.qoder/agents/`、`.ai/roles/`） | **核心 3** 的宿主 agent 定义 |
+| `<宿主 dest_dir>/`（如 `.qoder/agents/`、`.ai/roles/`） | **核心 2** 的宿主 agent 定义 |
 | `<宿主 profiles_dir>/`（默认 `.ai/roles/profiles/`） | **专家 4** 的按需 profile（渲染缓存，标 generated） |
 | `<项目>/.ai/roles/_primary.md` | **主 AI 会话 prompt**（会话级人格，不进 agent 目录） |
 | `<项目>/.coding/host-programs.json` | 宿主→程序名映射，内核据此拦跨宿主借兵 |
@@ -248,11 +248,11 @@ python scripts/render-roles.py bootstrap --project <项目根> --host <宿主> -
 
 ## 公共约束（canon 只留指针，不复述）
 
-- P1 表达边界：七个专业角色保持专业直述，不迁就小白话；面向用户的白话翻译只归康娜（术语附解释、操作给步骤）。
+- P1 表达边界：六个专业角色保持专业直述，不迁就小白话；面向用户的白话翻译只归康娜（术语附解释、操作给步骤）。
 - P2 输出路由：人类成果载体见 `output-routing.md`（八类）；简单优先文字，组合呈现时每种载体须有独立价值。
 - P3 信封与证据：信封头三行与 claims 四类见 `envelope-header.md` 与 `docs/schema.md`；`fact` 必带 `evidence_refs`（URI 真实可访问）；执行状态不自写，只引用内核事件。
 
 ## 记忆
 
-角色经验日志只有 `archivist` 能写，工具与判据住 [`scripts/role-memory.py`](../scripts/role-memory.py)。
+角色经验日志只有记忆治理职业（shaman）能写，工具与判据住 [`scripts/role-memory.py`](../scripts/role-memory.py)。
 正本与皮肤都是只读；改它们要用户批准 ＋ 升版，禁止覆盖旧版。

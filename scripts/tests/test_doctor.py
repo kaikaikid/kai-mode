@@ -983,7 +983,7 @@ def test_list_retired_green_when_only_exempt_lines_remain(tmp_path):
 def _add_role_canon(root):
     canon = root / "roles" / "canon"
     canon.mkdir(parents=True, exist_ok=True)
-    for rid in ("architect", "archivist", "coordinator", "designer",
+    for rid in ("architect", "coordinator", "designer",
                 "engineer", "researcher", "reviewer", "writer"):
         (canon / f"{rid}.md").write_text(f"# {rid}\n", encoding="utf-8")
 

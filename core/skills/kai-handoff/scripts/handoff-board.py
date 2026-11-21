@@ -280,7 +280,7 @@ def main() -> int:
     p.add_argument("--ticket", default="-", help='票号，如 "#12"；没开票就留 -')
     p.add_argument("--type", default="task", choices=TYPES)
     p.add_argument("--role", default="-",
-                   help="角色（岗位）：coordinator/researcher/architect/engineer/designer/writer/archivist/reviewer")
+                   help="角色（岗位）：coordinator/researcher/architect/engineer/designer/writer/reviewer")
     p.add_argument("--persona", default="-", help="人格（委派能力）：worker 等")
     p.set_defaults(fn=cmd_new)
 
