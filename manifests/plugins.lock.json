@@ -11,7 +11,7 @@
     },
     "core": {
       "version": "1.5.0",
-      "digest": "63873cb6e0eaa51486db4501b74031f16c94870ca163d81958bd1c4ca23d754b",
+      "digest": "9bf214fdd04bd0953fc0e24fdb3065b41e8fad29141a272106ea8114672e3432",
       "skills": {
         "BOOK": "1.0.0",
         "dream": "0.1.0",
@@ -44,7 +44,7 @@
     },
     "engine": {
       "version": "0.6.0",
-      "digest": "a48f00c1957380264d8006833e18d84bf098202b1c50cd6febecd3041a823484",
+      "digest": "4135c77cc447e1adea7ffc3c0c0c10254447b73beffeaa0fe79aa7f27eaf61a3",
       "skills": {
         "fleet": "0.9.0",
         "pk": "0.1.1"

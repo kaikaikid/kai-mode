@@ -162,6 +162,8 @@ fleet warp "<任务或票号>" [--ships 1-3]
 
 **终点**：全部 task 收口，或停在上面三种之一并已告知团长（或记入队列等团长唤醒）。
 
+验收 worker 交付时按 [`references/change-completeness.md`](references/change-completeness.md) 核对：同一事实是否改全、是否照用户会用的方式核实过；发现一处漏就把同类全查，被退回过的错要求 worker 在同一张票里转成机械护栏。细则在 reference，这里只留指针。
+
 ### 6. 发货
 
 发货权在康娜：**开团**（工程别名 `warp`）停在验收门（无发货权），由她走 merge → 收尾门 → push → 关票。
@@ -189,6 +191,8 @@ push 目标按项目：kai-mode→main，Kai-vass→dev；速推内自动推当�
 ```
 
 槽位语义与顺序不许变，标记词按各角色 personality 定制，但别用公文腔；标记词是标签不是状态词，写执行状态仍只用四词。总结之后不追加任何内容；不贴日志、不贴 diff、不复述流程。用户追问再展开。
+
+表达硬约束见 [`references/output-contract.md`](references/output-contract.md)：结论先行、下一步只能一个且可立刻做、错误写「位置→现象→原因→修法」、多步用任务工具承载、每组列表最多五项。它只管表达，不改技术判断与门禁。
 
 ## 权限与禁区
 

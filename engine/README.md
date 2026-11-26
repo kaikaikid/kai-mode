@@ -8,7 +8,7 @@
 只在门点停。设计正本见
 [`docs/design/2026-10-30-v2-execution-kernel.md`](../docs/design/2026-10-30-v2-execution-kernel.md)。
 
-命令入口是 `fleet`（`travel`、`coding` 是兼容别名，三个 launcher 指向同一入口）。**只走宿主原生子代理，不拉 CLI 进程。**
+命令入口是 `fleet`（`travel`、`coding` 是兼容别名）。派新上下文的默认方式、跨宿主借兵的禁令与例外，规则正本住 `adapters/README.md` 与 ADR-0039；本文不复述。当前具名例外：Hermes 可拉 CC CLI 作一次性施工引擎。
 宿主起不了子代理就不适用；如实报缺件，不退化成「自己写代码」。
 
 ## 安装

@@ -10,7 +10,9 @@
 > **角色实例的入口必须属于当前宿主**（ADR-0033 D3）。宿主有原生子代理就用原生子代理；
 > 宿主本身就是命令行 agent 工具而没有原生子代理时，**可以拉它自己的一次性进程**
 > （Codex 里拉 `codex exec`、OpenCode 里拉 `opencode run`）。
-> **禁止在 A 宿主里拉 B 宿主的 CLI**——那是跨宿主借兵、消耗别家额度，要另立 ADR 并经用户批准。
+> **在 A 宿主里拉 B 宿主的 CLI（跨宿主借兵）默认禁止**，默认禁令与例外规则的正本住本文；
+> 例外只在**用户明确批准且另立 ADR 的具名组合**下成立——当前唯一例外是 Hermes 调 CC CLI
+> 作施工引擎（[ADR-0039](docs/adr/0039-approved-cross-host-build-engine.md)），不开放通用借兵。
 > 两条路都起不了新上下文 ⇒ 按 §6 登记 `no-new-context`，不退化成「主会话自己写代码」。
 
 ## 0. 三层分工
@@ -45,6 +47,7 @@
 | Copilot | 无 | 项目技能目录 | 无；用 prompt | 宿主自定义代理（`.github/agents/`） | 视版本 | **有**：`.github/agents/<名>.agent.md`，派发键＝文件名；只读靠 `tools` 不给 `edit`+`execute`；无 `maxTurns`/`disallowedTools`/`hooks` |
 | Cursor | 无 | 项目技能目录（`registry.skills.project_skills_dir`） | 无；用 prompt | 宿主子代理（`.cursor/agents/`） | 视版本 | **有**：`.cursor/agents/<名>.md`；只读靠 frontmatter `readonly: true`（硬机制）；无 `tools` 白名单 |
 | OpenBot | 无插件清单；技能装进各 agent 工作区 | `<agent 工作区>/.agents/skills/<名>/` | 无；默认人格 + prompt | 界面「新话题」(threads)／`context/clear` 切段／routine 独立运行 | routines（最小 3 分钟） | **无原生子代理**；派活＝给另一个 agent 发消息（详见 `openbot.md`） |
+| Hermes | 无插件清单；技能装进 profile 的 skills 分类目录 | `$HERMES_HOME/profiles/<profile>/skills/<category>/<名>/`（符号链接到中央库，经 `hermes skills list -p <profile>` 核验） | 无角色命令；prompt 指向 `gold` | 原生 `delegate_task` 子代理／独立进程／cron；施工可经 [ADR-0039](docs/adr/0039-approved-cross-host-build-engine.md) 具名例外拉 CC CLI | cronjob 工具 | **有**：`delegate_task` 原生子代理（独立 daemon／session） |
 
 不在表里的宿主：按 §1 四步自测，然后在本表补一行。
 
